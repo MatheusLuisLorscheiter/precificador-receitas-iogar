@@ -6,14 +6,15 @@
 #   Autor: Will
 #   ---------------------------------------------------------------------------------------------------
 
-from .base import BaseModel
+# Importar Base primeiro
+from .base import Base, BaseModel
+
+# Depois importar os outros modelos
 from .insumo import Insumo
-from .receita import Receita
-from .receita_insumo import ReceitaInsumo
+# from .receita import Receita
+# from .receita_insumo import ReceitaInsumo
 
-#   Lista todos os modelos disponiveis para importação
-__all__ = ["BaseModel", "Insumo", "Receita", "ReceitaInsumo"]
-
+__all__ = ["Base", "BaseModel", "Insumo"]
 #   ---------------------------------------------------------------------------------------------------
 #   Estrutura do banco de dados
 #   ---------------------------------------------------------------------------------------------------

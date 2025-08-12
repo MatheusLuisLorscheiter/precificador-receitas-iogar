@@ -171,7 +171,7 @@ class InsumoResponse(InsumoBase):
                 "fator":1000, 
                 "unidade": "kg",
                 "preco_compra_real": 3.50,
-                "preco_compra_centavos":, 350,
+                "preco_compra_centavos": 350,
                 "created_at": "2024-01-15T10:00:00",
                 "updated_at": "2024-01-15T15:30:00"
             }

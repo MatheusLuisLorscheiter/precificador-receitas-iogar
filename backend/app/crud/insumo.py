@@ -171,7 +171,7 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
         ValueError: Se código já existir
     """
     # Verificar se código já existe
-    existing_insumo = get_insumo_by_codigo(db, insumo.codigo)
+    existing_insumo = get_insumo_by_codigo(db=db, codigo=insumo.codigo)
     if existing_insumo:
         raise valueError(f"Insumo com codigo '{insumo.codigo}' já existe")
     

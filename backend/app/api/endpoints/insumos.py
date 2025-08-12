@@ -27,10 +27,10 @@ from app.schemas.insumo import (
 router = APIRouter()
 
 #   ---------------------------------------------------------------------------------------------------
-#   Endpoints de leitura
+#   Endpoints de leitura (GET)
 #   ---------------------------------------------------------------------------------------------------
 
-@router.get("/", rosponse_model=List[InsumoListResponse], summary="Listar insumos")
+@router.get("/", response_model=List[InsumoListResponse], summary="Listar insumos")
 def listar_insumos(
     # Parametros de paginação
     skip: int  = Query(0, ge=0, description="Registros para pular"),
@@ -189,7 +189,6 @@ def obter_insumo_por_codigo(
     **Parâmetros:**
     - **codigo**: Código único do insumo
     """
-
     insumo = crud_insumo.get_insumo_by_codigo(db=db, codigo=codigo)
     if not insumo:
         raise HTTPException(
@@ -356,6 +355,7 @@ def deletar_insumo(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Insumo com ID {insumo_id} não encontrado"
             )
+        
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -366,7 +366,7 @@ def deletar_insumo(
 #   Endpoints Auxiliares
 #   ---------------------------------------------------------------------------------------------------
 
-@router.get("/utils/grupos", response_model=List[str], summary="Lister grupos únicos")
+@router.get("/utils/grupos", response_model=List[str], summary="Listar grupos únicos")
 def listar_grupos(db: Session = Depends(get_db)):
     """
     Retorna lista única de grupos de insumos.
@@ -392,11 +392,47 @@ def listar_subgrupos_por_grupo(
 def listar_unidades(db: Session = Depends(get_db)):
     """
     Retorna lista única de unidades de medida.
-    
     Útil para popular dropdowns no frontend.
     """
     return crud_insumo.get_unidades_unicas(db=db)
+
+@router.get("/utils/stats", response_model=dict, summary="Estatísticas dos insumos")
+def estatisticas_insumos(db: Session = Depends(get_db)):
+    """
+    Retorna estatísticas gerais dos insumos.
     
-#   ---------------------------------------------------------------------------------------------------
-#   CONTINUAR AQUI
-#   ---------------------------------------------------------------------------------------------------
+    **Retorna:**
+    - Total de insumos
+    - Número de grupos únicos
+    - Número de unidades únicas
+    - Preço médio, mínimo e máximo
+    """
+
+    from sqlalchemy import func
+    from app.models.insumo import Insumo
+    
+    # Contar totais
+    total_insumos =  db.query(Insumo).count()
+    total_grupos =   db.query(Insumo.grupo).distinct().count()
+    total_unidades = db.query(Insumo.unidade).distinct().count()
+
+    # Estatísticas de preço (em centavos, converter para reais)
+    preco_stats = db.query(
+        func.avg(Insumo.preco_compra).Label('media'),
+        func.min(Insumo.preco_compra).Label('minimo'),
+        func.max(Insumo.preco_compra).Label('maximo')
+    ).filter(Insumo.preco_compra.isnot(None)).first()
+
+    # Converter preços de centavos para reais
+    preco_medio =  round(preco_stats.media / 100, 2) if preco_stats.media else 0
+    preco_minimo = round(preco_stats.minimo / 100, 2) if preco_stats.minimo else 0
+    preco_maximo = round(preco_stats.maximo / 100, 2) if preco_stats.maximo else 0
+
+    return {
+        "total_insumos":  total_insumos,
+        "total_grupos":   total_grupos,
+        "total_unidades": total_unidades,
+        "preco_medio":    preco_medio,
+        "preco_minimo":   preco_minimo,
+        "preco_maximo":   preco_maximo
+    }
