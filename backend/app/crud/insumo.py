@@ -28,7 +28,7 @@ def get_insumo_by_id(db: Session, insumo_id: int) -> Optional[Insumo]:
     """
     return db.query(Insumo).filter(Insumo.id == insumo_id).first()
 
-def get_insumo_by_codigo(db: Session, cofigo, str) -> Optional[Insumo]:
+def get_insumo_by_codigo(db: Session, codigo: str) -> Optional[Insumo]:
     """
     Busca um insumo pelo código único.
     
@@ -170,11 +170,6 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
     Raises:
         ValueError: Se código já existir
     """
-    # Verificar se código já existe
-    existing_insumo = get_insumo_by_codigo(db=db, codigo=insumo.codigo)
-    if existing_insumo:
-        raise valueError(f"Insumo com codigo '{insumo.codigo}' já existe")
-    
     # Converter preço de reais para centavos
     preco_centavos = None
     if insumo.preco_compra_real is not None:
@@ -192,7 +187,7 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
         preco_compra=preco_centavos
     )
 
-    # Salvar do banco
+    # Salvar no banco
     db.add(db_insumo)
     db.commit()
     db.refresh(db_insumo)

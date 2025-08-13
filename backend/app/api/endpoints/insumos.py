@@ -146,7 +146,7 @@ def buscar_insumos(
 
     return insumos
 
-@router.get("/{insumo_id}", response_model=InsumoResponse, summary="Buscar insumo por ID")
+@router.get("/{insumo_id}", response_model=InsumoListResponse, summary="Buscar insumo por ID")
 def obter_insumo(
     insumo_id: int,
     db: Session = Depends(get_db)
@@ -178,7 +178,7 @@ def obter_insumo(
 
     return insumo
 
-@router.get("/codigo/{codigo}", response_model=InsumoResponse, summary="Buscar insumo por código")
+@router.get("/codigo/{codigo}", response_model=InsumoListResponse, summary="Buscar insumo por código")
 def obter_insumo_por_codigo(
     codigo: str,
     db: Session = Depends(get_db)
@@ -189,7 +189,7 @@ def obter_insumo_por_codigo(
     **Parâmetros:**
     - **codigo**: Código único do insumo
     """
-    insumo = crud_insumo.get_insumo_by_codigo(db=db, codigo=codigo)
+    insumo = crud_insumo.get_insumo_by_codigo(db, codigo)
     if not insumo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -210,7 +210,7 @@ def obter_insumo_por_codigo(
 #   Endpoints de criação (POST)
 #   ---------------------------------------------------------------------------------------------------        
 
-@router.post("/", response_model=InsumoResponse, status_code=status.HTTP_201_CREATED, summary="Criar insumo")
+@router.post("/", response_model=InsumoListResponse, status_code=status.HTTP_201_CREATED, summary="Criar insumo")
 def criar_insumo(
     insumo: InsumoCreate,
     db: Session = Depends(get_db)
@@ -418,9 +418,9 @@ def estatisticas_insumos(db: Session = Depends(get_db)):
 
     # Estatísticas de preço (em centavos, converter para reais)
     preco_stats = db.query(
-        func.avg(Insumo.preco_compra).Label('media'),
-        func.min(Insumo.preco_compra).Label('minimo'),
-        func.max(Insumo.preco_compra).Label('maximo')
+        func.avg(Insumo.preco_compra).label('media'),
+        func.min(Insumo.preco_compra).label('minimo'), 
+        func.max(Insumo.preco_compra).label('maximo')       
     ).filter(Insumo.preco_compra.isnot(None)).first()
 
     # Converter preços de centavos para reais
