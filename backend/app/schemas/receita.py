@@ -60,10 +60,10 @@ class RestauranteResponse(RestauranteBase):
     """Schema de resposta para restaurante"""
     id: int = Field(..., description="ID único do restaurante")
     created_at: datetime = Field(..., description="Data de criação")
-    update_at: Optional[datetime] = Field(None, description="Data da última atualização")
+    updated_at: Optional[datetime] = Field(None, description="Data da última atualização")
 
     class Config:
-        from_atributes = True
+        from_attributes = True
 
 
 #   ---------------------------------------------------------------------------------------------------
@@ -82,14 +82,14 @@ class ReceitaInsumoBase(BaseModel):
         """Valida unidade de medida aceitas"""
         unidades_validas = ['g', 'kg', 'ml', 'L', 'unidade']
         if v not in unidades_validas:
-            raise ValueError(f"unidade deve ser uma de: {", ".join(unidades_validas)}")
+            raise ValueError(f"unidade deve ser uma de: {', '.join(unidades_validas)}")
         return v
 
 class ReceitaInsumoCreate(ReceitaInsumoBase):
     """Schema para adicionar insumo à receita"""
     pass
 
-class receitaInsumoUpdate(ReceitaInsumoBase):
+class ReceitaInsumoUpdate(ReceitaInsumoBase):
     """Schema para atualizar insumo na receita."""
     insumo_id: Optional[int] = None
     quantidade_necessaria: Optional[int] = Field(None, gt=0)
@@ -171,7 +171,7 @@ class ReceitaUpdate(ReceitaBase):
 class ReceitaResponse(ReceitaBase):
     """Schema de resposta para receita"""
     id: int = Field(..., description="ID único da receita")
-    create_at: datetime = Field(..., description="Data de criação")
+    created_at: datetime = Field(..., description="Data de criação")
     updated_at: Optional[datetime] = Field(None, description="Data da última atualização")
 
     # Campos calculados
@@ -184,7 +184,7 @@ class ReceitaResponse(ReceitaBase):
     # Relacionamento
     restaurante: Optional[RestauranteResponse] = Field(None, description="Dados do restaurante")
     receita_pai: Optional['ReceitaResponse'] = Field(None, description="Receita pai (se for variação)")
-    varicoes: Optional[List['ReceitaResponse']] = Field([], description="Variações desta receita")
+    variacoes: Optional[List['ReceitaResponse']] = Field([], description="Variações desta receita")
     receita_insumos: Optional[List[ReceitaInsumoResponse]] = Field([], description="Insumos da receita")
 
     class Config:
@@ -203,13 +203,13 @@ class ReceitaListResponse(BaseModel):
     ativo: bool
     
     class Config:
-        from_atributes = True
+        from_attributes = True
 
 #   ---------------------------------------------------------------------------------------------------
 #   SCHEMAS para calculos
 #   ---------------------------------------------------------------------------------------------------
 
-class CaluloPrecosResponse(BaseModel):
+class CalculoPrecosResponse(BaseModel):
     """Schema para resposta de calculos de preços."""
     receita_id: int = Field(..., description="ID da receita")
     cmv_atual: float = Field(..., description="CMV atual em reais")
@@ -220,7 +220,7 @@ class CaluloPrecosResponse(BaseModel):
             "example": {
                 "receita_id": 1,
                 "cmv_atual": 8.50,
-                "preços_sugeridos": {
+                "precos_sugeridos": {
                     "margem_20": 10.63,
                     "margem_25": 11.33,
                     "margem_30": 12.14

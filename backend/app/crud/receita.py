@@ -57,7 +57,6 @@ def create_restaurante(db: Session, restaurante: RestauranteCreate) -> Restauran
     db.add(db_restaurante)
     db.commit()
     db.refresh(db_restaurante)
-
     return db_restaurante
 
 def get_restaurantes(
@@ -112,7 +111,7 @@ def delete_restaurante(db: Session, restaurante_id: int) -> bool:
 #   CRUD Receitas
 #   ---------------------------------------------------------------------------------------------------
 
-def create(db: Session, receita: ReceitaCreate) -> Receita:
+def create_receita(db: Session, receita: ReceitaCreate) -> Receita:
     """
     Cria uma nova receita no banco de dados.
     
@@ -129,7 +128,7 @@ def create(db: Session, receita: ReceitaCreate) -> Receita:
     # Verificar se restaurante existe
     restaurante = get_restaurante_by_id(db, receita.restaurante_id)
     if not restaurante:
-        raise ValueError(f"Restaudante com ID {receita.restaurante_id} não existe")
+        raise ValueError(f"Restaurante com ID {receita.restaurante_id} não existe")
     
     # Verificar se código já existe no restaurante
     existing_receita = db.query(Receita).filter(
@@ -205,7 +204,7 @@ def get_receitas(
     """
     query = db.query(Receita).options(
         joinedload(Receita.restaurante),
-        joinedload(Receita.receita_insumos).joinedLoad(ReceitaInsumo.insumo)
+        joinedload(Receita.receita_insumos).joinedload(ReceitaInsumo.insumo)
     )
 
     # Aplica filtros
@@ -235,7 +234,6 @@ def get_receitas(
 def get_receita_by_id(db: Session, receita_id: int) -> Optional[Receita]:
     """Busca receita por ID com relaciomento carregados"""
     return db.query(Receita).options(
-        joinedload(Receita.restaurante),
         joinedload(Receita.restaurante),
         joinedload(Receita.receita_pai),
         joinedload(Receita.variacoes),
@@ -440,7 +438,7 @@ def remove_insumo_from_receita(db: Session, receita_insumo_id: int) -> bool:
 
     return True
 
-def get_receita_insumo(db: Session, receita_id: int) -> List[ReceitaInsumo]:
+def get_receita_insumos(db: Session, receita_id: int) -> List[ReceitaInsumo]:
     """Lista todos os insumos de uma receita"""
     return db.query(ReceitaInsumo).options(
         joinedload(ReceitaInsumo.insumo)
@@ -467,7 +465,7 @@ def calcular_cmv_receita(db: Session, receita_id: int) -> float:
         return 0.0
     
     # Recalcular custos de todos os insumos
-    for receita_insumo in receita.receita_insumo:
+    for receita_insumo in receita.receita_insumos:
         receita_insumo.calcular_custo(db)
 
     # Atualizar CMV da receita
@@ -488,7 +486,7 @@ def calcular_precos_sugeridos(db: Session, receita_id: int) -> dict:
     """
     receita = get_receita_by_id(db, receita_id)
     if not receita:
-        return {"erro": "Receita não encontrada"}
+        return {"error": "Receita não encontrada"}
     
     # Garantir que CMV está atualizado
     calcular_cmv_receita(db, receita_id)
@@ -506,7 +504,7 @@ def calcular_precos_sugeridos(db: Session, receita_id: int) -> dict:
 #   Funções Utilitarias
 #   ---------------------------------------------------------------------------------------------------
 
-def ge_grupos_receitas(db: Session, restaurante_id: Optional[int] = None) -> List[str]:
+def get_grupos_receitas(db: Session, restaurante_id: Optional[int] = None) -> List[str]:
     """Lista grupos unicos de receitas"""
     query = db.query(Receita.grupo).distinct()
     if restaurante_id:
@@ -514,11 +512,18 @@ def ge_grupos_receitas(db: Session, restaurante_id: Optional[int] = None) -> Lis
     return [grupo[0] for grupo in query.order_by(Receita.grupo).all()]
 
 def get_subgrupos_receitas(db: Session, grupo: str, restaurante_id: Optional[int] = None) -> List[str]:
-    """LIsta subgrupos unicos de um grupo espeficico"""
+    """Lista subgrupos únicos de um grupo específico."""
     query = db.query(Receita.subgrupo).filter(Receita.grupo == grupo).distinct()
     if restaurante_id:
         query = query.filter(Receita.restaurante_id == restaurante_id)
+    return [subgrupo[0] for subgrupo in query.order_by(Receita.subgrupo).all()]
 
+def get_receitas_stats(db: Session, restaurante_id: Optional[int] = None) -> dict:
+    """Retorna estatísticas das receitas."""
+    query = db.query(Receita)
+    if restaurante_id:
+        query = query.filter(Receita.restaurante_id == restaurante_id)
+    
     total_receitas = query.count()
     total_ativas = query.filter(Receita.ativo == True).count()
     total_grupos = query.with_entities(Receita.grupo).distinct().count()

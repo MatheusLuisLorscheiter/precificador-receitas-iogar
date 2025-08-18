@@ -81,7 +81,7 @@ def obter_restaurante(
         raise HTTPException(status_code=404, detail="Restaurante não encontrado")
     return restaurante
 
-@router.put("/restaurante/{restaurante_id}", response_model=RestauranteResponse,
+@router.put("/restaurantes/{restaurante_id}", response_model=RestauranteResponse,
             summary="Atualizar restaurante")
 def atualizar_restaurante(
     restaurante_id: int,
@@ -100,7 +100,7 @@ def atualizar_restaurante(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-@router.delete("/restaurante/{restaurante_id}", status_code=status.HTTP_204_NO_CONTENT,
+@router.delete("/restaurantes/{restaurante_id}", status_code=status.HTTP_204_NO_CONTENT,
                summary="Deletar restaurante")
 def deletar_restaurante(
     restaurante_id: int,
@@ -112,8 +112,8 @@ def deletar_restaurante(
     **Atenção**: Só é possível deletar restaurantes sem receitas.
     """
     try:
-        sucess = crud_receita.delete_restaurante(db, restaurante_id)
-        if not sucess:
+        success = crud_receita.delete_restaurante(db, restaurante_id)
+        if not success:
             raise HTTPException(status_code=404, detail="Restaurante não encontrado")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -124,7 +124,7 @@ def deletar_restaurante(
 
 @router.post("/receitas/", response_model=ReceitaResponse,
              status_code=status.HTTP_201_CREATED, summary="Criar receitas")
-def criar_receitas(
+def criar_receita(
     receita: ReceitaCreate,
     db: Session = Depends(get_db)
 ):
@@ -147,7 +147,7 @@ def criar_receitas(
     try:
         return crud_receita.create_receita(db=db, receita=receita)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str)(e)
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
     
@@ -155,8 +155,8 @@ def criar_receitas(
             summary="Listar receitas")
 def listar_receitas(
     skip:           int = Query(0, ge=0, description="Quantas receitas pular"),
-    limit:          int = Query(100, ge=1, le=1000, description="Máximo de receitas a receber"),
-    grupo:          Optional[str]= Query(None, description="FIltrar por grupo"),
+    limit:          int = Query(100, ge=1, le=1000, description="Máximo de receitas a retornar"),
+    grupo:          Optional[str] = Query(None, description="Filtrar por grupo"),
     subgrupo:       Optional[str] = Query(None, description="Filtrar por subgrupo"),
     restaurante_id: Optional[int] = Query(None, description="Filtrar por restaurante"),
     ativo:          Optional[bool] = Query(None, description="Filtrar por status ativo"),
@@ -263,14 +263,14 @@ def atualizar_receita(
     db: Session = Depends(get_db)
 ):
     """
-    Remove uma receita e todos os seus insumos associados.
+    Atualiza dados de uma receita.
     
     **Atenção**: Não é possível deletar receitas que têm variações.
     Delete as variações primeiro.
     """
     try:
-        sucess = crud_receita.delete_receita(db, receita_id)
-        if not sucess:
+        success = crud_receita.delete_receita(db, receita_id)
+        if not success:
             raise HTTPException(status_code=404, detail="Receita não encontrada")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -324,10 +324,10 @@ def listar_insumos_receita(
     # Verificar se receita existe
     receita = crud_receita.get_receita_by_id(db, receita_id)
     if receita is None:
-        raise HTTPException(status_code=404, description="Receita não existe")
-    return crud_receita.get_receita_insumo(db, receita_id)
+        raise HTTPException(status_code=404, detail="Receita não encontrada")
+    return crud_receita.get_receita_insumos(db, receita_id)
 
-@router.put("/receita/{receita.id}/insumos/{receita_insumo_id}",
+@router.put("/receitas/{receita_id}/insumos/{receita_insumo_id}",
             response_model=ReceitaInsumoResponse, summary="Atualizar insumo na receita")
 def atualizar_insumo_receita(
     receita_id: int,
@@ -347,12 +347,12 @@ def atualizar_insumo_receita(
             db, receita_insumo_id, receita_insumo
         )
         if db_receita_insumo is None:
-            raise HTTPException(status code=404, detail="Insumo não encontrado na receita")
+            raise HTTPException(status_code=404, detail="Insumo não encontrado na receita")
         return db_receita_insumo
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-@router.delete("/receita/{receita_id}/insumos{receita_insumo}",
+@router.delete("/receitas/{receita_id}/insumos/{receita_insumo_id}",
                status_code=status.HTTP_204_NO_CONTENT, summary="Remover insumo da receita")
 def remover_insumo_receita(
     receita_id: int,
@@ -365,8 +365,8 @@ def remover_insumo_receita(
     **Automático:**
     - Atualiza o CMV total da receita após remoção
     """
-    sucess = crud_receita.remove_insumo_from_receita(db, receita_insumo_id)
-    if not sucess:
+    success = crud_receita.remove_insumo_from_receita(db, receita_insumo_id)
+    if not success:
         raise HTTPException(status_code=404, detail="Insumo não encontrado na receita")
     
 #   ---------------------------------------------------------------------------------------------------
@@ -400,7 +400,7 @@ def calcular_precos_sugeridos(
     
     return resultado
 
-@router.post("/receitas/{receita_id}/atualizar-cmv", responsavel_model=AtualizarCMVResponse,
+@router.post("/receitas/{receita_id}/atualizar-cmv", response_model=AtualizarCMVResponse,
              summary="Recalcular CMV da receita")
 def atualizar_cmv_receita(
     receita_id: int,
@@ -419,7 +419,7 @@ def atualizar_cmv_receita(
     2. Soma todos os custos para obter CMV total
     3. Atualiza o registro da receita
     """
-    receita = crud_receita.get_receita_by(db, receita_id)
+    receita = crud_receita.get_receita_by_id(db, receita_id)
     if receita is None:
         raise HTTPException(status_code=404, detail="Receita não encontrada")
     
@@ -445,9 +445,9 @@ def listar_grupos_receitas(
     db: Session = Depends(get_db)
 ):
     """Lista todos os grupos únicos de receitas"""
-    return crud_receita.get_subgrupos_receitas(db, restaurante_id=restaurante_id)
+    return crud_receita.get_grupos_receitas(db, restaurante_id=restaurante_id)
 
-@router.get("/receitas/utils/subgrupos/{grupos}", response_model=List[str],
+@router.get("/receitas/utils/subgrupos/{grupo}", response_model=List[str],
             summary="Listar subgrupos de um grupo")
 def listar_subgrupos_receitas(
     grupo: str,
@@ -495,11 +495,11 @@ def listar_variacoes_receita(
     """
     receita = crud_receita.get_receita_by_id(db, receita_id)
     if receita is None:
-        raise HTTPException(status_code=44, detail="Receita não encontrada")
+        raise HTTPException(status_code=404, detail="Receita não encontrada")
     
     return receita.variacoes
 
-@router.post("/receitas/{receita_pai_id}/variacoes", resposnse_model=ReceitaResponse,
+@router.post("/receitas/{receita_pai_id}/variacoes", response_model=ReceitaResponse,
              status_code=status.HTTP_201_CREATED, summary="Criar variação de receita")
 def criar_variacao_receita(
     receita_pai_id: int, 
@@ -536,14 +536,14 @@ def criar_variacao_receita(
 #   Endpoints de busca avançada
 #   ---------------------------------------------------------------------------------------------------
 
-@router.get("/receitas/advanced-rearch", response_model=List[ReceitaListResponse],
+@router.get("/receitas/advanced-search", response_model=List[ReceitaListResponse],
             summary="Busca avançada de receitas")
-def busca_avançada_receitas(
+def busca_avancada_receitas(
     nome:           Optional[str] = Query(None, description="Buscar no nome"),
     codigo:         Optional[str] = Query(None, description="Buscar no código"),
     grupo:          Optional[str] = Query(None, description="Filtrar por grupo"),
-    subgrupo:       Optional[str] = Query(None, description="FIltrar por subgrupo"),
-    restaurante_id: Optional[int] = Query(None, description="Filtrar por resstaurante"),
+    subgrupo:       Optional[str] = Query(None, description="Filtrar por subgrupo"),
+    restaurante_id: Optional[int] = Query(None, description="Filtrar por restaurante"),
     tem_insumo_id:  Optional[int] = Query(None, description="Receitas que usam este insumo"),
     cmv_min:        Optional[float] = Query(None, ge=0 , description="CMV minimo"),
     cmv_max:        Optional[float] = Query(None, ge=0, description="CMV máximo"),

@@ -19,7 +19,7 @@ from .receita import Restaurante, Receita, ReceitaInsumo
 __all__ = [
     "Base", 
     "BaseModel", 
-    "Insumo"
+    "Insumo",
     "Restaurante",
     "Receita",
     "ReceitaInsumo"

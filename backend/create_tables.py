@@ -22,7 +22,7 @@ engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 
 #   ---------------------------------------------------------------------------------------------------
-# DEFINIÇÃO DOS MODELOS (COPIADOS DOS ARQUIVOS ORIGINAIS)
+#   DEFINIÇÃO DOS MODELOS (COPIADOS DOS ARQUIVOS ORIGINAIS)
 #   ---------------------------------------------------------------------------------------------------
 
 class Insumo(Base):
@@ -30,33 +30,33 @@ class Insumo(Base):
     __tablename__ = "insumos"
     
     # Campos de auditoria
-    id = Column(Integer, primary_key=True, index=True)
+    id         = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Campos de negócio
-    grupo = Column(String(100), nullable=False, index=True)
-    subgrupo = Column(String(100), nullable=False, index=True)
-    codigo = Column(String(50), unique=True, nullable=False, index=True)
-    nome = Column(String(255), nullable=False)
-    quantidade = Column(Integer, default=1)
-    fator = Column(Integer, default=1)
-    unidade = Column(String(20), nullable=False)
+    grupo        = Column(String(100), nullable=False, index=True)
+    subgrupo     = Column(String(100), nullable=False, index=True)
+    codigo       = Column(String(50), unique=True, nullable=False, index=True)
+    nome         = Column(String(255), nullable=False)
+    quantidade   = Column(Integer, default=1)
+    fator        = Column(Integer, default=1)
+    unidade      = Column(String(20), nullable=False)
     preco_compra = Column(Integer)  # Em centavos
 
 class Restaurante(Base):
     """Modelo para restaurantes"""
     __tablename__ = "restaurantes"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id         = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    nome = Column(String(200), nullable=False)
-    cnpj = Column(String(18), unique=True, nullable=True)
+    nome     = Column(String(200), nullable=False)
+    cnpj     = Column(String(18), unique=True, nullable=True)
     endereco = Column(Text, nullable=True)
     telefone = Column(String(20), nullable=True)
-    ativo = Column(Boolean, default=True)
+    ativo    = Column(Boolean, default=True)
 
 class Receita(Base):
     """Modelo das receitas (produtos finais)"""
@@ -68,33 +68,33 @@ class Receita(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Campos de negócio (mesmos do BaseModel)
-    grupo = Column(String(100), nullable=False, index=True)
-    subgrupo = Column(String(100), nullable=False, index=True)
-    codigo = Column(String(50), nullable=False, index=True)
-    nome = Column(String(255), nullable=False)
-    quantidade = Column(Integer, default=1)
-    fator = Column(Integer, default=1)
-    unidade = Column(String(20), nullable=False)
+    grupo        = Column(String(100), nullable=False, index=True)
+    subgrupo     = Column(String(100), nullable=False, index=True)
+    codigo       = Column(String(50), nullable=False, index=True)
+    nome         = Column(String(255), nullable=False)
+    quantidade   = Column(Integer, default=1)
+    fator        = Column(Integer, default=1)
+    unidade      = Column(String(20), nullable=False)
     preco_compra = Column(Integer)  # CMV em centavos
     
     # ID do restaurante (obrigatório)
     restaurante_id = Column(Integer, ForeignKey("restaurantes.id"), nullable=False)
     
     # Campos específicos das receitas
-    preco_venda = Column(Integer, nullable=True)
-    cmv = Column(Integer, nullable=True)
+    preco_venda       = Column(Integer, nullable=True)
+    cmv               = Column(Integer, nullable=True)
     margem_percentual = Column(Integer, nullable=True)
     
     # Sistema de variações
     receita_pai_id = Column(Integer, ForeignKey("receitas.id"), nullable=True)
-    variacao_nome = Column(String(100), nullable=True)
+    variacao_nome  = Column(String(100), nullable=True)
     
     # Campos de controle
-    descricao = Column(Text, nullable=True)
-    modo_preparo = Column(Text, nullable=True)
+    descricao             = Column(Text, nullable=True)
+    modo_preparo          = Column(Text, nullable=True)
     tempo_preparo_minutos = Column(Integer, nullable=True)
-    rendimento_porcoes = Column(Integer, nullable=True)
-    ativo = Column(Boolean, default=True)
+    rendimento_porcoes    = Column(Integer, nullable=True)
+    ativo                 = Column(Boolean, default=True)
 
 class ReceitaInsumo(Base):
     """Relacionamento entre receitas e insumos"""
@@ -106,34 +106,34 @@ class ReceitaInsumo(Base):
     
     # Chaves estrangeiras
     receita_id = Column(Integer, ForeignKey("receitas.id"), nullable=False)
-    insumo_id = Column(Integer, ForeignKey("insumos.id"), nullable=False)
+    insumo_id  = Column(Integer, ForeignKey("insumos.id"), nullable=False)
     
     # Dados da quantidade
     quantidade_necessaria = Column(Integer, nullable=False)
-    unidade_medida = Column(String(20), nullable=False, default="g")
-    custo_calculado = Column(Integer, nullable=True)
+    unidade_medida        = Column(String(20), nullable=False, default="g")
+    custo_calculado       = Column(Integer, nullable=True)
     
     # Campos opcionais
     observacoes = Column(Text, nullable=True)
-    ordem = Column(Integer, default=1)
+    ordem       = Column(Integer, default=1)
 
-# ===================================================================
-# FUNÇÕES PRINCIPAIS
-# ===================================================================
+#   ---------------------------------------------------------------------------------------------------
+#   FUNÇÕES PRINCIPAIS
+#   ---------------------------------------------------------------------------------------------------
 
 def testar_conexao():
     """Testa a conexão com o banco de dados"""
     print("🔍 Testando conexão com o banco...")
     try:
         with engine.connect() as connection:
-            result = connection.execute(text("SELECT version()"))
+            result  = connection.execute(text("SELECT version()"))
             version = result.fetchone()[0]
-            print(f"✅ PostgreSQL conectado!")
-            print(f"📋 Versão: {version[:50]}...")
+            print(f" PostgreSQL conectado!")
+            print(f" Versão: {version[:50]}...")
             return True
     except Exception as e:
-        print(f"❌ Erro de conexão: {e}")
-        print("\n🔧 Verifique:")
+        print(f" Erro de conexão: {e}")
+        print("\n Verifique:")
         print("   1. Se o PostgreSQL está rodando")
         print("   2. Se o banco 'food_cost_db' foi criado no pgAdmin")
         print("   3. Se a senha no arquivo .env está correta")
@@ -141,41 +141,41 @@ def testar_conexao():
 
 def criar_tabelas():
     """Cria todas as tabelas no banco de dados"""
-    print("\n🗃️ Criando tabelas...")
+    print("\n Criando tabelas...")
     
     try:
         # Cria todas as tabelas
         Base.metadata.create_all(bind=engine)
         
-        print("✅ Tabelas criadas com sucesso!")
+        print(" Tabelas criadas com sucesso!")
         
         # Verifica se as tabelas foram criadas
         from sqlalchemy import inspect
         inspector = inspect(engine)
         tabelas = inspector.get_table_names()
         
-        print(f"\n📋 Tabelas criadas no banco:")
+        print(f"\n Tabelas criadas no banco:")
         for tabela in sorted(tabelas):
             print(f"   - {tabela}")
         
         return True
         
     except Exception as e:
-        print(f"❌ Erro ao criar tabelas: {e}")
+        print(f" Erro ao criar tabelas: {e}")
         import traceback
         traceback.print_exc()
         return False
 
 def criar_dados_teste():
     """Cria dados de teste para demonstrar o sistema"""
-    print("\n🧪 Criando dados de teste...")
+    print("\n Criando dados de teste...")
     
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    db = SessionLocal()
+    db           = SessionLocal()
     
     try:
         # 1. Criar insumos
-        print("📦 Criando insumos...")
+        print(" Criando insumos...")
         
         insumos_data = [
             {"grupo": "Verduras", "subgrupo": "Tomate", "codigo": "VER001",
@@ -201,10 +201,10 @@ def criar_dados_teste():
                 db.commit()
                 db.refresh(insumo)
                 insumos_criados.append(insumo)
-                print(f"   ✅ {insumo.nome} - R$ {insumo.preco_compra/100:.2f}")
+                print(f"    {insumo.nome} - R$ {insumo.preco_compra/100:.2f}")
             else:
                 insumos_criados.append(existing)
-                print(f"   ✅ {existing.nome} (já existia)")
+                print(f"    {existing.nome} (já existia)")
         
         # 2. Criar restaurante
         print("\n🏪 Criando restaurante...")
@@ -221,10 +221,10 @@ def criar_dados_teste():
             db.add(restaurante)
             db.commit()
             db.refresh(restaurante)
-            print(f"   ✅ {restaurante.nome} criado")
+            print(f"    {restaurante.nome} criado")
         else:
             restaurante = existing_rest
-            print(f"   ✅ {restaurante.nome} (já existia)")
+            print(f"    {restaurante.nome} (já existia)")
         
         # 3. Criar receitas
         print("\n🍕 Criando receitas...")
@@ -254,10 +254,10 @@ def criar_dados_teste():
                 db.commit()
                 db.refresh(receita)
                 receitas_criadas.append(receita)
-                print(f"   ✅ {receita.nome} criada")
+                print(f"    {receita.nome} criada")
             else:
                 receitas_criadas.append(existing)
-                print(f"   ✅ {existing.nome} (já existia)")
+                print(f"    {existing.nome} (já existia)")
         
         # 4. Adicionar insumos às receitas
         print("\n🔗 Adicionando insumos às receitas...")
@@ -291,7 +291,7 @@ def criar_dados_teste():
                         custo_calculado=custo
                     )
                     db.add(rel)
-                    print(f"     ✅ {ing['insumo'].nome}: {ing['qtd']}{ing['unidade']} = R$ {custo/100:.2f}")
+                    print(f"      {ing['insumo'].nome}: {ing['qtd']}{ing['unidade']} = R$ {custo/100:.2f}")
             
             # Atualizar CMV
             espaguete.cmv = cmv_total
@@ -323,33 +323,33 @@ def criar_dados_teste():
                         custo_calculado=custo
                     )
                     db.add(rel)
-                    print(f"     ✅ {ing['insumo'].nome}: {ing['qtd']}{ing['unidade']} = R$ {custo/100:.2f}")
+                    print(f"      {ing['insumo'].nome}: {ing['qtd']}{ing['unidade']} = R$ {custo/100:.2f}")
             
             pizza.cmv = cmv_pizza
             pizza.preco_compra = cmv_pizza
             
             db.commit()
         
-        print(f"\n🎉 Dados de teste criados!")
+        print(f"\n Dados de teste criados!")
         
         # Mostrar resumo
-        print(f"\n📊 Resumo:")
-        print(f"   📦 Insumos: {db.query(Insumo).count()}")
-        print(f"   🏪 Restaurantes: {db.query(Restaurante).count()}")
-        print(f"   🍕 Receitas: {db.query(Receita).count()}")
-        print(f"   🔗 Relacionamentos: {db.query(ReceitaInsumo).count()}")
+        print(f"\n Resumo:")
+        print(f"    Insumos: {db.query(Insumo).count()}")
+        print(f"    Restaurantes: {db.query(Restaurante).count()}")
+        print(f"    Receitas: {db.query(Receita).count()}")
+        print(f"    Relacionamentos: {db.query(ReceitaInsumo).count()}")
         
         # Mostrar CMVs
-        print(f"\n💰 CMVs calculados:")
+        print(f"\n CMVs calculados:")
         for receita in db.query(Receita).filter(Receita.cmv > 0).all():
             margem = ((receita.preco_venda - receita.cmv) / receita.preco_venda * 100) if receita.preco_venda else 0
-            print(f"   📋 {receita.nome}")
+            print(f"    {receita.nome}")
             print(f"      CMV: R$ {receita.cmv/100:.2f} | Preço: R$ {receita.preco_venda/100:.2f} | Margem: {margem:.1f}%")
         
         return True
         
     except Exception as e:
-        print(f"❌ Erro: {e}")
+        print(f" Erro: {e}")
         import traceback
         traceback.print_exc()
         db.rollback()
@@ -357,25 +357,25 @@ def criar_dados_teste():
     finally:
         db.close()
 
-# ===================================================================
-# EXECUÇÃO PRINCIPAL
-# ===================================================================
+#   ---------------------------------------------------------------------------------------------------
+#   EXECUÇÃO PRINCIPAL
+#   ---------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("🗃️  CRIADOR DE TABELAS - FOOD COST SYSTEM")
+    print("  CRIADOR DE TABELAS - FOOD COST SYSTEM")
     print("=" * 70)
-    print(f"🎯 Banco: {DATABASE_URL}")
+    print(f" Banco: {DATABASE_URL}")
     
     if testar_conexao():
         if criar_tabelas():
-            resposta = input("\n❓ Criar dados de teste? (s/n): ")
+            resposta = input("\n Criar dados de teste? (s/n): ")
             if resposta.lower() in ['s', 'sim', 'y', 'yes']:
                 criar_dados_teste()
         
         print("\n" + "=" * 70)
-        print("✅ CONCLUÍDO!")
-        print("🚀 Execute: python -m uvicorn app.main:app --reload")
-        print("📖 Docs: http://localhost:8000/docs")
+        print("CONCLUÍDO!")
+        print("Execute: python -m uvicorn app.main:app --reload")
+        print("Docs: http://localhost:8000/docs")
     else:
-        print("❌ Falha na conexão com banco.")
+        print("Falha na conexão com banco.")
