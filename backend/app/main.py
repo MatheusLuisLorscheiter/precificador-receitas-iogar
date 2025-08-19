@@ -6,119 +6,125 @@
 #   Autor: Will
 #   ---------------------------------------------------------------------------------------------------
 
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
+# Imports principais do FastAPI e configurações
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 
-# Importar o router completo dos insumos
+# Imports dos routers/endpoints das APIs
 from app.api.endpoints import insumos, receitas
+
+# Imports para configuração do banco de dados
+from app.database import engine
+from app.models.base import Base
+
+# Imports para variáveis de ambiente
+import os
+import time
+
+#   ---------------------------------------------------------------------------------------------------
+#   Configuração do ciclo de vida da aplicação
+#   ---------------------------------------------------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Gerencia o ciclo de vida da aplicação.
-    Executa código no startup e shutdown da aplicação.
+    Gerencia o ciclo de vida da aplicação FastAPI.
+    Executa tarefas na inicialização e finalização.
     """
-    # Startup - executa quando aplicação inicia
-    print("Food Cost System API iniciada!")
-    print("Documentação: http://localhost:8000/docs")
-    print("CRUD Insumos: http://localhost:8000/api/v1/insumos")
-    print("Crud Receitas: http://localhost:8000/api/v1/receitas")
-    print("Crud restaurantes: http://localhost:8000/api/v1/receitas/restaurantes")
+    # Startup: Criar tabelas no banco se não existirem
+    print("🚀 Iniciando Food Cost System...")
+    try:
+        # Cria todas as tabelas definidas nos modelos
+        Base.metadata.create_all(bind=engine)
+        print("✅ Tabelas do banco de dados verificadas/criadas")
+    except Exception as e:
+        print(f"❌ Erro ao conectar com o banco: {e}")
+    
+    # Informações úteis para o desenvolvedor
+    print("🔍 CRUD Insumos: http://localhost:8000/api/v1/insumos")
+    print("🔍 CRUD Receitas: http://localhost:8000/api/v1/receitas")
+    print("📖 Documentação: http://localhost:8000/docs")
+    print("🔄 ReDoc: http://localhost:8000/redoc")
+    
+    yield  # Aplicação roda aqui
+    
+    # Shutdown: Limpeza se necessário
+    print("🛑 Finalizando Food Cost System...")
 
-    yield #Aqui roda a aplicação
+#   ---------------------------------------------------------------------------------------------------
+#   Configuração da aplicação FastAPI
+#   ---------------------------------------------------------------------------------------------------
 
-    # Shutdown - executa quando aplicação para
-    print("API finalizando...")
-
-# Criar instância do FastAPI com metadados
 app = FastAPI(
-    title="Food Cost System API",
+    title="Food Cost System",
     description="""
-    Sistema de precificação e controle de custos para restaurantes e food service.
+    **Sistema de Controle de Custos para Restaurantes**
     
-    ## Funcionalidades principais:
+    Esta API permite:
+    - 📦 Gerenciar insumos (ingredientes, matérias-primas)
+    - 🍕 Criar e calcular custos de receitas
+    - 🏪 Organizar por restaurantes
+    - 💰 Calcular automaticamente CMV e preços sugeridos
+    - 🔍 Buscar e filtrar dados
     
-    ### Gestão de Insumos
-    - CRUD completo de ingredientes/matérias-primas
-    - Busca e filtros avançados
-    - Controle de preços e unidades
-    - Importação de dados do TOTVS (em desenvolvimento)
-    
-    ### Gestão de Receitas
-    - CRUD de receitas por restaurante
-    - Composição de receitas com insumos
-    - Cálculo automático de CMV (Custo da Mercadoria Vendida)
-    - Preços sugeridos com margens de 20%, 25% e 30%
+    **Funcionalidades principais:**
+    - CRUD completo de insumos e receitas
+    - Cálculos automáticos de custos
+    - Preços sugeridos baseados em margens
     - Sistema de variações de receitas
-    
-    ### Gestão de Restaurantes
-    - Cadastro de estabelecimentos
-    - Organização de receitas por restaurante
-    - Controle de ativação/desativação
-    
-    ### Cálculos Automáticos
-    - CMV baseado nos custos dos insumos
-    - Preços sugeridos com diferentes margens
-    - Estatísticas e relatórios
-    
-    ## Integração TOTVS
-    API preparada para integração com sistema TOTVS para importação
-    automática de dados de insumos e preços.
+    - Relacionamento receitas ↔ insumos
     """,
     version="1.0.0",
     contact={
-         "name": "Food Cost System",
-        "email": "will.fidelis@iogar.com.br",
+        "name": "Will - Food Cost System",
+        "email": "will@foodcost.com",
     },
     license_info={
-        "name": "MIT License",
-        "url": "https://opensource.org/licenses/MIT",
+        "name": "MIT",
     },
     lifespan=lifespan
 )
 
-# Configurar CORS para permitir acesso do frontend
+#   ---------------------------------------------------------------------------------------------------
+#   Configuração de CORS para permitir acesso do frontend
+#   ---------------------------------------------------------------------------------------------------
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Em produção, especificar dominios exatos
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # React frontend
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],  # Todos os headers
 )
 
 #   ---------------------------------------------------------------------------------------------------
-#   Rotas Principais
+#   Endpoints básicos de status e saúde
 #   ---------------------------------------------------------------------------------------------------
 
-
-@app.get("/", summary="Informações da API")
+@app.get("/", summary="Status da API")
 def root():
     """
-    Endpoint raiz da API.
-    Retorna informações básicas e links úteis.
+    Endpoint raiz que retorna o status da API.
+    Útil para verificar se o serviço está rodando.
     """
     return {
-        "massage": "Foodd Cost System API",
+        "message": "Food Cost System API",
+        "status": "running",
         "version": "1.0.0",
-        "status":  "online",
-        "docs":    "/docs",
-        "health":  "/health",
-        "endpoint": {
-            "insumos":     "/api/v1/insumo",
-            "receitas":    "/api/v1/receitas",
-            "restaurante": "/api/v1/receitas/restaurante"
-        }
+        "docs": "http://localhost:8000/docs"
     }
-@app.get("/health", summary="Status de daúde da API")
+
+@app.get("/health", summary="Health Check")
 def health_check():
     """
-    Verifica se a API está funcionando.
+    Endpoint de verificação de saúde do serviço.
     Útil para monitoramento e load balancers.
     """
-    return {"staus", "healthy", "service", "food-cost-api"}
+    return {"status": "healthy", "service": "food-cost-api"}
 
-@app.get("/text-db", summary="Testar conexão com banco")
+@app.get("/test-db", summary="Testar conexão com banco")
 def test_database():
     """
     Testa a conexão com o banco de dados PostgreSQL.
@@ -130,26 +136,25 @@ def test_database():
             connection.execute("SELECT 1")
         return {"database": "connected", "status": "ok"}
     except Exception as e:
-        return {"database": "error", "status": "failed", "error": str(e) }
-    
+        return {"database": "error", "status": "failed", "error": str(e)}
 
 #   ---------------------------------------------------------------------------------------------------
 #   Incluir routers das APIs
 #   ---------------------------------------------------------------------------------------------------
 
-# APIs de Insumos  (Já em funcionamento)
+# APIs de Insumos (Já em funcionamento)
 app.include_router(
     insumos.router,
     prefix="/api/v1/insumos",
     tags=["insumos"],
     responses={
         404: {"description": "Insumo não encontrado"},
-        433: {"description": "Erro de validação"},
+        422: {"description": "Erro de validação"},
         500: {"description": "Erro interno do servidor"}
     }
 )
 
-#APIs de Receitas e Restaurantes (novas)
+# APIs de Receitas e Restaurantes (novas)
 app.include_router(
     receitas.router,
     prefix="/api/v1/receitas",
@@ -162,25 +167,24 @@ app.include_router(
 )
 
 #   ---------------------------------------------------------------------------------------------------
-#   Configurações adicionas
+#   Middleware para logging de requisições
 #   ---------------------------------------------------------------------------------------------------
 
-#Middleware para logging (opcional)
 @app.middleware("http")
-async def log_requests(request, call_next):
+async def log_requests(request: Request, call_next):
     """
-    Middleware para log de requisições.
-    Útil para debugging e monitoramento.
+    Middleware erve para monitorar e facilitar o 
+    diagnóstico de problemas, mostrando no terminal 
+    cada acesso à API e quanto tempo levou para responder.
     """
-
     import time
-    start_time =  time.time()
-
+    start_time = time.time()
+    
     response = await call_next(request)
-
+    
     process_time = time.time() - start_time
     print(f"{request.method} {request.url.path} - {response.status_code} - {process_time:.4f}s")
-
+    
     return response
 
 #   ---------------------------------------------------------------------------------------------------
@@ -188,43 +192,52 @@ async def log_requests(request, call_next):
 #   ---------------------------------------------------------------------------------------------------
 
 @app.exception_handler(404)
-async def not_found_handler(request, exc):
+async def not_found_handler(request: Request, exc: HTTPException):
     """Handler customizado para erros 404"""
-    return {
-        "erroe": "Recurso não encontrado",
-        "message": "O endpoint solicitado não existe",
-        "path": str(request.url.path),
-        "method": request.method
-    }
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": "Recurso não encontrado",
+            "message": "O endpoint solicitado não existe",
+            "path": str(request.url.path),
+            "method": request.method
+        }
+    )
 
 @app.exception_handler(422)
-async def validation_error_handler(request, exc):
+async def validation_error_handler(request: Request, exc: HTTPException):
     """Handler customizado para erros de validação"""
-    return {
-        "eroor": "Erro de validação",
-        "message": "Os dados fornecidos não são válidos",
-        "details": exc.detail if hasattr(exc, 'detail') else str(exc)
-    }
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Erro de validação",
+            "message": "Os dados fornecidos não são válidos",
+            "details": exc.detail if hasattr(exc, 'detail') else str(exc)
+        }
+    )
 
 @app.exception_handler(500)
-async def internal_error_handler(request, exc):
+async def internal_error_handler(request: Request, exc: Exception):
     """Handler customizado para erros internos"""
-    return {
-        "error": "Erro interno do servidor",
-        "message": "Ocorreu um erro inesperado",
-        "path": str(request.url.path)
-    }
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Erro interno do servidor",
+            "message": "Ocorreu um erro inesperado",
+            "path": str(request.url.path)
+        }
+    )
 
 #   ---------------------------------------------------------------------------------------------------
-#   Executar a aplicação
+#   Executar a aplicação (apenas se executado diretamente)
 #   ---------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
     import uvicorn
-    print("Iniciando Food Cost System API...")
-    print ("Local: http://localhost:8000")
-    print ("Docs: http://localhost:8000/docs")
-
+    print("🚀 Iniciando Food Cost System API...")
+    print("🌐 Local: http://localhost:8000")
+    print("📖 Docs: http://localhost:8000/docs")
+    
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

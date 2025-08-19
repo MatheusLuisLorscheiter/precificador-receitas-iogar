@@ -547,3 +547,36 @@ def get_receitas_stats(db: Session, restaurante_id: Optional[int] = None) -> dic
         "com_preco": len(precos),
         **preco_stats
     }
+
+#   ---------------------------------------------------------------------------------------------------
+#   Função helper para buscar insumos disponíveis
+#   ---------------------------------------------------------------------------------------------------
+
+def get_insumos_disponiveis(db: Session, termo: Optional[str] = None) -> List[Insumo]:
+    """
+    Lista insumos disponíveis para adicionar em receitas.
+    
+    Útil para:
+    - Dropdown de seleção de insumos
+    - Autocomplete ao adicionar insumos
+    - Busca por nome ou código
+    
+    Args:
+        db (Session): Sessão do banco de dados
+        termo (str, optional): Termo para buscar por nome ou código
+        
+    Returns:
+        List[Insumo]: Lista de insumos disponíveis
+    """
+    query = db.query(Insumo)
+    
+    # Se forneceu termo de busca, filtrar por nome ou código
+    if termo:
+        search_filter = or_(
+            Insumo.nome.ilike(f"%{termo}%"),
+            Insumo.codigo.ilike(f"%{termo}%")
+        )
+        query = query.filter(search_filter)
+    
+    # Ordenar por nome para facilitar seleção
+    return query.order_by(Insumo.nome).all()
