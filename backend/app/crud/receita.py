@@ -18,9 +18,48 @@ from app.schemas.receita import (
     ReceitaInsumoCreate, ReceitaInsumoUpdate
 )
 
-#   ---------------------------------------------------------------------------------------------------
-#   CRUD Restaurantes
-#   ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+# FUNÇÃO DE CONVERSÃO DE UNIDADES (NOVA)
+# ---------------------------------------------------------------------------------------------------
+
+def converter_para_unidade_base(quantidade: float, unidade: str) -> float:
+    """
+    Converte quantidade para unidade base compatível com o fator do insumo.
+    
+    Regras de conversão:
+    - Para peso: converte tudo para kg (unidade base)
+    - Para volume: converte tudo para L (unidade base)  
+    - Para unidades: mantém como está
+    
+    Args:
+        quantidade: Quantidade na unidade original
+        unidade: Unidade original (g, kg, ml, L, unidade)
+        
+    Returns:
+        float: Quantidade convertida para unidade base
+        
+    Exemplos:
+        - 15g → 0.015kg
+        - 10ml → 0.01L
+        - 1 unidade → 1 unidade
+    """
+    conversoes = {
+        'g': 0.001,    # g → kg (15g = 0.015kg)
+        'kg': 1.0,     # kg → kg (1kg = 1kg)
+        'ml': 0.001,   # ml → L (10ml = 0.01L)
+        'L': 1.0,      # L → L (1L = 1L)
+        'unidade': 1.0 # unidade → unidade (1un = 1un)
+    }
+    
+    fator_conversao = conversoes.get(unidade, 1.0)
+    quantidade_convertida = quantidade * fator_conversao
+    
+    # Arredondar para 6 casas decimais para evitar problemas de precisão
+    return round(quantidade_convertida, 6)
+
+# ---------------------------------------------------------------------------------------------------
+# CRUD Restaurantes
+# ---------------------------------------------------------------------------------------------------
 
 def create_restaurante(db: Session, restaurante: RestauranteCreate) -> Restaurante:
     """
@@ -88,9 +127,9 @@ def update_restaurante(db: Session, restaurante_id: int, restaurante: Restaurant
     for field, value in restaurante.model_dump(exclude_unset=True).items():
         setattr(db_restaurante, field, value)
 
-        db.commit()
-        db.refresh(db_restaurante)
-        return db_restaurante
+    db.commit()
+    db.refresh(db_restaurante)
+    return db_restaurante
     
 def delete_restaurante(db: Session, restaurante_id: int) -> bool:
     """Remove um restaurante (apenas se não tiver receitas)"""
@@ -101,15 +140,15 @@ def delete_restaurante(db: Session, restaurante_id: int) -> bool:
     # Verificar se tem receitas
     receitas_count = db.query(Receita).filter(Receita.restaurante_id == restaurante_id).count()
     if receitas_count > 0:
-        raise ValueError(f"Não é possivel excluir restaurante com {receitas_count} receitas")
+        raise ValueError(f"Não é possível excluir restaurante com {receitas_count} receitas")
     
     db.delete(db_restaurante)
     db.commit()
     return True
 
-#   ---------------------------------------------------------------------------------------------------
-#   CRUD Receitas
-#   ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+# CRUD Receitas
+# ---------------------------------------------------------------------------------------------------
 
 def create_receita(db: Session, receita: ReceitaCreate) -> Receita:
     """
@@ -164,7 +203,7 @@ def create_receita(db: Session, receita: ReceitaCreate) -> Receita:
         # Campos específicos da receita
         restaurante_id=receita.restaurante_id,
         preco_venda=preco_venda_centavos,
-        cmv=0,  #Será calculado quando adicionar insumos
+        cmv=0,  # Será calculado quando adicionar insumos
         margem_percentual=margem_centavos,
 
         # Campos opcionais
@@ -232,7 +271,7 @@ def get_receitas(
     return query.offset(skip).limit(limit).all()
 
 def get_receita_by_id(db: Session, receita_id: int) -> Optional[Receita]:
-    """Busca receita por ID com relaciomento carregados"""
+    """Busca receita por ID com relacionamentos carregados"""
     return db.query(Receita).options(
         joinedload(Receita.restaurante),
         joinedload(Receita.receita_pai),
@@ -241,7 +280,7 @@ def get_receita_by_id(db: Session, receita_id: int) -> Optional[Receita]:
     ).filter(Receita.id == receita_id).first()
 
 def get_receita_by_codigo(db: Session, codigo: str, restaurante_id: int) -> Optional[Receita]:
-    """Busca receita por codigo dentro de um restaurante"""
+    """Busca receita por código dentro de um restaurante"""
     return db.query(Receita).filter(
         and_(
             Receita.codigo == codigo.upper(),
@@ -289,7 +328,7 @@ def delete_receita(db: Session, receita_id: int) -> bool:
     # Verificar se tem variações (receitas filhas)
     variacoes_count = db.query(Receita).filter(Receita.receita_pai_id == receita_id).count()
     if variacoes_count > 0:
-        raise ValueError(f"Não é possivel excluir receita com {variacoes_count} variações")
+        raise ValueError(f"Não é possível excluir receita com {variacoes_count} variações")
     
     db.delete(db_receita)
     db.commit()
@@ -316,23 +355,63 @@ def search_receitas(db: Session, termo: str, restaurante_id: Optional[int] = Non
     )
     query = query.filter(search_filter)
 
-    # Filter por restaurante se fornecido
+    # Filtrar por restaurante se fornecido
     if restaurante_id:
         query = query.filter(Receita.restaurante_id == restaurante_id)
 
     return query.all()
 
-#   ---------------------------------------------------------------------------------------------------
-#   CRUD Receitas - Insumos
-#   ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+# CRUD Receitas - Insumos (CORRIGIDO COM CONVERSÃO DE UNIDADES)
+# ---------------------------------------------------------------------------------------------------
+
+def calcular_custo_insumo(insumo: Insumo, quantidade_necessaria: float, unidade_medida: str) -> float:
+    """
+    Calcula o custo de um insumo baseado no sistema de conversão por fator com conversão de unidades.
+    
+    Fórmula: Custo = (Preço de compra ÷ Fator) × Quantidade necessária (convertida)
+    
+    Exemplos:
+    1. Bacon: R$ 50,99 por 1kg (fator 1.0), usar 15g
+       - Conversão: 15g = 0.015kg
+       - Custo = (50,99 ÷ 1.0) × 0.015 = R$ 0,765
+       
+    2. Maionese: R$ 7,50 por 750ml (fator 0.75), usar 10ml  
+       - Conversão: 10ml = 0.01L
+       - Custo = (7,50 ÷ 0.75) × 0.01 = R$ 0,10
+       
+    3. Pão: R$ 12,50 por caixa (fator 20.0), usar 1 unidade
+       - Conversão: 1 unidade = 1 unidade  
+       - Custo = (12,50 ÷ 20.0) × 1 = R$ 0,625
+    
+    Args:
+        insumo (Insumo): Insumo com preço e fator
+        quantidade_necessaria (float): Quantidade a usar na receita
+        unidade_medida (str): Unidade da quantidade (g, kg, ml, L, unidade)
+        
+    Returns:
+        float: Custo calculado em reais
+    """
+    if not insumo.preco_compra_real or not insumo.fator:
+        return 0.0
+    
+    # Converter quantidade para unidade base compatível com o fator
+    quantidade_convertida = converter_para_unidade_base(quantidade_necessaria, unidade_medida)
+    
+    # Fórmula de conversão corrigida
+    custo_unitario = insumo.preco_compra_real / insumo.fator
+    custo_total = custo_unitario * quantidade_convertida
+    
+    # Arredondar para 4 casas decimais para evitar problemas de precisão
+    return round(custo_total, 4)
 
 def add_insumo_to_receita(
         db: Session,
         receita_id: int,
         receita_insumo: ReceitaInsumoCreate
-)  -> ReceitaInsumo:
+) -> ReceitaInsumo:
     """
-    Adiciona um insumo a uma receita.
+    Adiciona um insumo a uma receita com cálculo automático de custo.
     
     Args:
         db (Session): Sessão do banco de dados
@@ -340,7 +419,7 @@ def add_insumo_to_receita(
         receita_insumo (ReceitaInsumoCreate): Dados do insumo a adicionar
         
     Returns:
-        ReceitaInsumo: Relacionamento criado
+        ReceitaInsumo: Relacionamento criado com custo calculado
         
     Raises:
         ValueError: Se receita ou insumo não existirem, ou insumo já estiver na receita
@@ -366,12 +445,20 @@ def add_insumo_to_receita(
     if existing:
         raise ValueError(f"Insumo '{insumo.nome}' já está nesta receita")
     
+    # Calcular custo automaticamente com conversão de unidades
+    custo_calculado = calcular_custo_insumo(
+        insumo, 
+        receita_insumo.quantidade_necessaria, 
+        receita_insumo.unidade_medida
+    )
+    
     # Criar relacionamento
     db_receita_insumo = ReceitaInsumo(
         receita_id=receita_id,
         insumo_id=receita_insumo.insumo_id,
         quantidade_necessaria=receita_insumo.quantidade_necessaria,
         unidade_medida=receita_insumo.unidade_medida,
+        custo_calculado=custo_calculado,
         observacoes=receita_insumo.observacoes
     )
 
@@ -379,11 +466,8 @@ def add_insumo_to_receita(
     db.commit()
     db.refresh(db_receita_insumo)
 
-    # Calcular custo deste insumo
-    db_receita_insumo.calcular_custo(db)
-
     # Atualizar CMV total da receita
-    receita.atualizar_cmv(db)
+    calcular_cmv_receita(db, receita_id)
 
     return db_receita_insumo
 
@@ -391,29 +475,34 @@ def update_insumo_in_receita(
         db: Session,
         receita_insumo_id: int,
         receita_insumo_update: ReceitaInsumoUpdate
-)  -> Optional[ReceitaInsumo]:
+) -> Optional[ReceitaInsumo]:
     """Atualiza quantidade ou dados de um insumo na receita"""
-    db_receita_insumo = db.query(ReceitaInsumo).filter(
-        ReceitaInsumo.id == receita_insumo_id
-    ).first()
+    db_receita_insumo = db.query(ReceitaInsumo).options(
+        joinedload(ReceitaInsumo.insumo)
+    ).filter(ReceitaInsumo.id == receita_insumo_id).first()
 
     if not db_receita_insumo:
         return None
     
-    # Atulizar campos fornecidos
+    # Atualizar campos fornecidos
     for field, value in receita_insumo_update.model_dump(exclude_unset=True).items():
         setattr(db_receita_insumo, field, value)
+
+    # Recalcular custo se quantidade ou unidade foi alterada
+    update_fields = receita_insumo_update.model_dump(exclude_unset=True)
+    if 'quantidade_necessaria' in update_fields or 'unidade_medida' in update_fields:
+        custo_recalculado = calcular_custo_insumo(
+            db_receita_insumo.insumo, 
+            db_receita_insumo.quantidade_necessaria,
+            db_receita_insumo.unidade_medida
+        )
+        db_receita_insumo.custo_calculado = custo_recalculado
 
     db.commit()
     db.refresh(db_receita_insumo)
 
-    # Recalcular custo
-    db_receita_insumo.calcular_custo(db)
-
     # Atualizar CMV da receita
-    receita = get_receita_by_id(db, db_receita_insumo.receita_id)
-    if receita:
-        receita.atualizar_cmv(db)
+    calcular_cmv_receita(db, db_receita_insumo.receita_id)
 
     return db_receita_insumo
 
@@ -432,9 +521,7 @@ def remove_insumo_from_receita(db: Session, receita_insumo_id: int) -> bool:
     db.commit()
 
     # Atualizar CMV da receita
-    receita = get_receita_by_id(db, receita_id)
-    if receita:
-        receita.atualizar_cmv(db)
+    calcular_cmv_receita(db, receita_id)
 
     return True
 
@@ -444,14 +531,15 @@ def get_receita_insumos(db: Session, receita_id: int) -> List[ReceitaInsumo]:
         joinedload(ReceitaInsumo.insumo)
     ).filter(ReceitaInsumo.receita_id == receita_id).all()
 
-
-#   ---------------------------------------------------------------------------------------------------
-#   Funções de calculo
-#   ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+# Funções de cálculo (MANTIDAS - já corretas)
+# ---------------------------------------------------------------------------------------------------
 
 def calcular_cmv_receita(db: Session, receita_id: int) -> float:
     """
     Recalcula o CMV de uma receita baseado nos insumos.
+    
+    Soma todos os custos calculados dos insumos da receita.
     
     Args:
         db (Session): Sessão do banco de dados
@@ -464,18 +552,40 @@ def calcular_cmv_receita(db: Session, receita_id: int) -> float:
     if not receita:
         return 0.0
     
-    # Recalcular custos de todos os insumos
-    for receita_insumo in receita.receita_insumos:
-        receita_insumo.calcular_custo(db)
+    # Somar custos de todos os insumos
+    total_cmv = 0.0
+    receita_insumos = get_receita_insumos(db, receita_id)
+    
+    for receita_insumo in receita_insumos:
+        # Recalcular custo do insumo se necessário
+        if receita_insumo.insumo:
+            custo_recalculado = calcular_custo_insumo(
+                receita_insumo.insumo, 
+                receita_insumo.quantidade_necessaria,
+                receita_insumo.unidade_medida
+            )
+            # Atualizar custo no relacionamento se mudou
+            if abs(custo_recalculado - (receita_insumo.custo_calculado or 0)) > 0.001:
+                receita_insumo.custo_calculado = custo_recalculado
+                db.add(receita_insumo)
+            
+            total_cmv += custo_recalculado
+    
+    # Atualizar CMV na receita (em centavos e reais)
+    receita.cmv = int(total_cmv * 100)  # Para compatibilidade
+    receita.preco_compra = receita.cmv  # Para compatibilidade
+    
+    db.add(receita)
+    db.commit()
+    db.refresh(receita)
 
-    # Atualizar CMV da receita
-    receita.atualizar_cmv(db)
-
-    return receita.cmv_real
+    return total_cmv
 
 def calcular_precos_sugeridos(db: Session, receita_id: int) -> dict:
     """
     Calcula preços sugeridos para uma receita baseado no CMV atual.
+    
+    Fórmula: Preço de venda = CMV ÷ (1 - Margem decimal)
     
     Args:
         db (Session): Sessão do banco de dados
@@ -489,23 +599,38 @@ def calcular_precos_sugeridos(db: Session, receita_id: int) -> dict:
         return {"error": "Receita não encontrada"}
     
     # Garantir que CMV está atualizado
-    calcular_cmv_receita(db, receita_id)
+    cmv_atual = calcular_cmv_receita(db, receita_id)
+    
+    if cmv_atual <= 0:
+        return {
+            "receita_id": receita_id,
+            "cmv_atual": 0.0,
+            "precos_sugeridos": {
+                "margem_20": 0.0,
+                "margem_25": 0.0,
+                "margem_30": 0.0
+            }
+        }
 
-    # Calcular preços sugeridos
-    precos_sugeridos = receita.calcular_precos_sugeridos()
+    # Calcular preços com margem sobre preço de venda
+    precos_sugeridos = {
+        "margem_20": round(cmv_atual / (1 - 0.20), 2),  # CMV ÷ 0.80
+        "margem_25": round(cmv_atual / (1 - 0.25), 2),  # CMV ÷ 0.75
+        "margem_30": round(cmv_atual / (1 - 0.30), 2),  # CMV ÷ 0.70
+    }
 
     return {
         "receita_id": receita_id,
-        "cmv_atual": receita.cmv_real,
+        "cmv_atual": cmv_atual,
         "precos_sugeridos": precos_sugeridos
     }
 
-#   ---------------------------------------------------------------------------------------------------
-#   Funções Utilitarias
-#   ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+# Funções Utilitárias
+# ---------------------------------------------------------------------------------------------------
 
 def get_grupos_receitas(db: Session, restaurante_id: Optional[int] = None) -> List[str]:
-    """Lista grupos unicos de receitas"""
+    """Lista grupos únicos de receitas"""
     query = db.query(Receita.grupo).distinct()
     if restaurante_id:
         query = query.filter(Receita.restaurante_id == restaurante_id)
@@ -528,14 +653,14 @@ def get_receitas_stats(db: Session, restaurante_id: Optional[int] = None) -> dic
     total_ativas = query.filter(Receita.ativo == True).count()
     total_grupos = query.with_entities(Receita.grupo).distinct().count()
 
-    # Estatisticas de precos (apenas receitas com preços)
+    # Estatísticas de preços (apenas receitas com preços)
     precos_query = query.filter(Receita.preco_venda.isnot(None))
     precos = [r.preco_venda for r in precos_query.all()]
 
     preco_stats = {}
     if precos:
         preco_stats = {
-            "preco_medio": round(sum(precos) /len(precos) / 100, 2),
+            "preco_medio": round(sum(precos) / len(precos) / 100, 2),
             "preco_minimo": round(min(precos) / 100, 2),
             "preco_maximo": round(max(precos) / 100, 2),
         }
@@ -548,9 +673,9 @@ def get_receitas_stats(db: Session, restaurante_id: Optional[int] = None) -> dic
         **preco_stats
     }
 
-#   ---------------------------------------------------------------------------------------------------
-#   Função helper para buscar insumos disponíveis
-#   ---------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+# Função helper para buscar insumos disponíveis
+# ---------------------------------------------------------------------------------------------------
 
 def get_insumos_disponiveis(db: Session, termo: Optional[str] = None) -> List[Insumo]:
     """
