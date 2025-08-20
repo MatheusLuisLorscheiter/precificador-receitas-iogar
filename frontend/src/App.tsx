@@ -25,14 +25,14 @@ import {
   Zap
 } from 'lucide-react';
 
-//   ---------------------------------------------------------------------------------------------------
-//   Configuração e tipos
-//   ---------------------------------------------------------------------------------------------------
+// ============================================================================
+// CONFIGURAÇÃO E TIPOS
+// ============================================================================
 
-//   URL base da API do backend FastAPI
+// URL base da API do backend FastAPI
 const API_BASE = 'http://localhost:8000/api/v1';
 
-//  Interface para os dados de Insumos vindos do backend
+// Interface para os dados de Insumos vindos do backend
 interface Insumo {
   id: number;
   grupo: string;
@@ -47,7 +47,7 @@ interface Insumo {
   updated_at: string;
 }
 
-//  Interface para os dados de Receita vindos do backend
+// Interface para os dados de Receitas vindos do backend
 interface Receita {
   id: number;
   grupo: string;
@@ -64,27 +64,27 @@ interface Receita {
   updated_at: string;
 }
 
-//   ---------------------------------------------------------------------------------------------------
-//   Componente principal
-//   ---------------------------------------------------------------------------------------------------
+// ============================================================================
+// COMPONENTE PRINCIPAL
+// ============================================================================
 
 const FoodCostSystem = () => {
   // Estados do sistema - controla a navegação e dados
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [insumos, setInsumos] =  useState<Insumo[}>([])];
-  const [receitas, setReceitas] = useStates<Receita[]>([]);
+  const [insumos, setInsumos] = useState<Insumo[]>([]);
+  const [receitas, setReceitas] = useState<Receita[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  //   ---------------------------------------------------------------------------------------------------
-  //   Funções de comunicação com o backend
-  //   ---------------------------------------------------------------------------------------------------
+  // ============================================================================
+  // FUNÇÕES DE COMUNICAÇÃO COM O BACKEND
+  // ============================================================================
 
-  //  Busca todos os insumos do backend
+  // Busca todos os insumos do backend
   const fetchInsumos = async () => {
     try {
       setLoading(true);
-      const response = await fetch('${API_BASE}/insumos');
+      const response = await fetch(`${API_BASE}/insumos/`);
       if (response.ok) {
         const data = await response.json();
         setInsumos(data);
@@ -96,11 +96,11 @@ const FoodCostSystem = () => {
     }
   };
 
-  //  Busca todas as receitas do backend
+  // Busca todas as receitas do backend
   const fetchReceitas = async () => {
     try {
       setLoading(true);
-      const response = await fetch('${API_BASE}/receitas/');
+      const response = await fetch(`${API_BASE}/receitas/`);
       if (response.ok) {
         const data = await response.json();
         setReceitas(data);
@@ -112,15 +112,15 @@ const FoodCostSystem = () => {
     }
   };
 
-  //  Carrefa os dados quando o componente é montado
+  // Carrega os dados quando o componente é montado
   useEffect(() => {
     fetchInsumos();
     fetchReceitas();
   }, []);
 
-  //   ---------------------------------------------------------------------------------------------------
-  //   Componente sidebar - navegação principal
-  //   ---------------------------------------------------------------------------------------------------  
+  // ============================================================================
+  // COMPONENTE SIDEBAR - NAVEGAÇÃO PRINCIPAL
+  // ============================================================================
 
   const Sidebar = () => (
     <div className="w-64 bg-slate-900 text-white h-screen fixed left-0 top-0 overflow-y-auto shadow-xl">
@@ -188,9 +188,9 @@ const FoodCostSystem = () => {
     </div>
   );
 
-  //   ---------------------------------------------------------------------------------------------------
-  //   Componente sidebar - navegação principal
-  //   ---------------------------------------------------------------------------------------------------  
+  // ============================================================================
+  // COMPONENTE DASHBOARD - TELA PRINCIPAL
+  // ============================================================================
 
   const Dashboard = () => {
     // Cálculos das estatísticas em tempo real
@@ -373,16 +373,16 @@ const FoodCostSystem = () => {
     );
   };
 
-  //   ---------------------------------------------------------------------------------------------------
-  //   Componente sidebar - navegação principal
-  //   ---------------------------------------------------------------------------------------------------
+  // ============================================================================
+  // COMPONENTE GESTÃO DE INSUMOS
+  // ============================================================================
 
-  const Insumois = () => {
+  const Insumos = () => {
     // Filtro de busca em tempo real
-    const filteredInsumos = Insumois.filter(insumo =>
+    const filteredInsumos = insumos.filter(insumo =>
       insumo.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insumo.grupo.toLowerCase().includes(searchTerm.toLocaleLowerCase()) ||
-      insumo.codigo.toLowerCase().includes(searchTerm.toLocaleLowerCase())
+      insumo.grupo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      insumo.codigo.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -493,13 +493,283 @@ const FoodCostSystem = () => {
     );
   };
 
-  //   ---------------------------------------------------------------------------------------------------
-  //   Componente gestão de receitas com calculadora
-  //   ---------------------------------------------------------------------------------------------------
+  // ============================================================================
+  // COMPONENTE GESTÃO DE RECEITAS COM CALCULADORA
+  // ============================================================================
 
   const Receitas = () => {
     const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
 
     // Função para calcular os preços sugeridos baseado no CMV
-    const calculaPrecosSugeridos
-  }
+    const calcularPrecosSugeridos = (cmv: number) => {
+      return {
+        margem20: cmv / 0.8, // 20% de margem de lucro
+        margem25: cmv / 0.75, // 25% de margem de lucro
+        margem30: cmv / 0.7  // 30% de margem de lucro
+      };
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Header da página de receitas */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">Gestão de Receitas</h2>
+            <p className="text-gray-600 mt-1">Controle de pratos e cálculo automático de preços</p>
+          </div>
+          <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all shadow-lg">
+            <Plus className="w-4 h-4" />
+            Nova Receita
+          </button>
+        </div>
+
+        {/* Layout em duas colunas: Lista + Calculadora */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Coluna 1: Lista de Receitas */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50">
+              <h3 className="text-lg font-semibold text-gray-900">Receitas Cadastradas</h3>
+              <p className="text-sm text-gray-600 mt-1">Clique em uma receita para calcular preços</p>
+            </div>
+            <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+              {receitas.map((receita) => (
+                <div
+                  key={receita.id}
+                  onClick={() => setSelectedReceita(receita)}
+                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-all ${
+                    selectedReceita?.id === receita.id 
+                      ? 'bg-gradient-to-r from-green-50 to-pink-50 border-l-4 border-l-green-500' 
+                      : ''
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-medium text-gray-900">{receita.nome}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                          {receita.grupo}
+                        </span>
+                        <span className="text-xs text-gray-500 font-mono">{receita.codigo}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">CMV: R$ {receita.cmv.toFixed(2)}</p>
+                      {receita.preco_venda && (
+                        <p className="text-sm text-green-600 font-medium">Venda: R$ {receita.preco_venda.toFixed(2)}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Coluna 2: Calculadora de Preços IOGAR */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-pink-50">
+              <div className="flex items-center gap-3">
+                <div className="bg-green-500 p-2 rounded-lg">
+                  <Calculator className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Calculadora IOGAR</h3>
+                  <p className="text-sm text-gray-600">Preços sugeridos automaticamente</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              {selectedReceita ? (
+                // Exibe os cálculos quando uma receita está selecionada
+                <div className="space-y-6">
+                  {/* Nome da receita selecionada */}
+                  <div className="text-center">
+                    <h4 className="text-xl font-bold text-gray-900">{selectedReceita.nome}</h4>
+                    <p className="text-gray-500 font-mono">{selectedReceita.codigo}</p>
+                  </div>
+
+                  {/* Exibição do CMV atual */}
+                  <div className="bg-gradient-to-r from-gray-50 to-green-50 p-4 rounded-lg border border-green-100">
+                    <p className="text-sm text-gray-600 text-center">Custo da Mercadoria Vendida</p>
+                    <p className="text-3xl font-bold text-gray-900 text-center">R$ {selectedReceita.cmv.toFixed(2)}</p>
+                  </div>
+
+                  {/* Cálculos de preços sugeridos */}
+                  <div className="space-y-4">
+                    <h5 className="font-semibold text-gray-900 text-center">Preços Sugeridos IOGAR:</h5>
+                    
+                    {(() => {
+                      const precos = calcularPrecosSugeridos(selectedReceita.cmv);
+                      return (
+                        <div className="space-y-3">
+                          {/* Margem 20% - Conservadora */}
+                          <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
+                            <div>
+                              <span className="font-semibold text-green-900">Margem Conservadora</span>
+                              <p className="text-xs text-green-600">20% de lucro</p>
+                            </div>
+                            <span className="text-xl font-bold text-green-700">
+                              R$ {precos.margem20.toFixed(2)}
+                            </span>
+                          </div>
+                          
+                          {/* Margem 25% - Equilibrada */}
+                          <div className="flex justify-between items-center p-4 bg-gradient-to-r from-pink-50 to-pink-100 rounded-lg border border-pink-200">
+                            <div>
+                              <span className="font-semibold text-pink-900">Margem Equilibrada</span>
+                              <p className="text-xs text-pink-600">25% de lucro</p>
+                            </div>
+                            <span className="text-xl font-bold text-pink-700">
+                              R$ {precos.margem25.toFixed(2)}
+                            </span>
+                          </div>
+                          
+                          {/* Margem 30% - Premium */}
+                          <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+                            <div>
+                              <span className="font-semibold text-purple-900">Margem Premium</span>
+                              <p className="text-xs text-purple-600">30% de lucro</p>
+                            </div>
+                            <span className="text-xl font-bold text-purple-700">
+                              R$ {precos.margem30.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Botão para aplicar preço */}
+                  <button className="w-full bg-gradient-to-r from-green-500 to-pink-500 text-white py-3 px-4 rounded-lg hover:from-green-600 hover:to-pink-600 transition-all font-medium shadow-lg">
+                    Aplicar Preço de Venda
+                  </button>
+                </div>
+              ) : (
+                // Estado inicial quando nenhuma receita está selecionada
+                <div className="text-center py-8">
+                  <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Selecione uma receita para calcular os preços</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    A calculadora IOGAR irá sugerir automaticamente os melhores preços
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ============================================================================
+  // RENDERIZAÇÃO PRINCIPAL DO SISTEMA
+  // ============================================================================
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Sidebar fixa na lateral esquerda */}
+      <Sidebar />
+      
+      {/* Conteúdo principal com margem para não sobrepor a sidebar */}
+      <main className="ml-64 p-8">
+        {/* Renderização condicional baseada na aba ativa */}
+        {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'insumos' && <Insumos />}
+        {activeTab === 'receitas' && <Receitas />}
+        
+        {/* Páginas em desenvolvimento - Calculadora Avançada */}
+        {activeTab === 'calculator' && (
+          <div className="text-center py-20">
+            <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
+              <div className="bg-gradient-to-br from-green-50 to-pink-50 p-4 rounded-lg mb-6">
+                <Calculator className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Calculadora Avançada</h3>
+              <p className="text-gray-500">Funcionalidades avançadas em desenvolvimento...</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Páginas em desenvolvimento - Automação */}
+        {activeTab === 'automacao' && (
+          <div className="space-y-6">
+            {/* Header da seção de automação */}
+            <div className="bg-gradient-to-r from-green-500 to-pink-500 rounded-xl p-8 text-white">
+              <div className="flex items-center gap-4 mb-4">
+                <Zap className="w-8 h-8" />
+                <h2 className="text-3xl font-bold">Automação IOGAR</h2>
+              </div>
+              <p className="text-green-100 text-lg">
+                Seu restaurante no piloto automático com inteligência operacional
+              </p>
+            </div>
+            
+            {/* Grid com funcionalidades de automação */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Card: Controle de Estoque */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-green-50 p-3 rounded-lg w-fit mb-4">
+                  <Package className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Controle de Estoque</h3>
+                <p className="text-gray-600 text-sm">
+                  Monitoramento automático de entradas, saídas e níveis mínimos de estoque
+                </p>
+              </div>
+              
+              {/* Card: Gestão de Fornecedores */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-pink-50 p-3 rounded-lg w-fit mb-4">
+                  <Users className="w-6 h-6 text-pink-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Gestão de Fornecedores</h3>
+                <p className="text-gray-600 text-sm">
+                  Automatização de pedidos e controle de relacionamento com fornecedores
+                </p>
+              </div>
+              
+              {/* Card: Análise de Performance */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-purple-50 p-3 rounded-lg w-fit mb-4">
+                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Análise de Performance</h3>
+                <p className="text-gray-600 text-sm">
+                  Relatórios automáticos de performance e sugestões de melhorias
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Páginas em desenvolvimento - Relatórios */}
+        {activeTab === 'relatorios' && (
+          <div className="text-center py-20">
+            <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
+              <div className="bg-gradient-to-br from-green-50 to-pink-50 p-4 rounded-lg mb-6">
+                <BarChart3 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Relatórios Inteligentes</h3>
+              <p className="text-gray-500">Dashboards e relatórios em desenvolvimento...</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Páginas em desenvolvimento - Configurações */}
+        {activeTab === 'settings' && (
+          <div className="text-center py-20">
+            <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
+              <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-lg mb-6">
+                <Settings className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Configurações do Sistema</h3>
+              <p className="text-gray-500">Configurações avançadas em desenvolvimento...</p>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+// Exportação do componente principal
+export default FoodCostSystem;
