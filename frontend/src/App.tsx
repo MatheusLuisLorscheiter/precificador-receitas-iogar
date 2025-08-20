@@ -1,13 +1,19 @@
-/*  
-*   ---------------------------------------------------------------------------------------------------
-*   CRUD RECEITAS - Operações de banco de dados para receitas
-*   Descrição: Este arquivo contém todas as operações de banco de dados para receitas,
-*   restaurantes e relacionamentos receita-insumo
-*   Data: 14/08/2025 | Atualizado 19/08/2025
-*   Autor: Will
-*   ---------------------------------------------------------------------------------------------------
-*/
+/*
+ * ============================================================================
+ * FOOD COST SYSTEM - FRONTEND PRINCIPAL
+ * ============================================================================
+ * Descrição: Sistema de gestão de custos para restaurantes com automação
+ *           inteligente, cálculo de CMV e precificação automatizada.
+ *           Interface moderna conectada ao backend FastAPI.
+ * 
+ * Data: 20 de Agosto de 2025
+ * Autor: Will
+ * Empresa: IOGAR - Inteligência Operacional para Restaurantes
+ * ============================================================================
+ */
 
+import './index.css';
+import logoIogar from './image/iogar_logo.png';
 import React, { useState, useEffect } from 'react';
 import { 
   ChefHat, 
@@ -22,7 +28,11 @@ import {
   TrendingUp,
   Users,
   Target,
-  Zap
+  Zap,
+  Building2,
+  Upload,
+  FileText,
+  LinkIcon
 } from 'lucide-react';
 
 // ============================================================================
@@ -47,6 +57,16 @@ interface Insumo {
   updated_at: string;
 }
 
+// Interface para os dados de Restaurantes vindos do backend
+interface Restaurante {
+  id: number;
+  nome: string;
+  descricao?: string;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // Interface para os dados de Receitas vindos do backend
 interface Receita {
   id: number;
@@ -60,6 +80,10 @@ interface Receita {
   preco_compra: number;
   preco_venda?: number;
   cmv: number;
+  cmv_20_porcento?: number;
+  cmv_25_porcento?: number;
+  cmv_30_porcento?: number;
+  restaurante_id: number;
   created_at: string;
   updated_at: string;
 }
@@ -72,7 +96,9 @@ const FoodCostSystem = () => {
   // Estados do sistema - controla a navegação e dados
   const [activeTab, setActiveTab] = useState('dashboard');
   const [insumos, setInsumos] = useState<Insumo[]>([]);
+  const [restaurantes, setRestaurantes] = useState<Restaurante[]>([]);
   const [receitas, setReceitas] = useState<Receita[]>([]);
+  const [selectedRestaurante, setSelectedRestaurante] = useState<Restaurante | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -96,6 +122,22 @@ const FoodCostSystem = () => {
     }
   };
 
+  // Busca todos os restaurantes do backend
+  const fetchRestaurantes = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/receitas/restaurantes/`);
+      if (response.ok) {
+        const data = await response.json();
+        setRestaurantes(data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar restaurantes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Busca todas as receitas do backend
   const fetchReceitas = async () => {
     try {
@@ -112,10 +154,26 @@ const FoodCostSystem = () => {
     }
   };
 
+  // Busca receitas de um restaurante específico
+  const fetchReceitasByRestaurante = async (restauranteId: number) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/receitas/restaurante/${restauranteId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReceitas(data);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar receitas do restaurante:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Carrega os dados quando o componente é montado
   useEffect(() => {
     fetchInsumos();
-    fetchReceitas();
+    fetchRestaurantes();
   }, []);
 
   // ============================================================================
@@ -125,23 +183,14 @@ const FoodCostSystem = () => {
   const Sidebar = () => (
     <div className="w-64 bg-slate-900 text-white h-screen fixed left-0 top-0 overflow-y-auto shadow-xl">
       <div className="p-6">
-        {/* Logo IOGAR com design do robô */}
-        <div className="flex items-center gap-3 mb-8">
-          {/* Representação do robô IOGAR em CSS */}
-          <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-500 rounded-lg flex items-center justify-center relative">
-            {/* Corpo principal do robô */}
-            <div className="w-6 h-6 bg-white rounded-sm flex items-center justify-center">
-              <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-            </div>
-            {/* Antena do robô */}
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-pink-500 rounded-full"></div>
-            {/* Detalhe lateral */}
-            <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-pink-400 rounded-sm"></div>
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">IOGAR</h1>
-            <p className="text-xs text-gray-400">Food Cost System</p>
-          </div>
+        {/* Logo IOGAR centralizado */}
+        <div className="flex flex-col items-center gap-2 mb-8">
+          <img
+            src={logoIogar}
+            alt="Logo IOGAR"
+            className="rounded-lg shadow-lg mb-2"
+          />
+          <p className="text-sm text-gray-400 text-center">Food Cost System</p>
         </div>
         
         {/* Menu de navegação */}
@@ -149,29 +198,42 @@ const FoodCostSystem = () => {
           {[
             { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
             { id: 'insumos', label: 'Insumos', icon: Package },
-            { id: 'receitas', label: 'Receitas', icon: Utensils },
-            { id: 'calculator', label: 'Calculadora', icon: Calculator },
+            { id: 'restaurantes', label: 'Restaurantes', icon: Building2 },
+            { id: 'receitas', label: 'Receitas', icon: Utensils, disabled: !selectedRestaurante },
             { id: 'automacao', label: 'Automação', icon: Zap },
             { id: 'relatorios', label: 'Relatórios', icon: TrendingUp },
             { id: 'settings', label: 'Configurações', icon: Settings },
           ].map((item) => {
             const Icon = item.icon;
+            const isDisabled = item.disabled;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => !isDisabled && setActiveTab(item.id)}
+                disabled={isDisabled}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                   activeTab === item.id 
                     ? 'bg-gradient-to-r from-green-500 to-pink-500 text-white shadow-lg' 
+                    : isDisabled
+                    ? 'text-gray-500 cursor-not-allowed'
                     : 'hover:bg-slate-800 text-gray-300 hover:text-white'
                 }`}
               >
                 <Icon className="w-5 h-5" />
                 {item.label}
+                {isDisabled && <span className="text-xs ml-auto">(Selecione um restaurante)</span>}
               </button>
             );
           })}
         </nav>
+
+        {/* Restaurante selecionado */}
+        {selectedRestaurante && (
+          <div className="mt-6 p-3 bg-slate-800 rounded-lg">
+            <p className="text-xs text-gray-400">Restaurante Ativo:</p>
+            <p className="text-sm font-medium text-white">{selectedRestaurante.nome}</p>
+          </div>
+        )}
 
         {/* Rodapé da sidebar */}
         <div className="absolute bottom-6 left-6 right-6">
@@ -195,9 +257,8 @@ const FoodCostSystem = () => {
   const Dashboard = () => {
     // Cálculos das estatísticas em tempo real
     const totalInsumos = insumos.length;
+    const totalRestaurantes = restaurantes.length;
     const totalReceitas = receitas.length;
-    const valorTotalInsumos = insumos.reduce((sum, item) => sum + item.preco_compra, 0);
-    const valorTotalReceitas = receitas.reduce((sum, item) => sum + item.cmv, 0);
 
     return (
       <div className="space-y-6">
@@ -219,7 +280,7 @@ const FoodCostSystem = () => {
         </div>
         
         {/* Grid com cards de estatísticas principais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Card: Total de Insumos */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
@@ -230,6 +291,20 @@ const FoodCostSystem = () => {
               </div>
               <div className="bg-green-50 p-3 rounded-lg">
                 <Package className="w-8 h-8 text-green-600" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Card: Total de Restaurantes */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Restaurantes</p>
+                <p className="text-3xl font-bold text-gray-900">{totalRestaurantes}</p>
+                <p className="text-sm text-blue-600 mt-1">Estabelecimentos</p>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <Building2 className="w-8 h-8 text-blue-600" />
               </div>
             </div>
           </div>
@@ -247,41 +322,9 @@ const FoodCostSystem = () => {
               </div>
             </div>
           </div>
-          
-          {/* Card: Valor Total dos Insumos */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Valor Insumos</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  R$ {valorTotalInsumos.toFixed(2)}
-                </p>
-                <p className="text-sm text-green-600 mt-1">Investimento total</p>
-              </div>
-              <div className="bg-yellow-50 p-3 rounded-lg">
-                <DollarSign className="w-8 h-8 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-          
-          {/* Card: CMV Total */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">CMV Total</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  R$ {valorTotalReceitas.toFixed(2)}
-                </p>
-                <p className="text-sm text-pink-600 mt-1">Custo operacional</p>
-              </div>
-              <div className="bg-pink-50 p-3 rounded-lg">
-                <TrendingUp className="w-8 h-8 text-pink-600" />
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Seção destacando a automação IOGAR */}
+        {/* Seção destacando a automação IOGAR - ATUALIZADA */}
         <div className="bg-gradient-to-br from-green-50 to-pink-50 rounded-xl p-6 border border-green-100">
           <div className="flex items-center gap-3 mb-4">
             <div className="bg-green-600 p-2 rounded-lg">
@@ -291,21 +334,30 @@ const FoodCostSystem = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white p-4 rounded-lg border border-green-100">
-              <h4 className="font-medium text-gray-900 mb-2">Gestão Automatizada</h4>
+              <div className="flex items-center gap-2 mb-2">
+                <Upload className="w-5 h-5 text-green-600" />
+                <h4 className="font-medium text-gray-900">Importação TOTVS Chef Web</h4>
+              </div>
               <p className="text-sm text-gray-600">
-                Controle automático de estoque, fornecedores e CMV
+                Sincronização automática de dados direto do TOTVS Chef Web
               </p>
             </div>
             <div className="bg-white p-4 rounded-lg border border-pink-100">
-              <h4 className="font-medium text-gray-900 mb-2">Fichas Técnicas</h4>
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-5 h-5 text-pink-600" />
+                <h4 className="font-medium text-gray-900">Importação CSV/SQL</h4>
+              </div>
               <p className="text-sm text-gray-600">
-                Cálculo automático de custos e preços sugeridos
+                Importação de arquivos CSV e SQL de outros sistemas
               </p>
             </div>
             <div className="bg-white p-4 rounded-lg border border-green-100">
-              <h4 className="font-medium text-gray-900 mb-2">Integração Total</h4>
+              <div className="flex items-center gap-2 mb-2">
+                <LinkIcon className="w-5 h-5 text-blue-600" />
+                <h4 className="font-medium text-gray-900">Integração TOTVS Chef Web</h4>
+              </div>
               <p className="text-sm text-gray-600">
-                Conectado com apps e marketplaces
+                Conectado ao TOTVS Chef Web para sincronização completa
               </p>
             </div>
           </div>
@@ -340,29 +392,35 @@ const FoodCostSystem = () => {
             </div>
           </div>
           
-          {/* Lista das últimas receitas */}
+          {/* Lista dos últimos restaurantes */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Últimas Receitas</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Restaurantes Ativos</h3>
               <button 
-                onClick={() => setActiveTab('receitas')}
-                className="text-sm text-pink-600 hover:text-pink-700 font-medium"
+                onClick={() => setActiveTab('restaurantes')}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
-                Ver todas
+                Ver todos
               </button>
             </div>
             <div className="space-y-3">
-              {receitas.slice(0, 5).map((receita) => (
-                <div key={receita.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+              {restaurantes.filter(r => r.ativo).slice(0, 5).map((restaurante) => (
+                <div 
+                  key={restaurante.id} 
+                  className="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setSelectedRestaurante(restaurante);
+                    fetchReceitasByRestaurante(restaurante.id);
+                  }}
+                >
                   <div>
-                    <p className="font-medium text-gray-900">{receita.nome}</p>
-                    <p className="text-sm text-gray-500">{receita.grupo} • {receita.codigo}</p>
+                    <p className="font-medium text-gray-900">{restaurante.nome}</p>
+                    <p className="text-sm text-gray-500">{restaurante.descricao || 'Sem descrição'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-gray-900">CMV: R$ {receita.cmv.toFixed(2)}</p>
-                    {receita.preco_venda && (
-                      <p className="text-sm text-green-600">Venda: R$ {receita.preco_venda.toFixed(2)}</p>
-                    )}
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                      Ativo
+                    </span>
                   </div>
                 </div>
               ))}
@@ -374,7 +432,7 @@ const FoodCostSystem = () => {
   };
 
   // ============================================================================
-  // COMPONENTE GESTÃO DE INSUMOS
+  // COMPONENTE GESTÃO DE INSUMOS - ATUALIZADO
   // ============================================================================
 
   const Insumos = () => {
@@ -411,7 +469,7 @@ const FoodCostSystem = () => {
           />
         </div>
 
-        {/* Tabela com todos os insumos */}
+        {/* Tabela com todos os insumos - ATUALIZADA */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -423,7 +481,7 @@ const FoodCostSystem = () => {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Grupo</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Unidade</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço Compra</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Comparativo de Preços</th>
                 </tr>
               </thead>
               {/* Corpo da tabela */}
@@ -475,12 +533,10 @@ const FoodCostSystem = () => {
                         R$ {insumo.preco_compra.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button className="text-green-600 hover:text-green-800 font-medium mr-3 transition-colors">
-                          Editar
-                        </button>
-                        <button className="text-gray-400 hover:text-pink-600 transition-colors">
-                          Excluir
-                        </button>
+                        <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium">
+                          <BarChart3 className="w-3 h-3" />
+                          Em breve
+                        </span>
                       </td>
                     </tr>
                   ))
@@ -494,20 +550,109 @@ const FoodCostSystem = () => {
   };
 
   // ============================================================================
+  // COMPONENTE GESTÃO DE RESTAURANTES
+  // ============================================================================
+
+  const Restaurantes = () => {
+    return (
+      <div className="space-y-6">
+        {/* Header da página de restaurantes */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">Gestão de Restaurantes</h2>
+            <p className="text-gray-600 mt-1">Controle dos estabelecimentos e suas receitas</p>
+          </div>
+          <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all shadow-lg">
+            <Plus className="w-4 h-4" />
+            Novo Restaurante
+          </button>
+        </div>
+
+        {/* Grid de restaurantes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {restaurantes.map((restaurante) => (
+            <div 
+              key={restaurante.id}
+              className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${
+                selectedRestaurante?.id === restaurante.id
+                  ? 'border-green-500 ring-2 ring-green-200'
+                  : 'border-gray-100'
+              }`}
+              onClick={() => {
+                setSelectedRestaurante(restaurante);
+                fetchReceitasByRestaurante(restaurante.id);
+              }}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <Building2 className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  restaurante.ativo 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {restaurante.ativo ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
+              
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{restaurante.nome}</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                {restaurante.descricao || 'Sem descrição disponível'}
+              </p>
+              
+              <div className="flex items-center justify-between">
+                <button className="text-green-600 hover:text-green-800 font-medium text-sm transition-colors">
+                  Ver Receitas
+                </button>
+                <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <Settings className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Mensagem se nenhum restaurante estiver cadastrado */}
+        {restaurantes.length === 0 && !loading && (
+          <div className="text-center py-12">
+            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 mb-6">Comece criando seu primeiro restaurante</p>
+            <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg">
+              Criar Primeiro Restaurante
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ============================================================================
   // COMPONENTE GESTÃO DE RECEITAS COM CALCULADORA
   // ============================================================================
 
   const Receitas = () => {
     const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
 
-    // Função para calcular os preços sugeridos baseado no CMV
-    const calcularPrecosSugeridos = (cmv: number) => {
-      return {
-        margem20: cmv / 0.8, // 20% de margem de lucro
-        margem25: cmv / 0.75, // 25% de margem de lucro
-        margem30: cmv / 0.7  // 30% de margem de lucro
-      };
-    };
+    if (!selectedRestaurante) {
+      return (
+        <div className="text-center py-20">
+          <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
+            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">Selecione um Restaurante</h3>
+            <p className="text-gray-500 mb-6">
+              Para visualizar as receitas, primeiro selecione um restaurante na seção "Restaurantes"
+            </p>
+            <button 
+              onClick={() => setActiveTab('restaurantes')}
+              className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg"
+            >
+              Ir para Restaurantes
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-6">
@@ -515,7 +660,9 @@ const FoodCostSystem = () => {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">Gestão de Receitas</h2>
-            <p className="text-gray-600 mt-1">Controle de pratos e cálculo automático de preços</p>
+            <p className="text-gray-600 mt-1">
+              Receitas do restaurante: <span className="font-medium text-green-600">{selectedRestaurante.nome}</span>
+            </p>
           </div>
           <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all shadow-lg">
             <Plus className="w-4 h-4" />
@@ -529,42 +676,49 @@ const FoodCostSystem = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50">
               <h3 className="text-lg font-semibold text-gray-900">Receitas Cadastradas</h3>
-              <p className="text-sm text-gray-600 mt-1">Clique em uma receita para calcular preços</p>
+              <p className="text-sm text-gray-600 mt-1">Clique em uma receita para ver preços calculados</p>
             </div>
             <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-              {receitas.map((receita) => (
-                <div
-                  key={receita.id}
-                  onClick={() => setSelectedReceita(receita)}
-                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-all ${
-                    selectedReceita?.id === receita.id 
-                      ? 'bg-gradient-to-r from-green-50 to-pink-50 border-l-4 border-l-green-500' 
-                      : ''
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{receita.nome}</h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                          {receita.grupo}
-                        </span>
-                        <span className="text-xs text-gray-500 font-mono">{receita.codigo}</span>
+              {receitas.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Utensils className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">Nenhuma receita cadastrada para este restaurante</p>
+                </div>
+              ) : (
+                receitas.map((receita) => (
+                  <div
+                    key={receita.id}
+                    onClick={() => setSelectedReceita(receita)}
+                    className={`p-4 cursor-pointer hover:bg-gray-50 transition-all ${
+                      selectedReceita?.id === receita.id 
+                        ? 'bg-gradient-to-r from-green-50 to-pink-50 border-l-4 border-l-green-500' 
+                        : ''
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{receita.nome}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                            {receita.grupo}
+                          </span>
+                          <span className="text-xs text-gray-500 font-mono">{receita.codigo}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-gray-900">CMV: R$ {receita.cmv.toFixed(2)}</p>
+                        {receita.preco_venda && (
+                          <p className="text-sm text-green-600 font-medium">Venda: R$ {receita.preco_venda.toFixed(2)}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">CMV: R$ {receita.cmv.toFixed(2)}</p>
-                      {receita.preco_venda && (
-                        <p className="text-sm text-green-600 font-medium">Venda: R$ {receita.preco_venda.toFixed(2)}</p>
-                      )}
-                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
-          {/* Coluna 2: Calculadora de Preços IOGAR */}
+          {/* Coluna 2: Preços Calculados pelo Backend */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100">
             <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-pink-50">
               <div className="flex items-center gap-3">
@@ -572,14 +726,14 @@ const FoodCostSystem = () => {
                   <Calculator className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Calculadora IOGAR</h3>
-                  <p className="text-sm text-gray-600">Preços sugeridos automaticamente</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Preços IOGAR</h3>
+                  <p className="text-sm text-gray-600">Calculados automaticamente pelo sistema</p>
                 </div>
               </div>
             </div>
             <div className="p-6">
               {selectedReceita ? (
-                // Exibe os cálculos quando uma receita está selecionada
+                // Exibe os preços calculados pelo backend
                 <div className="space-y-6">
                   {/* Nome da receita selecionada */}
                   <div className="text-center">
@@ -589,53 +743,48 @@ const FoodCostSystem = () => {
 
                   {/* Exibição do CMV atual */}
                   <div className="bg-gradient-to-r from-gray-50 to-green-50 p-4 rounded-lg border border-green-100">
-                    <p className="text-sm text-gray-600 text-center">Custo da Mercadoria Vendida</p>
+                    <p className="text-sm text-gray-600 text-center">Custo da Mercadoria Vendida (CMV)</p>
                     <p className="text-3xl font-bold text-gray-900 text-center">R$ {selectedReceita.cmv.toFixed(2)}</p>
                   </div>
 
-                  {/* Cálculos de preços sugeridos */}
+                  {/* Preços calculados pelo backend */}
                   <div className="space-y-4">
-                    <h5 className="font-semibold text-gray-900 text-center">Preços Sugeridos IOGAR:</h5>
+                    <h5 className="font-semibold text-gray-900 text-center">Preços de Venda (do Backend):</h5>
                     
-                    {(() => {
-                      const precos = calcularPrecosSugeridos(selectedReceita.cmv);
-                      return (
-                        <div className="space-y-3">
-                          {/* Margem 20% - Conservadora */}
-                          <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
-                            <div>
-                              <span className="font-semibold text-green-900">Margem Conservadora</span>
-                              <p className="text-xs text-green-600">20% de lucro</p>
-                            </div>
-                            <span className="text-xl font-bold text-green-700">
-                              R$ {precos.margem20.toFixed(2)}
-                            </span>
-                          </div>
-                          
-                          {/* Margem 25% - Equilibrada */}
-                          <div className="flex justify-between items-center p-4 bg-gradient-to-r from-pink-50 to-pink-100 rounded-lg border border-pink-200">
-                            <div>
-                              <span className="font-semibold text-pink-900">Margem Equilibrada</span>
-                              <p className="text-xs text-pink-600">25% de lucro</p>
-                            </div>
-                            <span className="text-xl font-bold text-pink-700">
-                              R$ {precos.margem25.toFixed(2)}
-                            </span>
-                          </div>
-                          
-                          {/* Margem 30% - Premium */}
-                          <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                            <div>
-                              <span className="font-semibold text-purple-900">Margem Premium</span>
-                              <p className="text-xs text-purple-600">30% de lucro</p>
-                            </div>
-                            <span className="text-xl font-bold text-purple-700">
-                              R$ {precos.margem30.toFixed(2)}
-                            </span>
-                          </div>
+                    <div className="space-y-3">
+                      {/* Margem 20% */}
+                      <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
+                        <div>
+                          <span className="font-semibold text-green-900">Margem 20%</span>
+                          <p className="text-xs text-green-600">Preço conservador</p>
                         </div>
-                      );
-                    })()}
+                        <span className="text-xl font-bold text-green-700">
+                          R$ {selectedReceita.cmv_20_porcento ? selectedReceita.cmv_20_porcento.toFixed(2) : 'N/A'}
+                        </span>
+                      </div>
+                      
+                      {/* Margem 25% */}
+                      <div className="flex justify-between items-center p-4 bg-gradient-to-r from-pink-50 to-pink-100 rounded-lg border border-pink-200">
+                        <div>
+                          <span className="font-semibold text-pink-900">Margem 25%</span>
+                          <p className="text-xs text-pink-600">Preço equilibrado</p>
+                        </div>
+                        <span className="text-xl font-bold text-pink-700">
+                          R$ {selectedReceita.cmv_25_porcento ? selectedReceita.cmv_25_porcento.toFixed(2) : 'N/A'}
+                        </span>
+                      </div>
+                      
+                      {/* Margem 30% */}
+                      <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+                        <div>
+                          <span className="font-semibold text-purple-900">Margem 30%</span>
+                          <p className="text-xs text-purple-600">Preço premium</p>
+                        </div>
+                        <span className="text-xl font-bold text-purple-700">
+                          R$ {selectedReceita.cmv_30_porcento ? selectedReceita.cmv_30_porcento.toFixed(2) : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Botão para aplicar preço */}
@@ -647,9 +796,9 @@ const FoodCostSystem = () => {
                 // Estado inicial quando nenhuma receita está selecionada
                 <div className="text-center py-8">
                   <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Selecione uma receita para calcular os preços</p>
+                  <p className="text-gray-500">Selecione uma receita para ver os preços calculados</p>
                   <p className="text-sm text-gray-400 mt-2">
-                    A calculadora IOGAR irá sugerir automaticamente os melhores preços
+                    Os preços são calculados automaticamente pelo backend IOGAR
                   </p>
                 </div>
               )}
@@ -674,20 +823,8 @@ const FoodCostSystem = () => {
         {/* Renderização condicional baseada na aba ativa */}
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'insumos' && <Insumos />}
+        {activeTab === 'restaurantes' && <Restaurantes />}
         {activeTab === 'receitas' && <Receitas />}
-        
-        {/* Páginas em desenvolvimento - Calculadora Avançada */}
-        {activeTab === 'calculator' && (
-          <div className="text-center py-20">
-            <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
-              <div className="bg-gradient-to-br from-green-50 to-pink-50 p-4 rounded-lg mb-6">
-                <Calculator className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">Calculadora Avançada</h3>
-              <p className="text-gray-500">Funcionalidades avançadas em desenvolvimento...</p>
-            </div>
-          </div>
-        )}
         
         {/* Páginas em desenvolvimento - Automação */}
         {activeTab === 'automacao' && (
@@ -705,28 +842,6 @@ const FoodCostSystem = () => {
             
             {/* Grid com funcionalidades de automação */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Card: Controle de Estoque */}
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-green-50 p-3 rounded-lg w-fit mb-4">
-                  <Package className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Controle de Estoque</h3>
-                <p className="text-gray-600 text-sm">
-                  Monitoramento automático de entradas, saídas e níveis mínimos de estoque
-                </p>
-              </div>
-              
-              {/* Card: Gestão de Fornecedores */}
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-pink-50 p-3 rounded-lg w-fit mb-4">
-                  <Users className="w-6 h-6 text-pink-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Gestão de Fornecedores</h3>
-                <p className="text-gray-600 text-sm">
-                  Automatização de pedidos e controle de relacionamento com fornecedores
-                </p>
-              </div>
-              
               {/* Card: Análise de Performance */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <div className="bg-purple-50 p-3 rounded-lg w-fit mb-4">
