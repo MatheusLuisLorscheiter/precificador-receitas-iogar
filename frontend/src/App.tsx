@@ -12,100 +12,124 @@
  * ============================================================================
  */
 
-import './index.css';
+// ============================================================================
+// IMPORTS E DEPENDÊNCIAS
+// ============================================================================
+
 import logoIogar from './image/iogar_logo.png';
 import React, { useState, useEffect } from 'react';
-import { 
-  ChefHat, 
-  Package, 
-  Calculator, 
-  BarChart3, 
-  Settings, 
-  Search, 
-  Plus, 
-  DollarSign,
-  Utensils,
-  TrendingUp,
-  Users,
-  Target,
-  Zap,
-  Building2,
-  Upload,
-  FileText,
-  LinkIcon
+import {
+  ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
+  Users, ChefHat, Utensils, Plus, Search, Edit2, Trash2, Save,
+  X, Check, AlertCircle, BarChart3, Settings, Zap, FileText,
+  Upload, Activity, Brain, Monitor, Shield, Database, LinkIcon,
+  Target, Eye
 } from 'lucide-react';
 
 // ============================================================================
-// CONFIGURAÇÃO E TIPOS
+// INTERFACES E TIPOS DE DADOS
 // ============================================================================
 
-// URL base da API do backend FastAPI
-const API_BASE = 'http://localhost:8000/api/v1';
-
-// Interface para os dados de Insumos vindos do backend
+// Interface para insumos do sistema
 interface Insumo {
   id: number;
-  grupo: string;
-  subgrupo: string;
-  codigo: string;
   nome: string;
-  quantidade: number;
-  fator: number;
   unidade: string;
   preco_compra: number;
-  created_at: string;
-  updated_at: string;
+  fator: number;
+  categoria?: string;
 }
 
-// Interface para os dados de Restaurantes vindos do backend
+// Interface para restaurantes
 interface Restaurante {
   id: number;
   nome: string;
-  descricao?: string;
-  ativo: boolean;
-  created_at: string;
-  updated_at: string;
+  endereco?: string;
+  telefone?: string;
 }
 
-// Interface para os dados de Receitas vindos do backend
+// Interface para receitas com preços calculados pelo backend
 interface Receita {
   id: number;
-  grupo: string;
-  subgrupo: string;
-  codigo: string;
   nome: string;
-  quantidade: number;
-  fator: number;
-  unidade: string;
-  preco_compra: number;
-  preco_venda?: number;
-  cmv: number;
-  cmv_20_porcento?: number;
-  cmv_25_porcento?: number;
-  cmv_30_porcento?: number;
+  descricao?: string;
+  categoria?: string;
+  porcoes: number;
+  custo_total: number;
+  cmv_20_porcento?: number;  // Calculado pelo backend
+  cmv_25_porcento?: number;  // Calculado pelo backend
+  cmv_30_porcento?: number;  // Calculado pelo backend
   restaurante_id: number;
-  created_at: string;
-  updated_at: string;
+  insumos?: any[];
+}
+
+// Interface para insumos de uma receita
+interface ReceitaInsumo {
+  insumo_id: number;
+  quantidade: number;
+  insumo?: Insumo;
 }
 
 // ============================================================================
-// COMPONENTE PRINCIPAL
+// COMPONENTE PRINCIPAL DO SISTEMA
 // ============================================================================
-
-const FoodCostSystem = () => {
-  // Estados do sistema - controla a navegação e dados
-  const [activeTab, setActiveTab] = useState('dashboard');
+const FoodCostSystem: React.FC = () => {
+  
+  // ============================================================================
+  // ESTADOS DO SISTEMA
+  // ============================================================================
+  
+  // Estado da navegação - controla qual aba está ativa
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  
+  // Estados dos dados principais
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [restaurantes, setRestaurantes] = useState<Restaurante[]>([]);
   const [receitas, setReceitas] = useState<Receita[]>([]);
+  
+  // Estado para restaurante selecionado
   const [selectedRestaurante, setSelectedRestaurante] = useState<Restaurante | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-
+  
+  // Estados de controle da interface
+  const [loading, setLoading] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  
+  // Estados para formulários
+  const [showInsumoForm, setShowInsumoForm] = useState<boolean>(false);
+  const [showReceitaForm, setShowReceitaForm] = useState<boolean>(false);
+  const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null);
+  const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
+  
+  // Estados para formulário de insumo
+  const [novoInsumo, setNovoInsumo] = useState({
+    nome: '',
+    unidade: '',
+    preco_compra: 0,
+    fator: 1,
+    categoria: '',
+    quantidade: 0
+  });
+  
+  // Estados para formulário de receita
+  const [novaReceita, setNovaReceita] = useState({
+    nome: '',
+    descricao: '',
+    categoria: '',
+    porcoes: 1
+  });
+  
+  // Estados para insumos da receita
+  const [receitaInsumos, setReceitaInsumos] = useState<ReceitaInsumo[]>([]);
+  
+  // ============================================================================
+  // CONFIGURAÇÃO DA API
+  // ============================================================================
+  const API_BASE = 'http://localhost:8000';
+  
   // ============================================================================
   // FUNÇÕES DE COMUNICAÇÃO COM O BACKEND
   // ============================================================================
-
+  
   // Busca todos os insumos do backend
   const fetchInsumos = async () => {
     try {
@@ -121,7 +145,7 @@ const FoodCostSystem = () => {
       setLoading(false);
     }
   };
-
+  
   // Busca todos os restaurantes do backend
   const fetchRestaurantes = async () => {
     try {
@@ -179,40 +203,70 @@ const FoodCostSystem = () => {
   // ============================================================================
   // COMPONENTE SIDEBAR - NAVEGAÇÃO PRINCIPAL
   // ============================================================================
+  const Sidebar = () => {
+    // Itens do menu de navegação
+    const menuItems = [
+      { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+      { id: 'insumos', label: 'Insumos', icon: Package },
+      { id: 'restaurantes', label: 'Restaurantes', icon: Users },
+      { id: 'receitas', label: 'Receitas', icon: ChefHat },
+      { id: 'automacao', label: 'Automação IOGAR', icon: Zap },
+      { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
+      { id: 'settings', label: 'Configurações', icon: Settings }
+    ];
 
-  const Sidebar = () => (
-    <div className="w-64 bg-slate-900 text-white h-screen fixed left-0 top-0 overflow-y-auto shadow-xl">
-      <div className="p-6">
-        {/* Logo IOGAR centralizado */}
-        <div className="flex flex-col items-center gap-2 mb-8">
-          <img
-            src={logoIogar}
-            alt="Logo IOGAR"
-            className="rounded-lg shadow-lg mb-2"
-          />
-          <p className="text-sm text-gray-400 text-center">Food Cost System</p>
+    return (
+      <div className="w-64 bg-slate-900 text-white flex flex-col">
+        <div className="p-6 relative">
+          {/* Logo IOGAR com design do robô */}
+          <div className="flex flex-col items-center gap-2 mb-8">
+            <img
+              src={logoIogar}
+              alt="Logo IOGAR"
+              className="rounded-lg shadow-lg mb-2"
+              style={{ maxWidth: '140px', height: 'auto' }}
+            />
+            <p className="text-xs text-gray-400 text-center">Food Cost System</p>
+          </div>
+
+          {/* Seleção de restaurante */}
+          <div className="mb-6">
+            <label className="block text-xs text-gray-400 mb-2">Restaurante:</label>
+            <select
+              value={selectedRestaurante?.id || ''}
+              onChange={(e) => {
+                const restaurante = restaurantes.find(r => r.id === parseInt(e.target.value));
+                setSelectedRestaurante(restaurante || null);
+                if (restaurante) {
+                  fetchReceitasByRestaurante(restaurante.id);
+                }
+              }}
+              className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+            >
+              <option value="">Selecione um restaurante</option>
+              {restaurantes.map(restaurante => (
+                <option key={restaurante.id} value={restaurante.id}>
+                  {restaurante.nome}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        
+
         {/* Menu de navegação */}
-        <nav className="space-y-2">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-            { id: 'insumos', label: 'Insumos', icon: Package },
-            { id: 'restaurantes', label: 'Restaurantes', icon: Building2 },
-            { id: 'receitas', label: 'Receitas', icon: Utensils, disabled: !selectedRestaurante },
-            { id: 'automacao', label: 'Automação', icon: Zap },
-            { id: 'relatorios', label: 'Relatórios', icon: TrendingUp },
-            { id: 'settings', label: 'Configurações', icon: Settings },
-          ].map((item) => {
+        <nav className="flex-1 px-6">
+          {menuItems.map((item) => {
             const Icon = item.icon;
-            const isDisabled = item.disabled;
+            const isActive = activeTab === item.id;
+            const isDisabled = ['receitas'].includes(item.id) && !selectedRestaurante;
+            
             return (
               <button
                 key={item.id}
                 onClick={() => !isDisabled && setActiveTab(item.id)}
                 disabled={isDisabled}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                  activeTab === item.id 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-all ${
+                  isActive 
                     ? 'bg-gradient-to-r from-green-500 to-pink-500 text-white shadow-lg' 
                     : isDisabled
                     ? 'text-gray-500 cursor-not-allowed'
@@ -229,14 +283,14 @@ const FoodCostSystem = () => {
 
         {/* Restaurante selecionado */}
         {selectedRestaurante && (
-          <div className="mt-6 p-3 bg-slate-800 rounded-lg">
+          <div className="mt-6 p-3 bg-slate-800 rounded-lg mx-6">
             <p className="text-xs text-gray-400">Restaurante Ativo:</p>
             <p className="text-sm font-medium text-white">{selectedRestaurante.nome}</p>
           </div>
         )}
 
         {/* Rodapé da sidebar */}
-        <div className="absolute bottom-6 left-6 right-6">
+        <div className="p-6">
           <div className="border-t border-slate-700 pt-4">
             <p className="text-xs text-gray-400 text-center">
               IOGAR © 2025
@@ -247,13 +301,12 @@ const FoodCostSystem = () => {
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ============================================================================
   // COMPONENTE DASHBOARD - TELA PRINCIPAL
   // ============================================================================
-
   const Dashboard = () => {
     // Cálculos das estatísticas em tempo real
     const totalInsumos = insumos.length;
@@ -272,86 +325,78 @@ const FoodCostSystem = () => {
               </p>
             </div>
             <div className="hidden md:flex items-center gap-4">
-              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
-                <Target className="w-8 h-8 text-white" />
+              <div className="bg-white/20 p-3 rounded-lg">
+                <Zap className="w-8 h-8 text-white" />
               </div>
             </div>
           </div>
         </div>
-        
-        {/* Grid com cards de estatísticas principais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {/* Cards de estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Card: Total de Insumos */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Insumos</p>
-                <p className="text-3xl font-bold text-gray-900">{totalInsumos}</p>
-                <p className="text-sm text-green-600 mt-1">Ativos no sistema</p>
+                <p className="text-2xl font-bold text-gray-900">{totalInsumos}</p>
+                <p className="text-sm text-green-600 mt-1">Insumos cadastrados</p>
               </div>
               <div className="bg-green-50 p-3 rounded-lg">
                 <Package className="w-8 h-8 text-green-600" />
               </div>
             </div>
           </div>
-          
+
           {/* Card: Total de Restaurantes */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Restaurantes</p>
-                <p className="text-3xl font-bold text-gray-900">{totalRestaurantes}</p>
-                <p className="text-sm text-blue-600 mt-1">Estabelecimentos</p>
+                <p className="text-2xl font-bold text-gray-900">{totalRestaurantes}</p>
+                <p className="text-sm text-blue-600 mt-1">Restaurantes ativos</p>
               </div>
               <div className="bg-blue-50 p-3 rounded-lg">
-                <Building2 className="w-8 h-8 text-blue-600" />
+                <Users className="w-8 h-8 text-blue-600" />
               </div>
             </div>
           </div>
-          
-          {/* Card: Total de Receitas */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+
+          {/* Card: Receitas Ativas */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Receitas</p>
-                <p className="text-3xl font-bold text-gray-900">{totalReceitas}</p>
-                <p className="text-sm text-pink-600 mt-1">Pratos cadastrados</p>
+                <p className="text-2xl font-bold text-gray-900">{totalReceitas}</p>
+                <p className="text-sm text-yellow-600 mt-1">Receitas criadas</p>
               </div>
-              <div className="bg-pink-50 p-3 rounded-lg">
-                <Utensils className="w-8 h-8 text-pink-600" />
+              <div className="bg-yellow-50 p-3 rounded-lg">
+                <ChefHat className="w-8 h-8 text-yellow-600" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Seção destacando a automação IOGAR - ATUALIZADA */}
+        {/* Seção de automação IOGAR - ATUALIZADA com novas funcionalidades */}
         <div className="bg-gradient-to-br from-green-50 to-pink-50 rounded-xl p-6 border border-green-100">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-6">
             <div className="bg-green-600 p-2 rounded-lg">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Automação IOGAR</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Sistema de Importação */}
             <div className="bg-white p-4 rounded-lg border border-green-100">
               <div className="flex items-center gap-2 mb-2">
                 <Upload className="w-5 h-5 text-green-600" />
-                <h4 className="font-medium text-gray-900">Importação TOTVS Chef Web</h4>
+                <h4 className="font-medium text-gray-900">Sistema de Importação</h4>
               </div>
               <p className="text-sm text-gray-600">
-                Sincronização automática de dados direto do TOTVS Chef Web
+                Importação de arquivos CSV/SQL
               </p>
             </div>
-            <div className="bg-white p-4 rounded-lg border border-pink-100">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="w-5 h-5 text-pink-600" />
-                <h4 className="font-medium text-gray-900">Importação CSV/SQL</h4>
-              </div>
-              <p className="text-sm text-gray-600">
-                Importação de arquivos CSV e SQL de outros sistemas
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-green-100">
+
+            {/* Integração TOTVS Chef Web */}
+            <div className="bg-white p-4 rounded-lg border border-blue-100">
               <div className="flex items-center gap-2 mb-2">
                 <LinkIcon className="w-5 h-5 text-blue-600" />
                 <h4 className="font-medium text-gray-900">Integração TOTVS Chef Web</h4>
@@ -360,70 +405,122 @@ const FoodCostSystem = () => {
                 Conectado ao TOTVS Chef Web para sincronização completa
               </p>
             </div>
+
+            {/* Análise com IA */}
+            <div className="bg-white p-4 rounded-lg border border-purple-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="w-5 h-5 text-purple-600" />
+                <h4 className="font-medium text-gray-900">Análise com IA</h4>
+              </div>
+              <p className="text-sm text-gray-600">
+                Sugestões inteligentes de precificação e otimização de custos
+              </p>
+            </div>
+
+            {/* Monitoramento em Tempo Real */}
+            <div className="bg-white p-4 rounded-lg border border-orange-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Monitor className="w-5 h-5 text-orange-600" />
+                <h4 className="font-medium text-gray-900">Monitoramento em Tempo Real</h4>
+              </div>
+              <p className="text-sm text-gray-600">
+                Logs e alertas automáticos do sistema
+              </p>
+            </div>
+
+            {/* Power BI Integration */}
+            <div className="bg-white p-4 rounded-lg border border-yellow-100">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="w-5 h-5 text-yellow-600" />
+                <h4 className="font-medium text-gray-900">Power BI Integration</h4>
+              </div>
+              <p className="text-sm text-gray-600">
+                Exportação automática para dashboards
+              </p>
+            </div>
+
+            {/* Controle de Usuários */}
+            <div className="bg-white p-4 rounded-lg border border-pink-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="w-5 h-5 text-pink-600" />
+                <h4 className="font-medium text-gray-900">Controle de Usuários</h4>
+              </div>
+              <p className="text-sm text-gray-600">
+                Autenticação JWT e permissões
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Seção com listas dos últimos itens cadastrados */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Lista dos últimos insumos */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Últimos Insumos</h3>
-              <button 
-                onClick={() => setActiveTab('insumos')}
-                className="text-sm text-green-600 hover:text-green-700 font-medium"
-              >
-                Ver todos
-              </button>
-            </div>
-            <div className="space-y-3">
-              {insumos.slice(0, 5).map((insumo) => (
-                <div key={insumo.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div>
-                    <p className="font-medium text-gray-900">{insumo.nome}</p>
-                    <p className="text-sm text-gray-500">{insumo.grupo} • {insumo.codigo}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">R$ {insumo.preco_compra.toFixed(2)}</p>
-                    <p className="text-sm text-gray-500">{insumo.unidade}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Seções de últimos cadastros */}
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  {/* Últimos Insumos Cadastrados */}
+  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-lg font-semibold text-gray-900">Últimos Insumos</h3>
+      <Package className="w-5 h-5 text-green-600" />
+    </div>
+    <div className="space-y-3">
+      {insumos.slice(-3).map((insumo) => (
+        <div key={insumo.id} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-gray-900">{insumo.nome}</p>
+            <p className="text-xs text-gray-500">{insumo.categoria}</p>
           </div>
-          
-          {/* Lista dos últimos restaurantes */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <span className="text-sm font-medium text-green-600">
+            R$ {insumo.preco_compra.toFixed(2)}
+          </span>
+        </div>
+      ))}
+      {insumos.length === 0 && (
+        <p className="text-sm text-gray-500 text-center py-4">Nenhum insumo cadastrado</p>
+      )}
+    </div>
+  </div>
+
+  {/* Últimas Receitas Cadastradas */}
+  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-lg font-semibold text-gray-900">Últimas Receitas</h3>
+      <ChefHat className="w-5 h-5 text-blue-600" />
+    </div>
+    <div className="space-y-3">
+      {receitas.slice(-3).map((receita) => (
+        <div key={receita.id} className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-gray-900">{receita.nome}</p>
+            <p className="text-xs text-gray-500">{receita.categoria}</p>
+          </div>
+          <span className="text-sm font-medium text-blue-600">
+            {receita.porcoes} porções
+          </span>
+        </div>
+      ))}
+      {receitas.length === 0 && (
+        <p className="text-sm text-gray-500 text-center py-4">Nenhuma receita cadastrada</p>
+      )}
+    </div>
+  </div>
+
+          {/* Últimas Empresas Cadastradas */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Restaurantes Ativos</h3>
-              <button 
-                onClick={() => setActiveTab('restaurantes')}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Ver todos
-              </button>
+              <h3 className="text-lg font-semibold text-gray-900">Últimas Empresas</h3>
+              <Users className="w-5 h-5 text-purple-600" />
             </div>
             <div className="space-y-3">
-              {restaurantes.filter(r => r.ativo).slice(0, 5).map((restaurante) => (
-                <div 
-                  key={restaurante.id} 
-                  className="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => {
-                    setSelectedRestaurante(restaurante);
-                    fetchReceitasByRestaurante(restaurante.id);
-                  }}
-                >
+              {restaurantes.slice(-3).map((restaurante) => (
+                <div key={restaurante.id} className="flex items-center justify-between p-2 bg-purple-50 rounded-lg">
                   <div>
-                    <p className="font-medium text-gray-900">{restaurante.nome}</p>
-                    <p className="text-sm text-gray-500">{restaurante.descricao || 'Sem descrição'}</p>
+                    <p className="text-sm font-medium text-gray-900">{restaurante.nome}</p>
+                    <p className="text-xs text-gray-500">{restaurante.endereco || 'Sem endereço'}</p>
                   </div>
-                  <div className="text-right">
-                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                      Ativo
-                    </span>
-                  </div>
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 </div>
               ))}
+              {restaurantes.length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">Nenhuma empresa cadastrada</p>
+              )}
             </div>
           </div>
         </div>
@@ -432,119 +529,272 @@ const FoodCostSystem = () => {
   };
 
   // ============================================================================
-  // COMPONENTE GESTÃO DE INSUMOS - ATUALIZADO
+  // COMPONENTE GESTÃO DE INSUMOS
   // ============================================================================
-
   const Insumos = () => {
-    // Filtro de busca em tempo real
-    const filteredInsumos = insumos.filter(insumo =>
+    // Filtro dos insumos baseado na busca
+    const insumosFiltrados = insumos.filter(insumo =>
       insumo.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insumo.grupo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insumo.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+      insumo.categoria?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    // Função para salvar insumo (criar ou atualizar)
+    const handleSaveInsumo = async () => {
+      try {
+        setLoading(true);
+        const url = editingInsumo 
+          ? `${API_BASE}/insumos/${editingInsumo.id}` 
+          : `${API_BASE}/insumos/`;
+        
+        const method = editingInsumo ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(novoInsumo)
+        });
+
+        if (response.ok) {
+          await fetchInsumos();
+          setShowInsumoForm(false);
+          setEditingInsumo(null);
+          setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '' });
+        }
+      } catch (error) {
+        console.error('Erro ao salvar insumo:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Função para deletar insumo
+    const handleDeleteInsumo = async (id: number) => {
+      if (!confirm('Tem certeza que deseja excluir este insumo?')) return;
+      
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_BASE}/insumos/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          await fetchInsumos();
+        }
+      } catch (error) {
+        console.error('Erro ao deletar insumo:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Função para editar insumo
+    const handleEditInsumo = (insumo: Insumo) => {
+      setEditingInsumo(insumo);
+      setNovoInsumo({
+        nome: insumo.nome,
+        unidade: insumo.unidade,
+        preco_compra: insumo.preco_compra,
+        fator: insumo.fator,
+        categoria: insumo.categoria || ''
+      });
+      setShowInsumoForm(true);
+    };
 
     return (
       <div className="space-y-6">
-        {/* Header da página de insumos */}
-        <div className="flex justify-between items-center">
+        {/* Header da seção de insumos */}
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">Gestão de Insumos</h2>
-            <p className="text-gray-600 mt-1">Controle completo dos ingredientes e matérias-primas</p>
+            <h2 className="text-2xl font-bold text-gray-900">Gestão de Insumos</h2>
+            <p className="text-gray-600">Controle total de ingredientes e custos</p>
           </div>
-          <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all shadow-lg">
-            <Plus className="w-4 h-4" />
+          <button
+            onClick={() => setShowInsumoForm(true)}
+            className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all"
+          >
+            <Plus className="w-5 h-5" />
             Novo Insumo
           </button>
         </div>
 
-        {/* Barra de pesquisa */}
+        {/* Barra de busca */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Buscar insumos por nome, grupo ou código..."
+            placeholder="Buscar insumos..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white shadow-sm"
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
         </div>
 
-        {/* Tabela com todos os insumos - ATUALIZADA */}
+        {/* Tabela de insumos */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              {/* Cabeçalho da tabela */}
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Código</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nome</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Grupo</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Unidade</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Preço Compra</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Comparativo de Preços</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Nome</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Categoria</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Unidade</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Preço</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Fator</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Quantidade</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Comparativo de Preços</th>
                 </tr>
               </thead>
-              {/* Corpo da tabela */}
-              <tbody className="bg-white divide-y divide-gray-100">
-                {loading ? (
-                  // Estado de carregamento
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
-                        <span className="ml-2">Carregando...</span>
+              <tbody className="divide-y divide-gray-100">
+                {insumosFiltrados.map((insumo) => (
+                  <tr key={insumo.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{insumo.nome}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{insumo.categoria || 'Sem categoria'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-green-600">
+                      R$ {insumo.preco_compra.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{insumo.fator}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{insumo.quantidade ?? 0}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Fornecedor A:</span>
+                          <span className="text-xs text-gray-400">Em breve</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">Fornecedor B:</span>
+                          <span className="text-xs text-gray-400">Em breve</span>
+                        </div>
+                        <button className="w-full mt-2 py-1 px-2 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-colors">
+                          Ver Comparativo
+                        </button>
                       </div>
                     </td>
                   </tr>
-                ) : filteredInsumos.length === 0 ? (
-                  // Estado vazio
-                  <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                      <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                      <p>Nenhum insumo encontrado</p>
-                    </td>
-                  </tr>
-                ) : (
-                  // Lista de insumos
-                  filteredInsumos.map((insumo, index) => (
-                    <tr key={insumo.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono font-medium text-gray-900 bg-gray-100 px-2 py-1 rounded">
-                          {insumo.codigo}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {insumo.nome}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                          {insumo.grupo}
-                        </span>
-                        {insumo.subgrupo && (
-                          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium ml-1">
-                            {insumo.subgrupo}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {insumo.quantidade} {insumo.unidade}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        R$ {insumo.preco_compra.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium">
-                          <BarChart3 className="w-3 h-3" />
-                          Em breve
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
+
+        {/* Modal de formulário de insumo */}
+        {showInsumoForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {editingInsumo ? 'Editar Insumo' : 'Novo Insumo'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowInsumoForm(false);
+                    setEditingInsumo(null);
+                    setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '' });
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                  <input
+                    type="text"
+                    value={novoInsumo.nome}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, nome: e.target.value})}
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="Ex: Farinha de trigo"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                  <input
+                    type="text"
+                    value={novoInsumo.categoria}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, categoria: e.target.value})}
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="Ex: Grãos e Cereais"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Unidade</label>
+                    <select
+                      value={novoInsumo.unidade}
+                      onChange={(e) => setNovoInsumo({...novoInsumo, unidade: e.target.value})}
+                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="kg">Quilograma (kg)</option>
+                      <option value="g">Grama (g)</option>
+                      <option value="l">Litro (l)</option>
+                      <option value="ml">Mililitro (ml)</option>
+                      <option value="un">Unidade (un)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Fator</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={novoInsumo.fator}
+                      onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value)})}
+                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={novoInsumo.quantidade}
+                      onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseFloat(e.target.value)})}
+                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Preço de Compra</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={novoInsumo.preco_compra}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, preco_compra: parseFloat(e.target.value)})}
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowInsumoForm(false);
+                    setEditingInsumo(null);
+                    setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '' });
+                  }}
+                  className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveInsumo}
+                  disabled={loading}
+                  className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50"
+                >
+                  {loading ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -552,18 +802,17 @@ const FoodCostSystem = () => {
   // ============================================================================
   // COMPONENTE GESTÃO DE RESTAURANTES
   // ============================================================================
-
   const Restaurantes = () => {
     return (
       <div className="space-y-6">
-        {/* Header da página de restaurantes */}
-        <div className="flex justify-between items-center">
+        {/* Header da seção */}
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">Gestão de Restaurantes</h2>
-            <p className="text-gray-600 mt-1">Controle dos estabelecimentos e suas receitas</p>
+            <h2 className="text-2xl font-bold text-gray-900">Gestão de Restaurantes</h2>
+            <p className="text-gray-600">Configure as unidades da sua rede</p>
           </div>
-          <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all shadow-lg">
-            <Plus className="w-4 h-4" />
+          <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all">
+            <Plus className="w-5 h-5" />
             Novo Restaurante
           </button>
         </div>
@@ -572,11 +821,11 @@ const FoodCostSystem = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {restaurantes.map((restaurante) => (
             <div 
-              key={restaurante.id}
-              className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${
-                selectedRestaurante?.id === restaurante.id
-                  ? 'border-green-500 ring-2 ring-green-200'
-                  : 'border-gray-100'
+              key={restaurante.id} 
+              className={`bg-white p-6 rounded-xl shadow-sm border-2 transition-all cursor-pointer ${
+                selectedRestaurante?.id === restaurante.id 
+                  ? 'border-green-500 bg-green-50' 
+                  : 'border-gray-100 hover:border-green-200'
               }`}
               onClick={() => {
                 setSelectedRestaurante(restaurante);
@@ -585,44 +834,42 @@ const FoodCostSystem = () => {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="bg-blue-50 p-3 rounded-lg">
-                  <Building2 className="w-6 h-6 text-blue-600" />
+                  <Users className="w-6 h-6 text-blue-600" />
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  restaurante.ativo 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {restaurante.ativo ? 'Ativo' : 'Inativo'}
-                </span>
+                {selectedRestaurante?.id === restaurante.id && (
+                  <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs">
+                    Ativo
+                  </div>
+                )}
               </div>
               
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{restaurante.nome}</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                {restaurante.descricao || 'Sem descrição disponível'}
-              </p>
+              <h3 className="font-semibold text-gray-900 mb-2">{restaurante.nome}</h3>
+              <p className="text-sm text-gray-600 mb-3">{restaurante.endereco || 'Endereço não informado'}</p>
               
-              <div className="flex items-center justify-between">
-                <button className="text-green-600 hover:text-green-800 font-medium text-sm transition-colors">
-                  Ver Receitas
-                </button>
-                <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                  <Settings className="w-4 h-4" />
-                </button>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>Status: Ativo</span>
+                </div>
+                {restaurante.telefone && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>{restaurante.telefone}</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Mensagem se nenhum restaurante estiver cadastrado */}
-        {restaurantes.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 mb-6">Comece criando seu primeiro restaurante</p>
-            <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg">
-              Criar Primeiro Restaurante
-            </button>
+        {/* Card para adicionar novo restaurante */}
+        <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-green-300 transition-colors cursor-pointer">
+          <div className="bg-gray-100 p-4 rounded-full w-fit mx-auto mb-4">
+            <Plus className="w-8 h-8 text-gray-400" />
           </div>
-        )}
+          <h3 className="font-medium text-gray-900 mb-2">Adicionar Novo Restaurante</h3>
+          <p className="text-gray-500 text-sm">Clique para cadastrar uma nova unidade</p>
+        </div>
       </div>
     );
   };
@@ -630,25 +877,69 @@ const FoodCostSystem = () => {
   // ============================================================================
   // COMPONENTE GESTÃO DE RECEITAS COM CALCULADORA
   // ============================================================================
-
   const Receitas = () => {
-    const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
+    // Função para criar nova receita
+    const handleCreateReceita = async () => {
+      if (!selectedRestaurante) {
+        alert('Selecione um restaurante primeiro');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const receitaData = {
+          ...novaReceita,
+          restaurante_id: selectedRestaurante.id,
+          insumos: receitaInsumos
+        };
+
+        const response = await fetch(`${API_BASE}/receitas/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(receitaData)
+        });
+
+        if (response.ok) {
+          await fetchReceitasByRestaurante(selectedRestaurante.id);
+          setShowReceitaForm(false);
+          setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+          setReceitaInsumos([]);
+        }
+      } catch (error) {
+        console.error('Erro ao criar receita:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Função para adicionar insumo à receita
+    const addInsumoToReceita = () => {
+      setReceitaInsumos([...receitaInsumos, { insumo_id: 0, quantidade: 0 }]);
+    };
+
+    // Função para remover insumo da receita
+    const removeInsumoFromReceita = (index: number) => {
+      setReceitaInsumos(receitaInsumos.filter((_, i) => i !== index));
+    };
+
+    // Função para atualizar insumo na receita
+    const updateReceitaInsumo = (index: number, field: keyof ReceitaInsumo, value: any) => {
+      const updated = [...receitaInsumos];
+      updated[index] = { ...updated[index], [field]: value };
+      setReceitaInsumos(updated);
+    };
 
     if (!selectedRestaurante) {
       return (
         <div className="text-center py-20">
           <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
-            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+              <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+            </div>
             <h3 className="text-xl font-semibold text-gray-600 mb-2">Selecione um Restaurante</h3>
-            <p className="text-gray-500 mb-6">
-              Para visualizar as receitas, primeiro selecione um restaurante na seção "Restaurantes"
+            <p className="text-gray-500">
+              Para gerenciar receitas, primeiro selecione um restaurante na barra lateral.
             </p>
-            <button 
-              onClick={() => setActiveTab('restaurantes')}
-              className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg"
-            >
-              Ir para Restaurantes
-            </button>
           </div>
         </div>
       );
@@ -656,170 +947,301 @@ const FoodCostSystem = () => {
 
     return (
       <div className="space-y-6">
-        {/* Header da página de receitas */}
-        <div className="flex justify-between items-center">
+        {/* Header da seção */}
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">Gestão de Receitas</h2>
-            <p className="text-gray-600 mt-1">
-              Receitas do restaurante: <span className="font-medium text-green-600">{selectedRestaurante.nome}</span>
-            </p>
+            <h2 className="text-2xl font-bold text-gray-900">Receitas - {selectedRestaurante.nome}</h2>
+            <p className="text-gray-600">Crie e gerencie suas receitas com cálculo automático de preços</p>
           </div>
-          <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all shadow-lg">
-            <Plus className="w-4 h-4" />
+          <button
+            onClick={() => setShowReceitaForm(true)}
+            className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all"
+          >
+            <Plus className="w-5 h-5" />
             Nova Receita
           </button>
         </div>
 
-        {/* Layout em duas colunas: Lista + Calculadora */}
+        {/* Lista de receitas */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Coluna 1: Lista de Receitas */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50">
-              <h3 className="text-lg font-semibold text-gray-900">Receitas Cadastradas</h3>
-              <p className="text-sm text-gray-600 mt-1">Clique em uma receita para ver preços calculados</p>
-            </div>
-            <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-              {receitas.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Utensils className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500">Nenhuma receita cadastrada para este restaurante</p>
-                </div>
-              ) : (
-                receitas.map((receita) => (
+          {/* Coluna esquerda: Lista de receitas */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Suas Receitas</h3>
+            
+            {receitas.length === 0 ? (
+              <div className="bg-white p-8 rounded-xl border border-gray-100 text-center">
+                <ChefHat className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">Nenhuma receita cadastrada ainda</p>
+                <p className="text-sm text-gray-400">Clique em "Nova Receita" para começar</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {receitas.map((receita) => (
                   <div
                     key={receita.id}
                     onClick={() => setSelectedReceita(receita)}
-                    className={`p-4 cursor-pointer hover:bg-gray-50 transition-all ${
+                    className={`bg-white p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       selectedReceita?.id === receita.id 
-                        ? 'bg-gradient-to-r from-green-50 to-pink-50 border-l-4 border-l-green-500' 
-                        : ''
+                        ? 'border-green-500 bg-green-50' 
+                        : 'border-gray-100 hover:border-green-200'
                     }`}
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{receita.nome}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                            {receita.grupo}
-                          </span>
-                          <span className="text-xs text-gray-500 font-mono">{receita.codigo}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-gray-900">CMV: R$ {receita.cmv.toFixed(2)}</p>
-                        {receita.preco_venda && (
-                          <p className="text-sm text-green-600 font-medium">Venda: R$ {receita.preco_venda.toFixed(2)}</p>
-                        )}
-                      </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-gray-900">{receita.nome}</h4>
+                      <span className="text-sm text-gray-500">{receita.porcoes} porções</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{receita.categoria}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">
+                        Custo: R$ {receita.custo_total?.toFixed(2) || '0.00'}
+                      </span>
+                      <Eye className="w-4 h-4 text-gray-400" />
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Coluna 2: Preços Calculados pelo Backend */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-pink-50">
-              <div className="flex items-center gap-3">
-                <div className="bg-green-500 p-2 rounded-lg">
-                  <Calculator className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Preços IOGAR</h3>
-                  <p className="text-sm text-gray-600">Calculados automaticamente pelo sistema</p>
-                </div>
-              </div>
+          {/* Coluna direita: Calculadora de preços */}
+          <div className="bg-white rounded-xl p-6 border border-gray-100">
+            <div className="flex items-center gap-3 mb-6">
+              <Calculator className="w-6 h-6 text-green-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Calculadora de Preços</h3>
             </div>
-            <div className="p-6">
-              {selectedReceita ? (
-                // Exibe os preços calculados pelo backend
-                <div className="space-y-6">
-                  {/* Nome da receita selecionada */}
-                  <div className="text-center">
-                    <h4 className="text-xl font-bold text-gray-900">{selectedReceita.nome}</h4>
-                    <p className="text-gray-500 font-mono">{selectedReceita.codigo}</p>
-                  </div>
 
-                  {/* Exibição do CMV atual */}
-                  <div className="bg-gradient-to-r from-gray-50 to-green-50 p-4 rounded-lg border border-green-100">
-                    <p className="text-sm text-gray-600 text-center">Custo da Mercadoria Vendida (CMV)</p>
-                    <p className="text-3xl font-bold text-gray-900 text-center">R$ {selectedReceita.cmv.toFixed(2)}</p>
-                  </div>
-
-                  {/* Preços calculados pelo backend */}
-                  <div className="space-y-4">
-                    <h5 className="font-semibold text-gray-900 text-center">Preços de Venda (do Backend):</h5>
-                    
-                    <div className="space-y-3">
-                      {/* Margem 20% */}
-                      <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
-                        <div>
-                          <span className="font-semibold text-green-900">Margem 20%</span>
-                          <p className="text-xs text-green-600">Preço conservador</p>
-                        </div>
-                        <span className="text-xl font-bold text-green-700">
-                          R$ {selectedReceita.cmv_20_porcento ? selectedReceita.cmv_20_porcento.toFixed(2) : 'N/A'}
-                        </span>
-                      </div>
-                      
-                      {/* Margem 25% */}
-                      <div className="flex justify-between items-center p-4 bg-gradient-to-r from-pink-50 to-pink-100 rounded-lg border border-pink-200">
-                        <div>
-                          <span className="font-semibold text-pink-900">Margem 25%</span>
-                          <p className="text-xs text-pink-600">Preço equilibrado</p>
-                        </div>
-                        <span className="text-xl font-bold text-pink-700">
-                          R$ {selectedReceita.cmv_25_porcento ? selectedReceita.cmv_25_porcento.toFixed(2) : 'N/A'}
-                        </span>
-                      </div>
-                      
-                      {/* Margem 30% */}
-                      <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                        <div>
-                          <span className="font-semibold text-purple-900">Margem 30%</span>
-                          <p className="text-xs text-purple-600">Preço premium</p>
-                        </div>
-                        <span className="text-xl font-bold text-purple-700">
-                          R$ {selectedReceita.cmv_30_porcento ? selectedReceita.cmv_30_porcento.toFixed(2) : 'N/A'}
-                        </span>
-                      </div>
+            {selectedReceita ? (
+              <div className="space-y-6">
+                {/* Informações da receita */}
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">{selectedReceita.nome}</h4>
+                  <p className="text-sm text-gray-600 mb-4">{selectedReceita.descricao}</p>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Porções</p>
+                      <p className="font-medium text-gray-900">{selectedReceita.porcoes}</p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Custo Total</p>
+                      <p className="font-medium text-green-600">R$ {selectedReceita.custo_total?.toFixed(2) || '0.00'}</p>
                     </div>
                   </div>
+                </div>
 
-                  {/* Botão para aplicar preço */}
-                  <button className="w-full bg-gradient-to-r from-green-500 to-pink-500 text-white py-3 px-4 rounded-lg hover:from-green-600 hover:to-pink-600 transition-all font-medium shadow-lg">
-                    Aplicar Preço de Venda
+                {/* Preços sugeridos - vindos do backend */}
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-3">Preços Sugeridos</h5>
+                  <p className="text-xs text-gray-500 mb-4">Calculados automaticamente pelo sistema</p>
+                  
+                  <div className="space-y-3">
+                    {/* CMV 20% */}
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-green-800">CMV 20%</span>
+                        <span className="text-lg font-bold text-green-600">
+                          R$ {selectedReceita.cmv_20_porcento?.toFixed(2) || 'N/A'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-green-600">Margem conservadora</p>
+                    </div>
+
+                    {/* CMV 25% */}
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-blue-800">CMV 25%</span>
+                        <span className="text-lg font-bold text-blue-600">
+                          R$ {selectedReceita.cmv_25_porcento?.toFixed(2) || 'N/A'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-600">Margem equilibrada</p>
+                    </div>
+
+                    {/* CMV 30% */}
+                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-purple-800">CMV 30%</span>
+                        <span className="text-lg font-bold text-purple-600">
+                          R$ {selectedReceita.cmv_30_porcento?.toFixed(2) || 'N/A'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-purple-600">Margem agressiva</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ações */}
+                <div className="flex gap-3">
+                  <button className="flex-1 py-2 px-4 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Editar Receita
+                  </button>
+                  <button className="flex-1 py-2 px-4 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all">
+                    Ver Detalhes
                   </button>
                 </div>
-              ) : (
-                // Estado inicial quando nenhuma receita está selecionada
-                <div className="text-center py-8">
-                  <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Selecione uma receita para ver os preços calculados</p>
-                  <p className="text-sm text-gray-400 mt-2">
-                    Os preços são calculados automaticamente pelo backend IOGAR
-                  </p>
-                </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">Selecione uma receita para ver a calculadora</p>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Modal de nova receita */}
+        {showReceitaForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">Nova Receita</h3>
+                <button
+                  onClick={() => {
+                    setShowReceitaForm(false);
+                    setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+                    setReceitaInsumos([]);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Informações básicas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Nome da Receita</label>
+                    <input
+                      type="text"
+                      value={novaReceita.nome}
+                      onChange={(e) => setNovaReceita({...novaReceita, nome: e.target.value})}
+                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                      placeholder="Ex: Hambúrguer Artesanal"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                    <input
+                      type="text"
+                      value={novaReceita.categoria}
+                      onChange={(e) => setNovaReceita({...novaReceita, categoria: e.target.value})}
+                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                      placeholder="Ex: Lanches"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
+                  <textarea
+                    value={novaReceita.descricao}
+                    onChange={(e) => setNovaReceita({...novaReceita, descricao: e.target.value})}
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                    rows={3}
+                    placeholder="Descreva a receita..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de Porções</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={novaReceita.porcoes}
+                    onChange={(e) => setNovaReceita({...novaReceita, porcoes: parseInt(e.target.value)})}
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+
+                {/* Insumos */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Insumos</label>
+                    <button
+                      type="button"
+                      onClick={addInsumoToReceita}
+                      className="text-green-600 hover:text-green-700 flex items-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Adicionar Insumo
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {receitaInsumos.map((receitaInsumo, index) => (
+                      <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <select
+                          value={receitaInsumo.insumo_id}
+                          onChange={(e) => updateReceitaInsumo(index, 'insumo_id', parseInt(e.target.value))}
+                          className="flex-1 p-2 border border-gray-200 rounded focus:ring-2 focus:ring-green-500"
+                        >
+                          <option value={0}>Selecione um insumo</option>
+                          {insumos.map(insumo => (
+                            <option key={insumo.id} value={insumo.id}>{insumo.nome}</option>
+                          ))}
+                        </select>
+
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={receitaInsumo.quantidade}
+                          onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
+                          className="w-24 p-2 border border-gray-200 rounded focus:ring-2 focus:ring-green-500"
+                          placeholder="Qtd"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => removeInsumoFromReceita(index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowReceitaForm(false);
+                    setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+                    setReceitaInsumos([]);
+                  }}
+                  className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateReceita}
+                  disabled={loading}
+                  className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50"
+                >
+                  {loading ? 'Criando...' : 'Criar Receita'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
 
   // ============================================================================
-  // RENDERIZAÇÃO PRINCIPAL DO SISTEMA
+  // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
   // ============================================================================
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sidebar fixa na lateral esquerda */}
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar de navegação */}
       <Sidebar />
       
-      {/* Conteúdo principal com margem para não sobrepor a sidebar */}
-      <main className="ml-64 p-8">
+      {/* Conteúdo principal */}
+      <main className="flex-1 p-8 overflow-auto">
         {/* Renderização condicional baseada na aba ativa */}
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'insumos' && <Insumos />}
@@ -842,15 +1264,124 @@ const FoodCostSystem = () => {
             
             {/* Grid com funcionalidades de automação */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Card: Análise de Performance */}
+              {/* Sistema de Importação */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-green-50 p-3 rounded-lg w-fit mb-4">
+                  <Upload className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Sistema de Importação</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Importação de arquivos CSV/SQL
+                </p>
+                <button className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
+                  Configurar
+                </button>
+              </div>
+
+              {/* Integração TOTVS Chef Web */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-blue-50 p-3 rounded-lg w-fit mb-4">
+                  <LinkIcon className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Integração TOTVS Chef Web</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Conectado ao TOTVS Chef Web para sincronização completa
+                </p>
+                <button className="w-full py-2 px-4 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                  Conectar
+                </button>
+              </div>
+
+              {/* Análise com IA */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <div className="bg-purple-50 p-3 rounded-lg w-fit mb-4">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                  <Brain className="w-6 h-6 text-purple-600" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Análise de Performance</h3>
-                <p className="text-gray-600 text-sm">
-                  Relatórios automáticos de performance e sugestões de melhorias
+                <h3 className="font-semibold text-gray-900 mb-2">Análise com IA</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Sugestões inteligentes de precificação e otimização de custos
                 </p>
+                <button className="w-full py-2 px-4 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors">
+                  Ativar IA
+                </button>
+              </div>
+
+              {/* Monitoramento em Tempo Real */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-orange-50 p-3 rounded-lg w-fit mb-4">
+                  <Monitor className="w-6 h-6 text-orange-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Monitoramento em Tempo Real</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Logs e alertas automáticos do sistema
+                </p>
+                <button className="w-full py-2 px-4 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors">
+                  Monitorar
+                </button>
+              </div>
+
+              {/* Power BI Integration */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-yellow-50 p-3 rounded-lg w-fit mb-4">
+                  <BarChart3 className="w-6 h-6 text-yellow-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Power BI Integration</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Exportação automática para dashboards
+                </p>
+                <button className="w-full py-2 px-4 bg-yellow-50 text-yellow-600 rounded-lg hover:bg-yellow-100 transition-colors">
+                  Integrar
+                </button>
+              </div>
+
+              {/* Controle de Usuários */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-pink-50 p-3 rounded-lg w-fit mb-4">
+                  <Shield className="w-6 h-6 text-pink-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Controle de Usuários</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Autenticação JWT e permissões
+                </p>
+                <button className="w-full py-2 px-4 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors">
+                  Gerenciar
+                </button>
+              </div>
+            </div>
+
+            {/* Seção de estatísticas da automação */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-green-100 p-2 rounded-lg">
+                    <Activity className="w-5 h-5 text-green-600" />
+                  </div>
+                  <h4 className="font-medium text-gray-900">Processos Automatizados</h4>
+                </div>
+                <p className="text-2xl font-bold text-green-600">6</p>
+                <p className="text-sm text-gray-500">Fluxos ativos</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <Database className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <h4 className="font-medium text-gray-900">Dados Sincronizados</h4>
+                </div>
+                <p className="text-2xl font-bold text-blue-600">98%</p>
+                <p className="text-sm text-gray-500">Taxa de sincronização</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-purple-100 p-2 rounded-lg">
+                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <h4 className="font-medium text-gray-900">Economia de Tempo</h4>
+                </div>
+                <p className="text-2xl font-bold text-purple-600">15h</p>
+                <p className="text-sm text-gray-500">Por semana</p>
               </div>
             </div>
           </div>
