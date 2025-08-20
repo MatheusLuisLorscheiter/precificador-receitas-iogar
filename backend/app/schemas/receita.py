@@ -137,8 +137,43 @@ class ReceitaInsumoResponse(BaseModel):
         from_attributes = True
 
 # ---------------------------------------------------------------------------------------------------
-# SCHEMAS para receitas base
+# SCHEMAS para restaurantes
 # ---------------------------------------------------------------------------------------------------
+
+class RestauranteBase(BaseModel):
+    """Schema base para restaurante"""
+    nome: str = Field(..., min_length=1, max_length=255, description="Nome do restaurante")
+    endereco: Optional[str] = Field(None, description="Endereço do restaurante")
+    telefone: Optional[str] = Field(None, description="Telefone do restaurante")
+    ativo: bool = Field(True, description="Se o restaurante está ativo")
+
+class RestauranteCreate(RestauranteBase):
+    """Schema para criação de restaurante"""
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "nome": "Restaurante IOGAR",
+                "endereco": "Rua das Flores, 123 - Centro",
+                "telefone": "(11) 99999-9999",
+                "ativo": True
+            }
+        }
+
+class RestauranteUpdate(BaseModel):
+    """Schema para atualização de restaurante"""
+    nome: Optional[str] = Field(None, min_length=1, max_length=255)
+    endereco: Optional[str] = None
+    telefone: Optional[str] = None
+    ativo: Optional[bool] = None
+
+class RestauranteResponse(RestauranteBase):
+    """Schema de resposta para restaurante"""
+    id: int = Field(..., description="ID único do restaurante")
+    created_at: Optional[datetime] = Field(None, description="Data de criação")
+    updated_at: Optional[datetime] = Field(None, description="Data da última atualização")
+
+    class Config:
+        from_attributes = True
 
 class RestauranteSimplificado(BaseModel):
     """Schema simplificado de restaurante para respostas"""
@@ -148,6 +183,10 @@ class RestauranteSimplificado(BaseModel):
 
     class Config:
         from_attributes = True
+
+# ---------------------------------------------------------------------------------------------------
+# SCHEMAS para receitas base
+# ---------------------------------------------------------------------------------------------------
 
 class ReceitaBase(BaseModel):
     """Schema base para receitas"""
@@ -273,12 +312,29 @@ class ReceitaListResponse(BaseModel):
     grupo: str
     subgrupo: str
     restaurante_id: Optional[int] = None
-    preco_venda_real: Optional[float] = None
-    cmv_real: Optional[float] = Field(None, description="Custo de produção em reais")
+    preco_compra: Optional[float] = Field(None, description="Preço de compra/custo de produção em reais")
+    cmv_20_porcento: Optional[float] = Field(None, description="CMV com 20% de lucro")
+    cmv_25_porcento: Optional[float] = Field(None, description="CMV com 25% de lucro") 
+    cmv_30_porcento: Optional[float] = Field(None, description="CMV com 30% de lucro")
     ativo: Optional[bool] = True
     
     class Config:
         from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "id": 6,
+                "codigo": "XBAC001",
+                "nome": "X-Bacon Artesanal",
+                "grupo": "Lanches",
+                "subgrupo": "Hambúrgueres",
+                "restaurante_id": 1,
+                "preco_compra": 6.97,
+                "cmv_20_porcento": 8.71,
+                "cmv_25_porcento": 9.29,
+                "cmv_30_porcento": 9.96,
+                "ativo": True
+            }
+        }
 
 # ---------------------------------------------------------------------------------------------------
 # SCHEMAS para cálculos - CORRIGIDOS COM PREÇOS SUGERIDOS CLAROS
@@ -312,12 +368,12 @@ class CalculoPrecosResponse(BaseModel):
     - custo_producao = quanto custa para fazer a receita
     - precos_sugeridos = quanto cobrar do cliente para ter lucro
     
-    Fórmula usada: Preço de venda = Custo ÷ (1 - Margem decimal)
+    Fórmula usada: Preço de venda = Custo ÷ Margem decimal
     
     Exemplo com custo de R$ 6,97:
-    - 20% lucro: R$ 6,97 ÷ (1 - 0,20) = R$ 6,97 ÷ 0,80 = R$ 8,71
-    - 25% lucro: R$ 6,97 ÷ (1 - 0,25) = R$ 6,97 ÷ 0,75 = R$ 9,29
-    - 30% lucro: R$ 6,97 ÷ (1 - 0,30) = R$ 6,97 ÷ 0,70 = R$ 9,96
+    - 20% lucro: R$ 6,97 ÷ 0,20 = R$ 34,85
+    - 25% lucro: R$ 6,97 ÷ 0,25 = R$ 27,88
+    - 30% lucro: R$ 6,97 ÷ 0,30 = R$ 23,23
     """
     receita_id: int = Field(..., description="ID da receita")
     custo_producao: float = Field(..., description="Custo para produzir a receita em reais")
@@ -329,9 +385,9 @@ class CalculoPrecosResponse(BaseModel):
                 "receita_id": 6,
                 "custo_producao": 6.97,
                 "precos_sugeridos": {
-                    "margem_20_porcento": 8.71,
-                    "margem_25_porcento": 9.29,
-                    "margem_30_porcento": 9.96
+                    "margem_20_porcento": 34.85,
+                    "margem_25_porcento": 27.88,
+                    "margem_30_porcento": 23.23
                 }
             }
         }

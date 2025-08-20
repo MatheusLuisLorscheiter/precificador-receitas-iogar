@@ -2,7 +2,7 @@
 #   CRUD RECEITAS - Operações de banco de dados para receitas
 #   Descrição: Este arquivo contém todas as operações de banco de dados para receitas,
 #   restaurantes e relacionamentos receita-insumo
-#   Data: 14/08/2025 | Atualizado 19/08/2025
+#   Data: 14/08/2025 | Atualizado 19/08/2025 e 20/08/2025
 #   Autor: Will
 #   ---------------------------------------------------------------------------------------------------
 
@@ -470,12 +470,12 @@ def calcular_precos_sugeridos(db: Session, receita_id: int) -> dict:
             }
         }
 
-    # Calcular preços com margem sobre preço de venda
-    # Fórmula: Preço = Custo ÷ (1 - Margem)
+    # Calcular preços com margem sobre custo
+    # Fórmula: Preço = Custo ÷ Margem decimal
     precos_sugeridos = {
-        "margem_20_porcento": round(custo_producao / (1 - 0.20), 2),  # Custo ÷ 0.80
-        "margem_25_porcento": round(custo_producao / (1 - 0.25), 2),  # Custo ÷ 0.75
-        "margem_30_porcento": round(custo_producao / (1 - 0.30), 2),  # Custo ÷ 0.70
+        "margem_20_porcento": round(custo_producao / 0.20, 2),  # Custo ÷ 0.20 = Custo × 5
+        "margem_25_porcento": round(custo_producao / 0.25, 2),  # Custo ÷ 0.25 = Custo × 4
+        "margem_30_porcento": round(custo_producao / 0.30, 2),  # Custo ÷ 0.30 = Custo × 3.33
     }
 
     return {
