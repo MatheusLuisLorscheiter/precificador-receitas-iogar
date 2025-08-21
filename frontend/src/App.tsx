@@ -6,7 +6,7 @@
  *           inteligente, cálculo de CMV e precificação automatizada.
  *           Interface moderna conectada ao backend FastAPI.
  * 
- * Data: 20 de Agosto de 2025
+ * Data: 20/08/2025 | Atuaçizado 21/08/2025
  * Autor: Will
  * Empresa: IOGAR - Inteligência Operacional para Restaurantes
  * ============================================================================
@@ -19,7 +19,7 @@
 import { apiService } from './api-service';
 
 import logoIogar from './image/iogar_logo.png';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
   Users, ChefHat, Utensils, Plus, Search, Edit2, Trash2, Save,
@@ -107,15 +107,15 @@ const FoodCostSystem: React.FC = () => {
   const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
   
   // Estados para formulário de insumo
-  const [novoInsumo, setNovoInsumo] = useState({
+  const [novoInsumo, setNovoInsumo] = useState(() => ({
     nome: '',
     unidade: '',
-    preco_compra: 0,  // ✅ Mantem o nome original do formulário
+    preco_compra: 0,
     fator: 1,
     categoria: '',
     quantidade: 0,
     codigo: ''
-  });
+  }));
   
   // Estados para formulário de receita
   const [novaReceita, setNovaReceita] = useState({
@@ -565,11 +565,299 @@ const FoodCostSystem: React.FC = () => {
       </div>
     );
   };
+  // Componente isolado para formulário de insumo
+  const FormularioInsumo = ({ editingInsumo, onClose, onSave, loading }) => {
+    const [formData, setFormData] = useState({
+      nome: editingInsumo?.nome || '',
+      unidade: editingInsumo?.unidade || '',
+      preco_compra: editingInsumo?.preco_compra_real || 0,
+      fator: editingInsumo?.fator || 1,
+      categoria: editingInsumo?.categoria || '',
+      quantidade: editingInsumo?.quantidade || 0,
+      codigo: editingInsumo?.codigo || ''
+    });
+
+    const handleChange = (field, value) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSubmit = () => {
+      // Usar o estado local do formulário
+      setNovoInsumo(formData);
+      onSave();
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl p-6 w-full max-w-md">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {editingInsumo ? 'Editar Insumo' : 'Novo Insumo'}
+            </h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nome *</label>
+              <input
+                type="text"
+                value={formData.nome}
+                onChange={(e) => handleChange('nome', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                placeholder="Ex: Farinha de trigo"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Código</label>
+              <input
+                type="text"
+                value={formData.codigo}
+                onChange={(e) => handleChange('codigo', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                placeholder="Ex: FAR001"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+              <input
+                type="text"
+                value={formData.categoria}
+                onChange={(e) => handleChange('categoria', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                placeholder="Ex: Grãos e Cereais"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Unidade *</label>
+                <select
+                  value={formData.unidade}
+                  onChange={(e) => handleChange('unidade', e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                >
+                  <option value="">Selecione</option>
+                  <option value="kg">Quilograma (kg)</option>
+                  <option value="g">Grama (g)</option>
+                  <option value="l">Litro (l)</option>
+                  <option value="ml">Mililitro (ml)</option>
+                  <option value="un">Unidade (un)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Fator</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.fator}
+                  onChange={(e) => handleChange('fator', parseFloat(e.target.value) || 1)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Preço de Compra (R$) *</label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.preco_compra}
+                onChange={(e) => handleChange('preco_compra', parseFloat(e.target.value) || 0)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button onClick={handleSubmit} disabled={loading} className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50">
+              {loading ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+    // Função estável para atualizar insumo sem re-render
+    const updateInsumoField = useCallback((field: string, value: any) => {
+      setNovoInsumo(prev => ({ ...prev, [field]: value }));
+    }, []);
+
+    // Componente isolado para formulário de receita
+  const FormularioReceita = ({ selectedRestaurante, editingReceita, onClose, onSave, loading, insumos }) => {
+    const [formData, setFormData] = useState({
+      nome: editingReceita?.nome || '',
+      descricao: editingReceita?.descricao || '',
+      categoria: editingReceita?.categoria || '',
+      porcoes: editingReceita?.porcoes || 1
+    });
+
+    const [receitaInsumos, setReceitaInsumos] = useState(editingReceita?.insumos || []);
+
+    const handleChange = (field, value) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const addInsumoToReceita = () => {
+      setReceitaInsumos([...receitaInsumos, { insumo_id: 0, quantidade: 0 }]);
+    };
+
+    const removeInsumoFromReceita = (index) => {
+      setReceitaInsumos(receitaInsumos.filter((_, i) => i !== index));
+    };
+
+    const updateReceitaInsumo = (index, field, value) => {
+      const updated = [...receitaInsumos];
+      updated[index] = { ...updated[index], [field]: value };
+      setReceitaInsumos(updated);
+    };
+
+    const handleSubmit = () => {
+      const receitaData = {
+        ...formData,
+        restaurante_id: selectedRestaurante.id,
+        insumos: receitaInsumos
+      };
+      onSave(receitaData);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Nova Receita</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            {/* Informações básicas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nome da Receita</label>
+                <input
+                  type="text"
+                  value={formData.nome}
+                  onChange={(e) => handleChange('nome', e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                  placeholder="Ex: Hambúrguer Artesanal"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                <input
+                  type="text"
+                  value={formData.categoria}
+                  onChange={(e) => handleChange('categoria', e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                  placeholder="Ex: Lanches"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
+              <textarea
+                value={formData.descricao}
+                onChange={(e) => handleChange('descricao', e.target.value)}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                rows={3}
+                placeholder="Descreva a receita..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Número de Porções</label>
+              <input
+                type="number"
+                min="1"
+                value={formData.porcoes}
+                onChange={(e) => handleChange('porcoes', parseInt(e.target.value))}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+              />
+            </div>
+
+            {/* Insumos */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-medium text-gray-700">Insumos</label>
+                <button
+                  type="button"
+                  onClick={addInsumoToReceita}
+                  className="text-green-600 hover:text-green-700 flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  Adicionar Insumo
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {receitaInsumos.map((receitaInsumo, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <select
+                      value={receitaInsumo.insumo_id}
+                      onChange={(e) => updateReceitaInsumo(index, 'insumo_id', parseInt(e.target.value))}
+                      className="flex-1 p-2 border border-gray-200 rounded focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                    >
+                      <option value={0}>Selecione um insumo</option>
+                      {insumos.map(insumo => (
+                        <option key={insumo.id} value={insumo.id}>{insumo.nome}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={receitaInsumo.quantidade}
+                      onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
+                      className="w-24 p-2 border border-gray-200 rounded focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                      placeholder="Qtd"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => removeInsumoFromReceita(index)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button onClick={handleSubmit} disabled={loading} className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50">
+              {loading ? 'Criando...' : 'Criar Receita'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // ============================================================================
   // COMPONENTE GESTÃO DE INSUMOS
   // ============================================================================
-  const Insumos = () => {
+  const Insumos = React.memo(() => {
     // Filtro dos insumos baseado na busca
     const insumosFiltrados = insumos.filter(insumo =>
       insumo.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -602,16 +890,8 @@ const FoodCostSystem: React.FC = () => {
 
         if (response.data) {
           await fetchInsumos();
-          setShowInsumoForm(false);
-          setEditingInsumo(null);
-          setNovoInsumo({ 
-            nome: '', 
-            unidade: '', 
-            preco_compra: 0, 
-            fator: 1, 
-            categoria: '',
-            quantidade: 0 
-          });
+          // SÓ LIMPAR DEPOIS DE SALVAR COM SUCESSO
+          limparFormularioInsumo();
         } else if (response.error) {
           console.error('Erro ao salvar insumo:', response.error);
           alert('Erro ao salvar insumo: ' + response.error);
@@ -622,6 +902,25 @@ const FoodCostSystem: React.FC = () => {
       } finally {
         setLoading(false);
       }
+    };
+
+    // Função para limpar o formulário
+    const limparFormularioInsumo = () => {
+      console.log('🧹 Limpando formulário...');
+      setShowInsumoForm(false);
+      setEditingInsumo(null);
+      // Limpar estado DEPOIS de fechar o modal
+      setTimeout(() => {
+        setNovoInsumo({ 
+          nome: '', 
+          unidade: '', 
+          preco_compra: 0, 
+          fator: 1, 
+          categoria: '', 
+          quantidade: 0, 
+          codigo: '' 
+        });
+      }, 100);
     };
 
     // Função para deletar insumo
@@ -738,128 +1037,22 @@ const FoodCostSystem: React.FC = () => {
             </table>
           </div>
         </div>
-
         {/* Modal de formulário de insumo */}
         {showInsumoForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-md">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {editingInsumo ? 'Editar Insumo' : 'Novo Insumo'}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowInsumoForm(false);
-                    setEditingInsumo(null);
-                    setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '' });
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
-                  <input
-                    type="text"
-                    value={novoInsumo.nome}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, nome: e.target.value})}
-                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                    placeholder="Ex: Farinha de trigo"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                  <input
-                    type="text"
-                    value={novoInsumo.categoria}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, categoria: e.target.value})}
-                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                    placeholder="Ex: Grãos e Cereais"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Unidade</label>
-                    <select
-                      value={novoInsumo.unidade}
-                      onChange={(e) => setNovoInsumo({...novoInsumo, unidade: e.target.value})}
-                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                    >
-                      <option value="">Selecione</option>
-                      <option value="kg">Quilograma (kg)</option>
-                      <option value="g">Grama (g)</option>
-                      <option value="l">Litro (l)</option>
-                      <option value="ml">Mililitro (ml)</option>
-                      <option value="un">Unidade (un)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Fator</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={novoInsumo.fator}
-                      onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value)})}
-                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-                </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={novoInsumo.quantidade}
-                      onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseFloat(e.target.value)})}
-                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Preço de Compra</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={novoInsumo.preco_compra}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, preco_compra: parseFloat(e.target.value)})}
-                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowInsumoForm(false);
-                    setEditingInsumo(null);
-                    setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '' });
-                  }}
-                  className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleSaveInsumo}
-                  disabled={loading}
-                  className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50"
-                >
-                  {loading ? 'Salvando...' : 'Salvar'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <FormularioInsumo 
+            editingInsumo={editingInsumo}
+            onClose={() => {
+              setShowInsumoForm(false);
+              setEditingInsumo(null);
+              setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '', quantidade: 0, codigo: '' });
+            }}
+            onSave={handleSaveInsumo}
+            loading={loading}
+          />
         )}
       </div>
     );
-  };
+  });
 
   // ============================================================================
   // COMPONENTE GESTÃO DE RESTAURANTES
@@ -941,20 +1134,9 @@ const FoodCostSystem: React.FC = () => {
   // ============================================================================
   const Receitas = () => {
     // Função para criar nova receita
-    const handleCreateReceita = async () => {
-      if (!selectedRestaurante) {
-        alert('Selecione um restaurante primeiro');
-        return;
-      }
-
+    const handleCreateReceita = async (receitaData) => {
       try {
         setLoading(true);
-        const receitaData = {
-          ...novaReceita,
-          restaurante_id: selectedRestaurante.id,
-          insumos: receitaInsumos
-        };
-
         const response = await apiService.createReceita(receitaData);
 
         if (response.data) {
@@ -1156,142 +1338,18 @@ const FoodCostSystem: React.FC = () => {
 
         {/* Modal de nova receita */}
         {showReceitaForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Nova Receita</h3>
-                <button
-                  onClick={() => {
-                    setShowReceitaForm(false);
-                    setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
-                    setReceitaInsumos([]);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {/* Informações básicas */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nome da Receita</label>
-                    <input
-                      type="text"
-                      value={novaReceita.nome}
-                      onChange={(e) => setNovaReceita({...novaReceita, nome: e.target.value})}
-                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                      placeholder="Ex: Hambúrguer Artesanal"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                    <input
-                      type="text"
-                      value={novaReceita.categoria}
-                      onChange={(e) => setNovaReceita({...novaReceita, categoria: e.target.value})}
-                      className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                      placeholder="Ex: Lanches"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
-                  <textarea
-                    value={novaReceita.descricao}
-                    onChange={(e) => setNovaReceita({...novaReceita, descricao: e.target.value})}
-                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                    rows={3}
-                    placeholder="Descreva a receita..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de Porções</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={novaReceita.porcoes}
-                    onChange={(e) => setNovaReceita({...novaReceita, porcoes: parseInt(e.target.value)})}
-                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                {/* Insumos */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Insumos</label>
-                    <button
-                      type="button"
-                      onClick={addInsumoToReceita}
-                      className="text-green-600 hover:text-green-700 flex items-center gap-1"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Adicionar Insumo
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {receitaInsumos.map((receitaInsumo, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <select
-                          value={receitaInsumo.insumo_id}
-                          onChange={(e) => updateReceitaInsumo(index, 'insumo_id', parseInt(e.target.value))}
-                          className="flex-1 p-2 border border-gray-200 rounded focus:ring-2 focus:ring-green-500"
-                        >
-                          <option value={0}>Selecione um insumo</option>
-                          {insumos.map(insumo => (
-                            <option key={insumo.id} value={insumo.id}>{insumo.nome}</option>
-                          ))}
-                        </select>
-
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={receitaInsumo.quantidade}
-                          onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
-                          className="w-24 p-2 border border-gray-200 rounded focus:ring-2 focus:ring-green-500"
-                          placeholder="Qtd"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => removeInsumoFromReceita(index)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowReceitaForm(false);
-                    setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
-                    setReceitaInsumos([]);
-                  }}
-                  className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleCreateReceita}
-                  disabled={loading}
-                  className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50"
-                >
-                  {loading ? 'Criando...' : 'Criar Receita'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <FormularioReceita 
+            selectedRestaurante={selectedRestaurante}
+            editingReceita={null}
+            onClose={() => {
+              setShowReceitaForm(false);
+              setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+              setReceitaInsumos([]);
+            }}
+            onSave={handleCreateReceita}
+            loading={loading}
+            insumos={insumos}
+          />
         )}
       </div>
     );

@@ -79,11 +79,28 @@ class ApiService {
 
   // Criar novo insumo
   async createInsumo(insumo: any): Promise<ApiResponse<any>> {
+    // Mapear campos para o formato esperado pelo backend
+    const dadosBackend = {
+      codigo: insumo.codigo || '',
+      fator: insumo.fator || 1,
+      grupo: insumo.categoria || 'Outros',
+      nome: insumo.nome,
+      preco_compra_real: insumo.preco_compra_real || insumo.preco_compra || 0,
+      quantidade: insumo.quantidade || 0,
+      subgrupo: insumo.categoria || 'Outros',
+      unidade: insumo.unidade      
+    };
+
+    console.log('📥 Dados recebidos do formulário:', insumo);
+    console.log('📤 Dados mapeados para backend:', dadosBackend);
+    console.log('🌐 URL da requisição:', '/api/v1/insumos/');
+    console.log('📤 Enviando dados para criar insumo:', dadosBackend);
+    
     return this.request<any>('/api/v1/insumos/', {
       method: 'POST',
-      body: JSON.stringify(insumo),
+      body: JSON.stringify(dadosBackend),
     });
-  }
+}
 
   // Atualizar insumo existente
   async updateInsumo(id: number, insumo: any): Promise<ApiResponse<any>> {
@@ -121,9 +138,23 @@ class ApiService {
 
   // Criar nova receita
   async createReceita(receita: any): Promise<ApiResponse<any>> {
+    // Mapear campos para o formato esperado pelo backend
+    const dadosBackend = {
+      codigo: receita.codigo || '',
+      nome: receita.nome,
+      descricao: receita.descricao || '',
+      categoria: receita.categoria || 'Geral',
+      rendimento: receita.porcoes || receita.rendimento || 1,
+      tempo_preparo: receita.tempo_preparo || 30,
+      restaurante_id: receita.restaurante_id || 1,
+      insumos: receita.insumos || []
+    };
+
+    console.log('📤 Enviando dados para criar receita:', dadosBackend);
+    
     return this.request<any>('/api/v1/receitas/', {
       method: 'POST',
-      body: JSON.stringify(receita),
+      body: JSON.stringify(dadosBackend),
     });
   }
 
