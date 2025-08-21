@@ -872,13 +872,13 @@ const FoodCostSystem: React.FC = () => {
         // Adaptar dados para o formato da API
         const dadosAPI = {
           codigo: novoInsumo.codigo || '',
-          nome: novoInsumo.nome,
-          grupo: novoInsumo.categoria || 'Outros',
-          subgrupo: novoInsumo.categoria || 'Outros', 
-          unidade: novoInsumo.unidade,
-          quantidade: novoInsumo.quantidade || 0,
           fator: novoInsumo.fator,
-          preco_compra_real: novoInsumo.preco_compra
+          grupo: novoInsumo.categoria || 'Outros',
+          nome: novoInsumo.nome,
+          preco_compra_real: novoInsumo.preco_compra,
+          quantidade: novoInsumo.quantidade || 0,
+          subgrupo: novoInsumo.categoria || 'Outros', 
+          unidade: novoInsumo.unidade          
         };
 
         let response;
