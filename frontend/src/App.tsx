@@ -16,6 +16,8 @@
 // IMPORTS E DEPENDÊNCIAS
 // ============================================================================
 
+import { apiService } from './api-service';
+
 import logoIogar from './image/iogar_logo.png';
 import React, { useState, useEffect } from 'react';
 import {
@@ -35,9 +37,13 @@ interface Insumo {
   id: number;
   nome: string;
   unidade: string;
-  preco_compra: number;
+  preco_compra_real: number;  // ✅ Campo correto da API
   fator: number;
   categoria?: string;
+  codigo?: string;
+  grupo?: string;
+  subgrupo?: string;
+  quantidade?: number;
 }
 
 // Interface para restaurantes
@@ -104,10 +110,11 @@ const FoodCostSystem: React.FC = () => {
   const [novoInsumo, setNovoInsumo] = useState({
     nome: '',
     unidade: '',
-    preco_compra: 0,
+    preco_compra: 0,  // ✅ Mantem o nome original do formulário
     fator: 1,
     categoria: '',
-    quantidade: 0
+    quantidade: 0,
+    codigo: ''
   });
   
   // Estados para formulário de receita
@@ -134,10 +141,11 @@ const FoodCostSystem: React.FC = () => {
   const fetchInsumos = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/insumos/`);
-      if (response.ok) {
-        const data = await response.json();
-        setInsumos(data);
+      const response = await apiService.getInsumos();
+      if (response.data) {
+        setInsumos(response.data);
+      } else if (response.error) {
+        console.error('Erro ao buscar insumos:', response.error);
       }
     } catch (error) {
       console.error('Erro ao buscar insumos:', error);
@@ -150,13 +158,21 @@ const FoodCostSystem: React.FC = () => {
   const fetchRestaurantes = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/receitas/restaurantes/`);
-      if (response.ok) {
-        const data = await response.json();
-        setRestaurantes(data);
+      const response = await apiService.getRestaurantes();
+      if (response.data) {
+        setRestaurantes(response.data);
+      } else if (response.error) {
+        console.error('Erro ao buscar restaurantes:', response.error);
+        // Usar dados temporários se a API falhar
+        setRestaurantes([
+          { id: 1, nome: "Restaurante Demo", endereco: "Endereço Demo" }
+        ]);
       }
     } catch (error) {
       console.error('Erro ao buscar restaurantes:', error);
+      setRestaurantes([
+        { id: 1, nome: "Restaurante Demo", endereco: "Endereço Demo" }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -166,10 +182,11 @@ const FoodCostSystem: React.FC = () => {
   const fetchReceitas = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/receitas/`);
-      if (response.ok) {
-        const data = await response.json();
-        setReceitas(data);
+      const response = await apiService.getReceitas();
+      if (response.data) {
+        setReceitas(response.data);
+      } else if (response.error) {
+        console.error('Erro ao buscar receitas:', response.error);
       }
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
@@ -182,10 +199,15 @@ const FoodCostSystem: React.FC = () => {
   const fetchReceitasByRestaurante = async (restauranteId: number) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/receitas/restaurante/${restauranteId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setReceitas(data);
+      const response = await apiService.getReceitas();
+      if (response.data) {
+        // Filtrar receitas pelo restaurante
+        const receitasFiltradas = response.data.filter((receita: any) => 
+          receita.restaurante_id === restauranteId || !receita.restaurante_id
+        );
+        setReceitas(receitasFiltradas);
+      } else if (response.error) {
+        console.error('Erro ao buscar receitas do restaurante:', response.error);
       }
     } catch (error) {
       console.error('Erro ao buscar receitas do restaurante:', error);
@@ -196,9 +218,25 @@ const FoodCostSystem: React.FC = () => {
 
   // Carrega os dados quando o componente é montado
   useEffect(() => {
-    fetchInsumos();
-    fetchRestaurantes();
-  }, []);
+    const initializeApp = async () => {
+      try {
+        const connected = await apiService.testConnection();
+        if (connected) {
+          console.log('✅ API conectada com sucesso!');
+          await fetchInsumos();
+          await fetchRestaurantes();
+          await fetchReceitas(); // ✅ ADICIONAR esta linha
+        } else {
+          console.error('❌ Falha na conexão com a API');
+          alert('Não foi possível conectar com o backend.');
+        }
+      } catch (error) {
+        console.error('Erro na inicialização:', error);
+      }
+    };
+
+    initializeApp();
+  }, []); // IMPORTANTE: Array vazio para executar apenas uma vez
 
   // ============================================================================
   // COMPONENTE SIDEBAR - NAVEGAÇÃO PRINCIPAL
@@ -468,7 +506,7 @@ const FoodCostSystem: React.FC = () => {
             <p className="text-xs text-gray-500">{insumo.categoria}</p>
           </div>
           <span className="text-sm font-medium text-green-600">
-            R$ {insumo.preco_compra.toFixed(2)}
+            R$ {insumo.preco_compra_real?.toFixed(2) || '0.00'}
           </span>
         </div>
       ))}
@@ -542,26 +580,45 @@ const FoodCostSystem: React.FC = () => {
     const handleSaveInsumo = async () => {
       try {
         setLoading(true);
-        const url = editingInsumo 
-          ? `${API_BASE}/insumos/${editingInsumo.id}` 
-          : `${API_BASE}/insumos/`;
         
-        const method = editingInsumo ? 'PUT' : 'POST';
-        
-        const response = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(novoInsumo)
-        });
+        // Adaptar dados para o formato da API
+        const dadosAPI = {
+          codigo: novoInsumo.codigo || '',
+          nome: novoInsumo.nome,
+          grupo: novoInsumo.categoria || 'Outros',
+          subgrupo: novoInsumo.categoria || 'Outros', 
+          unidade: novoInsumo.unidade,
+          quantidade: novoInsumo.quantidade || 0,
+          fator: novoInsumo.fator,
+          preco_compra_real: novoInsumo.preco_compra
+        };
 
-        if (response.ok) {
+        let response;
+        if (editingInsumo) {
+          response = await apiService.updateInsumo(editingInsumo.id, dadosAPI);
+        } else {
+          response = await apiService.createInsumo(dadosAPI);
+        }
+
+        if (response.data) {
           await fetchInsumos();
           setShowInsumoForm(false);
           setEditingInsumo(null);
-          setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '' });
+          setNovoInsumo({ 
+            nome: '', 
+            unidade: '', 
+            preco_compra: 0, 
+            fator: 1, 
+            categoria: '',
+            quantidade: 0 
+          });
+        } else if (response.error) {
+          console.error('Erro ao salvar insumo:', response.error);
+          alert('Erro ao salvar insumo: ' + response.error);
         }
       } catch (error) {
         console.error('Erro ao salvar insumo:', error);
+        alert('Erro inesperado ao salvar insumo');
       } finally {
         setLoading(false);
       }
@@ -573,15 +630,18 @@ const FoodCostSystem: React.FC = () => {
       
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE}/insumos/${id}`, {
-          method: 'DELETE'
-        });
+        const response = await apiService.deleteInsumo(id);
 
-        if (response.ok) {
+        if (!response.error) {
+          // Recarregar a lista de insumos
           await fetchInsumos();
+        } else {
+          console.error('Erro ao deletar insumo:', response.error);
+          alert('Erro ao deletar insumo: ' + response.error);
         }
       } catch (error) {
         console.error('Erro ao deletar insumo:', error);
+        alert('Erro inesperado ao deletar insumo');
       } finally {
         setLoading(false);
       }
@@ -589,16 +649,18 @@ const FoodCostSystem: React.FC = () => {
 
     // Função para editar insumo
     const handleEditInsumo = (insumo: Insumo) => {
-      setEditingInsumo(insumo);
-      setNovoInsumo({
-        nome: insumo.nome,
-        unidade: insumo.unidade,
-        preco_compra: insumo.preco_compra,
-        fator: insumo.fator,
-        categoria: insumo.categoria || ''
-      });
-      setShowInsumoForm(true);
-    };
+	  setEditingInsumo(insumo);
+	  setNovoInsumo({
+		nome: insumo.nome,
+		unidade: insumo.unidade,
+		preco_compra: insumo.preco_compra_real || 0,  // ✅ Mapear campo correto
+		fator: insumo.fator,
+		categoria: insumo.grupo || insumo.categoria || '',
+		quantidade: insumo.quantidade || 0,
+		codigo: insumo.codigo || ''
+	  });
+	  setShowInsumoForm(true);
+	};
 
     return (
       <div className="space-y-6">
@@ -651,7 +713,7 @@ const FoodCostSystem: React.FC = () => {
                     <td className="px-6 py-4 text-sm text-gray-600">{insumo.categoria || 'Sem categoria'}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
                     <td className="px-6 py-4 text-sm font-medium text-green-600">
-                      R$ {insumo.preco_compra.toFixed(2)}
+                      R$ {insumo.preco_compra_real?.toFixed(2) || '0.00'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{insumo.fator}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{insumo.quantidade ?? 0}</td>
@@ -893,20 +955,23 @@ const FoodCostSystem: React.FC = () => {
           insumos: receitaInsumos
         };
 
-        const response = await fetch(`${API_BASE}/receitas/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(receitaData)
-        });
+        const response = await apiService.createReceita(receitaData);
 
-        if (response.ok) {
+        if (response.data) {
+          // Recarregar receitas do restaurante
           await fetchReceitasByRestaurante(selectedRestaurante.id);
+          
+          // Limpar formulário
           setShowReceitaForm(false);
           setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
           setReceitaInsumos([]);
+        } else if (response.error) {
+          console.error('Erro ao criar receita:', response.error);
+          alert('Erro ao criar receita: ' + response.error);
         }
       } catch (error) {
         console.error('Erro ao criar receita:', error);
+        alert('Erro inesperado ao criar receita');
       } finally {
         setLoading(false);
       }
@@ -993,7 +1058,7 @@ const FoodCostSystem: React.FC = () => {
                     <p className="text-sm text-gray-600 mb-2">{receita.categoria}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700">
-                        Custo: R$ {receita.custo_total?.toFixed(2) || '0.00'}
+                        Custo: R$ {receita.preco_compra?.toFixed(2) || '0.00'}
                       </span>
                       <Eye className="w-4 h-4 text-gray-400" />
                     </div>
@@ -1024,7 +1089,7 @@ const FoodCostSystem: React.FC = () => {
                     </div>
                     <div className="bg-gray-50 p-3 rounded-lg">
                       <p className="text-xs text-gray-500">Custo Total</p>
-                      <p className="font-medium text-green-600">R$ {selectedReceita.custo_total?.toFixed(2) || '0.00'}</p>
+                      <p className="font-medium text-green-600">R$ {selectedReceita.preco_compra?.toFixed(2) || '0.00'}</p>
                     </div>
                   </div>
                 </div>
