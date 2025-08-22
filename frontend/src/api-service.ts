@@ -79,41 +79,13 @@ class ApiService {
 
   // Criar novo insumo
   async createInsumo(insumo: any): Promise<ApiResponse<any>> {
-    // Mapear campos para o formato esperado pelo backend
-    const dadosBackend = {
-      codigo: insumo.codigo || '',
-      fator: insumo.fator || 1,
-      grupo: insumo.categoria || 'Outros',
-      nome: insumo.nome,
-      preco_compra_real: insumo.preco_compra_real || insumo.preco_compra || 0,
-      quantidade: insumo.quantidade || 0,
-      subgrupo: insumo.categoria || 'Outros',
-      unidade: insumo.unidade      
-    };
-
-    console.log('📥 Dados recebidos do formulário:', insumo);
-    console.log('📤 Dados mapeados para backend:', dadosBackend);
-    console.log('🌐 URL da requisição:', '/api/v1/insumos/');
-    console.log('📤 Enviando dados para criar insumo:', dadosBackend);
+    // 🔍 DEBUG: Ver dados antes de enviar
+    console.log('🌐 API Service recebeu:', insumo);
+    console.log('🌐 JSON sendo enviado:', JSON.stringify(insumo, null, 2));
     
     return this.request<any>('/api/v1/insumos/', {
       method: 'POST',
-      body: JSON.stringify(dadosBackend),
-    });
-}
-
-  // Atualizar insumo existente
-  async updateInsumo(id: number, insumo: any): Promise<ApiResponse<any>> {
-    return this.request<any>(`/api/v1/insumos/${id}`, {
-      method: 'PUT',
       body: JSON.stringify(insumo),
-    });
-  }
-
-  // Deletar insumo
-  async deleteInsumo(id: number): Promise<ApiResponse<void>> {
-    return this.request<void>(`/api/v1/insumos/${id}`, {
-      method: 'DELETE',
     });
   }
 

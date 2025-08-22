@@ -37,12 +37,11 @@ interface Insumo {
   id: number;
   nome: string;
   unidade: string;
-  preco_compra_real: number;  // ✅ Campo correto da API
+  preco_compra_real: number;
   fator: number;
-  categoria?: string;
   codigo?: string;
-  grupo?: string;
-  subgrupo?: string;
+  grupo?: string;     
+  subgrupo?: string;  
   quantidade?: number;
 }
 
@@ -76,6 +75,13 @@ interface ReceitaInsumo {
   insumo?: Insumo;
 }
 
+// Função estável para busca - FORA do componente
+const createSearchHandler = (setSearchTerm) => {
+  return (term) => {
+    setSearchTerm(term);
+  };
+};
+
 // ============================================================================
 // COMPONENTE PRINCIPAL DO SISTEMA
 // ============================================================================
@@ -98,7 +104,6 @@ const FoodCostSystem: React.FC = () => {
   
   // Estados de controle da interface
   const [loading, setLoading] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>('');
   
   // Estados para formulários
   const [showInsumoForm, setShowInsumoForm] = useState<boolean>(false);
@@ -254,7 +259,7 @@ const FoodCostSystem: React.FC = () => {
     ];
 
     return (
-      <div className="w-64 bg-slate-900 text-white flex flex-col">
+      <div className="w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen">
         <div className="p-6 relative">
           {/* Logo IOGAR com design do robô */}
           <div className="flex flex-col items-center gap-2 mb-8">
@@ -582,9 +587,33 @@ const FoodCostSystem: React.FC = () => {
     };
 
     const handleSubmit = () => {
-      // Usar o estado local do formulário
-      setNovoInsumo(formData);
-      onSave();
+      // Validar campos obrigatórios
+      if (!formData.nome?.trim() || !formData.unidade) {
+        alert('Nome e Unidade são obrigatórios!');
+        return;
+      }
+
+      // Validar unidade específica
+      const unidadesValidas = ['unidade', 'caixa', 'kg', 'g', 'L', 'ml'];
+      if (!unidadesValidas.includes(formData.unidade)) {
+        alert(`Unidade deve ser uma das: ${unidadesValidas.join(', ')}`);
+        return;
+      }
+
+      // Mapear com validações do backend
+      const dadosBackend = {
+        codigo: (formData.codigo?.trim() || 'AUTO' + Date.now()).toUpperCase(),
+        nome: formData.nome.trim(),
+        grupo: formData.categoria?.trim() || 'Outros',
+        subgrupo: formData.categoria?.trim() || 'Outros',
+        unidade: formData.unidade, // Garantir que seja exatamente uma das válidas
+        quantidade: Math.max(1, parseInt(formData.quantidade) || 1), // Mínimo 1
+        fator: Math.max(0.0001, parseFloat(formData.fator) || 1), // Mínimo 0.0001
+        preco_compra_real: Math.max(0, parseFloat(formData.preco_compra) || 0)
+      };
+      
+      console.log('🔧 Dados validados:', dadosBackend);
+      onSave(dadosBackend);
     };
 
     return (
@@ -641,13 +670,15 @@ const FoodCostSystem: React.FC = () => {
                   value={formData.unidade}
                   onChange={(e) => handleChange('unidade', e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                  required
                 >
                   <option value="">Selecione</option>
                   <option value="kg">Quilograma (kg)</option>
                   <option value="g">Grama (g)</option>
-                  <option value="l">Litro (l)</option>
+                  <option value="L">Litro (L)</option> {/* ✅ L maiúsculo */}
                   <option value="ml">Mililitro (ml)</option>
-                  <option value="un">Unidade (un)</option>
+                  <option value="unidade">Unidade (un)</option>
+                  <option value="caixa">Caixa</option> {/* ✅ Adicionar caixa */}
                 </select>
               </div>
 
@@ -723,12 +754,20 @@ const FoodCostSystem: React.FC = () => {
     };
 
     const handleSubmit = () => {
-      const receitaData = {
-        ...formData,
+      // Mapear campos para o formato do backend
+      const dadosBackend = {
+        codigo: formData.codigo || '',
+        nome: formData.nome,
+        descricao: formData.descricao || '',
+        grupo: formData.categoria || 'Lanches',
+        subgrupo: formData.categoria || 'Lanches',
+        rendimento_porcoes: formData.porcoes || 1,
+        tempo_preparo_minutos: 15,
+        ativo: true,
         restaurante_id: selectedRestaurante.id,
         insumos: receitaInsumos
       };
-      onSave(receitaData);
+      onSave(dadosBackend);
     };
 
     return (
@@ -854,44 +893,72 @@ const FoodCostSystem: React.FC = () => {
     );
   };
 
+  // Componente isolado para busca de insumos
+  const SearchInput = React.memo(({ onSearch }) => {
+    const [localSearch, setLocalSearch] = useState('');
+
+    // Debounce completamente isolado
+    useEffect(() => {
+      const timeoutId = setTimeout(() => {
+        onSearch(localSearch);
+      }, 300);
+
+      return () => clearTimeout(timeoutId);
+    }, [localSearch]); // Sem onSearch aqui
+
+    return (
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <input
+          type="text"
+          placeholder="Buscar insumos..."
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+        />
+      </div>
+    );
+  });
+
+  // Definir displayName para o React.memo
+  SearchInput.displayName = 'SearchInput';
+
   // ============================================================================
   // COMPONENTE GESTÃO DE INSUMOS
   // ============================================================================
-  const Insumos = React.memo(() => {
+  const Insumos = React.memo(() => {    
+    const [searchTerm, setSearchTerm] = useState<string>('');
+    // Função estável para busca - DENTRO do componente Insumos
+    const handleSearchChange = useCallback((term) => {
+      setSearchTerm(term);
+    }, [setSearchTerm]);
+
     // Filtro dos insumos baseado na busca
     const insumosFiltrados = insumos.filter(insumo =>
       insumo.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insumo.categoria?.toLowerCase().includes(searchTerm.toLowerCase())
+      insumo.grupo?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // Função para salvar insumo (criar ou atualizar)
-    const handleSaveInsumo = async () => {
+    const handleSaveInsumo = async (dadosInsumo) => {
       try {
         setLoading(true);
-        
-        // Adaptar dados para o formato da API
-        const dadosAPI = {
-          codigo: novoInsumo.codigo || '',
-          fator: novoInsumo.fator,
-          grupo: novoInsumo.categoria || 'Outros',
-          nome: novoInsumo.nome,
-          preco_compra_real: novoInsumo.preco_compra,
-          quantidade: novoInsumo.quantidade || 0,
-          subgrupo: novoInsumo.categoria || 'Outros', 
-          unidade: novoInsumo.unidade          
-        };
 
+        // 🔍 DEBUG: Ver exatamente o que está sendo enviado
+        console.log('📤 Dados sendo enviados para API:', dadosInsumo);
+        console.log('📤 Dados em JSON:', JSON.stringify(dadosInsumo, null, 2));
+        
         let response;
         if (editingInsumo) {
-          response = await apiService.updateInsumo(editingInsumo.id, dadosAPI);
+          response = await apiService.updateInsumo(editingInsumo.id, dadosInsumo);
         } else {
-          response = await apiService.createInsumo(dadosAPI);
+          response = await apiService.createInsumo(dadosInsumo);
         }
 
         if (response.data) {
           await fetchInsumos();
-          // SÓ LIMPAR DEPOIS DE SALVAR COM SUCESSO
-          limparFormularioInsumo();
+          setShowInsumoForm(false);
+          setEditingInsumo(null);
         } else if (response.error) {
           console.error('Erro ao salvar insumo:', response.error);
           alert('Erro ao salvar insumo: ' + response.error);
@@ -949,20 +1016,20 @@ const FoodCostSystem: React.FC = () => {
     // Função para editar insumo
     const handleEditInsumo = (insumo: Insumo) => {
 	  setEditingInsumo(insumo);
-	  setNovoInsumo({
-		nome: insumo.nome,
-		unidade: insumo.unidade,
-		preco_compra: insumo.preco_compra_real || 0,  // ✅ Mapear campo correto
-		fator: insumo.fator,
-		categoria: insumo.grupo || insumo.categoria || '',
-		quantidade: insumo.quantidade || 0,
-		codigo: insumo.codigo || ''
-	  });
+    setNovoInsumo({
+      nome: insumo.nome,
+      unidade: insumo.unidade,
+      preco_compra: insumo.preco_compra_real || 0,
+      fator: insumo.fator,
+      categoria: insumo.grupo || insumo.categoria || '', // ✅ Usar grupo
+      quantidade: insumo.quantidade || 0,
+      codigo: insumo.codigo || ''
+    });
 	  setShowInsumoForm(true);
 	};
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 min-h-screen">
         {/* Header da seção de insumos */}
         <div className="flex items-center justify-between">
           <div>
@@ -978,64 +1045,61 @@ const FoodCostSystem: React.FC = () => {
           </button>
         </div>
 
-        {/* Barra de busca */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Buscar insumos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-          />
-        </div>
+        {/* Barra de busca - COMPONENTE ISOLADO */}
+        <SearchInput onSearch={handleSearchChange} />
 
         {/* Tabela de insumos */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Nome</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Categoria</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Unidade</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Preço</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Fator</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Quantidade</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Comparativo de Preços</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {insumosFiltrados.map((insumo) => (
-                  <tr key={insumo.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{insumo.nome}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{insumo.categoria || 'Sem categoria'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-green-600">
-                      R$ {insumo.preco_compra_real?.toFixed(2) || '0.00'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{insumo.fator}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{insumo.quantidade ?? 0}</td>
-                    <td className="px-6 py-4 text-sm">
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">Fornecedor A:</span>
-                          <span className="text-xs text-gray-400">Em breve</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">Fornecedor B:</span>
-                          <span className="text-xs text-gray-400">Em breve</span>
-                        </div>
-                        <button className="w-full mt-2 py-1 px-2 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-colors">
-                          Ver Comparativo
-                        </button>
-                      </div>
-                    </td>
+          {insumos.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-gray-500">Nenhum insumo cadastrado. Tente adicionar um novo insumo ou verificar a conexão com a API.</p>
+            </div>
+          ) : (
+            <div>
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Nome</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Categoria</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Unidade</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Preço</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Fator</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Quantidade</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Comparativo de Preços</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {insumosFiltrados.map((insumo) => (
+                    <tr key={insumo.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{insumo.nome}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.grupo || 'Sem categoria'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-green-600">
+                        R$ {insumo.preco_compra_real?.toFixed(2) || '0.00'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.fator}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.quantidade ?? 0}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">Fornecedor A:</span>
+                            <span className="text-xs text-gray-400">Em breve</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">Fornecedor B:</span>
+                            <span className="text-xs text-gray-400">Em breve</span>
+                          </div>
+                          <button className="w-full mt-2 py-1 px-2 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-colors">
+                            Ver Comparativo
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
         {/* Modal de formulário de insumo */}
         {showInsumoForm && (
@@ -1137,16 +1201,13 @@ const FoodCostSystem: React.FC = () => {
     const handleCreateReceita = async (receitaData) => {
       try {
         setLoading(true);
+        console.log('📤 Enviando dados para criar receita:', receitaData);
+        
         const response = await apiService.createReceita(receitaData);
 
         if (response.data) {
-          // Recarregar receitas do restaurante
           await fetchReceitasByRestaurante(selectedRestaurante.id);
-          
-          // Limpar formulário
           setShowReceitaForm(false);
-          setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
-          setReceitaInsumos([]);
         } else if (response.error) {
           console.error('Erro ao criar receita:', response.error);
           alert('Erro ao criar receita: ' + response.error);
@@ -1254,7 +1315,7 @@ const FoodCostSystem: React.FC = () => {
           <div className="bg-white rounded-xl p-6 border border-gray-100">
             <div className="flex items-center gap-3 mb-6">
               <Calculator className="w-6 h-6 text-green-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Calculadora de Preços</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Dados da Receita</h3>
             </div>
 
             {selectedReceita ? (
@@ -1359,9 +1420,9 @@ const FoodCostSystem: React.FC = () => {
   // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
   // ============================================================================
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex ml-64">
       {/* Sidebar de navegação */}
-      <Sidebar />
+      <Sidebar key={activeTab} />
       
       {/* Conteúdo principal */}
       <main className="flex-1 p-8 overflow-auto">
