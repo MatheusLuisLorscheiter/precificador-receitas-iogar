@@ -232,6 +232,7 @@ class InsumoListResponse(BaseModel):
     unidade: str
     fator: float
     preco_compra_real: Optional[float] = None
+    quantidade: int = Field(default=1, description="Quantidade comprada")
 
     class Config:
         from_attributes = True

@@ -92,26 +92,16 @@ const FoodCostSystem: React.FC = () => {
   // ============================================================================
   
   // Estado da navegação - controla qual aba está ativa
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
-  
-  // Estados dos dados principais
+const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [restaurantes, setRestaurantes] = useState<Restaurante[]>([]);
   const [receitas, setReceitas] = useState<Receita[]>([]);
-  
-  // Estado para restaurante selecionado
   const [selectedRestaurante, setSelectedRestaurante] = useState<Restaurante | null>(null);
-  
-  // Estados de controle da interface
   const [loading, setLoading] = useState<boolean>(false);
-  
-  // Estados para formulários
   const [showInsumoForm, setShowInsumoForm] = useState<boolean>(false);
   const [showReceitaForm, setShowReceitaForm] = useState<boolean>(false);
   const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null);
   const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
-  
-  // Estados para formulário de insumo
   const [novoInsumo, setNovoInsumo] = useState(() => ({
     nome: '',
     unidade: '',
@@ -339,7 +329,7 @@ const FoodCostSystem: React.FC = () => {
               IOGAR © 2025
             </p>
             <p className="text-xs text-gray-500 text-center">
-              Inteligência Operacional
+              Inteligência Operacional - Todos os direitos reservados
             </p>
           </div>
         </div>
@@ -663,6 +653,18 @@ const FoodCostSystem: React.FC = () => {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade *</label>
+              <input
+                type="number"
+                min="1"
+                value={formData.quantidade}
+                onChange={(e) => handleChange('quantidade', parseInt(e.target.value) || 1)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                placeholder="Ex: 1"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Unidade *</label>
@@ -926,9 +928,14 @@ const FoodCostSystem: React.FC = () => {
   // ============================================================================
   // COMPONENTE GESTÃO DE INSUMOS
   // ============================================================================
-  const Insumos = React.memo(() => {    
+  const Insumos = React.memo(() => {
     const [searchTerm, setSearchTerm] = useState<string>('');
-    // Função estável para busca - DENTRO do componente Insumos
+    const [showSuccessPopup, setShowSuccessPopup] = useState<boolean>(false);
+
+    useEffect(() => {
+      console.log('showSuccessPopup mudou para:', showSuccessPopup);
+    }, [showSuccessPopup]);
+
     const handleSearchChange = useCallback((term) => {
       setSearchTerm(term);
     }, [setSearchTerm]);
@@ -943,31 +950,41 @@ const FoodCostSystem: React.FC = () => {
     const handleSaveInsumo = async (dadosInsumo) => {
       try {
         setLoading(true);
+        console.log('📤 Iniciando salvamento do insumo:', dadosInsumo);
 
-        // 🔍 DEBUG: Ver exatamente o que está sendo enviado
-        console.log('📤 Dados sendo enviados para API:', dadosInsumo);
-        console.log('📤 Dados em JSON:', JSON.stringify(dadosInsumo, null, 2));
-        
         let response;
         if (editingInsumo) {
+          console.log('📝 Atualizando insumo existente:', editingInsumo.id);
           response = await apiService.updateInsumo(editingInsumo.id, dadosInsumo);
         } else {
+          console.log('➕ Criando novo insumo');
           response = await apiService.createInsumo(dadosInsumo);
         }
 
+        console.log('📥 Resposta da API:', response);
         if (response.data) {
+          console.log('✅ Sucesso na operação:', response.data);
           await fetchInsumos();
+          if (!editingInsumo) {
+            setShowSuccessPopup(true);
+            console.log('🎉 Popup ativado para novo insumo');
+            setTimeout(() => {
+              setShowSuccessPopup(false);
+              console.log('🎉 Popup fechado após 3 segundos');
+            }, 3000);
+          }
           setShowInsumoForm(false);
           setEditingInsumo(null);
         } else if (response.error) {
-          console.error('Erro ao salvar insumo:', response.error);
+          console.error('❌ Erro ao salvar insumo:', response.error);
           alert('Erro ao salvar insumo: ' + response.error);
         }
       } catch (error) {
-        console.error('Erro ao salvar insumo:', error);
+        console.error('❌ Erro inesperado ao salvar insumo:', error);
         alert('Erro inesperado ao salvar insumo');
       } finally {
         setLoading(false);
+        console.log('⏳ Fim do processo de salvamento');
       }
     };
 
@@ -976,7 +993,6 @@ const FoodCostSystem: React.FC = () => {
       console.log('🧹 Limpando formulário...');
       setShowInsumoForm(false);
       setEditingInsumo(null);
-      // Limpar estado DEPOIS de fechar o modal
       setTimeout(() => {
         setNovoInsumo({ 
           nome: '', 
@@ -999,7 +1015,6 @@ const FoodCostSystem: React.FC = () => {
         const response = await apiService.deleteInsumo(id);
 
         if (!response.error) {
-          // Recarregar a lista de insumos
           await fetchInsumos();
         } else {
           console.error('Erro ao deletar insumo:', response.error);
@@ -1015,18 +1030,18 @@ const FoodCostSystem: React.FC = () => {
 
     // Função para editar insumo
     const handleEditInsumo = (insumo: Insumo) => {
-	  setEditingInsumo(insumo);
-    setNovoInsumo({
-      nome: insumo.nome,
-      unidade: insumo.unidade,
-      preco_compra: insumo.preco_compra_real || 0,
-      fator: insumo.fator,
-      categoria: insumo.grupo || insumo.categoria || '', // ✅ Usar grupo
-      quantidade: insumo.quantidade || 0,
-      codigo: insumo.codigo || ''
-    });
-	  setShowInsumoForm(true);
-	};
+      setEditingInsumo(insumo);
+      setNovoInsumo({
+        nome: insumo.nome,
+        unidade: insumo.unidade,
+        preco_compra: insumo.preco_compra_real || 0,
+        fator: insumo.fator,
+        categoria: insumo.grupo || insumo.categoria || '',
+        quantidade: insumo.quantidade || 0,
+        codigo: insumo.codigo || ''
+      });
+      setShowInsumoForm(true);
+    };
 
     return (
       <div className="space-y-6 min-h-screen">
@@ -1114,10 +1129,18 @@ const FoodCostSystem: React.FC = () => {
             loading={loading}
           />
         )}
+        {/* Popup de sucesso */}
+        {showSuccessPopup && (
+          console.log('Renderizando popup...'),
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000] transition-opacity duration-300 ease-in-out">
+            <div className="bg-white p-6 rounded-lg shadow-lg transition-opacity duration-300 ease-in-out opacity-100">
+              <p className="text-green-600 font-semibold">Insumo cadastrado com sucesso!</p>
+            </div>
+          </div>
+        )}
       </div>
     );
   });
-
   // ============================================================================
   // COMPONENTE GESTÃO DE RESTAURANTES
   // ============================================================================
