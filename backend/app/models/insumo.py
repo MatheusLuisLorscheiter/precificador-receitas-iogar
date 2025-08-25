@@ -1,9 +1,11 @@
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   Insumo Model -  Representa os ingredientes de cada receita
 #   Descrição: Esse modelo define a estrutura dos insumos que serão utilizados nas receitas.
-#   Data: 07/08/2025
-#   Autor: Will
-#   ---------------------------------------------------------------------------------------------------
+#   Data: 07/08/2025 | Atualizado: 25/08/2025
+#   Autor: Will - Empresa: IOGAR
+#   ===================================================================================================
+
+from sqlalchemy import Column, Float
 
 #  from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
@@ -30,9 +32,9 @@ class Insumo(BaseModel):
     """
     __tablename__ = "insumos"
 
-    #   ---------------------------------------------------------------------------------------------------
+    #   ===================================================================================================
     #   Relacionamentos com outras tabelas
-    #   ---------------------------------------------------------------------------------------------------
+    #   ===================================================================================================
 
     # Relacionamento com receitas
     # receitas = relationship("ReceitaInsumo", back_populates="insumo")
@@ -41,9 +43,9 @@ class Insumo(BaseModel):
         """Representação em string do objeto para debug"""
         return f"<Insumo(codigo='{self.codigo}', nome='{self.nome}', fator={self.fator})>"
     
-    #   ---------------------------------------------------------------------------------------------------
+    #   ===================================================================================================
     #   Propriendades calculadas (getters)
-    #   ---------------------------------------------------------------------------------------------------
+    #   ===================================================================================================
     @property
     def preco_compra_real(self):
         """Converte o preço de centavos para reais."""
@@ -53,3 +55,40 @@ class Insumo(BaseModel):
     def preco_compra_real(self, valor):
         """Converte reais para centavos"""
         self.preco_compra = int(valor * 100) if valor else 0
+
+    #   ===================================================================================================
+    #   Novos campos para valor de compra por Kg e total comprado
+    #   ===================================================================================================
+    
+    @property
+    def valor_compra_por_kg(self):
+        """Valor de compra por Kg em reais."""
+        return getattr(self, '_valor_compra_por_kg', 0.0)
+    
+    @valor_compra_por_kg.setter
+    def valor_compra_por_kg(self, valor):
+        """Define o valor de compra por Kg"""
+        self._valor_compra_por_kg = round(float(valor), 2) if valor else 0.0
+        self._atualizar_total_comprado()
+    
+    @property
+    def total_comprado(self):
+        """Total comprado (quantidade × valor_compra_por_kg)"""
+        return getattr(self, '_total_comprado', 0.0)
+    
+    @total_comprado.setter  
+    def total_comprado(self, valor):
+        """Define o total comprado"""
+        self._total_comprado = round(float(valor), 2) if valor else 0.0
+    
+    def _atualizar_total_comprado(self):
+        """Calcula automaticamente: quantidade × valor_compra_por_kg"""
+        if hasattr(self, '_valor_compra_por_kg') and self.quantidade:
+            self._total_comprado = round(self.quantidade * self._valor_compra_por_kg, 2)
+        else:
+            self._total_comprado = 0.0
+    
+    def calcular_total(self):
+        """Método público para recalcular o total comprado"""
+        self._atualizar_total_comprado()
+        return self.total_comprado

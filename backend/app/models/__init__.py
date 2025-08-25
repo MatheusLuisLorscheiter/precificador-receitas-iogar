@@ -1,10 +1,10 @@
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   Inicialização dos modelos -  Importa todos os modelos do sistema
 #   Descrição: Este arquivo importa todos os modelos para que o SQLAlchemy e 
 #   Alembic possam detectá-los automaticamente para migrações.
 #   Data: 08/08/2025 | Atualizado 18/08/2025
-#   Autor: Will
-#   ---------------------------------------------------------------------------------------------------
+#   Autor: Will - Empresa: IOGAR
+#   ===================================================================================================
 
 # Importar Base primeiro
 from .base import Base, BaseModel

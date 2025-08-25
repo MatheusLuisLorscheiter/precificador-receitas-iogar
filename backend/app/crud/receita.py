@@ -1,10 +1,10 @@
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   CRUD RECEITAS - Operações de banco de dados para receitas
 #   Descrição: Este arquivo contém todas as operações de banco de dados para receitas,
 #   restaurantes e relacionamentos receita-insumo
 #   Data: 14/08/2025 | Atualizado 19/08/2025 e 20/08/2025
-#   Autor: Will
-#   ---------------------------------------------------------------------------------------------------
+#   Autor: Will - Empresa: IOGAR
+#   ===================================================================================================
 
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
@@ -17,9 +17,9 @@ from app.schemas.receita import (
     RestauranteCreate, RestauranteUpdate
 )
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # FUNÇÃO DE CONVERSÃO DE UNIDADES (CORRIGIDA COM SISTEMA DE FATOR)
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 def converter_para_unidade_base(quantidade: float, unidade: str) -> float:
     """
@@ -96,9 +96,9 @@ def calcular_custo_insumo(insumo: Insumo, quantidade_necessaria: float, unidade_
     # Arredondar para 6 casas decimais para precisão
     return round(custo_calculado, 6)
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # CRUD Restaurantes
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 def create_restaurante(db: Session, restaurante: RestauranteCreate) -> Restaurante:
     """Cria um novo restaurante"""
@@ -139,9 +139,9 @@ def delete_restaurante(db: Session, restaurante_id: int) -> bool:
     db.commit()
     return True
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # CRUD Receitas
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 def create_receita(db: Session, receita: ReceitaCreate) -> Receita:
     """Cria uma nova receita"""
@@ -262,9 +262,9 @@ def delete_receita(db: Session, receita_id: int) -> bool:
     db.commit()
     return True
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # CRUD Receita-Insumos (COM AUTOMAÇÃO COMPLETA)
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 def add_insumo_to_receita(db: Session, receita_id: int, receita_insumo: ReceitaInsumoCreate) -> ReceitaInsumo:
     """
@@ -382,9 +382,9 @@ def get_receita_insumos(db: Session, receita_id: int) -> List[ReceitaInsumo]:
         joinedload(ReceitaInsumo.insumo)
     ).filter(ReceitaInsumo.receita_id == receita_id).all()
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # FUNÇÕES DE CÁLCULO (CORRIGIDAS COM SISTEMA DE PREÇOS AUTOMÁTICO)
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 def calcular_cmv_receita(db: Session, receita_id: int) -> float:
     """
@@ -484,9 +484,9 @@ def calcular_precos_sugeridos(db: Session, receita_id: int) -> dict:
         "precos_sugeridos": precos_sugeridos
     }
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # Funções Utilitárias
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 def get_insumos_disponiveis(db: Session, termo: Optional[str] = None) -> List[Insumo]:
     """

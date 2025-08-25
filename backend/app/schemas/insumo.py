@@ -1,18 +1,18 @@
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   Schemas Pydantic para Insumos - Validação de dados
 #   Descrição: Este arquivo define os schemas para validação de entrada e saída
 #   das APIs de insumos usando Pydantic
-#   Data: 08/08/2025 | Atualizado: 19/08/2025
-#   Autor: Will
-#   ---------------------------------------------------------------------------------------------------
+#   Data: 08/08/2025 | Atualizado: 19/08/2025 e 25/08/2025
+#   Autor: Will - Empresa: IOGAR
+#   ===================================================================================================
 
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # Schemas Base - Campos comuns
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 class InsumoBase(BaseModel):
     """
@@ -27,10 +27,11 @@ class InsumoBase(BaseModel):
     fator: float = Field(default=1.0, gt=0, description="Fator de conversão (aceita decimais)")
     unidade: str = Field(..., description="Unidade de medida")
     preco_compra_real: Optional[float] = Field(None, ge=0, description="Preço de compra em reais")
+    valor_compra_por_kg: Optional[float] = Field(None, ge=0, description="Valor de compra por Kg", example=85.0)
     
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Validações customizadas
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
 
     @field_validator('unidade')
     @classmethod
@@ -90,9 +91,9 @@ class InsumoBase(BaseModel):
             return round(v, 2)
         return v
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # Schemas para criação
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 class InsumoCreate(InsumoBase):
     """
@@ -116,9 +117,9 @@ class InsumoCreate(InsumoBase):
             }
         }
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # Schemas para atualização
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 class InsumoUpdate(BaseModel):
     """
@@ -133,6 +134,32 @@ class InsumoUpdate(BaseModel):
     fator: Optional[float] = Field(None, gt=0)
     unidade: Optional[str] = None
     preco_compra_real: Optional[float] = Field(None, ge=0)
+
+    # Novos campos para valor de compra e total
+    valor_compra_por_kg: Optional[float] = Field(
+        None, 
+        ge=0, 
+        description="Valor de compra por Kg em reais",
+        example=10.50
+    )
+    
+    total_comprado: Optional[float] = Field(
+        None,
+        ge=0,
+        description="Total comprado (quantidade * valor_compra_por_kg)",
+        example=52.50
+    )
+
+    # Validador para garantir valores positivos
+    @field_validator('valor_compra_por_kg')
+    @classmethod
+    def validar_valor_compra_por_kg(cls, v):
+        """Valida que valor de compra por Kg é positivo"""
+        if v is not None and v < 0:
+            raise ValueError('Valor de compra por Kg deve ser positivo')
+        if v is not None:
+            return round(v, 2)  # Máximo 2 casas decimais
+        return v
 
     # Validações customizadas para campos opcionais
     @field_validator('unidade')
@@ -178,9 +205,9 @@ class InsumoUpdate(BaseModel):
             raise ValueError('Preço deve ser positivo')
         return round(v, 2)
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # Schemas para resposta
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 class InsumoResponse(InsumoBase):
     """
@@ -216,9 +243,9 @@ class InsumoResponse(InsumoBase):
             }
         }
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # Schemas para listagem
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 class InsumoListResponse(BaseModel):
     """
@@ -237,9 +264,9 @@ class InsumoListResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # Schemas para busca e filtro
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 class InsumoFilter(BaseModel):
     """

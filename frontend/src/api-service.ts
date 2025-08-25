@@ -4,7 +4,7 @@ API SERVICE - COMUNICAÇÃO COM BACKEND
 ====================================================================
 Descrição: Serviço centralizado para todas as chamadas à API
 Data: 21/08/2025
-Autor: Will
+Autor: Will - Empresa: IOGAR
 ====================================================================
 */
 

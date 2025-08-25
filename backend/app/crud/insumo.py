@@ -1,9 +1,9 @@
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   CRUD de Insumos - Operações de banco de dados
 #   Descrição: Este arquivo contém todas as operações de banco de dados para insumos: criar, ler, atualizar e deletar.
-#   Data: 11/08/2025
-#   Autor: Will
-#   ---------------------------------------------------------------------------------------------------
+#   Data: 11/08/2025 | Atualizado: 25/08/2025
+#   Autor: Will - Empresa: IOGAR
+#   ===================================================================================================
 
 from typing import List, Optional
 from sqlalchemy.orm import Session
@@ -11,9 +11,9 @@ from sqlalchemy import and_, or_
 from app.models.insumo import Insumo
 from app.schemas.insumo import InsumoCreate, InsumoUpdate, InsumoFilter
 
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   Operação de leitura
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 
 def get_insumo_by_id(db: Session, insumo_id: int) -> Optional[Insumo]:
     """
@@ -125,7 +125,7 @@ def count_insumos(db: Session, filters: Optional[InsumoFilter] = None) -> int:
             query = query.filter(Insumo.preco_compra >= preco_min_centavos)
         if filters.preco_max is not None:
             preco_max_centavos = int(filters.preco_max * 100)
-            query = query.flter(Insumo.preco_compra <= preco_max_centavos)
+            query = query.filter(Insumo.preco_compra <= preco_max_centavos)
 
     return query.count()
 
@@ -152,9 +152,9 @@ def search_insumos(db: Session, termo_busca: str, limit: int = 20) -> List[Insum
         )
     ).order_by(Insumo.nome).limit(limit).all()
 
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   Operações de criação
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 
 def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
     """
@@ -218,9 +218,9 @@ def create_insumos(db: Session, insumos: List[InsumoCreate]) -> List[Insumo]:
     return insumos_criados
 
 
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   Operações de atualização
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 
 def update_insumo(db: Session, insumo_id: int, insumo_update: InsumoUpdate) -> Optional[Insumo]:
     """
@@ -268,9 +268,9 @@ def update_insumo(db: Session, insumo_id: int, insumo_update: InsumoUpdate) -> O
 
     return db_insumo
 
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   Operações de exclusão
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 
 def delete_insumo(db: Session, insumo_id: int) -> bool:
     """
@@ -303,9 +303,9 @@ def delete_insumo(db: Session, insumo_id: int) -> bool:
 
     return True
 
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   Operações auxiliares
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 
 def get_grupos_unicos(db: Session) -> List[str]:
     """
@@ -350,3 +350,4 @@ def get_unidades_unicas(db: Session) -> List[str]:
         List[str]: Lista de unidades únicas
     """
     return [unidade[0] for unidade in db.query(Insumo.unidade).distinct().order_by(Insumo.unidade).all()]
+

@@ -1,19 +1,19 @@
-#   ---------------------------------------------------------------------------------------------------
+#   ===================================================================================================
 #   Modelos de Receitas - Restaurantes, Receitas e Relacionamentos
 #   Descrição: Este arquivo define os modelos SQLAlchemy para receitas, restaurantes e 
 #   relacionamentos receita-insumo com cálculos automáticos de CMV e preços sugeridos
 #   Data: 13/08/2025 | Atualizado: 18/08/2025 e 19/08/2025
-#   Autor: Will
-#   ---------------------------------------------------------------------------------------------------
+#   Autor: Will - Empresa: IOGAR
+#   ===================================================================================================
 
 from sqlalchemy import Column, Integer, Float, ForeignKey, String, Text, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.models.base import Base, BaseModel
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # FUNÇÃO DE CONVERSÃO DE UNIDADES (MOVIDA PARA CÁ PARA USO NOS MODELS)
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 def converter_para_unidade_base(quantidade: float, unidade: str) -> float:
     """
@@ -50,9 +50,9 @@ def converter_para_unidade_base(quantidade: float, unidade: str) -> float:
     # Arredondar para 6 casas decimais para evitar problemas de precisão
     return round(quantidade_convertida, 6)
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # MODELO RESTAURANTE - Estabelecimentos que possuem receitas
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 class Restaurante(Base): 
     """
@@ -75,9 +75,9 @@ class Restaurante(Base):
     """
     __tablename__ = "restaurantes"
     
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Campos de controle (mesmos do BaseModel mas definidos explicitamente)
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     id = Column(Integer, primary_key=True, index=True, comment="ID único do restaurante")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), 
@@ -85,9 +85,9 @@ class Restaurante(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), 
                        comment="Data da última atualização automática")
     
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Campos específicos do restaurante
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     nome = Column(String(200), nullable=False, comment="Nome do restaurante")
     cnpj = Column(String(18), unique=True, nullable=True, comment="CNPJ do restaurante")
@@ -95,9 +95,9 @@ class Restaurante(Base):
     telefone = Column(String(20), nullable=True, comment="Telefone de contato") 
     ativo = Column(Boolean, default=True, comment="Se o restaurante está ativo")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Relacionamentos SQLAlchemy
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     # Relacionamento com receitas (1 para N)
     # Um restaurante pode ter muitas receitas
@@ -107,9 +107,9 @@ class Restaurante(Base):
         """Representação em string do objeto para debug"""
         return f"<Restaurante(id={self.id}, nome='{self.nome}')>"
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # MODELO RECEITA - Produtos finais que são vendidos
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 class Receita(BaseModel):  # ✅ Herda de BaseModel (tem grupo, subgrupo, codigo, etc.)
     """
@@ -132,25 +132,25 @@ class Receita(BaseModel):  # ✅ Herda de BaseModel (tem grupo, subgrupo, codigo
     """
     __tablename__ = "receitas"
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Relacionamento obrigatório com restaurante
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     # ID do restaurante (obrigatório - toda receita pertence a um restaurante)
     restaurante_id = Column(Integer, ForeignKey("restaurantes.id"), nullable=False, 
                            comment="ID do restaurante dono da receita")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Campos específicos para controle de preços e custos
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     preco_venda = Column(Integer, nullable=True, comment="Preço de venda em centavos")
     cmv = Column(Integer, nullable=True, comment="Custo da mercadoria vendida em centavos")
     margem_percentual = Column(Integer, nullable=True, comment="Margem de lucro em porcentagem * 100")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Sistema de variações de receitas
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     # Para criar variações de uma receita base
     # Ex: "Pizza Margherita" (pai) -> "Pizza Margherita - Sem Glúten" (filha)
@@ -159,9 +159,9 @@ class Receita(BaseModel):  # ✅ Herda de BaseModel (tem grupo, subgrupo, codigo
     variacao_nome = Column(String(100), nullable=True, 
                           comment="Nome da variação (ex: 'Sem Glúten', 'Extra Grande')")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Campos para informações adicionais da receita
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     descricao = Column(Text, nullable=True, comment="Descrição detalhada da receita")
     modo_preparo = Column(Text, nullable=True, comment="Modo de preparo da receita")
@@ -169,9 +169,9 @@ class Receita(BaseModel):  # ✅ Herda de BaseModel (tem grupo, subgrupo, codigo
     rendimento_porcoes = Column(Integer, nullable=True, comment="Rendimento em porções")
     ativo = Column(Boolean, default=True, comment="Se a receita está ativa no cardápio")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Relacionamentos SQLAlchemy
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     # Relacionamento com restaurante (N para 1)
     # Muitas receitas pertencem a um restaurante
@@ -190,9 +190,9 @@ class Receita(BaseModel):  # ✅ Herda de BaseModel (tem grupo, subgrupo, codigo
     receita_insumos = relationship("ReceitaInsumo", back_populates="receita", 
                                   cascade="all, delete-orphan")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Propriedades calculadas (getters) - conversão centavos para reais
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     @property
     def preco_venda_real(self) -> float:
@@ -224,9 +224,9 @@ class Receita(BaseModel):  # ✅ Herda de BaseModel (tem grupo, subgrupo, codigo
         """
         return self.margem_percentual / 10000 if self.margem_percentual else 0.0
     
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Métodos de cálculo de preços (MANTIDOS - já corretos)
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     def calcular_preco_sugerido(self, margem_percentual: int) -> float:
         """
@@ -309,9 +309,9 @@ class Receita(BaseModel):  # ✅ Herda de BaseModel (tem grupo, subgrupo, codigo
         """Representação em string do objeto para debug"""
         return f"<Receita(id={self.id}, nome='{self.nome}', restaurante_id={self.restaurante_id})>"
 
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 # MODELO RECEITA_INSUMO - Relacionamento Many-to-Many (CORRIGIDO COM FLOAT)
-# ---------------------------------------------------------------------------------------------------
+# ===================================================================================================
 
 class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do BaseModel)
     """
@@ -337,9 +337,9 @@ class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do Base
     """
     __tablename__ = "receita_insumos"
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Campos de controle
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     id = Column(Integer, primary_key=True, index=True, comment="ID único do relacionamento")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), 
@@ -347,18 +347,18 @@ class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do Base
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), 
                        comment="Data da última atualização automática")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Chaves estrangeiras para o relacionamento N:N
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     receita_id = Column(Integer, ForeignKey("receitas.id"), nullable=False, 
                        comment="ID da receita")
     insumo_id = Column(Integer, ForeignKey("insumos.id"), nullable=False, 
                       comment="ID do insumo")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Quantidade necessária do insumo nesta receita (CORRIGIDO PARA FLOAT)
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     quantidade_necessaria = Column(Float, nullable=False, 
                                   comment="Quantidade necessária do insumo (aceita decimais)")
@@ -367,9 +367,9 @@ class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do Base
     unidade_medida = Column(String(20), nullable=False, default="g", 
                            comment="Unidade de medida (g, kg, ml, L, unidade)")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Custo calculado automaticamente (MANTIDO COMO FLOAT EM REAIS)
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     # Custo calculado deste insumo na receita (em reais, não centavos)
     custo_calculado = Column(Float, nullable=True, 
@@ -379,9 +379,9 @@ class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do Base
     observacoes = Column(Text, nullable=True, 
                         comment="Observações sobre o uso deste insumo na receita")
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Relacionamentos SQLAlchemy
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     # Relacionamento com receita (N para 1)
     receita = relationship("Receita", back_populates="receita_insumos")
@@ -389,9 +389,9 @@ class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do Base
     # Relacionamento com insumo (N para 1)
     insumo = relationship("Insumo")  # Relacionamento com a tabela insumos
 
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     # Métodos de cálculo de custos (CORRIGIDOS COM CONVERSÃO DE UNIDADES)
-    # ---------------------------------------------------------------------------------------------------
+    # ===================================================================================================
     
     def calcular_custo(self, db_session):
         """

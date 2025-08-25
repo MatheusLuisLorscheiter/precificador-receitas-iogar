@@ -7,8 +7,7 @@
  *           Interface moderna conectada ao backend FastAPI.
  * 
  * Data: 20/08/2025 | Atuaçizado 21/08/2025
- * Autor: Will
- * Empresa: IOGAR - Inteligência Operacional para Restaurantes
+ * Autor: Will - Empresa: IOGAR
  * ============================================================================
  */
 
@@ -677,10 +676,10 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                   <option value="">Selecione</option>
                   <option value="kg">Quilograma (kg)</option>
                   <option value="g">Grama (g)</option>
-                  <option value="L">Litro (L)</option> {/* ✅ L maiúsculo */}
+                  <option value="L">Litro (L)</option>
                   <option value="ml">Mililitro (ml)</option>
                   <option value="unidade">Unidade (un)</option>
-                  <option value="caixa">Caixa</option> {/* ✅ Adicionar caixa */}
+                  <option value="caixa">Caixa</option>
                 </select>
               </div>
 
@@ -706,6 +705,16 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
                 placeholder="0.00"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Valor por Unidade (Calculado)</label>
+              <div className="w-full p-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 font-medium">
+                R$ {formData.quantidade > 0 ? (formData.preco_compra / formData.quantidade).toFixed(2) : '0.00'}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                R$ {formData.preco_compra.toFixed(2)} ÷ {formData.quantidade} = R$ {formData.quantidade > 0 ? (formData.preco_compra / formData.quantidade).toFixed(2) : '0.00'}/unidade
+              </p>
             </div>
           </div>
 
@@ -1076,11 +1085,13 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Nome</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Categoria</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Unidade</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Preço</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Fator</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Quantidade</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Unidade</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Preço Compra</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Valor/Unidade</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Fator</th>
                     <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Comparativo de Preços</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -1088,12 +1099,15 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                     <tr key={insumo.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">{insumo.nome}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{insumo.grupo || 'Sem categoria'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.quantidade ?? 0}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-green-600">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
                         R$ {insumo.preco_compra_real?.toFixed(2) || '0.00'}
                       </td>
+                      <td className="px-6 py-4 text-sm font-medium text-green-600">
+                        R$ {insumo.quantidade > 0 ? (insumo.preco_compra_real / insumo.quantidade).toFixed(2) : '0.00'}
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{insumo.fator}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.quantidade ?? 0}</td>
                       <td className="px-6 py-4 text-sm">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
@@ -1108,6 +1122,20 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                             Ver Comparativo
                           </button>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleEditInsumo(insumo)}
+                          className="text-blue-600 hover:text-blue-900 mr-3"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteInsumo(insumo.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Excluir
+                        </button>
                       </td>
                     </tr>
                   ))}
