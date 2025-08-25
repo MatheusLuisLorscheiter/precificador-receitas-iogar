@@ -40,14 +40,14 @@ unidade_medida = Column(String(20), nullable=False, comment="Unidade de medida e
 #   ===================================================================================================
 
 observacoes = Column(Text, comment="Observações especificas de us")
-ordem = Column(Integer, defaut=1, comment='Ordem de uso do insumo na receita')
+ordem = Column(Integer, default=1, comment='Ordem de uso do insumo na receita')
 
 #   ===================================================================================================
 #   Relacionamentos
 #   ===================================================================================================
 
 #   Relacionamentos com a tabela receita
-insumo = relationship("Receita", back_populates="insumos")
+receita = relationship("Receita", back_populates="insumos")
 
 #   Relacionamentos com a tabela insumo
 insumo = relationship("Insumo", back_populates="receitas")
@@ -81,13 +81,14 @@ def custo_unitario_centavos(self):
         Returns:
             int: Custo em centavos
     """
-        if not self.insumo or not self.insumo.preco_compra:
-            return 0
-        #   Calcula custo por unidade base
-        custo_por_unidade_base = self.insumo.preco_compra / self.insumo.fator    
+    if not self.insumo or not self.insumo.preco_compra:
+        return 0
         
-        #   Multiplica pela quantidade necessária
-        return int(self.quantidade_necessaria * custo_por_unidade_base)
+    #   Calcula custo por unidade base
+    custo_por_unidade_base = self.insumo.preco_compra / self.insumo.fator    
+        
+    #   Multiplica pela quantidade necessária
+    return int(self.quantidade_necessaria * custo_por_unidade_base)
 
 @property
 def custo_unitario_real(self):
@@ -134,7 +135,7 @@ def obter_info_uso(self):
         "ordem": self.ordem
     }
 
-def ajustar_quantidade_por_porcoes(self, num_porcoes)
+def ajustar_quantidade_por_porcoes(self, num_porcoes):
     """
     Calcula a quantidade necessaria para uma quantidade de porções
     """
