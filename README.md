@@ -1,1 +1,0 @@
-# precificador-receitas-iogar
