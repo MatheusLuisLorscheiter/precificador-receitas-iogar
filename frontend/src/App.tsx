@@ -1184,21 +1184,33 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
     const handleDeleteInsumo = async (id: number) => {
       if (!confirm('Tem certeza que deseja excluir este insumo?')) return;
       
+      // Encontrar o nome do insumo para o popup
+      const insumo = insumos.find(i => i.id === id);
+      const nomeInsumo = insumo?.nome || 'Insumo';
+      
       try {
         setLoading(true);
         const response = await apiService.deleteInsumo(id);
 
-        // Verificar sucesso de múltiplas formas
         if (response.data || !response.error) {
           await fetchInsumos();
-          alert('Insumo excluído com sucesso!');
+          showSuccessPopup(
+            'Insumo Excluído!',
+            `${nomeInsumo} foi removido com sucesso do sistema.`
+          );
         } else {
           console.error('Erro ao deletar insumo:', response.error);
-          alert('Erro ao deletar insumo: ' + response.error);
+          showErrorPopup(
+            'Erro ao Excluir',
+            response.error || 'Não foi possível excluir o insumo.'
+          );
         }
       } catch (error) {
         console.error('Erro ao deletar insumo:', error);
-        alert('Erro inesperado ao deletar insumo');
+        showErrorPopup(
+          'Erro Inesperado',
+          'Ocorreu um erro inesperado ao tentar excluir o insumo.'
+        );
       } finally {
         setLoading(false);
       }
