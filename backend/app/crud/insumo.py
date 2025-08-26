@@ -273,34 +273,21 @@ def update_insumo(db: Session, insumo_id: int, insumo_update: InsumoUpdate) -> O
 #   ===================================================================================================
 
 def delete_insumo(db: Session, insumo_id: int) -> bool:
-    """
-    Deleta um insumo do banco de dados.
-    
-    Args:
-        db (Session): Sessão do banco de dados
-        insumo_id (int): ID do insumo a ser deletado
-        
-    Returns:
-        bool: True se deletado com sucesso, False se não encontrado
-        
-    Raises:
-        ValueError: Se insumo estiver sendo usado em receitas
-    """
+    """Deleta um insumo do banco de dados."""
     db_insumo = get_insumo_by_id(db, insumo_id)
     if not db_insumo:
         return False
     
     # Verificar se insumo esta sendo usado em receitas
-    if db_insumo.receitas:
+    if hasattr(db_insumo, 'receitas') and db_insumo.receitas:
         receitas_usando = [r.receita.nome for r in db_insumo.receitas]
         raise ValueError(
-            f"Não é possivel deletar o insumo '{db_insumo.nome}'. "
+            f"Não é possível deletar o insumo '{db_insumo.nome}'. "
             f"Ele está sendo usado nas receitas: {', '.join(receitas_usando)}"
         )
     
     db.delete(db_insumo)
     db.commit()
-
     return True
 
 #   ===================================================================================================

@@ -89,6 +89,39 @@ class ApiService {
     });
   }
 
+  // Atualizar insumo existente
+  async updateInsumo(id: number, insumo: any): Promise<ApiResponse<any>> {
+    console.log('🔄 API Service atualizando insumo ID:', id);
+    console.log('📝 Dados para atualizar:', insumo);
+    
+    return this.request<any>(`/api/v1/insumos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(insumo),
+    });
+  }
+
+  // Deletar insumo
+  async deleteInsumo(id: number): Promise<ApiResponse<any>> {
+    console.log('🗑️ API Service deletando insumo ID:', id);
+    
+    try {
+      const response = await fetch(`${this.baseURL}/api/v1/insumos/${id}`, {
+        method: 'DELETE',
+        headers: API_CONFIG.headers,
+      });
+
+      if (response.ok) {
+        return { data: { success: true } };
+      } else {
+        throw new Error(`Erro HTTP: ${response.status}`);
+      }
+    } catch (error) {
+      return { 
+        error: error instanceof Error ? error.message : 'Erro desconhecido' 
+      };
+    }
+  }
+
   // ================================
   // MÉTODOS PARA RECEITAS - AJUSTADOS PARA SEU BACKEND
   // ================================

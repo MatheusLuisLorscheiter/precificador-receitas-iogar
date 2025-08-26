@@ -937,7 +937,7 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
   // ============================================================================
   // COMPONENTE GESTÃO DE INSUMOS
   // ============================================================================
-  const Insumos = React.memo(() => {
+  const Insumos = () => {
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [showSuccessPopup, setShowSuccessPopup] = useState<boolean>(false);
 
@@ -1023,8 +1023,10 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
         setLoading(true);
         const response = await apiService.deleteInsumo(id);
 
-        if (!response.error) {
+        // Verificar sucesso de múltiplas formas
+        if (response.data || !response.error) {
           await fetchInsumos();
+          alert('Insumo excluído com sucesso!');
         } else {
           console.error('Erro ao deletar insumo:', response.error);
           alert('Erro ao deletar insumo: ' + response.error);
@@ -1125,13 +1127,19 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => handleEditInsumo(insumo)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleEditInsumo(insumo);
+                          }}
                           className="text-blue-600 hover:text-blue-900 mr-3"
                         >
                           Editar
                         </button>
                         <button
-                          onClick={() => handleDeleteInsumo(insumo.id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDeleteInsumo(insumo.id);
+                          }}
                           className="text-red-600 hover:text-red-900"
                         >
                           Excluir
@@ -1168,7 +1176,10 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
         )}
       </div>
     );
-  });
+  };
+
+  Insumos.displayName = 'Insumos';
+
   // ============================================================================
   // COMPONENTE GESTÃO DE RESTAURANTES
   // ============================================================================
