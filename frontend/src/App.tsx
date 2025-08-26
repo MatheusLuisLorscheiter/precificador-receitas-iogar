@@ -28,6 +28,19 @@ import {
 } from 'lucide-react';
 
 // ============================================================================
+// POPUP COM FADE - IMPLEMENTAÇÃO PARA FORMULÁRIO DE CADASTRAR INSUMO
+// ============================================================================
+
+// Interface para props do popup
+interface PopupProps {
+  type: 'success' | 'error';
+  title: string;
+  message: string;
+  isVisible: boolean;
+  onClose: () => void;
+}
+
+// ============================================================================
 // INTERFACES E TIPOS DE DADOS
 // ============================================================================
 
@@ -74,6 +87,120 @@ interface ReceitaInsumo {
   insumo?: Insumo;
 }
 
+// ============================================================================
+// COMPONENTE POPUP COM FADE
+// ============================================================================
+
+const FadePopup: React.FC<PopupProps> = ({ type, title, message, isVisible, onClose }) => {
+  // Estado para controlar animação de saída
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // Efeito para controlar o fade out
+  useEffect(() => {
+    if (isVisible) {
+      setIsAnimating(true);
+      // Auto-close após 4 segundos
+      const timer = setTimeout(() => {
+        handleClose();
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible]);
+
+  // Função para fechar popup com animação
+  const handleClose = () => {
+    setIsAnimating(false);
+    setTimeout(() => {
+      onClose();
+    }, 300); // Tempo da animação de fade out
+  };
+
+  // Se não está visível, não renderiza nada
+  if (!isVisible && !isAnimating) return null;
+
+  // Definir cores baseadas no tipo
+  const colors = {
+    success: {
+      bg: 'bg-green-50',
+      border: 'border-green-200',
+      icon: 'text-green-500',
+      title: 'text-green-800',
+      message: 'text-green-600'
+    },
+    error: {
+      bg: 'bg-red-50',
+      border: 'border-red-200',
+      icon: 'text-red-500',
+      title: 'text-red-800',
+      message: 'text-red-600'
+    }
+  };
+
+  const colorScheme = colors[type];
+
+  return (
+    <div 
+      className={`
+        fixed top-4 right-4 z-50 transform transition-all duration-300 ease-in-out
+        ${isAnimating && isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
+      `}
+    >
+      <div className={`
+        ${colorScheme.bg} ${colorScheme.border} border rounded-lg shadow-lg p-4 min-w-80 max-w-96
+        backdrop-blur-sm
+      `}>
+        <div className="flex items-start gap-3">
+          {/* Ícone baseado no tipo */}
+          <div className={`${colorScheme.icon} mt-0.5`}>
+            {type === 'success' ? (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            )}
+          </div>
+
+          {/* Conteúdo do popup */}
+          <div className="flex-1">
+            <h4 className={`font-semibold ${colorScheme.title} mb-1`}>
+              {title}
+            </h4>
+            <p className={`text-sm ${colorScheme.message}`}>
+              {message}
+            </p>
+          </div>
+
+          {/* Botão de fechar */}
+          <button
+            onClick={handleClose}
+            className={`${colorScheme.icon} hover:bg-white hover:bg-opacity-50 rounded p-1 transition-colors`}
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Barra de progresso do auto-close */}
+        <div className="mt-3 bg-white bg-opacity-50 rounded-full h-1">
+          <div 
+            className={`h-full rounded-full transition-all duration-4000 ease-linear ${
+              type === 'success' ? 'bg-green-400' : 'bg-red-400'
+            }`}
+            style={{ 
+              width: isVisible ? '0%' : '100%',
+              transitionDuration: isVisible ? '4000ms' : '0ms'
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Função estável para busca - FORA do componente
 const createSearchHandler = (setSearchTerm) => {
   return (term) => {
@@ -81,14 +208,52 @@ const createSearchHandler = (setSearchTerm) => {
   };
 };
 
+// Funções globais para controle do popup
+let globalShowPopup = null;
+let globalSetPopupData = null;
+let globalClosePopup = null;
+
+const initializePopupFunctions = (setShowPopup, setPopupData) => {
+  globalShowPopup = setShowPopup;
+  globalSetPopupData = setPopupData;
+  
+  globalClosePopup = () => {
+    setShowPopup(false);
+  };
+};
+
+const showSuccessPopup = (title, message) => {
+  if (globalSetPopupData && globalShowPopup) {
+    globalSetPopupData({
+      type: 'success',
+      title,
+      message
+    });
+    globalShowPopup(true);
+    console.log('✅ Popup de sucesso exibido:', title);
+  }
+};
+
+const showErrorPopup = (title, message) => {
+  if (globalSetPopupData && globalShowPopup) {
+    globalSetPopupData({
+      type: 'error',
+      title,
+      message
+    });
+    globalShowPopup(true);
+    console.log('❌ Popup de erro exibido:', title);
+  }
+};
+
 // ============================================================================
 // COMPONENTE PRINCIPAL DO SISTEMA
 // ============================================================================
 const FoodCostSystem: React.FC = () => {
   
-  // ============================================================================
+  // ==========================================================================
   // ESTADOS DO SISTEMA
-  // ============================================================================
+  // ==========================================================================
   
   // Estado da navegação - controla qual aba está ativa
 const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -110,6 +275,13 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
     quantidade: 0,
     codigo: ''
   }));
+
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupData, setPopupData] = useState({
+    type: 'success' as 'success' | 'error',
+    title: '',
+    message: ''
+  });
   
   // Estados para formulário de receita
   const [novaReceita, setNovaReceita] = useState({
@@ -121,6 +293,11 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
   
   // Estados para insumos da receita
   const [receitaInsumos, setReceitaInsumos] = useState<ReceitaInsumo[]>([]);
+
+  // Inicializar funções do popup
+  useEffect(() => {
+    initializePopupFunctions(setShowPopup, setPopupData);
+  }, []);
   
   // ============================================================================
   // CONFIGURAÇÃO DA API
@@ -939,11 +1116,6 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
   // ============================================================================
   const Insumos = () => {
     const [searchTerm, setSearchTerm] = useState<string>('');
-    const [showSuccessPopup, setShowSuccessPopup] = useState<boolean>(false);
-
-    useEffect(() => {
-      console.log('showSuccessPopup mudou para:', showSuccessPopup);
-    }, [showSuccessPopup]);
 
     const handleSearchChange = useCallback((term) => {
       setSearchTerm(term);
@@ -971,48 +1143,41 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
         }
 
         console.log('📥 Resposta da API:', response);
-        if (response.data) {
+        if (response.data || !response.error) {
           console.log('✅ Sucesso na operação:', response.data);
           await fetchInsumos();
+          
           if (!editingInsumo) {
-            setShowSuccessPopup(true);
-            console.log('🎉 Popup ativado para novo insumo');
-            setTimeout(() => {
-              setShowSuccessPopup(false);
-              console.log('🎉 Popup fechado após 3 segundos');
-            }, 3000);
+            showSuccessPopup(
+              'Insumo Cadastrado!',
+              `${dadosInsumo.nome} foi cadastrado com sucesso no sistema.`
+            );
+          } else {
+            showSuccessPopup(
+              'Insumo Atualizado!', 
+              `${dadosInsumo.nome} foi atualizado com sucesso.`
+            );
           }
+          
           setShowInsumoForm(false);
           setEditingInsumo(null);
         } else if (response.error) {
           console.error('❌ Erro ao salvar insumo:', response.error);
-          alert('Erro ao salvar insumo: ' + response.error);
+          showErrorPopup(
+            'Erro ao Salvar',
+            response.error || 'Ocorreu um erro inesperado ao salvar o insumo.'
+          );
         }
       } catch (error) {
         console.error('❌ Erro inesperado ao salvar insumo:', error);
-        alert('Erro inesperado ao salvar insumo');
+        showErrorPopup(
+          'Erro Inesperado',
+          'Ocorreu um erro inesperado. Verifique sua conexão e tente novamente.'
+        );
       } finally {
         setLoading(false);
         console.log('⏳ Fim do processo de salvamento');
       }
-    };
-
-    // Função para limpar o formulário
-    const limparFormularioInsumo = () => {
-      console.log('🧹 Limpando formulário...');
-      setShowInsumoForm(false);
-      setEditingInsumo(null);
-      setTimeout(() => {
-        setNovoInsumo({ 
-          nome: '', 
-          unidade: '', 
-          preco_compra: 0, 
-          fator: 1, 
-          categoria: '', 
-          quantidade: 0, 
-          codigo: '' 
-        });
-      }, 100);
     };
 
     // Função para deletar insumo
@@ -1164,15 +1329,6 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
             onSave={handleSaveInsumo}
             loading={loading}
           />
-        )}
-        {/* Popup de sucesso */}
-        {showSuccessPopup && (
-          console.log('Renderizando popup...'),
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000] transition-opacity duration-300 ease-in-out">
-            <div className="bg-white p-6 rounded-lg shadow-lg transition-opacity duration-300 ease-in-out opacity-100">
-              <p className="text-green-600 font-semibold">Insumo cadastrado com sucesso!</p>
-            </div>
-          </div>
         )}
       </div>
     );
@@ -1659,6 +1815,14 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
           </div>
         )}
       </main>
+      {/* Popup de feedback com fade */}
+      <FadePopup
+        type={popupData.type}
+        title={popupData.title}
+        message={popupData.message}
+        isVisible={showPopup}
+        onClose={globalClosePopup || (() => setShowPopup(false))}
+      />
     </div>
   );
 };
