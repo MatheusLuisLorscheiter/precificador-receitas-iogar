@@ -1117,6 +1117,17 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
   const Insumos = () => {
     const [searchTerm, setSearchTerm] = useState<string>('');
 
+    // Estado para modal de confirmação de exclusão
+    const [deleteConfirm, setDeleteConfirm] = useState<{
+      isOpen: boolean;
+      insumoId: number | null;
+      insumoNome: string;
+    }>({
+      isOpen: false,
+      insumoId: null,
+      insumoNome: ''
+    });
+
     const handleSearchChange = useCallback((term) => {
       setSearchTerm(term);
     }, [setSearchTerm]);
@@ -1181,25 +1192,30 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
     };
 
     // Função para deletar insumo
-    const handleDeleteInsumo = async (id: number) => {
-      if (!confirm('Tem certeza que deseja excluir este insumo?')) return;
-      
-      // Encontrar o nome do insumo para o popup
+    const handleDeleteInsumo = (id: number) => {
       const insumo = insumos.find(i => i.id === id);
-      const nomeInsumo = insumo?.nome || 'Insumo';
-      
+      setDeleteConfirm({
+        isOpen: true,
+        insumoId: id,
+        insumoNome: insumo?.nome || 'Insumo'
+      });
+    };
+
+    // Função para confirmar e executar a exclusão
+    const confirmDeleteInsumo = async () => {
+      if (!deleteConfirm.insumoId) return;
+
       try {
         setLoading(true);
-        const response = await apiService.deleteInsumo(id);
+        const response = await apiService.deleteInsumo(deleteConfirm.insumoId);
 
         if (response.data || !response.error) {
           await fetchInsumos();
           showSuccessPopup(
             'Insumo Excluído!',
-            `${nomeInsumo} foi removido com sucesso do sistema.`
+            `${deleteConfirm.insumoNome} foi removido com sucesso do sistema.`
           );
         } else {
-          console.error('Erro ao deletar insumo:', response.error);
           showErrorPopup(
             'Erro ao Excluir',
             response.error || 'Não foi possível excluir o insumo.'
@@ -1213,8 +1229,9 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
         );
       } finally {
         setLoading(false);
+        setDeleteConfirm({ isOpen: false, insumoId: null, insumoNome: '' });
       }
-    };
+    }; 
 
     // Função para editar insumo
     const handleEditInsumo = (insumo: Insumo) => {
@@ -1342,6 +1359,48 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
             loading={loading}
           />
         )}
+                {/* Modal de formulário de insumo */}
+        {showInsumoForm && (
+          <FormularioInsumo 
+            editingInsumo={editingInsumo}
+            onClose={() => {
+              setShowInsumoForm(false);
+              setEditingInsumo(null);
+              setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '', quantidade: 0, codigo: '' });
+            }}
+            onSave={handleSaveInsumo}
+            loading={loading}
+          />
+        )}
+
+        {/* Modal de confirmação de exclusão */}
+        {deleteConfirm.isOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Confirmar Exclusão
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Tem certeza que deseja excluir <span className="font-medium text-gray-900">{deleteConfirm.insumoNome}</span>?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteConfirm({ isOpen: false, insumoId: null, insumoNome: '' })}
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDeleteInsumo}
+                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   };
