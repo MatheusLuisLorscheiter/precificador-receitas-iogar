@@ -1,7 +1,7 @@
 #   ===================================================================================================
 #   Insumo Model -  Representa os ingredientes de cada receita
 #   Descrição: Esse modelo define a estrutura dos insumos que serão utilizados nas receitas.
-#   Data: 07/08/2025 | Atualizado: 25/08/2025
+#   Data: 07/08/2025 | Atualizado: 25/08/2025 e 27/08/2025
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
@@ -9,6 +9,7 @@ from sqlalchemy import Column, Float
 
 #  from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from sqlalchemy import ForeignKey
 
 class Insumo(BaseModel):
     """
@@ -33,11 +34,29 @@ class Insumo(BaseModel):
     __tablename__ = "insumos"
 
     #   ===================================================================================================
+    #   CHAVE ESTRANGEIRA PARA FORNECEDOR
+    #   ===================================================================================================
+
+    fornecedor_id = Column(
+        Integer,
+        ForeignKey("fornecedores.id"),
+        nullable=True,
+        comment="ID do fornecedor que fornece este insumo"
+    )
+
+
+    #   ===================================================================================================
     #   Relacionamentos com outras tabelas
     #   ===================================================================================================
 
     # Relacionamento com receitas
     # receitas = relationship("ReceitaInsumo", back_populates="insumo")
+
+    # Relacionamento com Fornecedor (muitos insumos para um fornecedor)
+    fornecedor = relationship(
+        "Fornecedor",
+        back_populates="insumos"
+    )
 
     def __repr__(self):
         """Representação em string do objeto para debug"""

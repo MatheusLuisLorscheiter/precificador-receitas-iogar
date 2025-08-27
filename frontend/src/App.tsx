@@ -1320,24 +1320,26 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleEditInsumo(insumo);
-                          }}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleDeleteInsumo(insumo.id);
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Excluir
-                        </button>
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleEditInsumo(insumo);
+                            }}
+                            className="px-3 py-1.5 text-xs bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleDeleteInsumo(insumo.id);
+                            }}
+                            className="px-3 py-1.5 text-xs bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-lg hover:from-pink-600 hover:to-red-600 transition-all"
+                          >
+                            Excluir
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
