@@ -13,7 +13,21 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 # Imports dos routers/endpoints das APIs
-from app.api.endpoints import insumos, receitas, fornecedores
+try:
+    from app.api.endpoints import insumos, receitas, fornecedores
+    print("✅ Módulos importados com sucesso")
+except ImportError as e:
+    print(f"❌ Erro ao importar endpoints: {e}")
+    raise
+
+# Imports para configuração do banco de dados
+try:
+    from app.database import engine
+    from app.models.base import Base
+    print("✅ Banco de dados importado com sucesso")
+except ImportError as e:
+    print(f"❌ Erro ao importar banco: {e}")
+    raise
 
 # Imports para configuração do banco de dados
 from app.database import engine
@@ -93,9 +107,24 @@ app = FastAPI(
 
 from fastapi.middleware.cors import CORSMiddleware
 
+# CORS configurado para produção
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://localhost:3000",
+    "https://localhost:5173",
+]
+
+# Se estiver em produção, adicionar o domínio do Render
+if os.getenv("RENDER"):
+    origins.extend([
+        "https://*.onrender.com",
+        "https://precificador-receitas-iogar.onrender.com"  # Seu domínio específico
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["*"],  # Ou use `origins` para ser mais específico
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,15 +136,14 @@ app.add_middleware(
 
 @app.get("/", summary="Status da API")
 def root():
-    """
-    Endpoint raiz que retorna o status da API.
-    Útil para verificar se o serviço está rodando.
-    """
+    """Endpoint raiz que retorna o status da API."""
+    base_url = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000")
     return {
         "message": "Food Cost System API",
         "status": "running",
         "version": "1.0.0",
-        "docs": "http://localhost:8000/docs"
+        "docs": f"{base_url}/docs",
+        "environment": "production" if os.getenv("RENDER") else "development"
     }
 
 @app.get("/health", summary="Health Check")
@@ -128,15 +156,12 @@ def health_check():
 
 @app.get("/test-db", summary="Testar conexão com banco")
 def test_database():
-    """
-    Testa a conexão com o banco de dados PostgreSQL.
-    Retorna status da conexão.
-    """
+    """Testa a conexão com o banco de dados."""
     try:
         from app.database import engine
         with engine.connect() as connection:
-            connection.execute("SELECT 1")
-        return {"database": "connected", "status": "ok"}
+            result = connection.execute("SELECT 1")
+            return {"database": "connected", "status": "ok"}
     except Exception as e:
         return {"database": "error", "status": "failed", "error": str(e)}
 
@@ -172,7 +197,13 @@ app.include_router(
 app.include_router(
     fornecedores.router, 
     prefix="/api/v1/fornecedores", 
-    tags=["fornecedores"])
+    tags=["fornecedores"],
+    responses={
+        404: {"description": "Fornecedor não encontrado"},
+        422: {"description": "Erro de validação"},
+        500: {"description": "Erro interno do servidor"}
+    }
+)
 
 #   ===================================================================================================
 #   Middleware para logging de requisições
@@ -242,14 +273,13 @@ async def internal_error_handler(request: Request, exc: Exception):
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Iniciando Food Cost System API...")
-    print("🌐 Local: http://localhost:8000")
-    print("📖 Docs: http://localhost:8000/docs")
+    port = int(os.getenv("PORT", 8000))
+    print(f"🚀 Iniciando Food Cost System API na porta {port}...")
     
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,
+        port=port,
+        reload=False,  # Desabilitar reload em produção
         log_level="info"
     )
