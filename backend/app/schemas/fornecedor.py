@@ -109,7 +109,7 @@ class FornecedorBase(BaseModel):
             str: Estado em maiúsculas
         """
         if v:
-            v = v.upper().string()
+            v = v.upper().strip()
             if len(v) != 2:
                 raise field_validator('Estado deve ter exatamente 2 caracteres (UF)')
         return v

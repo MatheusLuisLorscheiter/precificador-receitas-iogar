@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 # Imports dos routers/endpoints das APIs
-from app.api.endpoints import insumos, receitas
+from app.api.endpoints import insumos, receitas, fornecedores
 
 # Imports para configuração do banco de dados
 from app.database import engine
@@ -167,6 +167,12 @@ app.include_router(
         500: {"description": "Erro interno do servidor"}
     }
 )
+
+# Router para operações com fornecedores
+app.include_router(
+    fornecedores.router, 
+    prefix="/api/v1/fornecedores", 
+    tags=["fornecedores"])
 
 #   ===================================================================================================
 #   Middleware para logging de requisições

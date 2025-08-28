@@ -91,7 +91,7 @@ def get_fornecedores(
     # Ordena por nome e aplica paginação
     return query.order_by(Fornecedor.nome_razao_social).offset(skip).limit(limit).all()
 
-def count_fornecedores(db: Session, busca, Optional[str] = None) -> int:
+def count_fornecedores(db: Session, busca: Optional[str] = None) -> int:
     """
     Conta o total de fornecedores (para paginação).
     
@@ -124,7 +124,7 @@ def count_fornecedores(db: Session, busca, Optional[str] = None) -> int:
 # OPERAÇÕES DE CRIAÇÃO (CREATE)
 # ============================================================================
 
-def create_fornecedor(db: Session, fornecedor: FornecedorCreate) -> Fornecedor;
+def create_fornecedor(db: Session, fornecedor: FornecedorCreate) -> Fornecedor:
     """
     Cria um novo fornecedor no banco de dados.
     

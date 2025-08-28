@@ -5,11 +5,9 @@
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
-from sqlalchemy import Column, Float
-
-#  from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Float, ForeignKey, Integer
+from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
-from sqlalchemy import ForeignKey
 
 class Insumo(BaseModel):
     """

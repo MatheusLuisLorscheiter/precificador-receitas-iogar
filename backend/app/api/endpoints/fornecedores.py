@@ -37,6 +37,7 @@ def listar_fornecedores(
     skip: int = Query(0, ge=0, description="Número de registros a pular"),
     limit: int = Query(20, ge=1, le=100, description="Máximo de registros por pégina"),
     busca: Optional[str] = Query(None, description="Termo de busca (nome, CNPJ, cidade, ramo)"),
+    db: Session = Depends(get_db)
 ):
     """
     Lista todos os fornecedores com paginação e busca opcional.
@@ -59,7 +60,7 @@ def listar_fornecedores(
     """
     try:
         # Busca os fornecedores com os filtros aplicados
-        Fornecedores = crud_fornecedor.get_fornecedores(
+        fornecedores = crud_fornecedor.get_fornecedores(
             db=db,
             skip=skip,
             limit=limit,
@@ -115,6 +116,239 @@ def obter_fornecedor(
     
     return fornecedor
 
+@router.get("/por-estado/{estado}", response_model=List[FornecedorResponse])
+def listar_fornecedores_por_estado(
+    estado: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Lista fornecedores de um estado específico.
+    
+    **Funcionalidades:**
+    - Filtra fornecedores por UF (ex: "SP", "RJ")
+    - Útil para relatórios regionais
+    - Ordena por nome alfabeticamente
+    
+    **Parâmetros:**
+    - `estado`: Sigla do estado (UF) com 2 caracteres
+    
+    **Exemplo de uso:**
+    - GET /fornecedores/por-estado/SP - Fornecedores de São Paulo
+    """
+    if len(estado) != 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Estado deve ter exatamente 2 caracteres (ex: SP, RJ)"
+        )
+    fornecedores = crud_fornecedor.get_fornecedores_por_estado(db=db, estado=estado)
+    return fornecedores
+
 # ============================================================================
-# CONTINUAR AQUI
+# ENDPOINTS DE CRIAÇÃO (POST)
 # ============================================================================
+
+@router.post("/", response_model=FornecedorResponse, status_code=status.HTTP_201_CREATED)
+def criar_fornecedor(
+    fornecedor: FornecedorCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Cria um novo fornecedor no sistema.
+    
+    **Funcionalidades:**
+    - Valida dados de entrada (nome e CNPJ obrigatórios)
+    - Verifica se CNPJ já existe (deve ser único)
+    - Formata e valida CNPJ automaticamente
+    - Retorna fornecedor criado com ID gerado
+    
+    **Campos obrigatórios:**
+    - `nome_razao_social`: Nome ou razão social
+    - `cnpj`: CNPJ (com ou sem formatação)
+    
+    **Campos opcionais:**
+    - `telefone`, `ramo`, `cidade`, `estado`
+    
+    **Respostas:**
+    - 201: Fornecedor criado com sucesso
+    - 400: Dados inválidos ou CNPJ duplicado
+    """
+    try:
+        # Tentea criar o forncedor
+        novo_fornecedor = crud_fornecedor.create_fornecedor(db=db, fornecedor=fornecedor)
+        return novo_fornecedor
+    
+    except ValueError as e:
+        # Erro de validação (CNPJ cuplicado, etc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        # Erro interno do servidor
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao criar fornecedor: {str(e)}"
+        )
+    
+# ============================================================================
+# ENDPOINTS DE ATUALIZAÇÃO (PUT)
+# ============================================================================
+
+@router.put("/{fornecedor_id}", response_model=FornecedorResponse)
+def atualizar_fornecedor(
+    fornecedor_id: int,
+    fornecedor_update: FornecedorUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Atualiza um fornecedor existente.
+    
+    **Funcionalidades:**
+    - Permite atualização parcial (apenas campos fornecidos)
+    - Valida CNPJ duplicado se alterado
+    - Mantém dados não informados inalterados
+    - Atualiza automaticamente timestamp updated_at
+    
+    **Parâmetros:**
+    - `fornecedor_id`: ID do fornecedor a ser atualizado
+    - Corpo da requisição: Campos a serem atualizados
+    
+    **Respostas:**
+    - 200: Fornecedor atualizado com sucesso
+    - 404: Fornecedor não encontrado
+    - 400: Dados inválidos ou CNPJ duplicado
+    """
+    try:
+        # Tenta atualizar o fornecedor
+        fornecedor_atualizado = crud_fornecedor.update_fornecedor(
+            db=db,
+            fornecedor_id=fornecedor_id,
+            fornecedor_update=fornecedor_update
+        )
+
+        if not fornecedor_atualizado:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Fornecedor com ID {fornecedor_id} não foi encontrado"
+            )
+        
+        return fornecedor_atualizado
+    
+    except ValueError as e:
+        # Erro de validação (CNPJ duplicado, etc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        # Erro interno do servidor
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao atualizar fornecedor: {str(e)}"
+        )
+    
+# ============================================================================
+# ENDPOINTS DE EXCLUSÃO (DELETE)
+# ============================================================================
+
+@router.delete("/{fornecedor_id}", status_code=status.HTTP_204_NO_CONTENT)
+def excluir_fornecedor(
+    fornecedor_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Exclui um fornecedor do sistema.
+    
+    **⚠️ ATENÇÃO:** Esta operação também remove todos os insumos
+    relacionados a este fornecedor devido ao cascade configurado
+    no relacionamento.
+    
+    **Funcionalidades:**
+    - Exclui fornecedor e insumos relacionados
+    - Operação irreversível
+    - Retorna 204 (sem conteúdo) se bem-sucedida
+    
+    **Parâmetros:**
+    - `fornecedor_id`: ID do fornecedor a ser excluído
+    
+    **Respostas:**
+    - 204: Fornecedor excluído com sucesso
+    - 404: Fornecedor não encontrado
+    """
+    try:
+        # Tenta excluir o fornecedor
+        foi_excluido = crud_fornecedor.delete_fornecedor(db=db, fornecedor_id=fornecedor_id)
+
+        if not foi_excluido:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Fornecedor com ID {fornecedor_id} não foi encontrado"
+            )
+        
+        # Retorna 204 (sem conteúdo) para indicar sucesso na exclusão
+        return None
+    
+    except Exception as e:
+        # Erro interno do servidor
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao excluir fornecedor: {str(e)}"
+        )
+    
+# ============================================================================
+# ENDPOINTS AUXILIARES
+# ============================================================================
+
+@router.get("/ramo/{ramo}", response_model=List[FornecedorResponse])
+def lisar_fornecedores_por_ramo(
+    ramo: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Lista fornecedores por ramo de atividade.
+    
+    **Funcionalidades:**
+    - Busca por ramo (busca parcial, case-insensitive)
+    - Útil para encontrar fornecedores especializados
+    - Ordena por nome alfabeticamente
+    
+    **Parâmetros:**
+    - `ramo`: Ramo de atividade a buscar
+    
+    **Exemplo de uso:**
+    - GET /fornecedores/ramo/alimenticio - Fornecedores do ramo alimentício
+    """
+    fornecedor = crud_fornecedor.get_fornecedores_por_ramo(db=db, ramo=ramo)
+    return FornecedorResponse
+
+@router.get("/{fornecedor_id}/insumos", response_model=List[dict])
+def listar_insumo_do_fornecedor(
+    fornecedor_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Lista todos os insumos de um fornecedor específico.
+    
+    **Funcionalidades:**
+    - Retorna apenas os insumos do fornecedor
+    - Usado para popular a lista de insumos na tela
+    - Inclui preços e informações completas
+    
+    **Parâmetros:**
+    - `fornecedor_id`: ID do fornecedor
+    
+    **Respostas:**
+    - 200: Lista de insumos
+    - 404: Fornecedor não encontrado
+    """
+    # Verifica se o fornecedor existe
+    fornecedor = crud_fornecedor.get_fornecedor_by_id(db=db, fornecedor_id=fornecedor_id)
+
+    if not fornecedor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Fornecedor com ID {fornecedor_id} não foi encontrado"
+        )
+
+    # Retorna os insumos do fornecedor
+    return fornecedor.insumos

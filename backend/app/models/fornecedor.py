@@ -3,15 +3,17 @@
 # ============================================================================
 # Descrição: Define a estrutura da tabela fornecedores no banco de dados
 # Data: 27/08/2025
-# Autor: Will - Empresa: IOGAR
+# Autor: Will
 # ============================================================================
 
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.models.base import BaseModel
+from app.database import Base
 
-class Forcenedor(BaseModel):
-     """
+
+class Fornecedor(Base):
+    """
     Modelo da tabela fornecedores
     
     Campos obrigatórios:
@@ -24,70 +26,75 @@ class Forcenedor(BaseModel):
     - cidade: Cidade onde está localizado
     - estado: Estado onde está localizado
     """
-     
+    
     __tablename__ = "fornecedores"
 
+    # Campos de controle (não herda do BaseModel)
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
     # ========================================================================
     # CAMPOS OBRIGATÓRIOS
     # ========================================================================
-
+    
     nome_razao_social = Column(
-         String(255),
-         nullable=False,
-         comment="Nome ou Razão Social do fornecedor"
+        String(255), 
+        nullable=False,
+        comment="Nome ou Razão Social do fornecedor"
     )
-
+    
     cnpj = Column(
-         String(18),
-         nullable=False,
-         unique=True,
-         index=True,
-         comment="CNPJ do fornecedor (formato: XX.XXX.XXX/XXXX-XX)"
+        String(18), 
+        nullable=False, 
+        unique=True, 
+        index=True,
+        comment="CNPJ do fornecedor (formato: XX.XXX.XXX/XXXX-XX)"
     )
-
+    
     # ========================================================================
     # CAMPOS OPCIONAIS
     # ========================================================================
-
+    
     telefone = Column(
-         String(20),
-         nullable=True,
-         comment="Telefone de contato do fornecedor"
+        String(20), 
+        nullable=True,
+        comment="Telefone de contato do fornecedor"
     )
-
+    
     ramo = Column(
-         String(100),
-         nullable=True,
-         comment="Ramo de atividade do fornecedor"
+        String(100), 
+        nullable=True,
+        comment="Ramo de atividade do fornecedor"
     )
-
+    
     cidade = Column(
-         String(100),
-         nullable=True,
-         comment="CIdade onde está localizado o fornecedor"
+        String(100), 
+        nullable=True,
+        comment="Cidade onde está localizado o fornecedor"
     )
-
+    
     estado = Column(
-         String(2),
-         nullable=True,
-         comment="Estado (UF) inde está localizado o fornecedor"
+        String(2), 
+        nullable=True,
+        comment="Estado (UF) onde está localizado o fornecedor"
     )
-
+    
     # ========================================================================
     # RELACIONAMENTOS
     # ========================================================================
-
-    # Relaciomento com Insumos (um fornecedor pode ter vários insumos)
+    
+    # Relacionamento com Insumos (um fornecedor pode ter vários insumos)
     insumos = relationship(
-         "Insumo",
-         back_populates="fornecedor",
-         cascade="all, delete-orphan"
+        "Insumo",
+        back_populates="fornecedor",
+        cascade="all, delete-orphan"
     )
-
+    
     # ========================================================================
     # MÉTODO DE REPRESENTAÇÃO
     # ========================================================================
-
+    
     def __repr__(self):
         """Representação string do fornecedor para debug"""
         return f"<Fornecedor(id={self.id}, nome='{self.nome_razao_social}', cnpj='{self.cnpj}')>"

@@ -6,7 +6,7 @@
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 
@@ -100,6 +100,11 @@ class InsumoCreate(InsumoBase):
     Schema para criação de insumo.
     Herda todos os campos do InsumoBase.
     """
+    fornecedor_id: Optional[int] = Field(
+        None,
+        description="ID do fornecedor deste insumo (opcional)"
+    )
+
     class Config:
         """
         Configurações do schema
@@ -204,6 +209,11 @@ class InsumoUpdate(BaseModel):
         if v < 0:
             raise ValueError('Preço deve ser positivo')
         return round(v, 2)
+    
+    fornecedor_id: Optional[int] = Field(
+        None,
+        description="ID do fornecedor deste insumo"
+    )
 
 # ===================================================================================================
 # Schemas para resposta
@@ -218,6 +228,12 @@ class InsumoResponse(InsumoBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     preco_compra_centavos: Optional[int] = Field(None, description="Preço em centavos")
+
+    # Relacionamento com fornecedor (opcional)
+    fornecedor_id: Optional[int] = Field(
+        None, 
+        description="ID do fornecedor deste insumo"
+    )
 
     class Config:
         """
