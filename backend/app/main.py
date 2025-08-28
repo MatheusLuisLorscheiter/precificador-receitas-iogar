@@ -17,6 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Endpoints básicos
 @app.get("/")
 def root():
     return {
@@ -31,13 +32,30 @@ def root():
 def health_check():
     return {"status": "healthy", "service": "food-cost-api"}
 
-@app.get("/test")
-def test_endpoint():
-    return {
-        "message": "Endpoint de teste funcionando!",
-        "render": bool(os.getenv("RENDER")),
-        "port": os.getenv("PORT")
-    }
+# Testar banco de dados
+@app.get("/test-db")
+def test_database():
+    try:
+        # Tentar importar database
+        from app.database import engine
+        print("✅ Database importado")
+        
+        # Testar conexão
+        with engine.connect() as connection:
+            result = connection.execute("SELECT 1")
+            return {"database": "connected ✅", "status": "ok"}
+    except ImportError as e:
+        return {"database": "import_error", "status": "failed", "error": f"Import: {str(e)}"}
+    except Exception as e:
+        return {"database": "connection_error", "status": "failed", "error": str(e)}
+
+# Tentar criar tabelas na inicialização
+try:
+    from app.database import engine, Base
+    Base.metadata.create_all(bind=engine)
+    print("✅ Tabelas criadas/verificadas")
+except Exception as e:
+    print(f"⚠️ Erro nas tabelas: {e}")
 
 if __name__ == "__main__":
     import uvicorn
