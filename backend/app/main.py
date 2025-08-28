@@ -38,12 +38,13 @@ def test_database():
     try:
         # Tentar importar database
         from app.database import engine
+        from sqlalchemy import text
         print("✅ Database importado")
         
         # Testar conexão
         with engine.connect() as connection:
-            result = connection.execute("SELECT 1")
-            return {"database": "connected ✅", "status": "ok"}
+            result = connection.execute(text("SELECT 1"))
+            return {"database": "connected ✅", "status": "ok", "result": "PostgreSQL funcionando!"}
     except ImportError as e:
         return {"database": "import_error", "status": "failed", "error": f"Import: {str(e)}"}
     except Exception as e:
