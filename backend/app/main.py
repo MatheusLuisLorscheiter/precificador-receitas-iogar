@@ -1,65 +1,306 @@
-from fastapi import FastAPI
+#   ===================================================================================================
+#   Aplicação Principal FastAPI
+#   Descrição: Este é o arquivo principal que configura e inicia a aplicação FastAPI
+#   com todas as rotas de insumos e receitas
+#   Data: 15/08/2025 (Atualizada)
+#   Autor: Will - Empresa: IOGAR
+#   ===================================================================================================
+
+# Imports principais do FastAPI e configurações
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
+
+# Imports dos routers/endpoints das APIs
+try:
+    from app.api.endpoints import insumos, receitas, fornecedores
+    # Tentar importar o novo módulo
+    try:
+        from app.api.endpoints import fornecedor_insumos
+        HAS_FORNECEDOR_INSUMOS = True
+    except ImportError:
+        print("⚠️  Módulo fornecedor_insumos não encontrado, pulando...")
+        HAS_FORNECEDOR_INSUMOS = False
+except ImportError as e:
+    print(f"❌ Erro ao importar endpoints: {e}")
+    raise
+
+# Imports para configuração do banco de dados
+from app.database import engine
+from app.models.base import Base
+
+# Imports para variáveis de ambiente
 import os
+import time
+
+#   ===================================================================================================
+#   Configuração do ciclo de vida da aplicação
+#   ===================================================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Gerencia o ciclo de vida da aplicação FastAPI.
+    Executa tarefas na inicialização e finalização.
+    """
+    # Startup: Criar tabelas no banco se não existirem
+    print("🚀 Iniciando Food Cost System...")
+    try:
+        # Cria todas as tabelas definidas nos modelos
+        Base.metadata.create_all(bind=engine)
+        print("✅ Tabelas do banco de dados verificadas/criadas")
+    except Exception as e:
+        print(f"❌ Erro ao conectar com o banco: {e}")
+    
+    # Informações úteis para o desenvolvedor
+    print("🔍 CRUD Insumos: http://localhost:8000/api/v1/insumos")
+    print("🔍 CRUD Receitas: http://localhost:8000/api/v1/receitas")
+    print("📖 Documentação: http://localhost:8000/docs")
+    print("🔄 ReDoc: http://localhost:8000/redoc")
+    
+    yield  # Aplicação roda aqui
+    
+    # Shutdown: Limpeza se necessário
+    print("🛑 Finalizando Food Cost System...")
+
+#   ===================================================================================================
+#   Configuração da aplicação FastAPI
+#   ===================================================================================================
 
 app = FastAPI(
     title="Food Cost System",
-    description="Sistema de Controle de Custos para Restaurantes",
-    version="1.0.0"
+    description="""
+    **Sistema de Controle de Custos para Restaurantes**
+    
+    Esta API permite:
+    - 📦 Gerenciar insumos (ingredientes, matérias-primas)
+    - 🍕 Criar e calcular custos de receitas
+    - 🏪 Organizar por restaurantes
+    - 💰 Calcular automaticamente CMV e preços sugeridos
+    - 🔍 Buscar e filtrar dados
+    
+    **Funcionalidades principais:**
+    - CRUD completo de insumos e receitas
+    - Cálculos automáticos de custos
+    - Preços sugeridos baseados em margens
+    - Sistema de variações de receitas
+    - Relacionamento receitas ↔ insumos
+    """,
+    version="1.0.0",
+    contact={
+        "name": "Will - Food Cost System",
+        "email": "will@foodcost.com",
+    },
+    license_info={
+        "name": "MIT",
+    },
+    lifespan=lifespan
 )
 
-# CORS
+#   ===================================================================================================
+#   Configuração de CORS para permitir acesso do frontend
+#   ===================================================================================================
+
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Endpoints básicos
-@app.get("/")
+#   ===================================================================================================
+#   Endpoints básicos de status e saúde
+#   ===================================================================================================
+
+@app.get("/", summary="Status da API")
 def root():
+    """
+    Endpoint raiz que retorna o status da API.
+    Útil para verificar se o serviço está rodando.
+    """
     return {
         "message": "Food Cost System API",
-        "status": "running ✅",
+        "status": "running",
         "version": "1.0.0",
-        "environment": "production" if os.getenv("RENDER") else "development",
-        "port": os.getenv("PORT", "8000")
+        "docs": "http://localhost:8000/docs"
     }
 
-@app.get("/health")
+@app.get("/health", summary="Health Check")
 def health_check():
+    """
+    Endpoint de verificação de saúde do serviço.
+    Útil para monitoramento e load balancers.
+    """
     return {"status": "healthy", "service": "food-cost-api"}
 
-# Testar banco de dados
-@app.get("/test-db")
+@app.get("/test-db", summary="Testar conexão com banco")
 def test_database():
+    """
+    Testa a conexão com o banco de dados PostgreSQL.
+    Retorna status da conexão.
+    """
     try:
-        # Tentar importar database
         from app.database import engine
-        from sqlalchemy import text
-        print("✅ Database importado")
-        
-        # Testar conexão
         with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1"))
-            return {"database": "connected ✅", "status": "ok", "result": "PostgreSQL funcionando!"}
-    except ImportError as e:
-        return {"database": "import_error", "status": "failed", "error": f"Import: {str(e)}"}
+            connection.execute("SELECT 1")
+        return {"database": "connected", "status": "ok"}
     except Exception as e:
-        return {"database": "connection_error", "status": "failed", "error": str(e)}
+        return {"database": "error", "status": "failed", "error": str(e)}
 
-# Tentar criar tabelas na inicialização
-try:
-    from app.database import engine, Base
-    Base.metadata.create_all(bind=engine)
-    print("✅ Tabelas criadas/verificadas")
-except Exception as e:
-    print(f"⚠️ Erro nas tabelas: {e}")
+#   ===================================================================================================
+#   Incluir routers das APIs
+#   ===================================================================================================
+
+# APIs de Insumos (Já em funcionamento)
+app.include_router(
+    insumos.router,
+    prefix="/api/v1/insumos",
+    tags=["insumos"],
+    responses={
+        404: {"description": "Insumo não encontrado"},
+        422: {"description": "Erro de validação"},
+        500: {"description": "Erro interno do servidor"}
+    }
+)
+
+# APIs de Receitas e Restaurantes (novas)
+app.include_router(
+    receitas.router,
+    prefix="/api/v1/receitas",
+    tags=["receitas"],
+    responses={
+        404: {"description": "Receita não encontrada"},
+        422: {"description": "Erro de validação"},
+        500: {"description": "Erro interno do servidor"}
+    }
+)
+
+# Router para operações com fornecedores
+app.include_router(
+    fornecedores.router, 
+    prefix="/api/v1/fornecedores", 
+    tags=["fornecedores"])
+
+# Router para operações com fornecedores
+app.include_router(
+    fornecedores.router, 
+    prefix="/api/v1/fornecedores", 
+    tags=["fornecedores"],
+    responses={
+        404: {"description": "Fornecedor não encontrado"},
+        422: {"description": "Erro de validação"},
+        500: {"description": "Erro interno do servidor"}
+    }
+)
+
+# Router para operações com insumos do catálogo dos fornecedores
+app.include_router(
+    fornecedores.router, 
+    prefix="/api/v1/fornecedores", 
+    tags=["fornecedores"],
+    responses={
+        404: {"description": "Fornecedor não encontrado"},
+        422: {"description": "Erro de validação"},
+        500: {"description": "Erro interno do servidor"}
+    }
+)
+
+# Router para operações com insumos do catálogo dos fornecedores (condicional)
+if HAS_FORNECEDOR_INSUMOS:
+    app.include_router(
+        fornecedor_insumos.router, 
+        prefix="/api/v1", 
+        tags=["fornecedor-insumos"],
+        responses={
+            404: {"description": "Insumo ou fornecedor não encontrado"},
+            422: {"description": "Erro de validação"},
+            500: {"description": "Erro interno do servidor"}
+        }
+    )
+    print("✅ Router fornecedor_insumos adicionado com sucesso")
+else:
+    print("⚠️  Router fornecedor_insumos não foi adicionado (módulo não disponível)")
+
+#   ===================================================================================================
+#   Middleware para logging de requisições
+#   ===================================================================================================
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """
+    Middleware erve para monitorar e facilitar o 
+    diagnóstico de problemas, mostrando no terminal 
+    cada acesso à API e quanto tempo levou para responder.
+    """
+    import time
+    start_time = time.time()
+    
+    response = await call_next(request)
+    
+    process_time = time.time() - start_time
+    print(f"{request.method} {request.url.path} - {response.status_code} - {process_time:.4f}s")
+    
+    return response
+
+#   ===================================================================================================
+#   Tratamento de erros globais
+#   ===================================================================================================
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    """Handler customizado para erros 404"""
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": "Recurso não encontrado",
+            "message": "O endpoint solicitado não existe",
+            "path": str(request.url.path),
+            "method": request.method
+        }
+    )
+
+@app.exception_handler(422)
+async def validation_error_handler(request: Request, exc: HTTPException):
+    """Handler customizado para erros de validação"""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Erro de validação",
+            "message": "Os dados fornecidos não são válidos",
+            "details": exc.detail if hasattr(exc, 'detail') else str(exc)
+        }
+    )
+
+@app.exception_handler(500)
+async def internal_error_handler(request: Request, exc: Exception):
+    """Handler customizado para erros internos"""
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Erro interno do servidor",
+            "message": "Ocorreu um erro inesperado",
+            "path": str(request.url.path)
+        }
+    )
+
+#   ===================================================================================================
+#   Executar a aplicação (apenas se executado diretamente)
+#   ===================================================================================================
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    print(f"🚀 Iniciando API na porta {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    print("🚀 Iniciando Food Cost System API...")
+    print("🌐 Local: http://localhost:8000")
+    print("📖 Docs: http://localhost:8000/docs")
+    
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )
