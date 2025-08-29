@@ -916,12 +916,13 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
   const [novoInsumo, setNovoInsumo] = useState(() => ({
     nome: '',
-    unidade: '',
-    preco_compra: 0,
-    fator: 1,
-    categoria: '',
-    quantidade: 0,
-    codigo: ''
+    codigo: '',
+    unidade: 'kg',
+    preco_compra_real: 0, // ✅ Campo correto para o backend
+    fator: 1.0,
+    quantidade: 1,
+    grupo: 'Geral', // ✅ Campo obrigatório
+    subgrupo: 'Geral' // ✅ Campo obrigatório
   }));
 
   const [showPopup, setShowPopup] = useState(false);
@@ -1980,15 +1981,13 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
           setInsumoFornecedorSelecionado(null);
           setNovoInsumo({ 
             nome: '', 
-            unidade: '', 
-            preco_compra: 0, 
-            preco_compra_real: 0,
-            fator: 1, 
-            categoria: '', 
-            quantidade: 0, 
             codigo: '',
-            grupo: '',
-            subgrupo: ''
+            unidade: 'kg', 
+            preco_compra_real: 0, // ✅ Usar apenas este campo
+            fator: 1.0, 
+            quantidade: 1, 
+            grupo: 'Geral', // ✅ Valor padrão obrigatório
+            subgrupo: 'Geral' // ✅ Valor padrão obrigatório
           });
 
         } else {
@@ -2851,12 +2850,25 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
       try {
         setIsLoading(true);
         
-        // Dados do insumo com fornecedor_id
+        // ============================================================================
+        // 🔧 MAPEAR DADOS PARA SCHEMA CORRETO DO BACKEND
+        // ============================================================================
         const insumoData = {
-          ...novoInsumo,
-          fornecedor_id: fornecedorSelecionado.id,
-          preco_compra: Math.round(novoInsumo.preco_compra_real * 100) // Converte para centavos
+          // Campos obrigatórios do InsumoCreate
+          grupo: String(novoInsumo.grupo || 'Geral').trim(),
+          subgrupo: String(novoInsumo.subgrupo || 'Geral').trim(),
+          codigo: String(novoInsumo.codigo || '').trim().toUpperCase(),
+          nome: String(novoInsumo.nome || '').trim(),
+          quantidade: Number(novoInsumo.quantidade) || 1,
+          fator: Number(novoInsumo.fator) || 1.0,
+          unidade: String(novoInsumo.unidade || 'kg').trim(),
+          preco_compra_real: Number(novoInsumo.preco_compra_real) || 0,
+          
+          // Campo opcional
+          fornecedor_id: fornecedorSelecionado.id
         };
+
+        console.log('🎯 Dados do insumo (adicionarInsumo):', insumoData);
 
         const response = await fetch('http://localhost:8000/api/v1/insumos/', {
           method: 'POST',

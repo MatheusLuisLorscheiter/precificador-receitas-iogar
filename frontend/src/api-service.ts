@@ -47,16 +47,41 @@ class ApiService {
         },
       };
 
+      console.log('🌐 Fazendo requisição:', { method: options.method || 'GET', url, body: options.body });
+
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
+        // ============================================================================
+        // 🔍 CAPTURAR DETALHES DO ERRO 422 (VALIDAÇÃO)
+        // ============================================================================
+        let errorDetails = {};
+        try {
+          errorDetails = await response.json();
+          console.error('❌ Erro HTTP detalhado:', {
+            status: response.status,
+            statusText: response.statusText,
+            details: errorDetails
+          });
+        } catch (e) {
+          console.error('❌ Erro HTTP:', response.status, response.statusText);
+        }
+        
+        // Retornar erro detalhado para 422
+        if (response.status === 422) {
+          return { 
+            error: `Erro de validação (422): ${JSON.stringify(errorDetails, null, 2)}` 
+          };
+        }
+        
+        throw new Error(`Erro HTTP: ${response.status} - ${JSON.stringify(errorDetails)}`);
       }
 
       const data = await response.json();
+      console.log('✅ Resposta bem-sucedida:', data);
       return { data };
     } catch (error) {
-      console.error('Erro na requisição:', error);
+      console.error('💥 Erro na requisição:', error);
       return { 
         error: error instanceof Error ? error.message : 'Erro desconhecido' 
       };
@@ -79,24 +104,129 @@ class ApiService {
 
   // Criar novo insumo
   async createInsumo(insumo: any): Promise<ApiResponse<any>> {
-    // 🔍 DEBUG: Ver dados antes de enviar
-    console.log('🌐 API Service recebeu:', insumo);
-    console.log('🌐 JSON sendo enviado:', JSON.stringify(insumo, null, 2));
+    console.log('🎯 === DEBUG COMPLETO createInsumo ===');
+    console.log('📥 Dados ORIGINAIS recebidos:', insumo);
     
-    return this.request<any>('/api/v1/insumos/', {
-      method: 'POST',
-      body: JSON.stringify(insumo),
+    // ============================================================================
+    // 🔍 VALIDAÇÃO MANUAL ANTES DE ENVIAR
+    // ============================================================================
+    
+    // Verificar campos obrigatórios
+    if (!insumo.codigo || insumo.codigo.trim() === '') {
+      console.error('❌ ERRO: código vazio');
+      return { error: 'Código é obrigatório' };
+    }
+    
+    if (!insumo.nome || insumo.nome.trim() === '') {
+      console.error('❌ ERRO: nome vazio');
+      return { error: 'Nome é obrigatório' };
+    }
+    
+    if (!insumo.preco_compra_real || Number(insumo.preco_compra_real) <= 0) {
+      console.error('❌ ERRO: preço inválido');
+      return { error: 'Preço deve ser maior que zero' };
+    }
+    
+    // ============================================================================
+    // 🆕 MAPEAR EXATAMENTE PARA O SCHEMA InsumoCreate DO BACKEND
+    // ============================================================================
+    const dadosBackend = {
+      grupo: String(insumo.grupo || 'Geral').trim(),
+      subgrupo: String(insumo.subgrupo || 'Geral').trim(), 
+      codigo: String(insumo.codigo || '').trim().toUpperCase(),
+      nome: String(insumo.nome || '').trim(),
+      quantidade: Number(insumo.quantidade) || 1,
+      fator: Number(insumo.fator) || 1.0,
+      unidade: String(insumo.unidade || 'kg').trim(),
+      preco_compra_real: Number(insumo.preco_compra_real) || 0,
+      fornecedor_id: insumo.fornecedor_id || null
+    };
+
+    console.log('📦 Dados MAPEADOS para backend:', dadosBackend);
+    console.log('🔍 Verificação de tipos:', {
+      grupo: `${typeof dadosBackend.grupo} = "${dadosBackend.grupo}"`,
+      subgrupo: `${typeof dadosBackend.subgrupo} = "${dadosBackend.subgrupo}"`,
+      codigo: `${typeof dadosBackend.codigo} = "${dadosBackend.codigo}"`,
+      nome: `${typeof dadosBackend.nome} = "${dadosBackend.nome}"`,
+      quantidade: `${typeof dadosBackend.quantidade} = ${dadosBackend.quantidade}`,
+      fator: `${typeof dadosBackend.fator} = ${dadosBackend.fator}`,
+      unidade: `${typeof dadosBackend.unidade} = "${dadosBackend.unidade}"`,
+      preco_compra_real: `${typeof dadosBackend.preco_compra_real} = ${dadosBackend.preco_compra_real}`,
+      fornecedor_id: `${typeof dadosBackend.fornecedor_id} = ${dadosBackend.fornecedor_id}`
     });
+
+    // ============================================================================
+    // 🌐 FAZER REQUISIÇÃO COM CAPTURA DE ERRO DETALHADA
+    // ============================================================================
+    
+    try {
+      const url = `${this.baseURL}/api/v1/insumos/`;
+      const config = {
+        method: 'POST',
+        headers: API_CONFIG.headers,
+        body: JSON.stringify(dadosBackend)
+      };
+
+      console.log('🚀 Enviando para:', url);
+      console.log('📋 Configuração:', config);
+      console.log('📤 JSON enviado:', config.body);
+
+      const response = await fetch(url, config);
+      
+      console.log('📡 Status da resposta:', response.status);
+      console.log('📡 Status text:', response.statusText);
+      
+      if (!response.ok) {
+        // Tentar capturar detalhes do erro
+        let errorDetails;
+        try {
+          errorDetails = await response.json();
+          console.error('💥 Detalhes do erro 422:', errorDetails);
+        } catch (e) {
+          console.error('💥 Erro ao capturar detalhes:', e);
+          errorDetails = { message: 'Erro de validação sem detalhes' };
+        }
+        
+        return { 
+          error: `Erro ${response.status}: ${JSON.stringify(errorDetails, null, 2)}` 
+        };
+      }
+
+      const data = await response.json();
+      console.log('✅ Sucesso! Resposta:', data);
+      return { data };
+
+    } catch (error) {
+      console.error('💥 Erro na requisição:', error);
+      return { 
+        error: error instanceof Error ? error.message : 'Erro desconhecido' 
+      };
+    }
   }
 
   // Atualizar insumo existente
   async updateInsumo(id: number, insumo: any): Promise<ApiResponse<any>> {
     console.log('🔄 API Service atualizando insumo ID:', id);
-    console.log('📝 Dados para atualizar:', insumo);
+    console.log('📝 Dados recebidos:', insumo);
+    
+    // Mapear para estrutura do backend (mesmo esquema do create, mas todos opcionais)
+    const dadosBackend = {
+      grupo: String(insumo.grupo || 'Geral').trim(),
+      subgrupo: String(insumo.subgrupo || 'Geral').trim(), 
+      codigo: String(insumo.codigo || '').trim().toUpperCase(),
+      nome: String(insumo.nome || '').trim(),
+      quantidade: Number(insumo.quantidade) || 1,
+      fator: Number(insumo.fator) || 1.0,
+      unidade: String(insumo.unidade || 'kg').trim(),
+      preco_compra_real: Number(insumo.preco_compra_real) || 0,
+      fornecedor_id: insumo.fornecedor_id || null
+    };
+    
+    console.log('📦 Dados mapeados para update:', dadosBackend);
     
     return this.request<any>(`/api/v1/insumos/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(insumo),
+      body: JSON.stringify(dadosBackend),
     });
   }
 
@@ -271,66 +401,12 @@ class ApiService {
     return this.request<any[]>('/api/v1/fornecedores/utils/estados');
   }
 
-  // ================================
-  // 🔄 ATUALIZAR MÉTODO EXISTENTE createInsumo para nova estrutura
-  // ================================
-  
-  // LOCALIZAR o método createInsumo existente e SUBSTITUIR por:
-  async createInsumo(insumo: any): Promise<ApiResponse<any>> {
-    console.log('📤 ApiService.createInsumo chamado com:', insumo);
-    
-    // 🆕 Mapear dados para nova estrutura do backend
-    const dadosBackend = {
-      codigo: insumo.codigo || '',
-      nome: insumo.nome || '',
-      unidade: insumo.unidade || 'kg',
-      preco_compra: insumo.preco_compra || 0, // Já em centavos
-      fator: insumo.fator || 1.0,
-      quantidade: insumo.quantidade || 0,
-      
-      // 🆕 Novos campos para fornecedor
-      eh_fornecedor_anonimo: insumo.eh_fornecedor_anonimo !== undefined ? insumo.eh_fornecedor_anonimo : true,
-      fornecedor_insumo_id: insumo.fornecedor_insumo_id || null,
-      grupo: insumo.grupo || 'Geral',
-      subgrupo: insumo.subgrupo || ''
-    };
+} // ← ESTA CHAVE FECHA A CLASSE ApiService
 
-    console.log('📦 Dados mapeados para backend:', dadosBackend);
+// ================================
+// EXPORTS - FORA DA CLASSE
+// ================================
 
-    return this.request<any>('/api/v1/insumos/', {
-      method: 'POST',
-      body: JSON.stringify(dadosBackend),
-    });
-  }
-
-  // 🔄 ATUALIZAR MÉTODO EXISTENTE updateInsumo para nova estrutura
-  async updateInsumo(id: number, insumo: any): Promise<ApiResponse<any>> {
-    console.log('📤 ApiService.updateInsumo chamado com:', { id, insumo });
-    
-    // 🆕 Mapear dados para nova estrutura do backend
-    const dadosBackend = {
-      codigo: insumo.codigo || '',
-      nome: insumo.nome || '',
-      unidade: insumo.unidade || 'kg',
-      preco_compra: insumo.preco_compra || 0, // Já em centavos
-      fator: insumo.fator || 1.0,
-      quantidade: insumo.quantidade || 0,
-      
-      // 🆕 Novos campos para fornecedor
-      eh_fornecedor_anonimo: insumo.eh_fornecedor_anonimo !== undefined ? insumo.eh_fornecedor_anonimo : true,
-      fornecedor_insumo_id: insumo.fornecedor_insumo_id || null,
-      grupo: insumo.grupo || 'Geral',
-      subgrupo: insumo.subgrupo || ''
-    };
-
-    console.log('📦 Dados mapeados para backend:', dadosBackend);
-
-    return this.request<any>(`/api/v1/insumos/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(dadosBackend),
-    });
-  }
-}
 // Instância única do serviço de API
 export const apiService = new ApiService();
 
