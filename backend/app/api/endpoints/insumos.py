@@ -137,12 +137,22 @@ def buscar_insumos(
     """
     insumos = crud_insumo.search_insumos(db=db, termo_busca=q, limit=limit)
 
-    # Converter preços para reais
+    # ============================================================================
+    # DADOS DE COMPARAÇÃO JÁ INCLUÍDOS AUTOMATICAMENTE
+    # ============================================================================
+    # A função search_insumos já calcula automaticamente para cada insumo:
+    # - preco_compra_real (conversão centavos → reais)
+    # - preco_por_unidade (preço × quantidade)
+    # - fornecedor_preco_unidade (se vinculado a fornecedor)
+    # - diferenca_percentual (% diferença com fornecedor)
+    # - eh_mais_barato (boolean indicando se é mais barato)
+    
+    # Adicionar campos de compatibilidade se necessário
     for insumo in insumos:
         if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
-            insumo.preco_compra_real = insumo.preco_compra / 100
+            insumo.preco_compra_centavos = insumo.preco_compra
         else:
-            insumo.preco_compra_real = None
+            insumo.preco_compra_centavos = None
 
     return insumos
 
@@ -170,10 +180,8 @@ def obter_insumo(
     
     # Converter preço para reais
     if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
-        insumo.preco_compra_real = insumo.preco_compra / 100
-        insumo.preco_compra_centavos =  insumo.preco_compra
+        insumo.preco_compra_centavos = insumo.preco_compra
     else:
-        insumo.preco_compra_real = None
         insumo.preco_compra_centavos = None
 
     return insumo
@@ -197,10 +205,8 @@ def obter_insumo_por_codigo(
         )
     # Converter preço para reais
     if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
-        insumo.preco_compra_real = insumo.preco_compra / 100
         insumo.preco_compra_centavos = insumo.preco_compra
     else:
-        insumo.preco_compra_real = None
         insumo.preco_compra_centavos = None
 
     return insumo

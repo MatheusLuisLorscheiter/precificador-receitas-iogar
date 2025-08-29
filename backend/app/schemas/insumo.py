@@ -134,25 +134,39 @@ class InsumoUpdate(BaseModel):
     grupo: Optional[str] = Field(None, min_length=1, max_length=100)
     subgrupo: Optional[str] = Field(None, min_length=1, max_length=100)
     codigo: Optional[str] = Field(None, min_length=1, max_length=50)
-    nome: Optional[str] = Field(None, min_length=1, max_length=255)
+    nome: Optional[str] = Field(None, min_length=2, max_length=255)
     quantidade: Optional[int] = Field(None, ge=1)
     fator: Optional[float] = Field(None, gt=0)
     unidade: Optional[str] = None
     preco_compra_real: Optional[float] = Field(None, ge=0)
 
-    # Novos campos para valor de compra e total
+#   ============================================================================
+#   CAMPOS PARA COMPARAÇÃO DE PREÇOS COM FORNECEDORES
+#   ============================================================================
+
     valor_compra_por_kg: Optional[float] = Field(
         None, 
         ge=0, 
         description="Valor de compra por Kg em reais",
         example=10.50
     )
-    
+
     total_comprado: Optional[float] = Field(
         None,
         ge=0,
         description="Total comprado (quantidade * valor_compra_por_kg)",
         example=52.50
+    )
+
+    # Campos para vinculação com fornecedor (para comparação)
+    fornecedor_insumo_id: Optional[int] = Field(
+        None,
+        description="ID do insumo no catálogo do fornecedor para comparação de preços"
+    )
+
+    eh_fornecedor_anonimo: Optional[bool] = Field(
+        None,
+        description="Se o insumo é de fornecedor anônimo (sem vinculação)"
     )
 
     # Validador para garantir valores positivos
@@ -223,13 +237,52 @@ class InsumoResponse(InsumoBase):
     """
     Schema para resposta da API.
     Inclui campos adicionais como ID e timestamps.
+    
+    ADICIONADO: Campos para comparação de preços com fornecedores
     """
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
     preco_compra_centavos: Optional[int] = Field(None, description="Preço em centavos")
 
-    # Relacionamento com fornecedor (opcional)
+    # ============================================================================
+    # CAMPOS PARA COMPARAÇÃO DE PREÇOS
+    # ============================================================================
+    
+    # Preço por unidade calculado automaticamente
+    preco_por_unidade: Optional[float] = Field(
+        None, 
+        description="Preço por unidade calculado (preco_compra * quantidade)"
+    )
+    
+    # Comparação com fornecedor
+    fornecedor_insumo_id: Optional[int] = Field(
+        None,
+        description="ID do insumo no catálogo do fornecedor"
+    )
+    
+    eh_fornecedor_anonimo: Optional[bool] = Field(
+        None,
+        description="Se o insumo é de fornecedor anônimo"
+    )
+    
+    # Dados da comparação (calculados pelo backend)
+    fornecedor_preco_unidade: Optional[float] = Field(
+        None,
+        description="Preço por unidade do fornecedor (para comparação)"
+    )
+    
+    diferenca_percentual: Optional[float] = Field(
+        None,
+        description="Diferença percentual com o fornecedor (+ = mais caro, - = mais barato)"
+    )
+    
+    eh_mais_barato: Optional[bool] = Field(
+        None,
+        description="Se o insumo do sistema é mais barato que o do fornecedor"
+    )
+
+    # Relacionamento com fornecedor (opcional - mantido para compatibilidade)
     fornecedor_id: Optional[int] = Field(
         None, 
         description="ID do fornecedor deste insumo"
@@ -254,6 +307,17 @@ class InsumoResponse(InsumoBase):
                 "unidade": "kg",
                 "preco_compra_real": 3.50,
                 "preco_compra_centavos": 350,
+                
+                # ============================================================================
+                # EXEMPLO DOS CAMPOS DE COMPARAÇÃO DE PREÇOS
+                # ============================================================================
+                "preco_por_unidade": 3.50,
+                "fornecedor_insumo_id": 15,
+                "eh_fornecedor_anonimo": False,
+                "fornecedor_preco_unidade": 4.20,
+                "diferenca_percentual": -16.67,
+                "eh_mais_barato": True,
+                
                 "created_at": "2024-01-15T10:00:00",
                 "updated_at": "2024-01-15T15:30:00"
             }

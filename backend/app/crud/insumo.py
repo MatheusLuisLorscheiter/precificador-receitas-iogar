@@ -11,6 +11,85 @@ from sqlalchemy import and_, or_
 from app.models.insumo import Insumo
 from app.schemas.insumo import InsumoCreate, InsumoUpdate, InsumoFilter
 
+# ============================================================================
+# IMPORTS PARA COMPARAÇÃO DE PREÇOS
+# ============================================================================
+from app.models.fornecedor_insumo import FornecedorInsumo
+
+# ============================================================================
+# 🆕 FUNÇÃO PARA CALCULAR COMPARAÇÃO DE PREÇOS
+# ============================================================================
+
+def calcular_comparacao_precos(db: Session, insumo: Insumo) -> dict:
+    """
+    Calcula a comparação de preços entre insumo do sistema e fornecedor.
+    
+    Esta função:
+    1. Calcula o preço por unidade do insumo do sistema
+    2. Busca o preço do fornecedor (se vinculado)
+    3. Calcula a diferença percentual
+    4. Determina se é mais barato ou mais caro
+    
+    Args:
+        db (Session): Sessão do banco de dados
+        insumo (Insumo): Objeto insumo do sistema
+        
+    Returns:
+        dict: Dados calculados para comparação
+    """
+    resultado = {
+        'preco_por_unidade': None,
+        'fornecedor_preco_unidade': None,
+        'diferenca_percentual': None,
+        'eh_mais_barato': None
+    }
+    
+    # ========================================================================
+    # CALCULAR PREÇO POR UNIDADE DO SISTEMA
+    # ========================================================================
+    if hasattr(insumo, 'preco_compra') and insumo.preco_compra and insumo.quantidade:
+        # Converter de centavos para reais e multiplicar pela quantidade
+        resultado['preco_por_unidade'] = round(
+            (insumo.preco_compra / 100) * insumo.quantidade, 2
+        )
+    
+    # ========================================================================
+    # BUSCAR PREÇO DO FORNECEDOR (SE VINCULADO)
+    # ========================================================================
+    if (hasattr(insumo, 'fornecedor_insumo_id') and 
+        insumo.fornecedor_insumo_id):
+        
+        fornecedor_insumo = db.query(FornecedorInsumo).filter(
+            FornecedorInsumo.id == insumo.fornecedor_insumo_id
+        ).first()
+        
+        if (fornecedor_insumo and 
+            hasattr(fornecedor_insumo, 'preco_unitario_centavos') and
+            fornecedor_insumo.preco_unitario_centavos):
+            # Converter de centavos para reais
+            resultado['fornecedor_preco_unidade'] = round(
+                fornecedor_insumo.preco_unitario_centavos / 100, 2
+            )
+    
+    # ========================================================================
+    # CALCULAR DIFERENÇA PERCENTUAL
+    # ========================================================================
+    if resultado['preco_por_unidade'] and resultado['fornecedor_preco_unidade']:
+        preco_sistema = resultado['preco_por_unidade']
+        preco_fornecedor = resultado['fornecedor_preco_unidade']
+        
+        # Fórmula: ((preço_sistema - preço_fornecedor) / preço_fornecedor) * 100
+        # Resultado positivo = sistema mais caro
+        # Resultado negativo = sistema mais barato
+        diferenca_percentual = (
+            (preco_sistema - preco_fornecedor) / preco_fornecedor
+        ) * 100
+        
+        resultado['diferenca_percentual'] = round(diferenca_percentual, 2)
+        resultado['eh_mais_barato'] = diferenca_percentual < 0
+    
+    return resultado
+
 #   ===================================================================================================
 #   Operação de leitura
 #   ===================================================================================================
@@ -19,14 +98,36 @@ def get_insumo_by_id(db: Session, insumo_id: int) -> Optional[Insumo]:
     """
     Busca um insumo pelo ID.
     
+    🆕 ATUALIZADO: Agora inclui cálculo automático de comparação de preços
+    
     Args:
         db (Session): Sessão do banco de dados
         insumo_id (int): ID do insumo
         
     Returns:
-        Optional[Insumo]: Insumo encontrado ou None
+        Optional[Insumo]: Insumo encontrado ou None (com dados de comparação)
     """
-    return db.query(Insumo).filter(Insumo.id == insumo_id).first()
+    insumo = db.query(Insumo).filter(Insumo.id == insumo_id).first()
+    
+    if insumo:
+        # ====================================================================
+        # 🆕 CALCULAR COMPARAÇÃO DE PREÇOS AUTOMATICAMENTE
+        # ====================================================================
+        comparacao = calcular_comparacao_precos(db, insumo)
+        
+        # Adicionar campos calculados ao objeto insumo
+        insumo.preco_por_unidade = comparacao['preco_por_unidade']
+        insumo.fornecedor_preco_unidade = comparacao['fornecedor_preco_unidade']
+        insumo.diferenca_percentual = comparacao['diferenca_percentual']
+        insumo.eh_mais_barato = comparacao['eh_mais_barato']
+        
+        # Converter preço para reais para compatibilidade
+        if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
+            insumo.preco_compra_real = insumo.preco_compra / 100
+        else:
+            insumo.preco_compra_real = None
+    
+    return insumo
 
 def get_insumo_by_codigo(db: Session, codigo: str) -> Optional[Insumo]:
     """
@@ -37,9 +138,27 @@ def get_insumo_by_codigo(db: Session, codigo: str) -> Optional[Insumo]:
         codigo (str): Código do insumo
         
     Returns:
-        Optional[Insumo]: Insumo encontrado ou None
+        Optional[Insumo]: Insumo encontrado ou None (com dados de comparação)
     """ 
-    return db.query(Insumo).filter(Insumo.codigo == codigo.upper()).first()
+    if insumo:
+        # ====================================================================
+        # 🆕 CALCULAR COMPARAÇÃO DE PREÇOS AUTOMATICAMENTE
+        # ====================================================================
+        comparacao = calcular_comparacao_precos(db, insumo)
+        
+        # Adicionar campos calculados ao objeto insumo
+        insumo.preco_por_unidade = comparacao['preco_por_unidade']
+        insumo.fornecedor_preco_unidade = comparacao['fornecedor_preco_unidade']
+        insumo.diferenca_percentual = comparacao['diferenca_percentual']
+        insumo.eh_mais_barato = comparacao['eh_mais_barato']
+        
+        # Converter preço para reais para compatibilidade
+        if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
+            insumo.preco_compra_real = insumo.preco_compra / 100
+        else:
+            insumo.preco_compra_real = None
+    
+    return insumo
 
 def get_insumos(
     db: Session,
@@ -133,17 +252,19 @@ def search_insumos(db: Session, termo_busca: str, limit: int = 20) -> List[Insum
     """
     Busca insumos por termo geral (nome, código ou grupo).
     
+    🆕 ATUALIZADO: Agora inclui cálculo de comparação de preços para cada resultado
+    
     Args:
         db (Session): Sessão do banco de dados
         termo_busca (str): Termo para buscar
         limit (int): Limite de resultados
         
     Returns:
-        List[Insumo]: Lista de insumos encontrados
+        List[Insumo]: Lista de insumos encontrados (com dados de comparação)
     """
 
     termo = f"%{termo_busca}%"
-    return db.query(Insumo).filter(
+    insumos = db.query(Insumo).filter(
         or_(
             Insumo.nome.ilike(termo),
             Insumo.codigo.ilike(termo),
@@ -151,6 +272,27 @@ def search_insumos(db: Session, termo_busca: str, limit: int = 20) -> List[Insum
             Insumo.subgrupo.ilike(termo)
         )
     ).order_by(Insumo.nome).limit(limit).all()
+    
+    # ========================================================================
+    # 🆕 CALCULAR COMPARAÇÃO DE PREÇOS PARA CADA INSUMO
+    # ========================================================================
+    for insumo in insumos:
+        # Calcular dados de comparação
+        comparacao = calcular_comparacao_precos(db, insumo)
+        
+        # Adicionar campos calculados ao objeto
+        insumo.preco_por_unidade = comparacao['preco_por_unidade']
+        insumo.fornecedor_preco_unidade = comparacao['fornecedor_preco_unidade']
+        insumo.diferenca_percentual = comparacao['diferenca_percentual']
+        insumo.eh_mais_barato = comparacao['eh_mais_barato']
+        
+        # Converter preço para reais (compatibilidade)
+        if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
+            insumo.preco_compra_real = insumo.preco_compra / 100
+        else:
+            insumo.preco_compra_real = None
+    
+    return insumos
 
 #   ===================================================================================================
 #   Operações de criação

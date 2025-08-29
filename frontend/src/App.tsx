@@ -394,31 +394,72 @@ const FormularioInsumoIsolado = React.memo(({
 
   // 🔧 FUNÇÃO para submissão
   const handleSubmit = useCallback(() => {
-    // 🆕 Registrar log se houver mudança de preço significativa
-    if (insumoFornecedorSelecionado && formData.preco_compra_real !== insumoFornecedorSelecionado.preco_unitario) {
-      const diferenca = calcularDiferencaPreco();
-      if (diferenca && Math.abs(parseFloat(diferenca.percentual)) > 0.1) {
-        registrarLogMudancaPreco({
-          codigo: formData.codigo,
-          nome: formData.nome,
-          precoFornecedor: diferenca.precoFornecedor,
-          precoSistema: formData.preco_compra_real,
-          percentual: parseFloat(diferenca.percentual),
-          aumentou: diferenca.aumentou,
-          fornecedorNome: fornecedorSelecionadoForm?.nome_razao_social
-        });
+    // ========================================================================
+    // VALIDAÇÕES DOS CAMPOS OBRIGATÓRIOS
+    // ========================================================================
+    if (!formData.nome?.trim()) {
+      showErrorPopup('Campo obrigatório', 'O nome do insumo é obrigatório.');
+      return;
+    }
+
+    if (!formData.codigo?.trim()) {
+      showErrorPopup('Campo obrigatório', 'O código do insumo é obrigatório.');
+      return;
+    }
+
+    if (!formData.preco_compra_real || formData.preco_compra_real <= 0) {
+      showErrorPopup('Campo obrigatório', 'O preço de compra deve ser maior que zero.');
+      return;
+    }
+
+    // ========================================================================
+    // REGISTRAR LOG DE MUDANÇA DE PREÇO (SE APLICÁVEL)
+    // ========================================================================
+    if (insumoFornecedorSelecionado && formData.preco_compra_real) {
+      const precoSistema = formData.preco_compra_real * (formData.quantidade || 1);
+      const precoFornecedor = insumoFornecedorSelecionado.preco_unitario;
+      
+      if (precoFornecedor > 0) {
+        const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
+        
+        if (Math.abs(diferenca) > 5) { // Log apenas se diferença > 5%
+          console.log(`📊 Diferença significativa de preço detectada: ${diferenca.toFixed(1)}%`);
+        }
       }
     }
 
-    // Preparar dados para salvamento
+    // ========================================================================
+    // PREPARAR DADOS COM CAMPOS DE COMPARAÇÃO
+    // ========================================================================
     const dadosParaSalvar = {
-      ...formData,
+      codigo: formData.codigo?.trim().toUpperCase() || '',
+      nome: formData.nome?.trim() || '',
+      unidade: formData.unidade || 'kg',
+      preco_compra_real: parseFloat(formData.preco_compra_real) || 0,
+      fator: parseFloat(formData.fator) || 1.0,
+      quantidade: parseInt(formData.quantidade) || 1,
+      grupo: formData.grupo?.trim() || 'Geral',
+      subgrupo: formData.subgrupo?.trim() || 'Geral',
+      
+      // ====================================================================
+      // CAMPOS PARA COMPARAÇÃO DE PREÇOS
+      // ====================================================================
       eh_fornecedor_anonimo: ehFornecedorAnonimo,
-      fornecedor_insumo_id: ehFornecedorAnonimo ? null : (insumoFornecedorSelecionado?.id || null)
+      fornecedor_insumo_id: ehFornecedorAnonimo ? null : (insumoFornecedorSelecionado?.id || null),
+      
+      // Campos adicionais para o backend
+      descricao: formData.descricao || ''
     };
     
+    console.log('📤 Dados preparados para envio:', dadosParaSalvar);
     onSave(dadosParaSalvar);
-  }, [formData, ehFornecedorAnonimo, insumoFornecedorSelecionado, onSave, fornecedorSelecionadoForm, calcularDiferencaPreco, registrarLogMudancaPreco]);
+  }, [
+    formData, 
+    ehFornecedorAnonimo, 
+    insumoFornecedorSelecionado, 
+    onSave, 
+    fornecedorSelecionadoForm
+  ]);
 
   // 🔧 FUNÇÃO para fechar
   const handleClose = useCallback(() => {
@@ -713,6 +754,27 @@ const FormularioInsumoIsolado = React.memo(({
               />
             </div>
 
+            {/* ============================================================================ */}
+            {/* 🆕 CAMPO PREÇO DE COMPRA PARA COMPARAÇÃO DE PREÇOS */}
+            {/* ============================================================================ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Preço de Compra (R$) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.preco_compra_real || ''}
+                onChange={(e) => updateField('preco_compra_real', parseFloat(e.target.value) || 0)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                placeholder="0.00"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Preço unitário para comparação com fornecedores
+              </p>
+            </div>
+
             {/* 🆕 CAMPO DESCRIÇÃO ADICIONADO */}
             <div className="lg:col-span-3">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -721,10 +783,92 @@ const FormularioInsumoIsolado = React.memo(({
               <textarea
                 value={formData.descricao}
                 onChange={(e) => updateField('descricao', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                placeholder="Descrição detalhada do insumo (opcional)"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white resize-none"
                 rows="3"
+                placeholder="Informações adicionais sobre o insumo..."
               />
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================================ */}
+        {/* SEÇÃO DE COMPARAÇÃO DE PREÇOS */}
+        {/* ============================================================================ */}
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold mb-4 text-gray-700">3. Comparação de Preços</h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Preço por Unidade Calculado */}
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="font-medium text-blue-800">Preço por Unidade (Sistema)</h5>
+                <Calculator className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="text-2xl font-bold text-blue-800">
+                R$ {formData.preco_compra_real && formData.quantidade ? 
+                  (formData.preco_compra_real * formData.quantidade).toFixed(2) : '0.00'}
+              </div>
+              <p className="text-sm text-blue-600 mt-1">
+                R$ {(formData.preco_compra_real || 0).toFixed(2)} × {formData.quantidade || 1} = 
+                {formData.preco_compra_real && formData.quantidade ? 
+                  ` R$ ${(formData.preco_compra_real * formData.quantidade).toFixed(2)}` : ' R$ 0.00'}
+              </p>
+            </div>
+
+            {/* Status da Comparação com Fornecedor */}
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="font-medium text-gray-700">Comparação com Fornecedor</h5>
+                <TrendingUp className="w-5 h-5 text-gray-600" />
+              </div>
+              
+              {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
+                <div>
+                  <div className="text-2xl font-bold text-gray-800">
+                    R$ {insumoFornecedorSelecionado.preco_unitario?.toFixed(2) || '0.00'}
+                  </div>
+                  <div className="mt-2">
+                    {(() => {
+                      const precoSistema = formData.preco_compra_real && formData.quantidade ? 
+                        formData.preco_compra_real * formData.quantidade : 0;
+                      const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
+                      
+                      if (precoSistema > 0 && precoFornecedor > 0) {
+                        const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
+                        const ehMaisBarato = diferenca < 0;
+                        
+                        return (
+                          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            ehMaisBarato 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {ehMaisBarato ? '📉' : '📈'} {Math.abs(diferenca).toFixed(1)}% 
+                            {ehMaisBarato ? ' mais barato' : ' mais caro'}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="text-sm text-gray-500">
+                          Preencha o preço para ver a comparação
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              ) : ehFornecedorAnonimo ? (
+                <div className="text-center text-gray-500">
+                  <div className="text-lg mb-2">🔒</div>
+                  <div className="text-sm">Fornecedor anônimo</div>
+                  <div className="text-xs text-gray-400">Sem comparação de preços</div>
+                </div>
+              ) : (
+                <div className="text-center text-gray-500">
+                  <div className="text-lg mb-2">📊</div>
+                  <div className="text-sm">Selecione um insumo do fornecedor</div>
+                  <div className="text-xs text-gray-400">para comparar preços</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
