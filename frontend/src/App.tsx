@@ -247,6 +247,510 @@ const showErrorPopup = (title, message) => {
 };
 
 // ============================================================================
+// 🔧 COMPONENTE ISOLADO PARA FORMULÁRIO DE INSUMO
+// ============================================================================
+const FormularioInsumoIsolado = React.memo(({ 
+  isVisible,
+  editingInsumo,
+  onClose, 
+  onSave, 
+  loading,
+  // Props para fornecedores
+  ehFornecedorAnonimo,
+  setEhFornecedorAnonimo,
+  fornecedoresDisponiveis,
+  fornecedorSelecionadoForm,
+  setFornecedorSelecionadoForm,
+  insumosDoFornecedor,
+  setInsumosDoFornecedor,
+  insumoFornecedorSelecionado,
+  setInsumoFornecedorSelecionado,
+  showNovoFornecedorPopup,
+  setShowNovoFornecedorPopup,
+  carregarInsumosDoFornecedor
+}) => {
+  // Estado local do formulário
+  const [formData, setFormData] = useState(() => ({
+    nome: editingInsumo?.nome || '',
+    codigo: editingInsumo?.codigo || '',
+    unidade: editingInsumo?.unidade || 'kg',
+    preco_compra_real: editingInsumo?.preco_compra_real || 0,
+    fator: editingInsumo?.fator || 1,
+    quantidade: editingInsumo?.quantidade || 0,
+    grupo: editingInsumo?.grupo || '',
+    subgrupo: editingInsumo?.subgrupo || '',
+    descricao: editingInsumo?.descricao || '' // 🆕 CAMPO ADICIONADO
+  }));
+
+  // 🔧 FUNÇÃO OTIMIZADA para atualizar campos
+  const updateField = useCallback((field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  // 🔧 FUNÇÃO OTIMIZADA para controle de fornecedor anônimo
+  const handleFornecedorAnonimoChange = useCallback((checked) => {
+    setEhFornecedorAnonimo(checked);
+    if (checked) {
+      setFornecedorSelecionadoForm(null);
+      setInsumosDoFornecedor([]);
+      setInsumoFornecedorSelecionado(null);
+    }
+  }, [setEhFornecedorAnonimo, setFornecedorSelecionadoForm, setInsumosDoFornecedor, setInsumoFornecedorSelecionado]);
+
+  // 🔧 FUNÇÃO OTIMIZADA para seleção de fornecedor
+  const handleFornecedorChange = useCallback(async (fornecedorId) => {
+    const fornecedor = fornecedoresDisponiveis.find(f => f.id === parseInt(fornecedorId));
+    setFornecedorSelecionadoForm(fornecedor);
+    
+    if (fornecedor) {
+      await carregarInsumosDoFornecedor(fornecedor.id);
+    } else {
+      setInsumosDoFornecedor([]);
+    }
+    setInsumoFornecedorSelecionado(null);
+  }, [fornecedoresDisponiveis, setFornecedorSelecionadoForm, carregarInsumosDoFornecedor, setInsumosDoFornecedor, setInsumoFornecedorSelecionado]);
+
+  // 🔧 FUNÇÃO OTIMIZADA para seleção de insumo do fornecedor
+  const handleInsumoFornecedorChange = useCallback((insumoId) => {
+    const insumo = insumosDoFornecedor.find(i => i.id === parseInt(insumoId));
+    setInsumoFornecedorSelecionado(insumo);
+    
+    if (insumo) {
+      setFormData(prev => ({
+        ...prev,
+        nome: insumo.nome,
+        codigo: insumo.codigo,
+        unidade: insumo.unidade,
+        grupo: prev.grupo || 'Geral',
+        subgrupo: prev.subgrupo || ''
+      }));
+    }
+  }, [insumosDoFornecedor, setInsumoFornecedorSelecionado]);
+
+  // 🔧 FUNÇÃO para calcular diferença de preços
+  const calcularDiferencaPreco = useCallback(() => {
+    if (!insumoFornecedorSelecionado || formData.preco_compra_real === 0) {
+      return null;
+    }
+
+    const precoSistema = parseFloat(formData.preco_compra_real) || 0;
+    const precoFornecedor = parseFloat(insumoFornecedorSelecionado.preco_unitario) || 0;
+    
+    if (precoFornecedor === 0 || precoSistema === 0) return null;
+    
+    const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
+    
+    return {
+      percentual: diferenca.toFixed(1),
+      aumentou: diferenca > 0,
+      precoFornecedor: precoFornecedor,
+      precoSistema: precoSistema
+    };
+  }, [insumoFornecedorSelecionado, formData.preco_compra_real]);
+
+  // 🆕 FUNÇÃO para registrar log de mudança de preços
+  const registrarLogMudancaPreco = useCallback((dados) => {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      insumo_codigo: dados.codigo,
+      insumo_nome: dados.nome,
+      preco_anterior: dados.precoFornecedor,
+      preco_novo: dados.precoSistema,
+      percentual_mudanca: dados.percentual,
+      fornecedor_nome: dados.fornecedorNome || 'Fornecedor Anônimo',
+      usuario: 'Sistema',
+      observacoes: `Mudança detectada no cadastro de insumo. ${dados.aumentou ? 'Preço aumentou' : 'Preço diminuiu'} em ${Math.abs(dados.percentual)}% em relação ao fornecedor.`
+    };
+    
+    console.log('📊 LOG DE MUDANÇA DE PREÇO:', logEntry);
+    
+    try {
+      const logsExistentes = JSON.parse(localStorage.getItem('logs_mudanca_preco') || '[]');
+      logsExistentes.push(logEntry);
+      localStorage.setItem('logs_mudanca_preco', JSON.stringify(logsExistentes));
+    } catch (error) {
+      console.error('Erro ao salvar log:', error);
+    }
+  }, []);
+
+  // 🔧 FUNÇÃO para reset do formulário
+  const resetForm = useCallback(() => {
+    setFormData({
+      nome: '',
+      codigo: '',
+      unidade: 'kg',
+      preco_compra_real: 0,
+      fator: 1,
+      quantidade: 0,
+      grupo: '',
+      subgrupo: '',
+      descricao: ''
+    });
+    setEhFornecedorAnonimo(true);
+    setFornecedorSelecionadoForm(null);
+    setInsumosDoFornecedor([]);
+    setInsumoFornecedorSelecionado(null);
+  }, [setEhFornecedorAnonimo, setFornecedorSelecionadoForm, setInsumosDoFornecedor, setInsumoFornecedorSelecionado]);
+
+  // 🔧 FUNÇÃO para submissão
+  const handleSubmit = useCallback(() => {
+    // 🆕 Registrar log se houver mudança de preço significativa
+    if (insumoFornecedorSelecionado && formData.preco_compra_real !== insumoFornecedorSelecionado.preco_unitario) {
+      const diferenca = calcularDiferencaPreco();
+      if (diferenca && Math.abs(parseFloat(diferenca.percentual)) > 0.1) {
+        registrarLogMudancaPreco({
+          codigo: formData.codigo,
+          nome: formData.nome,
+          precoFornecedor: diferenca.precoFornecedor,
+          precoSistema: formData.preco_compra_real,
+          percentual: parseFloat(diferenca.percentual),
+          aumentou: diferenca.aumentou,
+          fornecedorNome: fornecedorSelecionadoForm?.nome_razao_social
+        });
+      }
+    }
+
+    // Preparar dados para salvamento
+    const dadosParaSalvar = {
+      ...formData,
+      eh_fornecedor_anonimo: ehFornecedorAnonimo,
+      fornecedor_insumo_id: ehFornecedorAnonimo ? null : (insumoFornecedorSelecionado?.id || null)
+    };
+    
+    onSave(dadosParaSalvar);
+  }, [formData, ehFornecedorAnonimo, insumoFornecedorSelecionado, onSave, fornecedorSelecionadoForm, calcularDiferencaPreco, registrarLogMudancaPreco]);
+
+  // 🔧 FUNÇÃO para fechar
+  const handleClose = useCallback(() => {
+    resetForm();
+    onClose();
+  }, [resetForm, onClose]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-8 w-full max-w-5xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-bold text-gray-800">
+            {editingInsumo ? 'Editar Insumo' : 'Cadastrar Novo Insumo'}
+          </h3>
+          <button 
+            onClick={handleClose}
+            className="text-gray-400 hover:text-gray-600 text-2xl"
+          >
+            ×
+          </button>
+        </div>
+        
+        {/* SEÇÃO 1: SELEÇÃO DE FORNECEDOR */}
+        <div className="mb-8 p-6 bg-gray-50 rounded-lg border-2 border-gray-200">
+          <h4 className="text-lg font-semibold mb-4 text-gray-700">1. Informações do Fornecedor</h4>
+          
+          {/* Checkbox fornecedor anônimo */}
+          <div className="mb-4">
+            <label className="flex items-center space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ehFornecedorAnonimo}
+                onChange={(e) => handleFornecedorAnonimoChange(e.target.checked)}
+                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Marcar Fornecedor como anônimo
+              </span>
+            </label>
+          </div>
+
+          {/* Select de fornecedor */}
+          {!ehFornecedorAnonimo && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Selecionar Fornecedor <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={fornecedorSelecionadoForm?.id || ''}
+                  onChange={(e) => handleFornecedorChange(e.target.value)}
+                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                >
+                  <option value="">Selecione um fornecedor...</option>
+                  {fornecedoresDisponiveis.map((fornecedor) => (
+                    <option key={fornecedor.id} value={fornecedor.id}>
+                      {fornecedor.nome_razao_social}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex items-end">
+                <button
+                  onClick={() => setShowNovoFornecedorPopup(true)}
+                  className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                >
+                  + Novo Fornecedor
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Lista de insumos do fornecedor selecionado */}
+          {!ehFornecedorAnonimo && fornecedorSelecionadoForm && (
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Insumos disponíveis do {fornecedorSelecionadoForm.nome_razao_social}
+              </label>
+              
+              {insumosDoFornecedor.length > 0 ? (
+                <select
+                  value={insumoFornecedorSelecionado?.id || ''}
+                  onChange={(e) => handleInsumoFornecedorChange(e.target.value)}
+                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                >
+                  <option value="">Selecione um insumo (opcional)...</option>
+                  {insumosDoFornecedor.map((insumo) => (
+                    <option key={insumo.id} value={insumo.id}>
+                      {insumo.codigo} - {insumo.nome} ({insumo.unidade}) - R$ {insumo.preco_unitario.toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-700">
+                    Este fornecedor ainda não possui insumos cadastrados.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* SEÇÃO 2: DADOS DO INSUMO */}
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold mb-4 text-gray-700">2. Dados do Insumo</h4>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Código */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Código <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.codigo}
+                onChange={(e) => updateField('codigo', e.target.value)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                placeholder="Ex: INS001"
+              />
+            </div>
+
+            {/* Nome */}
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nome <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.nome}
+                onChange={(e) => updateField('nome', e.target.value)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                placeholder="Nome do insumo"
+              />
+            </div>
+
+            {/* Grupo */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Grupo
+              </label>
+              <input
+                type="text"
+                value={formData.grupo}
+                onChange={(e) => updateField('grupo', e.target.value)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                placeholder="Ex: Carnes, Laticínios"
+              />
+            </div>
+
+            {/* Subgrupo */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Subgrupo
+              </label>
+              <input
+                type="text"
+                value={formData.subgrupo}
+                onChange={(e) => updateField('subgrupo', e.target.value)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                placeholder="Ex: Bovina, Queijos"
+              />
+            </div>
+
+            {/* Unidade */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Unidade <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.unidade}
+                onChange={(e) => updateField('unidade', e.target.value)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+              >
+                <option value="kg">Kg</option>
+                <option value="g">G</option>
+                <option value="L">L</option>
+                <option value="ml">ml</option>
+                <option value="unidade">Unidade</option>
+                <option value="cx">Caixa</option>
+                <option value="pct">Pacote</option>
+              </select>
+            </div>
+
+            {/* Preço com comparação */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Preço por Unidade <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.preco_compra_real}
+                onChange={(e) => updateField('preco_compra_real', parseFloat(e.target.value) || 0)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                placeholder="0.00"
+              />
+              
+              {/* 🆕 COMPARAÇÃO DE PREÇOS */}
+              <div className="mt-2 text-sm">
+                {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-blue-700 font-medium">
+                        Preço do fornecedor: R$ {insumoFornecedorSelecionado.preco_unitario.toFixed(2)}
+                      </span>
+                      
+                      {(() => {
+                        const diff = calcularDiferencaPreco();
+                        if (diff && Math.abs(parseFloat(diff.percentual)) > 0.1) {
+                          return (
+                            <div className="flex items-center space-x-2">
+                              <span className={`font-bold ${diff.aumentou ? 'text-red-600' : 'text-green-600'}`}>
+                                {diff.aumentou ? '↗️' : '↘️'} {diff.aumentou ? '+' : ''}{diff.percentual}%
+                              </span>
+                              <div className={`px-2 py-1 text-xs rounded-full ${
+                                diff.aumentou 
+                                  ? 'bg-red-100 text-red-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {diff.aumentou ? 'MAIS CARO' : 'MAIS BARATO'}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                    
+                    {/* Mostrar diferença em reais */}
+                    {(() => {
+                      const diff = calcularDiferencaPreco();
+                      if (diff && Math.abs(parseFloat(diff.percentual)) > 0.1) {
+                        const diferencaReais = formData.preco_compra_real - diff.precoFornecedor;
+                        return (
+                          <div className="text-xs text-blue-600 mt-1">
+                            Diferença: R$ {Math.abs(diferencaReais).toFixed(2)} {diff.aumentou ? 'a mais' : 'a menos'} por {insumoFornecedorSelecionado.unidade}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                ) : ehFornecedorAnonimo ? (
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-gray-600 text-sm">
+                      💡 Fornecedor anônimo - sem comparação de preços
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="text-yellow-700 text-sm">
+                      ⚠️ Selecione um fornecedor e insumo para comparar preços
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Quantidade */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantidade
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.quantidade}
+                onChange={(e) => updateField('quantidade', parseInt(e.target.value) || 0)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                placeholder="0"
+              />
+            </div>
+
+            {/* Fator */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fator
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={formData.fator}
+                onChange={(e) => updateField('fator', parseFloat(e.target.value) || 1)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                placeholder="1.0"
+              />
+            </div>
+
+            {/* 🆕 CAMPO DESCRIÇÃO ADICIONADO */}
+            <div className="lg:col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descrição
+              </label>
+              <textarea
+                value={formData.descricao}
+                onChange={(e) => updateField('descricao', e.target.value)}
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                placeholder="Descrição detalhada do insumo (opcional)"
+                rows="3"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Botões */}
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={handleClose}
+            className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Salvando...' : (editingInsumo ? 'Atualizar' : 'Salvar Insumo')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ============================================================================
 // COMPONENTE PRINCIPAL DO SISTEMA
 // ============================================================================
 const FoodCostSystem: React.FC = () => {
@@ -1363,14 +1867,51 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
     };
 
     // Função para deletar insumo
-    const handleDeleteInsumo = (id: number) => {
-      const insumo = insumos.find(i => i.id === id);
-      setDeleteConfirm({
-        isOpen: true,
-        insumoId: id,
-        insumoNome: insumo?.nome || 'Insumo'
-      });
-    };
+    const handleDeleteInsumo = useCallback(async (insumoId: number) => {
+      if (!confirm('Tem certeza que deseja excluir este insumo?')) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+        console.log('🗑️ Excluindo insumo ID:', insumoId);
+
+        // 🆕 CORRIGIDO: Usar apenas o ID do insumo
+        const response = await fetch(`http://localhost:8000/api/v1/insumos/${insumoId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (response.ok) {
+          console.log('✅ Insumo excluído com sucesso');
+          
+          // Recarregar lista de insumos
+          await fetchInsumos();
+          
+          showSuccessPopup(
+            'Insumo Excluído!',
+            'O insumo foi removido com sucesso do sistema.'
+          );
+        } else {
+          const error = await response.json();
+          console.error('❌ Erro ao excluir:', error);
+          showErrorPopup(
+            'Erro ao excluir',
+            error.detail || 'Não foi possível excluir o insumo.'
+          );
+        }
+      } catch (error) {
+        console.error('💥 Erro de conexão:', error);
+        showErrorPopup(
+          'Erro de conexão',
+          'Não foi possível conectar com o servidor.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [fetchInsumos]);
 
     // Função para confirmar e executar a exclusão
     const confirmDeleteInsumo = async () => {
@@ -1519,301 +2060,30 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
             </div>
           )}
         </div>
-        {/* 🆕 NOVO POPUP CADASTRO DE INSUMO COM FORNECEDOR */}
-        {showInsumoForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 w-full max-w-5xl mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-800">Cadastrar Novo Insumo</h3>
-                <button 
-                  onClick={() => {
-                    setShowInsumoForm(false);
-                    setEditingInsumo(null);
-                    setEhFornecedorAnonimo(true);
-                    setFornecedorSelecionadoForm(null);
-                    setInsumosDoFornecedor([]);
-                    setInsumoFornecedorSelecionado(null);
-                    setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '', quantidade: 0, codigo: '' });
-                  }}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-              
-              {/* SEÇÃO 1: SELEÇÃO DE FORNECEDOR */}
-              <div className="mb-8 p-6 bg-gray-50 rounded-lg border-2 border-gray-200">
-                <h4 className="text-lg font-semibold mb-4 text-gray-700">1. Informações do Fornecedor</h4>
-                
-                {/* Checkbox fornecedor anônimo */}
-                <div className="mb-4">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={ehFornecedorAnonimo}
-                      onChange={(e) => handleFornecedorAnonimoChange(e.target.checked)}
-                      className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Marcar Fornecedor como anônimo
-                    </span>
-                  </label>
-                  <p className="text-xs text-gray-500 mt-1 ml-8">
-                    Marque esta opção se não souber o fornecedor específico
-                  </p>
-                </div>
-
-                {/* Select de fornecedor */}
-                {!ehFornecedorAnonimo && (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div className="lg:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Selecionar Fornecedor <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={fornecedorSelecionadoForm?.id || ''}
-                        onChange={(e) => handleFornecedorChange(e.target.value)}
-                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                      >
-                        <option value="">Selecione um fornecedor...</option>
-                        {fornecedoresDisponiveis.map((fornecedor) => (
-                          <option key={fornecedor.id} value={fornecedor.id}>
-                            {fornecedor.nome_razao_social}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div className="flex items-end">
-                      <button
-                        onClick={() => setShowNovoFornecedorPopup(true)}
-                        className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                      >
-                        + Novo Fornecedor
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Lista de insumos do fornecedor selecionado */}
-                {!ehFornecedorAnonimo && fornecedorSelecionadoForm && (
-                  <div className="mt-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Insumos disponíveis do {fornecedorSelecionadoForm.nome_razao_social}
-                    </label>
-                    
-                    {insumosDoFornecedor.length > 0 ? (
-                      <select
-                        value={insumoFornecedorSelecionado?.id || ''}
-                        onChange={(e) => handleInsumoFornecedorChange(e.target.value)}
-                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                      >
-                        <option value="">Selecione um insumo (opcional)...</option>
-                        {insumosDoFornecedor.map((insumo) => (
-                          <option key={insumo.id} value={insumo.id}>
-                            {insumo.codigo} - {insumo.nome} ({insumo.unidade}) - R$ {insumo.preco_unitario.toFixed(2)}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm text-yellow-700">
-                          Este fornecedor ainda não possui insumos cadastrados.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* SEÇÃO 2: DADOS DO INSUMO */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold mb-4 text-gray-700">2. Dados do Insumo</h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Código */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Código <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={novoInsumo.codigo}
-                      onChange={(e) => updateInsumoField('codigo', e.target.value)}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                      placeholder="Ex: INS001"
-                    />
-                  </div>
-
-                  {/* Nome */}
-                  <div className="lg:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nome <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={novoInsumo.nome}
-                      onChange={(e) => updateInsumoField('nome', e.target.value)}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                      placeholder="Nome do insumo"
-                    />
-                  </div>
-
-                  {/* Grupo */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Grupo
-                    </label>
-                    <input
-                      type="text"
-                      value={novoInsumo.grupo || ''}
-                      onChange={(e) => updateInsumoField('grupo', e.target.value)}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                      placeholder="Ex: Carnes, Laticínios"
-                    />
-                  </div>
-
-                  {/* Subgrupo */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Subgrupo
-                    </label>
-                    <input
-                      type="text"
-                      value={novoInsumo.subgrupo || ''}
-                      onChange={(e) => updateInsumoField('subgrupo', e.target.value)}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                      placeholder="Ex: Bovina, Queijos"
-                    />
-                  </div>
-
-                  {/* Unidade */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Unidade <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={novoInsumo.unidade}
-                      onChange={(e) => updateInsumoField('unidade', e.target.value)}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                    >
-                      <option value="kg">Kg</option>
-                      <option value="g">G</option>
-                      <option value="L">L</option>
-                      <option value="ml">ml</option>
-                      <option value="unidade">Unidade</option>
-                      <option value="cx">Caixa</option>
-                      <option value="pct">Pacote</option>
-                    </select>
-                  </div>
-
-                  {/* Preço */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Preço por Unidade <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={novoInsumo.preco_compra_real || 0}
-                      onChange={(e) => updateInsumoField('preco_compra_real', e.target.value)}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                      placeholder="0.00"
-                    />
-                    
-                    {/* Comparação de preço */}
-                    {insumoFornecedorSelecionado && (
-                      <div className="mt-2 text-sm">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-gray-600">Fornecedor:</span>
-                          <span className="font-medium">R$ {insumoFornecedorSelecionado.preco_unitario.toFixed(2)}</span>
-                          
-                          {(() => {
-                            const diff = calcularDiferencaPreco();
-                            if (diff) {
-                              return (
-                                <span className={`font-medium ${diff.aumentou ? 'text-red-600' : 'text-green-600'}`}>
-                                  ({diff.aumentou ? '+' : ''}{diff.percentual}%)
-                                </span>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Quantidade */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Quantidade
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={novoInsumo.quantidade}
-                      onChange={(e) => updateInsumoField('quantidade', e.target.value)}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                      placeholder="0"
-                    />
-                  </div>
-
-                  {/* Fator */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fator
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={novoInsumo.fator}
-                      onChange={(e) => updateInsumoField('fator', e.target.value)}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                      placeholder="1.0"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Botões */}
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => {
-                    setShowInsumoForm(false);
-                    setEditingInsumo(null);
-                    setEhFornecedorAnonimo(true);
-                    setFornecedorSelecionadoForm(null);
-                    setInsumosDoFornecedor([]);
-                    setInsumoFornecedorSelecionado(null);
-                    setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '', quantidade: 0, codigo: '' });
-                  }}
-                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={async () => {
-                    // TODO: Implementar função de salvar com nova lógica
-                    console.log('Salvando insumo:', {
-                      ...novoInsumo,
-                      eh_fornecedor_anonimo: ehFornecedorAnonimo,
-                      fornecedor_insumo_id: insumoFornecedorSelecionado?.id || null
-                    });
-                    // Por enquanto, usar a função existente
-                    await handleSaveInsumo(novoInsumo);
-                  }}
-                  disabled={loading}
-                  className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Salvando...' : 'Salvar Insumo'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* 🔧 USAR COMPONENTE ISOLADO */}
+        <FormularioInsumoIsolado
+          isVisible={showInsumoForm}
+          editingInsumo={editingInsumo}
+          onClose={() => {
+            setShowInsumoForm(false);
+            setEditingInsumo(null);
+          }}
+          onSave={handleSaveInsumo}
+          loading={loading}
+          // Props para fornecedores
+          ehFornecedorAnonimo={ehFornecedorAnonimo}
+          setEhFornecedorAnonimo={setEhFornecedorAnonimo}
+          fornecedoresDisponiveis={fornecedoresDisponiveis}
+          fornecedorSelecionadoForm={fornecedorSelecionadoForm}
+          setFornecedorSelecionadoForm={setFornecedorSelecionadoForm}
+          insumosDoFornecedor={insumosDoFornecedor}
+          setInsumosDoFornecedor={setInsumosDoFornecedor}
+          insumoFornecedorSelecionado={insumoFornecedorSelecionado}
+          setInsumoFornecedorSelecionado={setInsumoFornecedorSelecionado}
+          showNovoFornecedorPopup={showNovoFornecedorPopup}
+          setShowNovoFornecedorPopup={setShowNovoFornecedorPopup}
+          carregarInsumosDoFornecedor={carregarInsumosDoFornecedor}
+        />
 
         {/* 🆕 POPUP COMPLETO PARA NOVO FORNECEDOR */}
         {showNovoFornecedorPopup && (
