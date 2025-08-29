@@ -5,7 +5,7 @@
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
-from sqlalchemy import Column, Float, ForeignKey, Integer
+from sqlalchemy import Column, Float, ForeignKey, Integer, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 
@@ -35,11 +35,19 @@ class Insumo(BaseModel):
     #   CHAVE ESTRANGEIRA PARA FORNECEDOR
     #   ===================================================================================================
 
-    fornecedor_id = Column(
+    fornecedor_insumo_id = Column(
         Integer,
-        ForeignKey("fornecedores.id"),
+        ForeignKey("fornecedor_insumos.id", ondelete="SET NULL"),
         nullable=True,
-        comment="ID do fornecedor que fornece este insumo"
+        comment="ID do insumo no catálogo do fornecedor (NULL = fornecedor anônimo)"
+    )
+
+    # Campo para marcar se é fornecedor anônimo
+    eh_fornecedor_anonimo = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+        comment="TRUE = sem fornecedor específico, FALSE = vinculado a fornecedor"
     )
 
 
@@ -51,9 +59,9 @@ class Insumo(BaseModel):
     # receitas = relationship("ReceitaInsumo", back_populates="insumo")
 
     # Relacionamento com Fornecedor (muitos insumos para um fornecedor)
-    fornecedor = relationship(
-        "Fornecedor",
-        back_populates="insumos"
+    fornecedor_insumo = relationship(
+        "FornecedorInsumo",
+        back_populates="insumos_sistema"
     )
 
     def __repr__(self):
@@ -72,6 +80,30 @@ class Insumo(BaseModel):
     def preco_compra_real(self, valor):
         """Converte reais para centavos"""
         self.preco_compra = int(valor * 100) if valor else 0
+
+    @property
+    def fornecedor_nome(self) -> str:
+        """
+        Retorna o nome do fornecedor ou 'Fornecedor Anônimo'.
+        
+        Returns:
+            str: Nome do fornecedor ou texto padrão
+        """
+        if self.eh_fornecedor_anonimo or not self.fornecedor_insumo:
+            return "Fornecedor Anônimo"
+        return self.fornecedor_insumo.fornecedor.nome_razao_social
+    
+    @property
+    def fornecedor_preco_unitario(self) -> float:
+        """
+        Retorna o preço unitário do fornecedor para comparação.
+        
+        Returns:
+            float: Preço unitário do fornecedor ou 0.0 se anônimo
+        """
+        if self.eh_fornecedor_anonimo or not self.fornecedor_insumo:
+            return 0.0
+        return self.fornecedor_insumo.preco_unitario_real
 
     #   ===================================================================================================
     #   Novos campos para valor de compra por Kg e total comprado

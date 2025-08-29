@@ -10,6 +10,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from app.utils.estados_brasil import ESTADOS_BRASILEIROS
 
 # Importações internas do projeto
 from app.api.deps import get_db
@@ -294,7 +295,40 @@ def excluir_fornecedor(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao excluir fornecedor: {str(e)}"
         )
+
+# ============================================================================
+# ENDPOINT PARA ESTADOS BRASILEIROS
+# ============================================================================
+
+@router.get("/utils/estados", response_model=List[dict])
+def listar_estados_brasileiros():
+    """
+    Lista todos os estados brasileiros para uso em selects/dropdowns.
     
+    **Funcionalidades:**
+    - Retorna lista de estados com sigla e nome completo
+    - Usado no formulário de cadastro de fornecedores
+    - Dados estáticos (não consulta banco)
+    - Ordenação alfabética por sigla
+    
+    **Retorna:**
+    ```json
+    [
+        {"sigla": "AC", "nome": "Acre"},
+        {"sigla": "AL", "nome": "Alagoas"},
+        ...
+        {"sigla": "TO", "nome": "Tocantins"}
+    ]
+    ```
+    
+    **Uso no frontend:**
+    - Popular select de estados no formulário de fornecedor
+    - Validação de UF inserida pelo usuário
+    - Exibição do nome completo do estado
+    """
+    return ESTADOS_BRASILEIROS
+
+
 # ============================================================================
 # ENDPOINTS AUXILIARES
 # ============================================================================

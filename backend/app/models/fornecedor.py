@@ -2,7 +2,7 @@
 # MODELO DE FORNECEDOR - Estrutura da tabela fornecedores
 # ============================================================================
 # Descrição: Define a estrutura da tabela fornecedores no banco de dados
-# Data: 27/08/2025
+# Data: 27/08/2025 | Atualizado 28/08/2025
 # Autor: Will
 # ============================================================================
 
@@ -85,10 +85,11 @@ class Fornecedor(Base):
     # ========================================================================
     
     # Relacionamento com Insumos (um fornecedor pode ter vários insumos)
-    insumos = relationship(
-        "Insumo",
+    fornecedor_insumos = relationship(
+        "FornecedorInsumo",
         back_populates="fornecedor",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        order_by="FornecedorInsumo.nome"
     )
     
     # ========================================================================

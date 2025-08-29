@@ -18,7 +18,7 @@
 import { apiService } from './api-service';
 
 import logoIogar from './image/iogar_logo.png';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, use } from 'react';
 import {
   ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
   Users, ChefHat, Utensils, Plus, Search, Edit2, Trash2, Save,
@@ -294,6 +294,15 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
   // Estados para insumos da receita
   const [receitaInsumos, setReceitaInsumos] = useState<ReceitaInsumo[]>([]);
 
+  // Estados para o novo formulário de insumos
+  const [ehFornecedorAnonimo, setEhFornecedorAnonimo] = useState(true);
+  const [fornecedorSelecionadoForm, setFornecedorSelecionadoForm] = useState(null);
+  const [fornecedoresDisponiveis, setFornecedoresDisponiveis] = useState([]);
+  const [insumosDoFornecedor, setInsumosDoFornecedor] = useState([]);
+  const [insumoFornecedorSelecionado, setInsumoFornecedorSelecionado] = useState(null);
+  const [showNovoFornecedorPopup, setShowNovoFornecedorPopup] = useState(false);
+  const [estadosBrasil, setEstadosBrasil] = useState([]);
+
   // Inicializar funções do popup
   useEffect(() => {
     initializePopupFunctions(setShowPopup, setPopupData);
@@ -396,7 +405,9 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
           console.log('✅ API conectada com sucesso!');
           await fetchInsumos();
           await fetchRestaurantes();
-          await fetchReceitas(); // ✅ ADICIONAR esta linha
+          await fetchReceitas();
+          await carregarFornecedoresDisponiveis();
+          await carregarEstados();
         } else {
           console.error('❌ Falha na conexão com a API');
           alert('Não foi possível conectar com o backend.');
@@ -409,6 +420,109 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
     initializeApp();
   }, []); // IMPORTANTE: Array vazio para executar apenas uma vez
 
+  // Funções para carregar dados do formulário
+  const carregarFornecedoresDisponiveis = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/fornecedores/');
+      if (response.ok) {
+        const data = await response.json();
+        setFornecedoresDisponiveis(data.fornecedores || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar fornecedores:', error);
+    }
+  };
+
+  const carregarInsumosDoFornecedor = async (fornecedorId) => {
+    if (!fornecedorId) {
+      setInsumosDoFornecedor([]);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/fornecedores/${fornecedorId}/insumos/selecao/`);
+      if (response.ok) {
+        const insumos = await response.json();
+        setInsumosDoFornecedor(insumos);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar insumos do fornecedor:', error);
+      setInsumosDoFornecedor([]);
+    }
+  };
+
+  const carregarEstados = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/fornecedores/utils/estados');
+      if (response.ok) {
+        const estados = await response.json();
+        setEstadosBrasil(estados);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar estados:', error);
+      setEstadosBrasil([
+        {sigla: 'SP', nome: 'São Paulo'},
+        {sigla: 'RJ', nome: 'Rio de Janeiro'},
+        {sigla: 'MG', nome: 'Minas Gerais'}
+      ]);
+    }
+  };
+
+  const handleFornecedorAnonimoChange = useCallback((checked) => {
+    setEhFornecedorAnonimo(checked);
+    if (checked) {
+      setFornecedorSelecionadoForm(null);
+      setInsumosDoFornecedor([]);
+      setInsumoFornecedorSelecionado(null);
+    }
+  }, []);
+
+  const handleFornecedorChange = useCallback(async (fornecedorId) => {
+    const fornecedor = fornecedoresDisponiveis.find(f => f.id === parseInt(fornecedorId));
+    setFornecedorSelecionadoForm(fornecedor);
+    
+    if (fornecedor) {
+      await carregarInsumosDoFornecedor(fornecedor.id);
+    } else {
+      setInsumosDoFornecedor([]);
+    }
+    setInsumoFornecedorSelecionado(null);
+  }, [fornecedoresDisponiveis]);
+
+  const handleInsumoFornecedorChange = useCallback((insumoId) => {
+    const insumo = insumosDoFornecedor.find(i => i.id === parseInt(insumoId));
+    setInsumoFornecedorSelecionado(insumo);
+    
+    if (insumo) {
+      setNovoInsumo(prev => ({
+        ...prev,
+        nome: insumo.nome,
+        codigo: insumo.codigo,
+        unidade: insumo.unidade,
+        grupo: prev.grupo || 'Geral',
+        subgrupo: prev.subgrupo || ''
+      }));
+    }
+  }, [insumosDoFornecedor]);
+
+  const calcularDiferencaPreco = useCallback(() => {
+    if (!insumoFornecedorSelecionado || novoInsumo.novoInsumo.preco_compra_real === 0) {
+      return null;
+    }
+
+    const precoSistema = novoInsumo.preco_compra_real;
+    const precoFornecedor = insumoFornecedorSelecionado.preco_unitario;
+    
+    if (precoFornecedor === 0) return null;
+    
+    const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
+    return {
+      percentual: diferenca.toFixed(1),
+      aumentou: diferenca > 0,
+      precoFornecedor: precoFornecedor
+    };
+  }, [insumoFornecedorSelecionado, novoInsumo.preco_compra_real]);
+
   // ============================================================================
   // COMPONENTE SIDEBAR - NAVEGAÇÃO PRINCIPAL
   // ============================================================================
@@ -416,10 +530,10 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
     // Itens do menu de navegação
     const menuItems = [
       { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+      { id: 'fornecedores', label: 'Fornecedores', icon: Package },
       { id: 'insumos', label: 'Insumos', icon: Package },
       { id: 'restaurantes', label: 'Restaurantes', icon: Users },
       { id: 'receitas', label: 'Receitas', icon: ChefHat },
-      { id: 'fornecedores', label: 'Fornecedores', icon: Package },
       { id: 'automacao', label: 'Automação IOGAR', icon: Zap },
       { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
       { id: 'settings', label: 'Configurações', icon: Settings }
@@ -1139,56 +1253,112 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
       insumo.grupo?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Função para salvar insumo (criar ou atualizar)
+    // Função atualizada para salvar insumo com nova lógica de fornecedor
     const handleSaveInsumo = async (dadosInsumo) => {
       try {
         setLoading(true);
-        console.log('📤 Iniciando salvamento do insumo:', dadosInsumo);
+        console.log('📤 Iniciando salvamento do insumo com nova lógica:', dadosInsumo);
+
+        // Preparar dados com nova estrutura
+        const dadosParaEnvio = {
+          codigo: dadosInsumo.codigo || '',
+          nome: dadosInsumo.nome || '',
+          unidade: dadosInsumo.unidade || 'kg',
+          preco_compra: Math.round((dadosInsumo.preco_compra_real || 0) * 100), // Converter para centavos
+          fator: dadosInsumo.fator || 1.0,
+          quantidade: dadosInsumo.quantidade || 0,
+          
+          // Novos campos para fornecedor
+          eh_fornecedor_anonimo: ehFornecedorAnonimo,
+          fornecedor_insumo_id: ehFornecedorAnonimo ? null : (insumoFornecedorSelecionado?.id || null),
+          grupo: dadosInsumo.grupo || 'Geral',
+          subgrupo: dadosInsumo.subgrupo || ''
+        };
+
+        console.log('📦 Dados preparados para envio:', dadosParaEnvio);
+
+        // 🆕 Log de mudança de preço (se insumo do fornecedor selecionado)
+        if (insumoFornecedorSelecionado && dadosInsumo.preco_compra_real !== insumoFornecedorSelecionado.preco_unitario) {
+          const diferenca = calcularDiferencaPreco();
+          if (diferenca) {
+            console.log('📊 Mudança de preço detectada:', {
+              precoFornecedor: insumoFornecedorSelecionado.preco_unitario,
+              precoInformado: dadosInsumo.preco_compra_real,
+              diferenca: diferenca.percentual + '%',
+              aumentou: diferenca.aumentou
+            });
+            // TODO: Implementar log no backend quando estiver pronto
+          }
+        }
 
         let response;
         if (editingInsumo) {
           console.log('📝 Atualizando insumo existente:', editingInsumo.id);
-          response = await apiService.updateInsumo(editingInsumo.id, dadosInsumo);
+          // Para atualização, usar API service existente (será atualizada depois)
+          response = await apiService.updateInsumo(editingInsumo.id, dadosParaEnvio);
         } else {
           console.log('➕ Criando novo insumo');
-          response = await apiService.createInsumo(dadosInsumo);
+          // Para criação, usar API service existente (será atualizada depois)
+          response = await apiService.createInsumo(dadosParaEnvio);
         }
 
         console.log('📥 Resposta da API:', response);
+        
         if (response.data || !response.error) {
           console.log('✅ Sucesso na operação:', response.data);
+          
+          // Recarregar lista de insumos
           await fetchInsumos();
           
+          // Se foi criação bem-sucedida, mostrar popup de sucesso
           if (!editingInsumo) {
             showSuccessPopup(
               'Insumo Cadastrado!',
-              `${dadosInsumo.nome} foi cadastrado com sucesso no sistema.`
+              `${dadosParaEnvio.nome} foi cadastrado com sucesso ${ehFornecedorAnonimo ? 'como fornecedor anônimo' : `vinculado ao fornecedor ${fornecedorSelecionadoForm?.nome_razao_social}`}.`
             );
           } else {
             showSuccessPopup(
-              'Insumo Atualizado!', 
-              `${dadosInsumo.nome} foi atualizado com sucesso.`
+              'Insumo Atualizado!',
+              `${dadosParaEnvio.nome} foi atualizado com sucesso.`
             );
           }
-          
+
+          // 🆕 Limpar estados do formulário
           setShowInsumoForm(false);
           setEditingInsumo(null);
-        } else if (response.error) {
-          console.error('❌ Erro ao salvar insumo:', response.error);
+          setEhFornecedorAnonimo(true);
+          setFornecedorSelecionadoForm(null);
+          setInsumosDoFornecedor([]);
+          setInsumoFornecedorSelecionado(null);
+          setNovoInsumo({ 
+            nome: '', 
+            unidade: '', 
+            preco_compra: 0, 
+            preco_compra_real: 0,
+            fator: 1, 
+            categoria: '', 
+            quantidade: 0, 
+            codigo: '',
+            grupo: '',
+            subgrupo: ''
+          });
+
+        } else {
+          console.error('❌ Erro na resposta:', response.error);
           showErrorPopup(
-            'Erro ao Salvar',
+            'Erro ao salvar',
             response.error || 'Ocorreu um erro inesperado ao salvar o insumo.'
           );
         }
+
       } catch (error) {
-        console.error('❌ Erro inesperado ao salvar insumo:', error);
+        console.error('💥 Erro durante salvamento:', error);
         showErrorPopup(
-          'Erro Inesperado',
-          'Ocorreu um erro inesperado. Verifique sua conexão e tente novamente.'
+          'Erro de conexão',
+          'Não foi possível conectar com o servidor. Verifique sua conexão e tente novamente.'
         );
       } finally {
         setLoading(false);
-        console.log('⏳ Fim do processo de salvamento');
       }
     };
 
@@ -1349,55 +1519,500 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
             </div>
           )}
         </div>
-        {/* Modal de formulário de insumo */}
+        {/* 🆕 NOVO POPUP CADASTRO DE INSUMO COM FORNECEDOR */}
         {showInsumoForm && (
-          <FormularioInsumo 
-            editingInsumo={editingInsumo}
-            onClose={() => {
-              setShowInsumoForm(false);
-              setEditingInsumo(null);
-              setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '', quantidade: 0, codigo: '' });
-            }}
-            onSave={handleSaveInsumo}
-            loading={loading}
-          />
-        )}
-                {/* Modal de formulário de insumo */}
-        {showInsumoForm && (
-          <FormularioInsumo 
-            editingInsumo={editingInsumo}
-            onClose={() => {
-              setShowInsumoForm(false);
-              setEditingInsumo(null);
-              setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '', quantidade: 0, codigo: '' });
-            }}
-            onSave={handleSaveInsumo}
-            loading={loading}
-          />
-        )}
-
-        {/* Modal de confirmação de exclusão */}
-        {deleteConfirm.isOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Confirmar Exclusão
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Tem certeza que deseja excluir <span className="font-medium text-gray-900">{deleteConfirm.insumoNome}</span>?
-              </p>
-              <div className="flex justify-end gap-3">
+            <div className="bg-white rounded-lg p-8 w-full max-w-5xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-800">Cadastrar Novo Insumo</h3>
+                <button 
+                  onClick={() => {
+                    setShowInsumoForm(false);
+                    setEditingInsumo(null);
+                    setEhFornecedorAnonimo(true);
+                    setFornecedorSelecionadoForm(null);
+                    setInsumosDoFornecedor([]);
+                    setInsumoFornecedorSelecionado(null);
+                    setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '', quantidade: 0, codigo: '' });
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              {/* SEÇÃO 1: SELEÇÃO DE FORNECEDOR */}
+              <div className="mb-8 p-6 bg-gray-50 rounded-lg border-2 border-gray-200">
+                <h4 className="text-lg font-semibold mb-4 text-gray-700">1. Informações do Fornecedor</h4>
+                
+                {/* Checkbox fornecedor anônimo */}
+                <div className="mb-4">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={ehFornecedorAnonimo}
+                      onChange={(e) => handleFornecedorAnonimoChange(e.target.checked)}
+                      className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Marcar Fornecedor como anônimo
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1 ml-8">
+                    Marque esta opção se não souber o fornecedor específico
+                  </p>
+                </div>
+
+                {/* Select de fornecedor */}
+                {!ehFornecedorAnonimo && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="lg:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Selecionar Fornecedor <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={fornecedorSelecionadoForm?.id || ''}
+                        onChange={(e) => handleFornecedorChange(e.target.value)}
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                      >
+                        <option value="">Selecione um fornecedor...</option>
+                        {fornecedoresDisponiveis.map((fornecedor) => (
+                          <option key={fornecedor.id} value={fornecedor.id}>
+                            {fornecedor.nome_razao_social}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="flex items-end">
+                      <button
+                        onClick={() => setShowNovoFornecedorPopup(true)}
+                        className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                      >
+                        + Novo Fornecedor
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de insumos do fornecedor selecionado */}
+                {!ehFornecedorAnonimo && fornecedorSelecionadoForm && (
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Insumos disponíveis do {fornecedorSelecionadoForm.nome_razao_social}
+                    </label>
+                    
+                    {insumosDoFornecedor.length > 0 ? (
+                      <select
+                        value={insumoFornecedorSelecionado?.id || ''}
+                        onChange={(e) => handleInsumoFornecedorChange(e.target.value)}
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                      >
+                        <option value="">Selecione um insumo (opcional)...</option>
+                        {insumosDoFornecedor.map((insumo) => (
+                          <option key={insumo.id} value={insumo.id}>
+                            {insumo.codigo} - {insumo.nome} ({insumo.unidade}) - R$ {insumo.preco_unitario.toFixed(2)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-700">
+                          Este fornecedor ainda não possui insumos cadastrados.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* SEÇÃO 2: DADOS DO INSUMO */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold mb-4 text-gray-700">2. Dados do Insumo</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Código */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Código <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={novoInsumo.codigo}
+                      onChange={(e) => updateInsumoField('codigo', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                      placeholder="Ex: INS001"
+                    />
+                  </div>
+
+                  {/* Nome */}
+                  <div className="lg:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nome <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={novoInsumo.nome}
+                      onChange={(e) => updateInsumoField('nome', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                      placeholder="Nome do insumo"
+                    />
+                  </div>
+
+                  {/* Grupo */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Grupo
+                    </label>
+                    <input
+                      type="text"
+                      value={novoInsumo.grupo || ''}
+                      onChange={(e) => updateInsumoField('grupo', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                      placeholder="Ex: Carnes, Laticínios"
+                    />
+                  </div>
+
+                  {/* Subgrupo */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Subgrupo
+                    </label>
+                    <input
+                      type="text"
+                      value={novoInsumo.subgrupo || ''}
+                      onChange={(e) => updateInsumoField('subgrupo', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                      placeholder="Ex: Bovina, Queijos"
+                    />
+                  </div>
+
+                  {/* Unidade */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Unidade <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={novoInsumo.unidade}
+                      onChange={(e) => updateInsumoField('unidade', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                    >
+                      <option value="kg">Kg</option>
+                      <option value="g">G</option>
+                      <option value="L">L</option>
+                      <option value="ml">ml</option>
+                      <option value="unidade">Unidade</option>
+                      <option value="cx">Caixa</option>
+                      <option value="pct">Pacote</option>
+                    </select>
+                  </div>
+
+                  {/* Preço */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Preço por Unidade <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={novoInsumo.preco_compra_real || 0}
+                      onChange={(e) => updateInsumoField('preco_compra_real', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                      placeholder="0.00"
+                    />
+                    
+                    {/* Comparação de preço */}
+                    {insumoFornecedorSelecionado && (
+                      <div className="mt-2 text-sm">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-gray-600">Fornecedor:</span>
+                          <span className="font-medium">R$ {insumoFornecedorSelecionado.preco_unitario.toFixed(2)}</span>
+                          
+                          {(() => {
+                            const diff = calcularDiferencaPreco();
+                            if (diff) {
+                              return (
+                                <span className={`font-medium ${diff.aumentou ? 'text-red-600' : 'text-green-600'}`}>
+                                  ({diff.aumentou ? '+' : ''}{diff.percentual}%)
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quantidade */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Quantidade
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={novoInsumo.quantidade}
+                      onChange={(e) => updateInsumoField('quantidade', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  {/* Fator */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Fator
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={novoInsumo.fator}
+                      onChange={(e) => updateInsumoField('fator', e.target.value)}
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                      placeholder="1.0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Botões */}
+              <div className="flex justify-end space-x-4">
                 <button
-                  onClick={() => setDeleteConfirm({ isOpen: false, insumoId: null, insumoNome: '' })}
-                  className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    setShowInsumoForm(false);
+                    setEditingInsumo(null);
+                    setEhFornecedorAnonimo(true);
+                    setFornecedorSelecionadoForm(null);
+                    setInsumosDoFornecedor([]);
+                    setInsumoFornecedorSelecionado(null);
+                    setNovoInsumo({ nome: '', unidade: '', preco_compra: 0, fator: 1, categoria: '', quantidade: 0, codigo: '' });
+                  }}
+                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={confirmDeleteInsumo}
-                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all"
+                  onClick={async () => {
+                    // TODO: Implementar função de salvar com nova lógica
+                    console.log('Salvando insumo:', {
+                      ...novoInsumo,
+                      eh_fornecedor_anonimo: ehFornecedorAnonimo,
+                      fornecedor_insumo_id: insumoFornecedorSelecionado?.id || null
+                    });
+                    // Por enquanto, usar a função existente
+                    await handleSaveInsumo(novoInsumo);
+                  }}
+                  disabled={loading}
+                  className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Confirmar
+                  {loading ? 'Salvando...' : 'Salvar Insumo'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🆕 POPUP COMPLETO PARA NOVO FORNECEDOR */}
+        {showNovoFornecedorPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
+            <div className="bg-white rounded-lg p-8 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-800">Cadastrar Novo Fornecedor</h3>
+                <button 
+                  onClick={() => setShowNovoFornecedorPopup(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Nome/Razão Social */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nome/Razão Social <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={novoFornecedor.nome_razao_social}
+                    onChange={(e) => setNovoFornecedor({...novoFornecedor, nome_razao_social: e.target.value})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="Nome ou Razão Social da empresa"
+                  />
+                </div>
+                
+                {/* CNPJ */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    CNPJ <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={novoFornecedor.cnpj}
+                    onChange={(e) => {
+                      // Formatação básica do CNPJ
+                      let valor = e.target.value.replace(/\D/g, '');
+                      if (valor.length <= 14) {
+                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+                        setNovoFornecedor({...novoFornecedor, cnpj: valor});
+                      }
+                    }}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="00.000.000/0000-00"
+                    maxLength="18"
+                  />
+                </div>
+
+                {/* Telefone */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Telefone
+                  </label>
+                  <input
+                    type="text"
+                    value={novoFornecedor.telefone}
+                    onChange={(e) => setNovoFornecedor({...novoFornecedor, telefone: e.target.value})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
+
+                {/* Ramo */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ramo de Atividade
+                  </label>
+                  <input
+                    type="text"
+                    value={novoFornecedor.ramo}
+                    onChange={(e) => setNovoFornecedor({...novoFornecedor, ramo: e.target.value})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="Ex: Distribuidor de Alimentos"
+                  />
+                </div>
+
+                {/* Cidade */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cidade
+                  </label>
+                  <input
+                    type="text"
+                    value={novoFornecedor.cidade}
+                    onChange={(e) => setNovoFornecedor({...novoFornecedor, cidade: e.target.value})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="Nome da cidade"
+                  />
+                </div>
+
+                {/* Estado */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Estado (UF)
+                  </label>
+                  <select
+                    value={novoFornecedor.estado}
+                    onChange={(e) => setNovoFornecedor({...novoFornecedor, estado: e.target.value})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                  >
+                    <option value="">Selecione o estado...</option>
+                    {estadosBrasil.map((estado) => (
+                      <option key={estado.sigla} value={estado.sigla}>
+                        {estado.sigla} - {estado.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Botões */}
+              <div className="flex justify-end space-x-4 mt-8">
+                <button
+                  onClick={() => setShowNovoFornecedorPopup(false)}
+                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    // Validação básica
+                    if (!novoFornecedor.nome_razao_social || !novoFornecedor.cnpj) {
+                      alert('Nome/Razão Social e CNPJ são obrigatórios!');
+                      return;
+                    }
+
+                    try {
+                      setLoading(true);
+                      
+                      // Chamar API para criar fornecedor
+                      const response = await fetch('http://localhost:8000/api/v1/fornecedores/', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          nome_razao_social: novoFornecedor.nome_razao_social,
+                          cnpj: novoFornecedor.cnpj.replace(/\D/g, ''), // Remover formatação
+                          telefone: novoFornecedor.telefone || null,
+                          ramo: novoFornecedor.ramo || null,
+                          cidade: novoFornecedor.cidade || null,
+                          estado: novoFornecedor.estado || null
+                        }),
+                      });
+
+                      if (response.ok) {
+                        const fornecedorCriado = await response.json();
+                        
+                        // Recarregar lista de fornecedores disponíveis
+                        await carregarFornecedoresDisponiveis();
+                        
+                        // Selecionar automaticamente o novo fornecedor
+                        setFornecedorSelecionadoForm(fornecedorCriado);
+                        setEhFornecedorAnonimo(false);
+                        
+                        // Carregar insumos do novo fornecedor (provavelmente vazio)
+                        await carregarInsumosDoFornecedor(fornecedorCriado.id);
+                        
+                        // Limpar formulário e fechar popup
+                        setNovoFornecedor({
+                          nome_razao_social: '',
+                          cnpj: '',
+                          telefone: '',
+                          ramo: '',
+                          cidade: '',
+                          estado: ''
+                        });
+                        setShowNovoFornecedorPopup(false);
+
+                        showSuccessPopup(
+                          'Fornecedor Cadastrado!',
+                          `${fornecedorCriado.nome_razao_social} foi cadastrado com sucesso e selecionado automaticamente.`
+                        );
+
+                      } else {
+                        const error = await response.json();
+                        showErrorPopup(
+                          'Erro ao cadastrar fornecedor',
+                          error.detail || 'Ocorreu um erro ao cadastrar o fornecedor.'
+                        );
+                      }
+                    } catch (error) {
+                      console.error('Erro ao cadastrar fornecedor:', error);
+                      showErrorPopup(
+                        'Erro de conexão',
+                        'Não foi possível conectar com o servidor.'
+                      );
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Cadastrando...' : 'Cadastrar Fornecedor'}
                 </button>
               </div>
             </div>
@@ -1734,6 +2349,8 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
       quantidade: 1,
       fator: 1.0
     });
+
+
     const [showPopupFornecedor, setShowPopupFornecedor] = useState(false);
     const [showPopupInsumo, setShowPopupInsumo] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -2017,7 +2634,7 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
           </div>
         </div>
 
-        {/* POPUP CADASTRO DE FORNECEDOR */}
+        {/* 🆕 POPUP CADASTRO DE FORNECEDOR - ADICIONAR AQUI */}
         {showPopupFornecedor && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-8 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
@@ -2052,71 +2669,129 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                   <input
                     type="text"
                     value={novoFornecedor.cnpj}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, cnpj: e.target.value.replace(/\D/g, '')})}
+                    onChange={(e) => {
+                      let valor = e.target.value.replace(/\D/g, '');
+                      if (valor.length <= 14) {
+                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+                        setNovoFornecedor({...novoFornecedor, cnpj: valor});
+                      }
+                    }}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Apenas números (14 dígitos)"
-                    maxLength={14}
+                    placeholder="00.000.000/0000-00"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Telefone</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Telefone
+                  </label>
                   <input
                     type="text"
                     value={novoFornecedor.telefone}
                     onChange={(e) => setNovoFornecedor({...novoFornecedor, telefone: e.target.value})}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="(21) 99999-9999"
+                    placeholder="(11) 99999-9999"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ramo de Atividade</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ramo
+                  </label>
                   <input
                     type="text"
                     value={novoFornecedor.ramo}
                     onChange={(e) => setNovoFornecedor({...novoFornecedor, ramo: e.target.value})}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Ex: Distribuição de Alimentos"
+                    placeholder="Ex: Distribuidor de Alimentos"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Cidade</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cidade
+                  </label>
                   <input
                     type="text"
                     value={novoFornecedor.cidade}
                     onChange={(e) => setNovoFornecedor({...novoFornecedor, cidade: e.target.value})}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Rio de Janeiro"
+                    placeholder="Nome da cidade"
                   />
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
-                  <input
-                    type="text"
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Estado (UF)
+                  </label>
+                  <select
                     value={novoFornecedor.estado}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, estado: e.target.value.toUpperCase()})}
+                    onChange={(e) => setNovoFornecedor({...novoFornecedor, estado: e.target.value})}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="RJ"
-                    maxLength={2}
-                  />
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="AC">AC - Acre</option>
+                    <option value="AL">AL - Alagoas</option>
+                    <option value="AM">AM - Amazonas</option>
+                    <option value="BA">BA - Bahia</option>
+                    <option value="CE">CE - Ceará</option>
+                    <option value="DF">DF - Distrito Federal</option>
+                    <option value="GO">GO - Goiás</option>
+                    <option value="MG">MG - Minas Gerais</option>
+                    <option value="RJ">RJ - Rio de Janeiro</option>
+                    <option value="RS">RS - Rio Grande do Sul</option>
+                    <option value="SC">SC - Santa Catarina</option>
+                    <option value="SP">SP - São Paulo</option>
+                    {/* Adicione outros estados conforme necessário */}
+                  </select>
                 </div>
               </div>
 
-              <div className="flex gap-4 mt-8">
+              <div className="flex justify-end space-x-4 mt-8">
                 <button
                   onClick={() => setShowPopupFornecedor(false)}
-                  disabled={isLoading}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={adicionarFornecedor}
-                  disabled={isLoading || !novoFornecedor.nome_razao_social || !novoFornecedor.cnpj}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all"
+                  onClick={async () => {
+                    if (!novoFornecedor.nome_razao_social || !novoFornecedor.cnpj) {
+                      alert('Nome e CNPJ são obrigatórios!');
+                      return;
+                    }
+
+                    try {
+                      setIsLoading(true);
+                      const response = await fetch('http://localhost:8000/api/v1/fornecedores/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          ...novoFornecedor,
+                          cnpj: novoFornecedor.cnpj.replace(/\D/g, '')
+                        })
+                      });
+
+                      if (response.ok) {
+                        await carregarFornecedores();
+                        setNovoFornecedor({
+                          nome_razao_social: '', cnpj: '', telefone: '',
+                          ramo: '', cidade: '', estado: ''
+                        });
+                        setShowPopupFornecedor(false);
+                        alert('Fornecedor cadastrado com sucesso!');
+                      } else {
+                        const error = await response.json();
+                        alert('Erro: ' + (error.detail || 'Erro desconhecido'));
+                      }
+                    } catch (error) {
+                      alert('Erro de conexão');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
                 >
                   {isLoading ? 'Salvando...' : 'Salvar Fornecedor'}
                 </button>
@@ -2125,7 +2800,7 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
           </div>
         )}
 
-        {/* POPUP CADASTRO DE INSUMO */}
+        {/* 🆕 POPUP CADASTRO DE INSUMO DO FORNECEDOR - TAMBÉM ADICIONAR AQUI */}
         {showPopupInsumo && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-8 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
@@ -2141,7 +2816,8 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                 </button>
               </div>
               
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 gap-6">
+                {/* Apenas os 5 campos necessários */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Código <span className="text-red-500">*</span>
@@ -2157,45 +2833,17 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Grupo
+                    Nome <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={novoInsumo.grupo}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, grupo: e.target.value})}
+                    value={novoInsumo.nome}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, nome: e.target.value})}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Ex: Verduras"
+                    placeholder="Ex: Tomate Premium"
                   />
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Subgrupo
-                  </label>
-                  <input
-                    type="text"
-                    value={novoInsumo.subgrupo}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, subgrupo: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Ex: Tomates"
-                  />
-                </div>
-              </div>
 
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome do Insumo <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={novoInsumo.nome}
-                  onChange={(e) => setNovoInsumo({...novoInsumo, nome: e.target.value})}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                  placeholder="Ex: Tomate Italiano Premium"
-                />
-              </div>
-
-              <div className="grid grid-cols-4 gap-6 mt-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Unidade <span className="text-red-500">*</span>
@@ -2205,76 +2853,54 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                     onChange={(e) => setNovoInsumo({...novoInsumo, unidade: e.target.value})}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                   >
-                    <option value="kg">Quilograma (kg)</option>
-                    <option value="g">Grama (g)</option>
-                    <option value="L">Litro (L)</option>
-                    <option value="ml">Mililitro (ml)</option>
-                    <option value="un">Unidade (un)</option>
-                    <option value="cx">Caixa (cx)</option>
+                    <option value="kg">Kg</option>
+                    <option value="g">G</option>
+                    <option value="L">L</option>
+                    <option value="ml">ml</option>
+                    <option value="unidade">Unidade</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Preço (R$) <span className="text-red-500">*</span>
+                    Preço Unitário <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={novoInsumo.preco_compra_real}
                     onChange={(e) => setNovoInsumo({...novoInsumo, preco_compra_real: parseFloat(e.target.value) || 0})}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="3.50"
+                    placeholder="0.00"
                   />
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
-                  <input
-                    type="number"
-                    value={novoInsumo.quantidade}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseInt(e.target.value) || 1})}
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Descrição
+                  </label>
+                  <textarea
+                    value={novoInsumo.descricao || ''}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, descricao: e.target.value})}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="1"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fator</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={novoInsumo.fator}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value) || 1.0})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="1.0"
+                    placeholder="Descrição detalhada do insumo"
+                    rows="3"
                   />
                 </div>
               </div>
 
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
-                <textarea
-                  value={novoInsumo.descricao}
-                  onChange={(e) => setNovoInsumo({...novoInsumo, descricao: e.target.value})}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                  rows={3}
-                  placeholder="Descrição detalhada do insumo, características específicas, etc."
-                />
-              </div>
-
-              <div className="flex gap-4 mt-8">
+              <div className="flex justify-end space-x-4 mt-8">
                 <button
                   onClick={() => setShowPopupInsumo(false)}
-                  disabled={isLoading}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={adicionarInsumo}
-                  disabled={isLoading || !novoInsumo.codigo || !novoInsumo.nome || !novoInsumo.preco_compra_real}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all"
+                  onClick={() => adicionarInsumo()}
+                  disabled={isLoading}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
                 >
                   {isLoading ? 'Salvando...' : 'Salvar Insumo'}
                 </button>

@@ -196,8 +196,141 @@ class ApiService {
   async getApiStatus(): Promise<ApiResponse<any>> {
     return this.request('/');
   }
-}
 
+  // ================================
+  //  MÉTODOS PARA FORNECEDORES
+  // ================================
+
+  // Listar todos os fornecedores
+  async getFornecedores(): Promise<ApiResponse<any>> {
+    return this.request<any>('/api/v1/fornecedores/');
+  }
+
+  // Buscar fornecedor por ID
+  async getFornecedorById(id: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/api/v1/fornecedores/${id}`);
+  }
+
+  // Criar novo fornecedor
+  async createFornecedor(fornecedor: any): Promise<ApiResponse<any>> {
+    return this.request<any>('/api/v1/fornecedores/', {
+      method: 'POST',
+      body: JSON.stringify(fornecedor),
+    });
+  }
+
+  // Atualizar fornecedor
+  async updateFornecedor(id: number, fornecedor: any): Promise<ApiResponse<any>> {
+    return this.request<any>(`/api/v1/fornecedores/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(fornecedor),
+    });
+  }
+
+  // Excluir fornecedor
+  async deleteFornecedor(id: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/api/v1/fornecedores/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ================================
+  // 🆕 MÉTODOS PARA INSUMOS DE FORNECEDORES
+  // ================================
+
+  // Listar insumos de um fornecedor
+  async getFornecedorInsumos(fornecedorId: number): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>(`/api/v1/fornecedores/${fornecedorId}/insumos/`);
+  }
+
+  // Listar insumos de um fornecedor para seleção (simplificado)
+  async getFornecedorInsumosParaSelecao(fornecedorId: number, termo?: string): Promise<ApiResponse<any[]>> {
+    const query = termo ? `?termo=${encodeURIComponent(termo)}` : '';
+    return this.request<any[]>(`/api/v1/fornecedores/${fornecedorId}/insumos/selecao/${query}`);
+  }
+
+  // Criar insumo no catálogo de fornecedor
+  async createFornecedorInsumo(fornecedorId: number, insumo: any): Promise<ApiResponse<any>> {
+    return this.request<any>(`/api/v1/fornecedores/${fornecedorId}/insumos/`, {
+      method: 'POST',
+      body: JSON.stringify(insumo),
+    });
+  }
+
+  // Busca global de insumos em todos os fornecedores
+  async buscarInsumosGlobal(termo: string): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>(`/api/v1/insumos/busca-global/?termo=${encodeURIComponent(termo)}`);
+  }
+
+  // ================================
+  // 🆕 MÉTODOS UTILITÁRIOS
+  // ================================
+
+  // Buscar estados brasileiros
+  async getEstadosBrasil(): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>('/api/v1/fornecedores/utils/estados');
+  }
+
+  // ================================
+  // 🔄 ATUALIZAR MÉTODO EXISTENTE createInsumo para nova estrutura
+  // ================================
+  
+  // LOCALIZAR o método createInsumo existente e SUBSTITUIR por:
+  async createInsumo(insumo: any): Promise<ApiResponse<any>> {
+    console.log('📤 ApiService.createInsumo chamado com:', insumo);
+    
+    // 🆕 Mapear dados para nova estrutura do backend
+    const dadosBackend = {
+      codigo: insumo.codigo || '',
+      nome: insumo.nome || '',
+      unidade: insumo.unidade || 'kg',
+      preco_compra: insumo.preco_compra || 0, // Já em centavos
+      fator: insumo.fator || 1.0,
+      quantidade: insumo.quantidade || 0,
+      
+      // 🆕 Novos campos para fornecedor
+      eh_fornecedor_anonimo: insumo.eh_fornecedor_anonimo !== undefined ? insumo.eh_fornecedor_anonimo : true,
+      fornecedor_insumo_id: insumo.fornecedor_insumo_id || null,
+      grupo: insumo.grupo || 'Geral',
+      subgrupo: insumo.subgrupo || ''
+    };
+
+    console.log('📦 Dados mapeados para backend:', dadosBackend);
+
+    return this.request<any>('/api/v1/insumos/', {
+      method: 'POST',
+      body: JSON.stringify(dadosBackend),
+    });
+  }
+
+  // 🔄 ATUALIZAR MÉTODO EXISTENTE updateInsumo para nova estrutura
+  async updateInsumo(id: number, insumo: any): Promise<ApiResponse<any>> {
+    console.log('📤 ApiService.updateInsumo chamado com:', { id, insumo });
+    
+    // 🆕 Mapear dados para nova estrutura do backend
+    const dadosBackend = {
+      codigo: insumo.codigo || '',
+      nome: insumo.nome || '',
+      unidade: insumo.unidade || 'kg',
+      preco_compra: insumo.preco_compra || 0, // Já em centavos
+      fator: insumo.fator || 1.0,
+      quantidade: insumo.quantidade || 0,
+      
+      // 🆕 Novos campos para fornecedor
+      eh_fornecedor_anonimo: insumo.eh_fornecedor_anonimo !== undefined ? insumo.eh_fornecedor_anonimo : true,
+      fornecedor_insumo_id: insumo.fornecedor_insumo_id || null,
+      grupo: insumo.grupo || 'Geral',
+      subgrupo: insumo.subgrupo || ''
+    };
+
+    console.log('📦 Dados mapeados para backend:', dadosBackend);
+
+    return this.request<any>(`/api/v1/insumos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dadosBackend),
+    });
+  }
+}
 // Instância única do serviço de API
 export const apiService = new ApiService();
 
