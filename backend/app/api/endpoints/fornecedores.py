@@ -384,5 +384,17 @@ def listar_insumo_do_fornecedor(
             detail=f"Fornecedor com ID {fornecedor_id} não foi encontrado"
         )
 
-    # Retorna os insumos do fornecedor
-    return fornecedor.insumos
+    # Converter os objetos FornecedorInsumo para dicionários
+    insumos_dict = []
+    for insumo in fornecedor.fornecedor_insumos:
+        insumos_dict.append({
+            'id': insumo.id,
+            'codigo': insumo.codigo,
+            'nome': insumo.nome,
+            'unidade': insumo.unidade,
+            'preco_unitario': float(insumo.preco_unitario),
+            'descricao': insumo.descricao,
+            'fornecedor_id': insumo.fornecedor_id
+        })
+    
+    return insumos_dict

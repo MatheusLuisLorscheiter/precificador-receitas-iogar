@@ -3,13 +3,14 @@
 # ============================================================================
 # Descrição: Schemas Pydantic para validação e serialização dos insumos
 # oferecidos por fornecedores (catálogo simples)
-# Data: 28/08/2025
+# Data: 28/08/2025 | Atualizado: 01/09/2025
 # Autor: Will - Empresa: IOGAR
 # ============================================================================
 
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from decimal import Decimal
+from datetime import datetime
 
 
 # ============================================================================
@@ -284,8 +285,8 @@ class FornecedorInsumoResponse(FornecedorInsumoBase):
     id: int = Field(description="ID único do insumo no catálogo")
     fornecedor_id: int = Field(description="ID do fornecedor")
     codigo_completo: str = Field(description="Código completo (FOR001-INS123)")
-    created_at: Optional[str] = Field(description="Data de criação")
-    updated_at: Optional[str] = Field(description="Data da última atualização")
+    created_at: Optional[datetime] = Field(description="Data de criação")
+    updated_at: Optional[datetime] = Field(description="Data da última atualização")
 
     model_config = {
         "from_attributes": True,

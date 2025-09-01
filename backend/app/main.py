@@ -159,45 +159,17 @@ def test_database():
 app.include_router(
     insumos.router,
     prefix="/api/v1/insumos",
-    tags=["insumos"],
-    responses={
-        404: {"description": "Insumo não encontrado"},
-        422: {"description": "Erro de validação"},
-        500: {"description": "Erro interno do servidor"}
-    }
+    tags=["insumos"]
 )
 
 # APIs de Receitas e Restaurantes (novas)
 app.include_router(
     receitas.router,
-    prefix="/api/v1/receitas",
-    tags=["receitas"],
-    responses={
-        404: {"description": "Receita não encontrada"},
-        422: {"description": "Erro de validação"},
-        500: {"description": "Erro interno do servidor"}
-    }
+    prefix="/api/v1/receitas", 
+    tags=["receitas"]
 )
 
 # Router para operações com fornecedores
-app.include_router(
-    fornecedores.router, 
-    prefix="/api/v1/fornecedores", 
-    tags=["fornecedores"])
-
-# Router para operações com fornecedores
-app.include_router(
-    fornecedores.router, 
-    prefix="/api/v1/fornecedores", 
-    tags=["fornecedores"],
-    responses={
-        404: {"description": "Fornecedor não encontrado"},
-        422: {"description": "Erro de validação"},
-        500: {"description": "Erro interno do servidor"}
-    }
-)
-
-# Router para operações com insumos do catálogo dos fornecedores
 app.include_router(
     fornecedores.router, 
     prefix="/api/v1/fornecedores", 
@@ -212,7 +184,7 @@ app.include_router(
 # Router para operações com insumos do catálogo dos fornecedores (condicional)
 if HAS_FORNECEDOR_INSUMOS:
     app.include_router(
-        fornecedor_insumos.router, 
+        fornecedor_insumos.router,  # ← Este é o correto!
         prefix="/api/v1", 
         tags=["fornecedor-insumos"],
         responses={
@@ -221,9 +193,6 @@ if HAS_FORNECEDOR_INSUMOS:
             500: {"description": "Erro interno do servidor"}
         }
     )
-    print("✅ Router fornecedor_insumos adicionado com sucesso")
-else:
-    print("⚠️  Router fornecedor_insumos não foi adicionado (módulo não disponível)")
 
 #   ===================================================================================================
 #   Middleware para logging de requisições

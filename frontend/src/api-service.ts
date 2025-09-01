@@ -379,11 +379,23 @@ class ApiService {
     return this.request<any[]>(`/api/v1/fornecedores/${fornecedorId}/insumos/selecao/${query}`);
   }
 
-  // Criar insumo no catálogo de fornecedor
+  // Criar insumo no catálogo de fornecedor (CORRIGIDO)
   async createFornecedorInsumo(fornecedorId: number, insumo: any): Promise<ApiResponse<any>> {
+    console.log('🎯 Criando insumo de fornecedor:', { fornecedorId, insumo });
+    
+    const dadosFornecedorInsumo = {
+      codigo: String(insumo.codigo || '').trim().toUpperCase(),
+      nome: String(insumo.nome || '').trim(),
+      unidade: String(insumo.unidade || 'kg').trim(),
+      preco_unitario: Number(insumo.preco_unitario || insumo.preco_compra_real || 0),
+      descricao: String(insumo.descricao || '').trim()
+    };
+
+    console.log('📦 Dados formatados para fornecedor insumo:', dadosFornecedorInsumo);
+
     return this.request<any>(`/api/v1/fornecedores/${fornecedorId}/insumos/`, {
       method: 'POST',
-      body: JSON.stringify(insumo),
+      body: JSON.stringify(dadosFornecedorInsumo),
     });
   }
 

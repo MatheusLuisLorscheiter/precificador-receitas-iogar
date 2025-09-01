@@ -10,6 +10,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
+from app.schemas.fornecedor_insumo import FornecedorInsumoSimples
 
 # ============================================================================
 # SCHEMA BASE - Campos comuns para criação e atualização
@@ -228,7 +229,7 @@ class FornecedorResponse(FornecedorBase):
     updated_at: Optional[datetime] = Field(description="Data da última atualização")
 
     # Lista de insumos fornecidos por este fornecedor
-    insumos: List[InsumoSimplificado] = Field(
+    fornecedor_insumos: List[FornecedorInsumoSimples] = Field(
         default=[],
         description="Lista de insumos fornecidos por este fornecedor"
     )

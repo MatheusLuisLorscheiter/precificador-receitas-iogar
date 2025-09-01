@@ -618,7 +618,10 @@ const FormularioInsumoIsolado = React.memo(({
                 type="text"
                 value={formData.codigo}
                 onChange={(e) => updateField('codigo', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
+                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors ${
+                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+                }`} // className para mostrar visualmente que está bloqueado
                 placeholder="Ex: INS001"
               />
             </div>
@@ -632,7 +635,10 @@ const FormularioInsumoIsolado = React.memo(({
                 type="text"
                 value={formData.nome}
                 onChange={(e) => updateField('nome', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
+                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors ${
+                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+                }`} // <- ALTERAR className
                 placeholder="Nome do insumo"
               />
             </div>
@@ -673,7 +679,10 @@ const FormularioInsumoIsolado = React.memo(({
               <select
                 value={formData.unidade}
                 onChange={(e) => updateField('unidade', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
+                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors ${
+                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+                }`}
               >
                 <option value="kg">Kg</option>
                 <option value="g">G</option>
@@ -784,53 +793,88 @@ const FormularioInsumoIsolado = React.memo(({
                 <TrendingUp className="w-5 h-5 text-gray-600" />
               </div>
               
-              {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
-                <div>
-                  <div className="text-2xl font-bold text-gray-800">
-                    R$ {insumoFornecedorSelecionado.preco_unitario?.toFixed(2) || '0.00'}
-                  </div>
-                  <div className="mt-2">
-                    {(() => {
-                      const precoSistema = formData.preco_compra_real && formData.quantidade ? 
-                        formData.preco_compra_real * formData.quantidade : 0;
-                      const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
+            {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
+              <div>
+                <div className="text-2xl font-bold text-gray-800">
+                  R$ {insumoFornecedorSelecionado.preco_unitario?.toFixed(2) || '0.00'}
+                </div>
+                <div className="mt-2">
+                  {(() => {
+                    // Calcular preço por unidade do sistema
+                    const precoSistema = formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
+                      formData.preco_compra_total / formData.quantidade : 0;
+                    const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
+                    
+                    if (precoSistema > 0 && precoFornecedor > 0) {
+                      const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
+                      const ehMaisBarato = diferenca < 0;
                       
-                      if (precoSistema > 0 && precoFornecedor > 0) {
-                        const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
-                        const ehMaisBarato = diferenca < 0;
-                        
-                        return (
-                          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                            ehMaisBarato 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {ehMaisBarato ? '📉' : '📈'} {Math.abs(diferenca).toFixed(1)}% 
-                            {ehMaisBarato ? ' mais barato' : ' mais caro'}
-                          </div>
-                        );
-                      }
                       return (
-                        <div className="text-sm text-gray-500">
-                          Preencha o preço para ver a comparação
+                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          ehMaisBarato 
+                            ? 'bg-green-100 text-green-800' 
+                            : diferenca > 0
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {ehMaisBarato ? '🔉' : diferenca > 0 ? '📈' : '='} 
+                          {diferenca === 0 ? 'Mesmo preço' : 
+                          `${Math.abs(diferenca).toFixed(1)}% ${ehMaisBarato ? 'mais barato' : 'mais caro'}`}
                         </div>
                       );
-                    })()}
-                  </div>
+                    }
+                    return (
+                      <div className="text-sm text-gray-500">
+                        {precoSistema === 0 ? 'Preencha o preço de compra para ver a comparação' : 'Calculando comparação...'}
+                      </div>
+                    );
+                  })()}
                 </div>
-              ) : ehFornecedorAnonimo ? (
-                <div className="text-center text-gray-500">
-                  <div className="text-lg mb-2">🔒</div>
-                  <div className="text-sm">Fornecedor anônimo</div>
-                  <div className="text-xs text-gray-400">Sem comparação de preços</div>
-                </div>
-              ) : (
-                <div className="text-center text-gray-500">
-                  <div className="text-lg mb-2">📊</div>
-                  <div className="text-sm">Selecione um insumo do fornecedor</div>
-                  <div className="text-xs text-gray-400">para comparar preços</div>
-                </div>
-              )}
+                
+                {/* Mostrar detalhes da comparação se houver diferença significativa */}
+                {(() => {
+                  const precoSistema = formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
+                    formData.preco_compra_total / formData.quantidade : 0;
+                  const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
+                  
+                  if (precoSistema > 0 && precoFornecedor > 0) {
+                    const diferenca = Math.abs(((precoSistema - precoFornecedor) / precoFornecedor) * 100);
+                    
+                    if (diferenca > 5) { // Mostrar detalhes se diferença > 5%
+                      return (
+                        <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
+                          <div className="flex justify-between">
+                            <span>Preço do fornecedor:</span>
+                            <span className="font-medium">R$ {precoFornecedor.toFixed(2)}/unidade</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Seu preço calculado:</span>
+                            <span className="font-medium">R$ {precoSistema.toFixed(2)}/unidade</span>
+                          </div>
+                          <div className="border-t border-gray-200 mt-1 pt-1 flex justify-between font-medium">
+                            <span>Diferença:</span>
+                            <span>R$ {Math.abs(precoSistema - precoFornecedor).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+              </div>
+            ) : ehFornecedorAnonimo ? (
+              <div className="text-center text-gray-500">
+                <div className="text-lg mb-2">🔒</div>
+                <div className="text-sm">Fornecedor anônimo</div>
+                <div className="text-xs text-gray-400">Sem comparação de preços</div>
+              </div>
+            ) : (
+              <div className="text-center text-gray-500">
+                <div className="text-lg mb-2">📊</div>
+                <div className="text-sm">Selecione um insumo do fornecedor</div>
+                <div className="text-xs text-gray-400">para comparar preços</div>
+              </div>
+            )}
             </div>
           </div>
         </div>
@@ -866,7 +910,9 @@ const FoodCostSystem: React.FC = () => {
   // ==========================================================================
   
   // Estado da navegação - controla qual aba está ativa
-const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>(
+    () => localStorage.getItem('activeTab') || 'dashboard'
+  );
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [restaurantes, setRestaurantes] = useState<Restaurante[]>([]);
   const [receitas, setReceitas] = useState<Receita[]>([]);
@@ -886,6 +932,7 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
     grupo: 'Geral', // ✅ Campo obrigatório
     subgrupo: 'Geral' // ✅ Campo obrigatório
   }));
+
 
   const [showPopup, setShowPopup] = useState(false);
   const [popupData, setPopupData] = useState({
@@ -913,6 +960,11 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [insumoFornecedorSelecionado, setInsumoFornecedorSelecionado] = useState(null);
   const [showNovoFornecedorPopup, setShowNovoFornecedorPopup] = useState(false);
   const [estadosBrasil, setEstadosBrasil] = useState([]);
+
+  // Salvar aba ativa no localStorage
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab);
+  }, [activeTab]);
 
   // Inicializar funções do popup
   useEffect(() => {
@@ -1064,7 +1116,7 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   const carregarEstados = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/fornecedores/utils/estados');
+      const response = await fetch(`http://localhost:8000/api/v1/fornecedores/utils/estados`);
       if (response.ok) {
         const estados = await response.json();
         setEstadosBrasil(estados);
@@ -2769,7 +2821,7 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
     const adicionarFornecedor = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('http://localhost:8000/api/v1/fornecedores/', {
+        const response = await fetch(`http://localhost:8000/api/v1/fornecedores/`, { // <- Note: removido ${fornecedorId} e adicionado {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2817,22 +2869,16 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
         // ============================================================================
         const insumoData = {
           // Campos obrigatórios do InsumoCreate
-          grupo: String(novoInsumo.grupo || 'Geral').trim(),
-          subgrupo: String(novoInsumo.subgrupo || 'Geral').trim(),
           codigo: String(novoInsumo.codigo || '').trim().toUpperCase(),
-          nome: String(novoInsumo.nome || '').trim(),
-          quantidade: Number(novoInsumo.quantidade) || 1,
-          fator: Number(novoInsumo.fator) || 1.0,
+          nome: String(novoInsumo.nome || '').trim(), 
           unidade: String(novoInsumo.unidade || 'kg').trim(),
-          preco_compra_real: Number(novoInsumo.preco_compra_real) || 0,
-          
-          // Campo opcional
-          fornecedor_id: fornecedorSelecionado.id
+          preco_unitario: Number(novoInsumo.preco_compra_real) || 0,
+          descricao: String(novoInsumo.descricao || '').trim()
         };
 
-        console.log('🎯 Dados do insumo (adicionarInsumo):', insumoData);
+        console.log('🎯 Dados do insumo do fornecedor:', insumoData);
 
-        const response = await fetch('http://localhost:8000/api/v1/insumos/', {
+        const response = await fetch(`http://localhost:8000/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2848,15 +2894,12 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
           setNovoInsumo({
             codigo: '',
             nome: '',
-            grupo: '',
-            subgrupo: '',
             descricao: '',
             unidade: 'kg',
             preco_compra_real: 0,
-            quantidade: 1,
-            fator: 1.0
           });
           setShowPopupInsumo(false);
+          alert('Insumo do fornecedor cadastrado com sucesso!');
         } else {
           const error = await response.json();
           alert(`Erro ao cadastrar insumo: ${error.detail}`);
@@ -2926,7 +2969,7 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                       </div>
                       <div className="text-right">
                         <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                          {fornecedor.insumos?.length || 0} insumos
+                          {fornecedor.fornecedor_insumos?.length || 0} insumos
                         </span>
                       </div>
                     </div>
@@ -2981,16 +3024,16 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                 {/* Lista de insumos do fornecedor */}
                 <div>
                   <h4 className="text-lg font-semibold mb-3 text-gray-700">
-                    Insumos ({fornecedorSelecionado.insumos?.length || 0})
+                    Insumos ({fornecedorSelecionado.fornecedor_insumos?.length || 0})
                   </h4>
                   
                   <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {!fornecedorSelecionado.insumos || fornecedorSelecionado.insumos.length === 0 ? (
+                    {!fornecedorSelecionado.fornecedor_insumos || fornecedorSelecionado.fornecedor_insumos.length === 0 ? (
                       <p className="text-gray-500 text-center py-4">
                         Nenhum insumo cadastrado para este fornecedor
                       </p>
                     ) : (
-                      fornecedorSelecionado.insumos.map((insumo: any) => (
+                      fornecedorSelecionado.fornecedor_insumos.map((insumo: any) => (
                         <div key={insumo.id} className="p-3 border border-gray-200 rounded-lg">
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
@@ -3000,7 +3043,7 @@ const [activeTab, setActiveTab] = useState<string>('dashboard');
                             </div>
                             <div className="text-right">
                               <span className="text-lg font-bold text-green-600">
-                                R$ {insumo.preco_compra_real?.toFixed(2) || '0.00'}
+                                R$ {insumo.preco_unitario?.toFixed(2) || '0.00'}
                               </span>
                               <p className="text-xs text-gray-500">por {insumo.unidade}</p>
                             </div>
