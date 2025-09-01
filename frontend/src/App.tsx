@@ -274,12 +274,25 @@ const FormularioInsumoIsolado = React.memo(({
     nome: editingInsumo?.nome || '',
     codigo: editingInsumo?.codigo || '',
     unidade: editingInsumo?.unidade || 'kg',
-    preco_compra_real: editingInsumo?.preco_compra_real || 0,
     fator: editingInsumo?.fator || 1,
-    quantidade: editingInsumo?.quantidade || 0,
+    quantidade: editingInsumo?.quantidade || 1, // Padrão 1 para facilitar cálculo
     grupo: editingInsumo?.grupo || '',
     subgrupo: editingInsumo?.subgrupo || '',
-    descricao: editingInsumo?.descricao || '' // 🆕 CAMPO ADICIONADO
+    descricao: editingInsumo?.descricao || '',
+    
+    // ============================================================================
+    // 🆕 NOVO CAMPO: PREÇO DE COMPRA TOTAL (VALOR PAGO)
+    // ============================================================================
+    preco_compra_total: editingInsumo?.preco_compra_total || 
+                       (editingInsumo?.preco_compra_real && editingInsumo?.quantidade ? 
+                        editingInsumo.preco_compra_real * editingInsumo.quantidade : 0),
+    
+    // Manter compatibilidade com campo antigo (será calculado automaticamente)
+    preco_compra_real: 0, // Será calculado: preco_compra_total / quantidade
+    
+    // Campos de vinculação com fornecedor para comparação
+    eh_fornecedor_anonimo: editingInsumo?.eh_fornecedor_anonimo !== undefined ? editingInsumo.eh_fornecedor_anonimo : true,
+    fornecedor_insumo_id: editingInsumo?.fornecedor_insumo_id || null
   }));
 
   // 🔧 FUNÇÃO OTIMIZADA para atualizar campos
@@ -379,18 +392,22 @@ const FormularioInsumoIsolado = React.memo(({
       nome: '',
       codigo: '',
       unidade: 'kg',
-      preco_compra_real: 0,
       fator: 1,
-      quantidade: 0,
+      quantidade: 1, // Padrão 1 para evitar divisão por zero
       grupo: '',
       subgrupo: '',
-      descricao: ''
+      descricao: '',
+      // ========================================================================
+      // 🆕 NOVOS CAMPOS DE PREÇO
+      // ========================================================================
+      preco_compra_total: 0,
+      preco_compra_real: 0
     });
     setEhFornecedorAnonimo(true);
     setFornecedorSelecionadoForm(null);
     setInsumosDoFornecedor([]);
     setInsumoFornecedorSelecionado(null);
-  }, [setEhFornecedorAnonimo, setFornecedorSelecionadoForm, setInsumosDoFornecedor, setInsumoFornecedorSelecionado]);
+  }, [setEhFornecedorAnonimo, setFornecedorSelecionadoForm, setInsumosDoFornecedor, setInsumoFornecedorSelecionado])
 
   // 🔧 FUNÇÃO para submissão
   const handleSubmit = useCallback(() => {
@@ -407,35 +424,51 @@ const FormularioInsumoIsolado = React.memo(({
       return;
     }
 
-    if (!formData.preco_compra_real || formData.preco_compra_real <= 0) {
-      showErrorPopup('Campo obrigatório', 'O preço de compra deve ser maior que zero.');
+    if (!formData.preco_compra_total || formData.preco_compra_total <= 0) {
+      showErrorPopup('Campo obrigatório', 'O preço de compra total deve ser maior que zero.');
+      return;
+    }
+
+    if (!formData.quantidade || formData.quantidade <= 0) {
+      showErrorPopup('Campo obrigatório', 'A quantidade deve ser maior que zero.');
       return;
     }
 
     // ========================================================================
+    // 🆕 CALCULAR PREÇO POR UNIDADE AUTOMATICAMENTE
+    // ========================================================================
+    const precoCalculadoPorUnidade = formData.preco_compra_total / formData.quantidade;
+
+    // ========================================================================
     // REGISTRAR LOG DE MUDANÇA DE PREÇO (SE APLICÁVEL)
     // ========================================================================
-    if (insumoFornecedorSelecionado && formData.preco_compra_real) {
-      const precoSistema = formData.preco_compra_real * (formData.quantidade || 1);
+    if (insumoFornecedorSelecionado && precoCalculadoPorUnidade) {
       const precoFornecedor = insumoFornecedorSelecionado.preco_unitario;
       
       if (precoFornecedor > 0) {
-        const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
+        const diferenca = ((precoCalculadoPorUnidade - precoFornecedor) / precoFornecedor) * 100;
         
         if (Math.abs(diferenca) > 5) { // Log apenas se diferença > 5%
           console.log(`📊 Diferença significativa de preço detectada: ${diferenca.toFixed(1)}%`);
+          console.log(`   Preço sistema: R$ ${precoCalculadoPorUnidade.toFixed(2)}/unidade`);
+          console.log(`   Preço fornecedor: R$ ${precoFornecedor.toFixed(2)}/unidade`);
         }
       }
     }
 
     // ========================================================================
-    // PREPARAR DADOS COM CAMPOS DE COMPARAÇÃO
+    // 🆕 PREPARAR DADOS COM NOVA LÓGICA DE PREÇOS
     // ========================================================================
     const dadosParaSalvar = {
       codigo: formData.codigo?.trim().toUpperCase() || '',
       nome: formData.nome?.trim() || '',
       unidade: formData.unidade || 'kg',
-      preco_compra_real: parseFloat(formData.preco_compra_real) || 0,
+      
+      // ====================================================================
+      // 🆕 CAMPO CALCULADO: PREÇO POR UNIDADE
+      // ====================================================================
+      preco_compra_real: parseFloat(precoCalculadoPorUnidade.toFixed(2)),
+      
       fator: parseFloat(formData.fator) || 1.0,
       quantidade: parseInt(formData.quantidade) || 1,
       grupo: formData.grupo?.trim() || 'Geral',
@@ -448,7 +481,12 @@ const FormularioInsumoIsolado = React.memo(({
       fornecedor_insumo_id: ehFornecedorAnonimo ? null : (insumoFornecedorSelecionado?.id || null),
       
       // Campos adicionais para o backend
-      descricao: formData.descricao || ''
+      descricao: formData.descricao || '',
+      
+      // ====================================================================
+      // 🆕 CAMPO ADICIONAL PARA HISTÓRICO (OPCIONAL)
+      // ====================================================================
+      preco_compra_total: parseFloat(formData.preco_compra_total) || 0
     };
     
     console.log('📤 Dados preparados para envio:', dadosParaSalvar);
@@ -647,82 +685,6 @@ const FormularioInsumoIsolado = React.memo(({
               </select>
             </div>
 
-            {/* Preço com comparação */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Preço por Unidade <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.preco_compra_real}
-                onChange={(e) => updateField('preco_compra_real', parseFloat(e.target.value) || 0)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
-                placeholder="0.00"
-              />
-              
-              {/* 🆕 COMPARAÇÃO DE PREÇOS */}
-              <div className="mt-2 text-sm">
-                {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-blue-700 font-medium">
-                        Preço do fornecedor: R$ {insumoFornecedorSelecionado.preco_unitario.toFixed(2)}
-                      </span>
-                      
-                      {(() => {
-                        const diff = calcularDiferencaPreco();
-                        if (diff && Math.abs(parseFloat(diff.percentual)) > 0.1) {
-                          return (
-                            <div className="flex items-center space-x-2">
-                              <span className={`font-bold ${diff.aumentou ? 'text-red-600' : 'text-green-600'}`}>
-                                {diff.aumentou ? '↗️' : '↘️'} {diff.aumentou ? '+' : ''}{diff.percentual}%
-                              </span>
-                              <div className={`px-2 py-1 text-xs rounded-full ${
-                                diff.aumentou 
-                                  ? 'bg-red-100 text-red-800' 
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {diff.aumentou ? 'MAIS CARO' : 'MAIS BARATO'}
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                    
-                    {/* Mostrar diferença em reais */}
-                    {(() => {
-                      const diff = calcularDiferencaPreco();
-                      if (diff && Math.abs(parseFloat(diff.percentual)) > 0.1) {
-                        const diferencaReais = formData.preco_compra_real - diff.precoFornecedor;
-                        return (
-                          <div className="text-xs text-blue-600 mt-1">
-                            Diferença: R$ {Math.abs(diferencaReais).toFixed(2)} {diff.aumentou ? 'a mais' : 'a menos'} por {insumoFornecedorSelecionado.unidade}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-                ) : ehFornecedorAnonimo ? (
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-gray-600 text-sm">
-                      💡 Fornecedor anônimo - sem comparação de preços
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <div className="text-yellow-700 text-sm">
-                      ⚠️ Selecione um fornecedor e insumo para comparar preços
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Quantidade */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -755,23 +717,23 @@ const FormularioInsumoIsolado = React.memo(({
             </div>
 
             {/* ============================================================================ */}
-            {/* 🆕 CAMPO PREÇO DE COMPRA PARA COMPARAÇÃO DE PREÇOS */}
+            {/* 🆕 CAMPO PREÇO DE COMPRA TOTAL (VALOR PAGO) */}
             {/* ============================================================================ */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Preço de Compra (R$) <span className="text-red-500">*</span>
+                Preço de Compra Total (R$) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.preco_compra_real || ''}
-                onChange={(e) => updateField('preco_compra_real', parseFloat(e.target.value) || 0)}
+                value={formData.preco_compra_total || ''}
+                onChange={(e) => updateField('preco_compra_total', parseFloat(e.target.value) || 0)}
                 className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
                 placeholder="0.00"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Preço unitário para comparação com fornecedores
+                Valor total pago pela compra do insumo
               </p>
             </div>
 
@@ -805,13 +767,13 @@ const FormularioInsumoIsolado = React.memo(({
                 <Calculator className="w-5 h-5 text-blue-600" />
               </div>
               <div className="text-2xl font-bold text-blue-800">
-                R$ {formData.preco_compra_real && formData.quantidade ? 
-                  (formData.preco_compra_real * formData.quantidade).toFixed(2) : '0.00'}
+                R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
+                  (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}
               </div>
               <p className="text-sm text-blue-600 mt-1">
-                R$ {(formData.preco_compra_real || 0).toFixed(2)} × {formData.quantidade || 1} = 
-                {formData.preco_compra_real && formData.quantidade ? 
-                  ` R$ ${(formData.preco_compra_real * formData.quantidade).toFixed(2)}` : ' R$ 0.00'}
+                R$ {(formData.preco_compra_total || 0).toFixed(2)} ÷ {formData.quantidade || 1} = 
+                R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
+                  (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}/unidade
               </p>
             </div>
 
