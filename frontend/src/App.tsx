@@ -1927,7 +1927,7 @@ const FoodCostSystem: React.FC = () => {
           codigo: dadosInsumo.codigo || '',
           nome: dadosInsumo.nome || '',
           unidade: dadosInsumo.unidade || 'kg',
-          preco_compra: Math.round((dadosInsumo.preco_compra_real || 0) * 100), // Converter para centavos
+          preco_compra_real: dadosInsumo.preco_compra_real || 0,  // ✅ CORRETO
           fator: dadosInsumo.fator || 1.0,
           quantidade: dadosInsumo.quantidade || 0,
           
@@ -2902,7 +2902,19 @@ const FoodCostSystem: React.FC = () => {
           alert('Insumo do fornecedor cadastrado com sucesso!');
         } else {
           const error = await response.json();
-          alert(`Erro ao cadastrar insumo: ${error.detail}`);
+          
+          // Tratamento específico para código duplicado
+          if (error.detail && error.detail.includes('já existe')) {
+            showErrorPopup(
+              'Código Duplicado',
+              `O código "${insumoData.codigo}" já está cadastrado para este fornecedor. Por favor, escolha um código diferente.`
+            );
+          } else {
+            showErrorPopup(
+              'Erro ao Cadastrar Insumo',
+              error.detail || 'Ocorreu um erro inesperado ao cadastrar o insumo.'
+            );
+          }
         }
       } catch (error) {
         console.error('Erro ao cadastrar insumo:', error);

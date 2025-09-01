@@ -84,8 +84,8 @@ class InsumoBase(BaseModel):
         - Deve ser positivo
         - Máximo 2 casas decimais
         """
-        if v is not None and v < 0:
-            raise ValueError('Preço deve ser positivo')
+        if v is not None and v <= 0:
+            raise ValueError('Preço deve ser maior que zero')
         if v is not None:
             # Arredonda para 2 casas decimais
             return round(v, 2)

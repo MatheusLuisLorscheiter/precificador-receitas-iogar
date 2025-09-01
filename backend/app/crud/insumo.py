@@ -131,34 +131,28 @@ def get_insumo_by_id(db: Session, insumo_id: int) -> Optional[Insumo]:
 
 def get_insumo_by_codigo(db: Session, codigo: str) -> Optional[Insumo]:
     """
-    Busca um insumo pelo código único.
-    
-    Args:
-        db (Session): Sessão do banco de dados
-        codigo (str): Código do insumo
-        
-    Returns:
-        Optional[Insumo]: Insumo encontrado ou None (com dados de comparação)
+    Busca um insumo pelo código.
     """ 
-    if insumo:
+    db_insumo = db.query(Insumo).filter(Insumo.codigo == codigo).first()
+    if db_insumo:
         # ====================================================================
         # 🆕 CALCULAR COMPARAÇÃO DE PREÇOS AUTOMATICAMENTE
         # ====================================================================
-        comparacao = calcular_comparacao_precos(db, insumo)
+        comparacao = calcular_comparacao_precos(db, db_insumo)
         
         # Adicionar campos calculados ao objeto insumo
-        insumo.preco_por_unidade = comparacao['preco_por_unidade']
-        insumo.fornecedor_preco_unidade = comparacao['fornecedor_preco_unidade']
-        insumo.diferenca_percentual = comparacao['diferenca_percentual']
-        insumo.eh_mais_barato = comparacao['eh_mais_barato']
+        db_insumo.preco_por_unidade = comparacao['preco_por_unidade']
+        db_insumo.fornecedor_preco_unidade = comparacao['fornecedor_preco_unidade']
+        db_insumo.diferenca_percentual = comparacao['diferenca_percentual']
+        db_insumo.eh_mais_barato = comparacao['eh_mais_barato']
         
         # Converter preço para reais para compatibilidade
-        if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
-            insumo.preco_compra_real = insumo.preco_compra / 100
+        if hasattr(db_insumo, 'preco_compra') and db_insumo.preco_compra:
+            db_insumo.preco_compra_real = db_insumo.preco_compra / 100
         else:
-            insumo.preco_compra_real = None
+            db_insumo.preco_compra_real = None
     
-    return insumo
+    return db_insumo
 
 def get_insumos(
     db: Session,

@@ -192,7 +192,7 @@ def create_fornecedor_insumo(
         db, fornecedor_id, insumo.codigo
     )
     if insumo_existente:
-        raise ValueError(f"Código '{insumo.codigo}' já existe para este fornecedor")
+        raise ValueError(f"O código '{insumo.codigo}' já está cadastrado para este fornecedor")
     
     # Criar novo insumo
     db_insumo = FornecedorInsumo(
@@ -249,7 +249,7 @@ def update_fornecedor_insumo(
             db, db_insumo.fornecedor_id, insumo_update.codigo
         )
         if insumo_existente:
-            raise ValueError(f"Código '{insumo_update.codigo}' já existe para este fornecedor")
+            raise ValueError(f"O código '{insumo_update.codigo}' já está cadastrado para este fornecedor")
     
     # Atualizar apenas os campos fornecidos
     update_data = insumo_update.model_dump(exclude_unset=True)

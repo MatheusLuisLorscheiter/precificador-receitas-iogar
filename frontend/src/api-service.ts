@@ -122,7 +122,9 @@ class ApiService {
       return { error: 'Nome é obrigatório' };
     }
     
-    if (!insumo.preco_compra_real || Number(insumo.preco_compra_real) <= 0) {
+    // Verificar se tem preço total OU preço por unidade
+    const precoParaValidar = insumo.preco_compra_total || insumo.preco_compra_real;
+    if (!precoParaValidar || Number(precoParaValidar) <= 0) {
       console.error('❌ ERRO: preço inválido');
       return { error: 'Preço deve ser maior que zero' };
     }
@@ -138,7 +140,7 @@ class ApiService {
       quantidade: Number(insumo.quantidade) || 1,
       fator: Number(insumo.fator) || 1.0,
       unidade: String(insumo.unidade || 'kg').trim(),
-      preco_compra_real: Number(insumo.preco_compra_real) || 0,
+      preco_compra_real: Number(insumo.preco_compra_real || insumo.preco_compra_total || 0),
       fornecedor_id: insumo.fornecedor_id || null
     };
 
@@ -206,28 +208,74 @@ class ApiService {
 
   // Atualizar insumo existente
   async updateInsumo(id: number, insumo: any): Promise<ApiResponse<any>> {
-    console.log('🔄 API Service atualizando insumo ID:', id);
-    console.log('📝 Dados recebidos:', insumo);
+    console.log('🔄 === updateInsumo COMPLETO ===');
+    console.log('📥 ID:', id);
+    console.log('📥 Dados recebidos:', insumo);
     
-    // Mapear para estrutura do backend (mesmo esquema do create, mas todos opcionais)
-    const dadosBackend = {
-      grupo: String(insumo.grupo || 'Geral').trim(),
-      subgrupo: String(insumo.subgrupo || 'Geral').trim(), 
-      codigo: String(insumo.codigo || '').trim().toUpperCase(),
-      nome: String(insumo.nome || '').trim(),
-      quantidade: Number(insumo.quantidade) || 1,
-      fator: Number(insumo.fator) || 1.0,
-      unidade: String(insumo.unidade || 'kg').trim(),
-      preco_compra_real: Number(insumo.preco_compra_real) || 0,
-      fornecedor_id: insumo.fornecedor_id || null
-    };
-    
-    console.log('📦 Dados mapeados para update:', dadosBackend);
-    
-    return this.request<any>(`/api/v1/insumos/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(dadosBackend),
-    });
+    try {
+      const url = `${this.baseURL}/api/v1/insumos/${id}`;
+      
+      // ============================================================================
+      // 🆕 MAPEAR DADOS PARA UPDATE (SÓ CAMPOS FORNECIDOS)
+      // ============================================================================
+      const dadosUpdate = {};
+      
+      // Incluir apenas campos que existem e não são vazios
+      if (insumo.nome && insumo.nome.trim()) {
+        dadosUpdate.nome = String(insumo.nome).trim();
+      }
+      if (insumo.codigo && insumo.codigo.trim()) {
+        dadosUpdate.codigo = String(insumo.codigo).trim().toUpperCase();
+      }
+      if (insumo.grupo) {
+        dadosUpdate.grupo = String(insumo.grupo).trim();
+      }
+      if (insumo.subgrupo) {
+        dadosUpdate.subgrupo = String(insumo.subgrupo).trim();
+      }
+      if (insumo.unidade) {
+        dadosUpdate.unidade = String(insumo.unidade).trim();
+      }
+      if (insumo.preco_compra_real !== undefined && insumo.preco_compra_real > 0) {
+        dadosUpdate.preco_compra_real = Number(insumo.preco_compra_real);
+      }
+      if (insumo.quantidade !== undefined && insumo.quantidade > 0) {
+        dadosUpdate.quantidade = Number(insumo.quantidade);
+      }
+      if (insumo.fator !== undefined && insumo.fator > 0) {
+        dadosUpdate.fator = Number(insumo.fator);
+      }
+      
+      console.log('📦 Dados para update (apenas campos válidos):', dadosUpdate);
+      
+      // ============================================================================
+      // 🌐 FAZER REQUISIÇÃO SIMPLES (IGUAL AO TESTE QUE FUNCIONOU)
+      // ============================================================================
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dadosUpdate)
+      });
+      
+      console.log('📡 Status HTTP:', response.status);
+      console.log('📡 Status Text:', response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('💥 Erro HTTP:', errorText);
+        return { error: `Erro HTTP ${response.status}: ${errorText}` };
+      }
+      
+      const data = await response.json();
+      console.log('✅ Update realizado com sucesso:', data);
+      return { data };
+      
+    } catch (error) {
+      console.error('💥 Erro de fetch:', error);
+      return { error: `Erro de conexão: ${error.message}` };
+    }
   }
 
   // Deletar insumo
