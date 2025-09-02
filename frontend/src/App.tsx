@@ -564,7 +564,19 @@ const FormularioInsumoIsolado = React.memo(({
               
               <div className="flex items-end">
                 <button
-                  onClick={() => setShowNovoFornecedorPopup(true)}
+                  onClick={() => {
+                    console.log('🟢 NOVO FORNECEDOR - limpando editandoFornecedor');
+                    setEditandoFornecedor(null);
+                    setNovoFornecedor({
+                      nome_razao_social: '',
+                      cnpj: '',
+                      telefone: '',
+                      ramo: '',
+                      cidade: '',
+                      estado: ''
+                    });
+                    setShowNovoFornecedorPopup(true);
+                  }}
                   className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
                 >
                   + Novo Fornecedor
@@ -1168,6 +1180,52 @@ const fetchInsumos = async () => {
 
     initializeApp();
   }, []); // IMPORTANTE: Array vazio para executar apenas uma vez
+
+  // ✨ NOVO: Recarregar dados ao trocar de aba - ADICIONAR AQUI
+  useEffect(() => {
+    const recarregarDadosDaAba = async () => {
+      console.log(`🔄 Recarregando dados da aba: ${activeTab}`);
+      
+      try {
+        switch (activeTab) {
+          case 'insumos':
+            await fetchInsumos();
+            console.log('✅ Insumos recarregados');
+            break;
+            
+          case 'receitas':
+            await fetchReceitas();
+            console.log('✅ Receitas recarregadas');
+            break;
+            
+          case 'restaurantes':
+            await fetchRestaurantes();
+            console.log('✅ Restaurantes recarregados');
+            break;
+            
+          case 'dashboard':
+            // Recarregar todos os dados para o dashboard
+            await Promise.all([
+              fetchInsumos(),
+              fetchReceitas(),
+              fetchRestaurantes()
+            ]);
+            console.log('✅ Dashboard recarregado');
+            break;
+            
+          default:
+            console.log(`ℹ️ Aba ${activeTab} não precisa de recarregamento`);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao recarregar dados da aba:', error);
+      }
+    };
+
+    // Só recarregar se não for o carregamento inicial
+    if (activeTab && activeTab !== 'dashboard') {
+      recarregarDadosDaAba();
+    }
+  }, [activeTab]);
 
   // Funções para carregar dados do formulário
   const carregarFornecedoresDisponiveis = async () => {
@@ -2111,54 +2169,13 @@ const fetchInsumos = async () => {
 
     // Função para deletar insumo
     const handleDeleteInsumo = useCallback(async (insumoId: number, insumoNome: string = 'este insumo') => {
-      // ============================================================================
-      // POPUP DE CONFIRMAÇÃO PADRONIZADO - EXCLUSÃO INSUMO
-      // ============================================================================
-      const confirmado = window.confirm(`Tem certeza que deseja excluir ${insumoNome}? Esta ação não pode ser desfeita.`);
-      if (!confirmado) {
-        return;
-      }
-
-      try {
-        setLoading(true);
-        console.log('🗑️ Excluindo insumo ID:', insumoId);
-
-        // 🆕 CORRIGIDO: Usar apenas o ID do insumo
-        const response = await fetch(`http://localhost:8000/api/v1/insumos/${insumoId}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-
-        if (response.ok) {
-          console.log('✅ Insumo excluído com sucesso');
-          
-          // Recarregar lista de insumos
-          await fetchInsumos();
-          
-          showSuccessPopup(
-            'Insumo Excluído!',
-            'O insumo foi removido com sucesso do sistema.'
-          );
-        } else {
-          const error = await response.json();
-          console.error('❌ Erro ao excluir:', error);
-          showErrorPopup(
-            'Erro ao excluir',
-            error.detail || 'Não foi possível excluir o insumo.'
-          );
-        }
-      } catch (error) {
-        console.error('💥 Erro de conexão:', error);
-        showErrorPopup(
-          'Erro de conexão',
-          'Não foi possível conectar com o servidor.'
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, [fetchInsumos]);
+      // Abrir popup customizado ao invés do window.confirm
+      setDeleteConfirm({
+        isOpen: true,
+        insumoId: insumoId,
+        insumoNome: insumoNome
+      });
+    }, []);
 
     // Função para confirmar e executar a exclusão
     const confirmDeleteInsumo = async () => {
@@ -2308,31 +2325,39 @@ const fetchInsumos = async () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleEditInsumo(insumo);
-                            }}
-                            className="px-3 py-1.5 text-xs bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleDeleteInsumo(insumo.id);
-                            }}
-                            className="px-3 py-1.5 text-xs bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-lg hover:from-pink-600 hover:to-red-600 transition-all"
-                          >
-                            Excluir
-                          </button>
-                        </div>
+                        {/* Mostrar botões apenas para insumos do sistema */}
+                        {insumo.tipo_origem !== 'fornecedor' ? (
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleEditInsumo(insumo);
+                              }}
+                              className="px-3 py-1.5 text-xs bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleDeleteInsumo(insumo.id, insumo.nome);
+                              }}
+                              className="px-3 py-1.5 text-xs bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-lg hover:from-pink-600 hover:to-red-600 transition-all"
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-500 italic">
+                            Gerenciar na aba Fornecedores
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              
             </div>
           )}
         </div>
@@ -2360,13 +2385,54 @@ const fetchInsumos = async () => {
           setShowNovoFornecedorPopup={setShowNovoFornecedorPopup}
           carregarInsumosDoFornecedor={carregarInsumosDoFornecedor}
         />
+        {/* POPUP CONFIRMAÇÃO DE EXCLUSÃO DE INSUMO - ADICIONAR AQUI */}
+        {deleteConfirm.isOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70]">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-red-50 p-2 rounded-full">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Confirmar Exclusão</h3>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-600 mb-2">
+                  Tem certeza que deseja excluir o insumo:
+                </p>
+                <p className="font-semibold text-gray-800">
+                  {deleteConfirm.insumoNome}
+                </p>
+                <p className="text-sm text-red-600 mt-2">
+                  ⚠️ Esta ação não pode ser desfeita.
+                </p>
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setDeleteConfirm({ isOpen: false, insumoId: null, insumoNome: '' })}
+                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => confirmDeleteInsumo()}
+                  disabled={loading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Excluindo...' : 'Confirmar Exclusão'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 🆕 POPUP COMPLETO PARA NOVO FORNECEDOR */}
         {showNovoFornecedorPopup && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
             <div className="bg-white rounded-lg p-8 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-800">Cadastrar Novo Fornecedor</h3>
+                <h3 className="text-2xl font-bold text-gray-800">{editandoFornecedor ? 'Editar Fornecedor' : 'Cadastrar Novo Fornecedor'}</h3>
                 <button 
                   onClick={() => setShowNovoFornecedorPopup(false)}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -2477,82 +2543,36 @@ const fetchInsumos = async () => {
               {/* Botões */}
               <div className="flex justify-end space-x-4 mt-8">
                 <button
-                  onClick={() => setShowNovoFornecedorPopup(false)}
-                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  onClick={async () => {
+                    console.log('🔵 BOTÃO CLICADO!');
+                    console.log('🔍 DEBUG: editandoFornecedor =', editandoFornecedor);
+                    console.log('🔍 DEBUG: será criação ou edição?', editandoFornecedor ? 'EDIÇÃO' : 'CRIAÇÃO');
+                    
+                    if (editandoFornecedor) {
+                      console.log('✅ Executando EDIÇÃO');
+                      await handleAtualizarFornecedor();
+                    } else {
+                      console.log('✅ Executando CRIAÇÃO');
+                      await handleCriarFornecedor();
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancelar
+                  {isLoading ? 'Salvando...' : (editandoFornecedor ? 'Atualizar Fornecedor' : 'Cadastrar Fornecedor')}
                 </button>
                 <button
                   onClick={async () => {
-                    // Validação básica
-                    if (!novoFornecedor.nome_razao_social || !novoFornecedor.cnpj) {
-                      alert('Nome/Razão Social e CNPJ são obrigatórios!');
-                      return;
-                    }
+                      // *** DEBUG DA CONDIÇÃO ***
+                    console.log('🔍 DEBUG: editandoFornecedor =', editandoFornecedor);
+                    console.log('🔍 DEBUG: será criação ou edição?', editandoFornecedor ? 'EDIÇÃO' : 'CRIAÇÃO');
 
-                    try {
-                      setLoading(true);
-                      
-                      // Chamar API para criar fornecedor
-                      const response = await fetch('http://localhost:8000/api/v1/fornecedores/', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                          nome_razao_social: novoFornecedor.nome_razao_social,
-                          cnpj: novoFornecedor.cnpj.replace(/\D/g, ''), // Remover formatação
-                          telefone: novoFornecedor.telefone || null,
-                          ramo: novoFornecedor.ramo || null,
-                          cidade: novoFornecedor.cidade || null,
-                          estado: novoFornecedor.estado || null
-                        }),
-                      });
-
-                      if (response.ok) {
-                        const fornecedorCriado = await response.json();
-                        
-                        // Recarregar lista de fornecedores disponíveis
-                        await carregarFornecedoresDisponiveis();
-                        
-                        // Selecionar automaticamente o novo fornecedor
-                        setFornecedorSelecionadoForm(fornecedorCriado);
-                        setEhFornecedorAnonimo(false);
-                        
-                        // Carregar insumos do novo fornecedor (provavelmente vazio)
-                        await carregarInsumosDoFornecedor(fornecedorCriado.id);
-                        
-                        // Limpar formulário e fechar popup
-                        setNovoFornecedor({
-                          nome_razao_social: '',
-                          cnpj: '',
-                          telefone: '',
-                          ramo: '',
-                          cidade: '',
-                          estado: ''
-                        });
-                        setShowNovoFornecedorPopup(false);
-
-                        showSuccessPopup(
-                          'Fornecedor Cadastrado!',
-                          `${fornecedorCriado.nome_razao_social} foi cadastrado com sucesso e selecionado automaticamente.`
-                        );
-
-                      } else {
-                        const error = await response.json();
-                        showErrorPopup(
-                          'Erro ao cadastrar fornecedor',
-                          error.detail || 'Ocorreu um erro ao cadastrar o fornecedor.'
-                        );
-                      }
-                    } catch (error) {
-                      console.error('Erro ao cadastrar fornecedor:', error);
-                      showErrorPopup(
-                        'Erro de conexão',
-                        'Não foi possível conectar com o servidor.'
-                      );
-                    } finally {
-                      setLoading(false);
+                    if (editandoFornecedor) {
+                      console.log('✅ Chamando EDIÇÃO');
+                      await handleAtualizarFornecedor();
+                    } else {
+                      console.log('✅ Chamando CRIAÇÃO');
+                      await handleCriarFornecedor();
                     }
                   }}
                   disabled={loading}
@@ -2910,10 +2930,14 @@ const fetchInsumos = async () => {
       fator: 1.0
     });
 
-
     const [showPopupFornecedor, setShowPopupFornecedor] = useState(false);
     const [showPopupInsumo, setShowPopupInsumo] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Estados para edição e exclusão de fornecedores
+    const [editandoFornecedor, setEditandoFornecedor] = useState<any>(null);
+    const [showConfirmExclusao, setShowConfirmExclusao] = useState(false);
+    const [fornecedorParaExcluir, setFornecedorParaExcluir] = useState<any>(null);
 
     // =========================================================================
     // FUNÇÕES DE CARREGAMENTO DE DADOS
@@ -2941,6 +2965,107 @@ const fetchInsumos = async () => {
         console.error('Erro ao carregar fornecedor:', error);
       }
     };
+
+    // =========================================================================
+    // FUNÇÕES DE EDIÇÃO E EXCLUSÃO DE FORNECEDORES
+    // =========================================================================
+
+    const handleEditarFornecedor = (fornecedor: any) => {
+      console.log('🟡 CLICOU EM EDITAR');
+      console.log('🟡 Fornecedor recebido:', fornecedor);
+
+      // Preencher formulário com dados do fornecedor selecionado
+      setEditandoFornecedor(fornecedor);
+      console.log('🟡 setEditandoFornecedor chamado com:', fornecedor);
+
+      setNovoFornecedor({
+        nome_razao_social: fornecedor.nome_razao_social,
+        cnpj: fornecedor.cnpj,
+        telefone: fornecedor.telefone || '',
+        ramo: fornecedor.ramo || '',
+        cidade: fornecedor.cidade || '',
+        estado: fornecedor.estado || ''
+      });
+      console.log('🟡 setNovoFornecedor chamado');
+
+      setShowPopupFornecedor(true);
+      console.log('🟡 Popup aberto');
+    };
+
+    const handleExcluirFornecedor = (fornecedorId: number) => {
+      const fornecedor = fornecedores.find(f => f.id === fornecedorId);
+      setFornecedorParaExcluir(fornecedor);
+      setShowConfirmExclusao(true);
+    };
+
+    const confirmarExclusaoFornecedor = async () => {
+      if (!fornecedorParaExcluir) return;
+      
+      try {
+        setIsLoading(true);
+        const response = await fetch(`http://localhost:8000/api/v1/fornecedores/${fornecedorParaExcluir.id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          // Recarregar lista de fornecedores
+          await carregarFornecedores();
+          
+          // Limpar seleção se o fornecedor excluído estava selecionado
+          if (fornecedorSelecionado?.id === fornecedorParaExcluir.id) {
+            setFornecedorSelecionado(null);
+          }
+          
+          showSuccessPopup(
+            'Fornecedor Excluído',
+            `${fornecedorParaExcluir.nome_razao_social} foi excluído com sucesso.`
+          );
+        } else {
+          const error = await response.json();
+          showErrorPopup(
+            'Erro ao Excluir',
+            error.detail || 'Não foi possível excluir o fornecedor.'
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao excluir fornecedor:', error);
+        showErrorPopup(
+          'Erro de Conexão',
+          'Não foi possível conectar com o servidor para excluir o fornecedor.'
+        );
+      } finally {
+        setIsLoading(false);
+        setShowConfirmExclusao(false);
+        setFornecedorParaExcluir(null);
+      }
+    };
+
+    // =========================================================================
+    // FUNÇÕES DE EDIÇÃO E EXCLUSÃO DE INSUMOS DE FORNECEDORES
+    // =========================================================================
+
+    const handleEditarInsumoFornecedor = (insumo: any) => {
+      console.log('🔵 Editando insumo do fornecedor:', insumo);
+      // TODO: Implementar edição de insumo
+      showErrorPopup(
+        'Em desenvolvimento',
+        'A edição de insumos de fornecedores será implementada em breve.'
+      );
+    };
+
+    const handleExcluirInsumoFornecedor = (insumo: any) => {
+      console.log('🗑️ Excluindo insumo do fornecedor:', insumo);
+      // TODO: Implementar exclusão de insumo
+      showErrorPopup(
+        'Em desenvolvimento', 
+        'A exclusão de insumos de fornecedores será implementada em breve.'
+      );
+    };
+
+const cancelarExclusao = () => {
+  setShowConfirmExclusao(false);
+  setFornecedorParaExcluir(null);
+};
 
     // Carrega fornecedores ao montar o componente
     useEffect(() => {
@@ -3013,6 +3138,39 @@ const fetchInsumos = async () => {
         return;
       }
 
+      // ============================================================================
+      // VALIDAÇÃO PREVENTIVA - CÓDIGO DUPLICADO NO FRONTEND
+      // Validação em 2 camadas:
+      // Primeira camada: Validação no frontend (mais rápida, melhor UX)
+      // Segunda camada: Validação no backend (mais segura, última linha de defesa)
+      // Validação adcional:
+      // - Verifica se o código não está vazio
+      // - Formata o código (trim + uppercase) antes de comparar
+      // - Mantém o tratamento de erro do backend como fallback
+      // ============================================================================
+      const codigoLimpo = String(novoInsumo.codigo || '').trim().toUpperCase();
+      
+      if (!codigoLimpo) {
+        showErrorPopup(
+          'Código Obrigatório',
+          'Por favor, informe um código para o insumo.'
+        );
+        return;
+      }
+
+      // Verificar se o código já existe nos insumos do fornecedor atual
+      const codigoJaExiste = fornecedorSelecionado.fornecedor_insumos?.some(
+        insumo => insumo.codigo.toUpperCase() === codigoLimpo
+      );
+
+      if (codigoJaExiste) {
+        showErrorPopup(
+          'Código Duplicado',
+          `O código "${codigoLimpo}" já está cadastrado para este fornecedor. Por favor, escolha um código diferente.`
+        );
+        return;
+      }
+
       try {
         setIsLoading(true);
         
@@ -3021,7 +3179,7 @@ const fetchInsumos = async () => {
         // ============================================================================
         const insumoData = {
           // Campos obrigatórios do InsumoCreate
-          codigo: String(novoInsumo.codigo || '').trim().toUpperCase(),
+          codigo: codigoLimpo,
           nome: String(novoInsumo.nome || '').trim(), 
           unidade: String(novoInsumo.unidade || 'kg').trim(),
           preco_unitario: Number(novoInsumo.preco_compra_real) || 0,
@@ -3062,16 +3220,28 @@ const fetchInsumos = async () => {
         } else {
           const error = await response.json();
           
-          // Tratamento específico para código duplicado
-          if (error.detail && error.detail.includes('já existe')) {
+          // ============================================================================
+          // 🔧 TRATAMENTO ESPECÍFICO PARA CÓDIGO DUPLICADO - MELHORADO
+          // ============================================================================
+          // Verifica múltiplas variações da mensagem de erro de código duplicado
+          const mensagemErro = error.detail || '';
+          const ehCodigoDuplicado = 
+            mensagemErro.includes('já está cadastrado') ||
+            mensagemErro.includes('já existe') ||
+            mensagemErro.includes('already exists') ||
+            mensagemErro.includes('duplicate') ||
+            (response.status === 400 && mensagemErro.toLowerCase().includes('código'));
+          
+          if (ehCodigoDuplicado) {
             showErrorPopup(
               'Código Duplicado',
               `O código "${insumoData.codigo}" já está cadastrado para este fornecedor. Por favor, escolha um código diferente.`
             );
           } else {
+            // Outros tipos de erro
             showErrorPopup(
               'Erro ao Cadastrar Insumo',
-              error.detail || 'Ocorreu um erro inesperado ao cadastrar o insumo.'
+              error.detail || 'Ocorreu um erro inesperado ao cadastrar o insumo. Verifique os dados informados e tente novamente.'
             );
           }
         }
@@ -3096,6 +3266,132 @@ const fetchInsumos = async () => {
     const formatarCNPJ = (cnpj: string) => {
       // Formata CNPJ para exibição: XX.XXX.XXX/XXXX-XX
       return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    };
+
+    // Função para criar fornecedor
+    const handleCriarFornecedor = async () => {
+      if (!novoFornecedor.nome_razao_social || !novoFornecedor.cnpj) {
+        showErrorPopup('Campos Obrigatórios', 'Nome/Razão Social e CNPJ são obrigatórios!');
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        
+        const dadosParaEnviar = {
+          nome_razao_social: novoFornecedor.nome_razao_social,
+          cnpj: novoFornecedor.cnpj.replace(/\D/g, ''),
+          telefone: novoFornecedor.telefone || null,
+          ramo: novoFornecedor.ramo || null,
+          cidade: novoFornecedor.cidade || null,
+          estado: novoFornecedor.estado || null
+        };
+        
+        // *** LOG PARA DEBUG ***
+        console.log('📤 Dados sendo enviados:', dadosParaEnviar);
+        console.log('📤 CNPJ limpo:', dadosParaEnviar.cnpj);
+        console.log('📤 URL:', 'http://localhost:8000/api/v1/fornecedores/');
+        
+        const response = await fetch('http://localhost:8000/api/v1/fornecedores/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dadosParaEnviar),
+        });
+
+        // *** LOG PARA DEBUG ***
+        console.log('📥 Status da resposta:', response.status);
+        console.log('📥 Response completo:', response);
+
+        if (response.ok) {
+          const resultado = await response.json();
+          console.log('✅ Fornecedor criado com sucesso:', resultado);
+          
+          await carregarFornecedores();
+          setNovoFornecedor({ nome_razao_social: '', cnpj: '', telefone: '', ramo: '', cidade: '', estado: '' });
+          setShowPopupFornecedor(false);
+          showSuccessPopup('Fornecedor Cadastrado', `${novoFornecedor.nome_razao_social} foi cadastrado com sucesso.`);
+        } else {
+          const error = await response.json();
+          
+          // *** LOG DETALHADO DO ERRO ***
+          console.error('❌ Erro completo da resposta:', error);
+          console.error('❌ Detalhes do erro:', error.detail);
+          console.error('❌ Status:', response.status);
+          
+          showErrorPopup('Erro no Cadastro', error.detail || 'Não foi possível cadastrar o fornecedor.');
+        }
+      } catch (error) {
+        console.error('❌ Erro de conexão:', error);
+        showErrorPopup('Erro de Conexão', 'Não foi possível conectar com o servidor.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Função para atualizar fornecedor (SEM CNPJ)
+    const handleAtualizarFornecedor = async () => {
+      if (!novoFornecedor.nome_razao_social) {
+        showErrorPopup('Campo Obrigatório', 'Nome/Razão Social é obrigatório!');
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        
+        const dadosParaAtualizar = {
+          nome_razao_social: novoFornecedor.nome_razao_social,
+          telefone: novoFornecedor.telefone || null,
+          ramo: novoFornecedor.ramo || null,
+          cidade: novoFornecedor.cidade || null,
+          estado: novoFornecedor.estado || null
+        };
+        
+        // *** LOGS PARA DEBUG DA EDIÇÃO ***
+        console.log('🔄 EDITANDO FORNECEDOR');
+        console.log('🔄 ID do fornecedor:', editandoFornecedor?.id);
+        console.log('🔄 Dados originais:', editandoFornecedor);
+        console.log('🔄 Dados do formulário:', novoFornecedor);
+        console.log('🔄 Dados sendo enviados (SEM CNPJ):', dadosParaAtualizar);
+        console.log('🔄 URL:', `http://localhost:8000/api/v1/fornecedores/${editandoFornecedor.id}`);
+        
+        const response = await fetch(`http://localhost:8000/api/v1/fornecedores/${editandoFornecedor.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dadosParaAtualizar),
+        });
+
+        // *** LOG DA RESPOSTA ***
+        console.log('🔄 Status da resposta:', response.status);
+
+        if (response.ok) {
+          const resultado = await response.json();
+          console.log('✅ Fornecedor atualizado com sucesso:', resultado);
+          
+          await carregarFornecedores();
+          await carregarFornecedorDetalhado(editandoFornecedor.id);
+          
+          setNovoFornecedor({ nome_razao_social: '', cnpj: '', telefone: '', ramo: '', cidade: '', estado: '' });
+          setEditandoFornecedor(null);
+          setShowPopupFornecedor(false);
+          
+          showSuccessPopup('Fornecedor Atualizado', `${novoFornecedor.nome_razao_social} foi atualizado com sucesso.`);
+        } else {
+          const error = await response.json();
+          
+          // *** LOG DETALHADO DO ERRO NA EDIÇÃO ***
+          console.error('❌ ERRO NA EDIÇÃO:');
+          console.error('❌ Status:', response.status);
+          console.error('❌ Erro completo:', error);
+          console.error('❌ Mensagem:', error.detail);
+          
+          showErrorPopup('Erro ao Atualizar', error.detail || 'Não foi possível atualizar o fornecedor.');
+        }
+      } catch (error) {
+        console.error('❌ Erro de conexão na edição:', error);
+        showErrorPopup('Erro de Conexão', 'Não foi possível conectar com o servidor.');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     return (
@@ -3136,7 +3432,7 @@ const fetchInsumos = async () => {
                     }`}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
+                      <div className="flex-1" onClick={() => carregarFornecedorDetalhado(fornecedor.id)}>
                         <h4 className="font-medium text-gray-800">{fornecedor.nome_razao_social}</h4>
                         <p className="text-sm text-gray-600">CNPJ: {formatarCNPJ(fornecedor.cnpj)}</p>
                         <p className="text-sm text-gray-500">{fornecedor.cidade} - {fornecedor.estado}</p>
@@ -3144,10 +3440,33 @@ const fetchInsumos = async () => {
                           <p className="text-xs text-green-600 mt-1">Ramo: {fornecedor.ramo}</p>
                         )}
                       </div>
-                      <div className="text-right">
+                      <div className="text-right space-y-2">
                         <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                           {fornecedor.fornecedor_insumos?.length || 0} insumos
                         </span>
+                        {/* Botões de ação */}
+                        <div className="flex gap-1 justify-end">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditarFornecedor(fornecedor);
+                            }}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Editar fornecedor"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleExcluirFornecedor(fornecedor.id);
+                            }}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Excluir fornecedor"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3211,18 +3530,43 @@ const fetchInsumos = async () => {
                       </p>
                     ) : (
                       fornecedorSelecionado.fornecedor_insumos.map((insumo: any) => (
-                        <div key={insumo.id} className="p-3 border border-gray-200 rounded-lg">
+                        <div key={insumo.id} className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
                               <h5 className="font-medium text-gray-800">{insumo.nome}</h5>
                               <p className="text-sm text-gray-600">Código: {insumo.codigo}</p>
                               <p className="text-sm text-gray-600">Unidade: {insumo.unidade}</p>
                             </div>
-                            <div className="text-right">
-                              <span className="text-lg font-bold text-green-600">
-                                R$ {insumo.preco_unitario?.toFixed(2) || '0.00'}
-                              </span>
-                              <p className="text-xs text-gray-500">por {insumo.unidade}</p>
+                            <div className="flex items-center gap-3">
+                              <div className="text-right">
+                                <span className="text-lg font-bold text-green-600">
+                                  R$ {insumo.preco_unitario?.toFixed(2) || '0.00'}
+                                </span>
+                                <p className="text-xs text-gray-500">por {insumo.unidade}</p>
+                              </div>
+                              {/* Botões de ação */}
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditarInsumoFornecedor(insumo);
+                                  }}
+                                  className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                  title="Editar insumo"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleExcluirInsumoFornecedor(insumo);
+                                  }}
+                                  className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                  title="Excluir insumo"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -3247,7 +3591,7 @@ const fetchInsumos = async () => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-8 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-800">Cadastrar Novo Fornecedor</h3>
+                <h3 className="text-2xl font-bold text-gray-800">{editandoFornecedor ? 'Editar Fornecedor' : 'Cadastrar Novo Fornecedor'}</h3>
                 <button 
                   onClick={() => setShowPopupFornecedor(false)}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -3357,71 +3701,79 @@ const fetchInsumos = async () => {
 
               <div className="flex justify-end space-x-4 mt-8">
                 <button
-                  onClick={() => setShowPopupFornecedor(false)}
+                  onClick={() => {
+                    console.log('🔴 CANCELANDO - antes:', editandoFornecedor);
+                    setEditandoFornecedor(null);
+                    setNovoFornecedor({
+                      nome_razao_social: '',
+                      cnpj: '',
+                      telefone: '',
+                      ramo: '',
+                      cidade: '',
+                      estado: ''
+                    });
+                    setShowPopupFornecedor(false);
+                    console.log('🔴 CANCELANDO - depois de setEditandoFornecedor(null)');
+                  }}
                   className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={async () => {
-                    if (!novoFornecedor.nome_razao_social || !novoFornecedor.cnpj) {
-                      alert('Nome e CNPJ são obrigatórios!');
-                      return;
-                    }
-
-                    try {
-                      setIsLoading(true);
-                      const response = await fetch('http://localhost:8000/api/v1/fornecedores/', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          ...novoFornecedor,
-                          cnpj: novoFornecedor.cnpj.replace(/\D/g, '')
-                        })
-                      });
-
-                      if (response.ok) {
-                        await carregarFornecedores();
-                        setNovoFornecedor({
-                          nome_razao_social: '', cnpj: '', telefone: '',
-                          ramo: '', cidade: '', estado: ''
-                        });
-                        setShowPopupFornecedor(false);
-                        // ============================================================================
-                        // 🔧 POPUP DE SUCESSO PADRONIZADO - CADASTRO FORNECEDOR
-                        // ============================================================================
-                        showSuccessPopup(
-                          'Fornecedor Cadastrado!',
-                          `${novoFornecedor.nome_razao_social} foi cadastrado com sucesso no sistema.`
-                        );
-                      } else {
-                        const error = await response.json();
-                        
-                        // ============================================================================
-                        // POPUP DE ERRO PADRONIZADO - VALIDAÇÃO CADASTRO FORNECEDOR
-                        // ============================================================================
-                        showErrorPopup(
-                          'Erro no Cadastro',
-                          error.detail || 'Ocorreu um erro inesperado ao cadastrar o fornecedor. Verifique os dados informados e tente novamente.'
-                        );
-                      }
-                    } catch (error) {
-                      
-                      // ============================================================================
-                      // POPUP DE ERRO PADRONIZADO - CONEXÃO CADASTRO FORNECEDOR
-                      // ============================================================================
-                      showErrorPopup(
-                        'Falha na Conexão',
-                        'Não foi possível conectar com o servidor para cadastrar o fornecedor. Verifique sua conexão de internet e tente novamente.'
-                      );
-                    } finally {
-                      setIsLoading(false);
+                    if (editandoFornecedor) {
+                      await handleAtualizarFornecedor();
+                    } else {
+                      await handleCriarFornecedor();
                     }
                   }}
                   disabled={isLoading}
                   className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
                 >
-                  {isLoading ? 'Salvando...' : 'Salvar Fornecedor'}
+                  {isLoading ? 'Salvando...' : (editandoFornecedor ? 'Atualizar Fornecedor' : 'Cadastrar Fornecedor')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+
+        {/* 🗑️ POPUP CONFIRMAÇÃO DE EXCLUSÃO - ADICIONAR AQUI */}
+        {showConfirmExclusao && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70]">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-red-50 p-2 rounded-full">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Confirmar Exclusão</h3>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-600 mb-2">
+                  Tem certeza que deseja excluir o fornecedor:
+                </p>
+                <p className="font-semibold text-gray-800">
+                  {fornecedorParaExcluir?.nome_razao_social}
+                </p>
+                <p className="text-sm text-red-600 mt-2">
+                  ⚠️ Esta ação não pode ser desfeita.
+                </p>
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={cancelarExclusao}
+                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarExclusaoFornecedor}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {isLoading ? 'Excluindo...' : 'Confirmar Exclusão'}
                 </button>
               </div>
             </div>
