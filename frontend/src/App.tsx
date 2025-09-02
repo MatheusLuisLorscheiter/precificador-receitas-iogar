@@ -981,21 +981,100 @@ const FoodCostSystem: React.FC = () => {
   // ============================================================================
   
   // Busca todos os insumos do backend
-  const fetchInsumos = async () => {
+const fetchInsumos = async () => {
+  try {
+    setLoading(true);
+    
+    // ========================================================================
+    // BUSCAR INSUMOS DA TABELA PRINCIPAL
+    // ========================================================================
+    const response = await apiService.getInsumos();
+    let insumosPrincipais = [];
+    
+    if (response.data) {
+      insumosPrincipais = response.data.map(insumo => ({
+        ...insumo,
+        tipo_origem: 'sistema', // Identificar como insumo do sistema
+        tem_fornecedor: false
+      }));
+    } else if (response.error) {
+      console.error('Erro ao buscar insumos principais:', response.error);
+    }
+
+    // ========================================================================
+    // BUSCAR INSUMOS DE TODOS OS FORNECEDORES
+    // ========================================================================
+    let insumosFornecedores = [];
+    
     try {
-      setLoading(true);
-      const response = await apiService.getInsumos();
-      if (response.data) {
-        setInsumos(response.data);
-      } else if (response.error) {
-        console.error('Erro ao buscar insumos:', response.error);
+      // Buscar todos os fornecedores primeiro
+      const fornecedoresResponse = await apiService.getFornecedores();
+      
+      if (fornecedoresResponse.data && fornecedoresResponse.data.fornecedores) {
+        // Para cada fornecedor, buscar seus insumos
+        const promises = fornecedoresResponse.data.fornecedores.map(async (fornecedor) => {
+          try {
+            const insumosFornResponse = await apiService.getFornecedorInsumos(fornecedor.id);
+            
+            if (insumosFornResponse.data && insumosFornResponse.data.insumos) {
+              return insumosFornResponse.data.insumos.map(insumo => ({
+                // Mapear campos do fornecedor para formato do grid principal
+                id: `fornecedor_${insumo.id}`, // ID único para evitar conflitos
+                id_original: insumo.id,
+                nome: insumo.nome,
+                unidade: insumo.unidade,
+                preco_compra_real: insumo.preco_unitario,
+                codigo: insumo.codigo,
+                // Campos que ficam vazios para insumos de fornecedor
+                fator: null,
+                quantidade: null,
+                grupo: null,
+                subgrupo: null,
+                descricao: insumo.descricao,
+                // Campos específicos para identificar origem
+                tipo_origem: 'fornecedor',
+                tem_fornecedor: true,
+                fornecedor_id: insumo.fornecedor_id,
+                fornecedor_nome: fornecedor.nome_razao_social
+              }));
+            }
+            return [];
+          } catch (error) {
+            console.error(`Erro ao buscar insumos do fornecedor ${fornecedor.id}:`, error);
+            return [];
+          }
+        });
+
+        // Aguardar todas as buscas e combinar resultados
+        const resultados = await Promise.all(promises);
+        insumosFornecedores = resultados.flat();
       }
     } catch (error) {
-      console.error('Erro ao buscar insumos:', error);
-    } finally {
-      setLoading(false);
+      console.error('Erro ao buscar insumos de fornecedores:', error);
     }
-  };
+
+    // ========================================================================
+    // COMBINAR E ORGANIZAR TODOS OS INSUMOS
+    // ========================================================================
+    const todosinsumos = [
+      ...insumosPrincipais,
+      ...insumosFornecedores
+    ];
+
+    // Ordenar por nome
+    todosinsumos.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    // Atualizar estado
+    setInsumos(todosinsumos);
+    
+    console.log(`✅ Insumos carregados: ${insumosPrincipais.length} do sistema + ${insumosFornecedores.length} de fornecedores = ${todosinsumos.length} total`);
+
+  } catch (error) {
+    console.error('Erro geral ao buscar insumos:', error);
+  } finally {
+    setLoading(false);
+  }
+};
   
   // Busca todos os restaurantes do backend
   const fetchRestaurantes = async () => {
@@ -1073,7 +1152,14 @@ const FoodCostSystem: React.FC = () => {
           await carregarEstados();
         } else {
           console.error('❌ Falha na conexão com a API');
-          alert('Não foi possível conectar com o backend.');
+          
+          // ============================================================================
+          // POPUP DE ERRO PADRONIZADO - FALHA CONEXÃO BACKEND
+          // ============================================================================
+          showErrorPopup(
+            'Falha na Conexão com Servidor',
+            'Não foi possível conectar com o backend. Verifique se o servidor está rodando e sua conexão de internet está funcionando.'
+          );
         }
       } catch (error) {
         console.error('Erro na inicialização:', error);
@@ -2024,8 +2110,12 @@ const FoodCostSystem: React.FC = () => {
     };
 
     // Função para deletar insumo
-    const handleDeleteInsumo = useCallback(async (insumoId: number) => {
-      if (!confirm('Tem certeza que deseja excluir este insumo?')) {
+    const handleDeleteInsumo = useCallback(async (insumoId: number, insumoNome: string = 'este insumo') => {
+      // ============================================================================
+      // POPUP DE CONFIRMAÇÃO PADRONIZADO - EXCLUSÃO INSUMO
+      // ============================================================================
+      const confirmado = window.confirm(`Tem certeza que deseja excluir ${insumoNome}? Esta ação não pode ser desfeita.`);
+      if (!confirmado) {
         return;
       }
 
@@ -2544,11 +2634,25 @@ const FoodCostSystem: React.FC = () => {
           setShowReceitaForm(false);
         } else if (response.error) {
           console.error('Erro ao criar receita:', response.error);
-          alert('Erro ao criar receita: ' + response.error);
+          
+          // ============================================================================
+          // POPUP DE ERRO PADRONIZADO - ERRO CRIAR RECEITA
+          // ============================================================================
+          showErrorPopup(
+            'Erro ao Criar Receita',
+            response.error || 'Ocorreu um erro inesperado ao criar a receita. Verifique os dados informados e tente novamente.'
+          );
         }
       } catch (error) {
         console.error('Erro ao criar receita:', error);
-        alert('Erro inesperado ao criar receita');
+        
+        // ============================================================================
+        // POPUP DE ERRO PADRONIZADO - CONEXÃO CRIAR RECEITA
+        // ============================================================================
+        showErrorPopup(
+          'Falha na Conexão',
+          'Não foi possível conectar com o servidor para criar a receita. Verifique sua conexão de internet e tente novamente.'
+        );
       } finally {
         setLoading(false);
       }
@@ -2844,7 +2948,7 @@ const FoodCostSystem: React.FC = () => {
           });
           setShowPopupFornecedor(false);
           // ============================================================================
-          // 🔧 TRATAMENTO DE ERRO PADRONIZADO - CADASTRO FORNECEDOR
+          // TRATAMENTO DE ERRO PADRONIZADO - CADASTRO FORNECEDOR
           // ============================================================================
           } else {
             const error = await response.json();
@@ -2855,7 +2959,14 @@ const FoodCostSystem: React.FC = () => {
           }
       } catch (error) {
         console.error('Erro ao cadastrar fornecedor:', error);
-        alert('Erro de conexão ao cadastrar fornecedor');
+        
+        // ============================================================================
+        // POPUP DE ERRO PADRONIZADO - CONEXÃO CADASTRO FORNECEDOR
+        // ============================================================================
+        showErrorPopup(
+          'Falha na Conexão',
+          'Não foi possível conectar com o servidor para cadastrar o fornecedor. Verifique sua conexão de internet e tente novamente.'
+        );
       } finally {
         setIsLoading(false);
       }
@@ -2911,7 +3022,14 @@ const FoodCostSystem: React.FC = () => {
             preco_compra_real: 0,
           });
           setShowPopupInsumo(false);
-          alert('Insumo do fornecedor cadastrado com sucesso!');
+          
+          // ============================================================================
+          // 🔧 POPUP DE SUCESSO PADRONIZADO - CADASTRO INSUMO FORNECEDOR
+          // ============================================================================
+          showSuccessPopup(
+            'Insumo Cadastrado!',
+            `${insumoData.nome} foi adicionado ao catálogo do fornecedor ${fornecedorSelecionado?.nome_razao_social || 'selecionado'} com sucesso.`
+          );
         } else {
           const error = await response.json();
           
@@ -3240,13 +3358,33 @@ const FoodCostSystem: React.FC = () => {
                           ramo: '', cidade: '', estado: ''
                         });
                         setShowPopupFornecedor(false);
-                        alert('Fornecedor cadastrado com sucesso!');
+                        // ============================================================================
+                        // 🔧 POPUP DE SUCESSO PADRONIZADO - CADASTRO FORNECEDOR
+                        // ============================================================================
+                        showSuccessPopup(
+                          'Fornecedor Cadastrado!',
+                          `${novoFornecedor.nome_razao_social} foi cadastrado com sucesso no sistema.`
+                        );
                       } else {
                         const error = await response.json();
-                        alert('Erro: ' + (error.detail || 'Erro desconhecido'));
+                        
+                        // ============================================================================
+                        // POPUP DE ERRO PADRONIZADO - VALIDAÇÃO CADASTRO FORNECEDOR
+                        // ============================================================================
+                        showErrorPopup(
+                          'Erro no Cadastro',
+                          error.detail || 'Ocorreu um erro inesperado ao cadastrar o fornecedor. Verifique os dados informados e tente novamente.'
+                        );
                       }
                     } catch (error) {
-                      alert('Erro de conexão');
+                      
+                      // ============================================================================
+                      // POPUP DE ERRO PADRONIZADO - CONEXÃO CADASTRO FORNECEDOR
+                      // ============================================================================
+                      showErrorPopup(
+                        'Falha na Conexão',
+                        'Não foi possível conectar com o servidor para cadastrar o fornecedor. Verifique sua conexão de internet e tente novamente.'
+                      );
                     } finally {
                       setIsLoading(false);
                     }
