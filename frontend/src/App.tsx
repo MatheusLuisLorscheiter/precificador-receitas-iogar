@@ -2843,10 +2843,16 @@ const FoodCostSystem: React.FC = () => {
             estado: ''
           });
           setShowPopupFornecedor(false);
-        } else {
-          const error = await response.json();
-          alert(`Erro ao cadastrar fornecedor: ${error.detail}`);
-        }
+          // ============================================================================
+          // 🔧 TRATAMENTO DE ERRO PADRONIZADO - CADASTRO FORNECEDOR
+          // ============================================================================
+          } else {
+            const error = await response.json();
+            showErrorPopup(
+              'Erro no Cadastro',
+              `Não foi possível cadastrar o fornecedor. ${error.detail || 'Verifique os dados informados e tente novamente.'}`
+            );
+          }
       } catch (error) {
         console.error('Erro ao cadastrar fornecedor:', error);
         alert('Erro de conexão ao cadastrar fornecedor');
@@ -2855,9 +2861,15 @@ const FoodCostSystem: React.FC = () => {
       }
     };
 
+    // ============================================================================
+    // 🔧 VALIDAÇÃO PADRONIZADA - FORNECEDOR OBRIGATÓRIO
+    // ============================================================================
     const adicionarInsumo = async () => {
       if (!fornecedorSelecionado) {
-        alert('Selecione um fornecedor primeiro!');
+        showErrorPopup(
+          'Fornecedor Necessário',
+          'Por favor, selecione um fornecedor na lista antes de cadastrar um insumo.'
+        );
         return;
       }
 
@@ -2916,10 +2928,16 @@ const FoodCostSystem: React.FC = () => {
             );
           }
         }
-      } catch (error) {
-        console.error('Erro ao cadastrar insumo:', error);
-        alert('Erro de conexão ao cadastrar insumo');
-      } finally {
+        // ============================================================================
+        // 🔧 TRATAMENTO DE ERRO PADRONIZADO - CONEXÃO INSUMO FORNECEDOR
+        // ============================================================================
+        } catch (error) {
+          console.error('Erro ao cadastrar insumo:', error);
+          showErrorPopup(
+            'Falha na Conexão',
+            'Não foi possível conectar com o servidor para cadastrar o insumo. Verifique sua conexão e tente novamente.'
+          );
+        } finally {
         setIsLoading(false);
       }
     };
