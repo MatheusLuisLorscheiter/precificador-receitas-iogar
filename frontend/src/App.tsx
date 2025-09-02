@@ -2252,15 +2252,44 @@ const fetchInsumos = async () => {
                 <tbody className="divide-y divide-gray-100">
                   {insumosFiltrados.map((insumo) => (
                     <tr key={insumo.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{insumo.nome}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.grupo || 'Sem categoria'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.quantidade ?? 0}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        R$ {insumo.preco_compra_real?.toFixed(2) || '0.00'}
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        <div className="flex items-center gap-2">
+                          {/* Ícone F para insumos de fornecedores */}
+                          {insumo.tipo_origem === 'fornecedor' && (
+                            <div 
+                              className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
+                              title="Insumo cadastrado por fornecedor"
+                            >
+                              F
+                            </div>
+                          )}
+                          <span>{insumo.nome}</span>
+                        </div>
                       </td>
+                      {/* Categoria - vazia para insumos de fornecedor */}
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {insumo.tipo_origem === 'fornecedor' ? '-' : (insumo.grupo || 'Sem categoria')}
+                      </td>
+
+                      {/* Quantidade - vazia para insumos de fornecedor */}
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {insumo.tipo_origem === 'fornecedor' ? '-' : (insumo.quantidade ?? 0)}
+                      </td>
+
+                      {/* Unidade - sempre preenchida */}
+                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
+
+                      {/* Preço Compra - vazio para insumos de fornecedor */}
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                        {insumo.tipo_origem === 'fornecedor' ? '-' : `R$ ${insumo.preco_compra_real?.toFixed(2) || '0.00'}`}
+                      </td>
+
+                      {/* Valor/Unidade - sempre preenchido */}
                       <td className="px-6 py-4 text-sm font-medium text-green-600">
-                        R$ {insumo.quantidade > 0 ? (insumo.preco_compra_real / insumo.quantidade).toFixed(2) : '0.00'}
+                        R$ {insumo.tipo_origem === 'fornecedor' 
+                          ? insumo.preco_compra_real?.toFixed(2) || '0.00'
+                          : (insumo.quantidade > 0 ? (insumo.preco_compra_real / insumo.quantidade).toFixed(2) : '0.00')
+                        }
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{insumo.fator}</td>
                       <td className="px-6 py-4 text-sm">
