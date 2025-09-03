@@ -106,10 +106,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+    expose_headers=["*"],
 )
 
 #   ===================================================================================================
@@ -201,17 +202,26 @@ if HAS_FORNECEDOR_INSUMOS:
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """
-    Middleware erve para monitorar e facilitar o 
+    Middleware para monitorar e facilitar o 
     diagnóstico de problemas, mostrando no terminal 
     cada acesso à API e quanto tempo levou para responder.
     """
-    import time
     start_time = time.time()
     
+    # Log detalhado da requisição
+    print(f"🔍 REQUISIÇÃO: {request.method} {request.url}")
+    print(f"🔍 Headers: {dict(request.headers)}")
+    print(f"🔍 Origin: {request.headers.get('origin', 'N/A')}")
+    
+    # Processar requisição
     response = await call_next(request)
     
+    # Calcular tempo de processamento
     process_time = time.time() - start_time
-    print(f"{request.method} {request.url.path} - {response.status_code} - {process_time:.4f}s")
+    
+    # Log da resposta
+    print(f"📡 RESPOSTA: {request.method} {request.url.path} - {response.status_code} - {process_time:.2f}s")
+    print(f"📡 Response Headers: {dict(response.headers)}")
     
     return response
 

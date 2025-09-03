@@ -306,6 +306,11 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
     Raises:
         ValueError: Se código já existir
     """
+    # Verificar se código já existe antes de tentar criar
+    existing_insumo = get_insumo_by_codigo(db, insumo.codigo.upper())
+    if existing_insumo:
+        raise ValueError(f"O código '{insumo.codigo.upper()}' já está cadastrado. Por favor, escolha um código diferente.")
+    
     # Converter preço de reais para centavos
     preco_centavos = None
     if insumo.preco_compra_real is not None:
@@ -323,12 +328,20 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
         preco_compra=preco_centavos
     )
 
-    # Salvar no banco
-    db.add(db_insumo)
-    db.commit()
-    db.refresh(db_insumo)
-
-    return db_insumo
+    try:
+        # Salvar no banco
+        db.add(db_insumo)
+        db.commit()
+        db.refresh(db_insumo)
+        return db_insumo
+        
+    except Exception as e:
+        db.rollback()
+        # Se por acaso ainda der erro de código duplicado, capturar aqui também
+        if "ix_insumos_codigo" in str(e) or "UniqueViolation" in str(e):
+            raise ValueError(f"O código '{insumo.codigo.upper()}' já está cadastrado. Por favor, escolha um código diferente.")
+        else:
+            raise ValueError(f"Erro ao salvar insumo: {str(e)}")
 
 def create_insumos(db: Session, insumos: List[InsumoCreate]) -> List[Insumo]:
     """

@@ -2150,10 +2150,33 @@ const fetchInsumos = async () => {
 
         } else {
           console.error('❌ Erro na resposta:', response.error);
-          showErrorPopup(
-            'Erro ao salvar',
-            response.error || 'Ocorreu um erro inesperado ao salvar o insumo.'
-          );
+          
+          // ============================================================================
+          // TRATAMENTO MELHORADO DE ERRO - MENSAGEM MAIS ESPECÍFICA  
+          // ============================================================================
+          const mensagemErro = response.error || '';
+          
+          // Verificar se é erro de conexão (Failed to fetch)
+          if (mensagemErro.includes('Failed to fetch') || mensagemErro.includes('NetworkError')) {
+            showErrorPopup(
+              'Erro de Conexão',
+              'Não foi possível conectar com o servidor. Verifique se o servidor está rodando na porta 8000 e sua conexão de internet está funcionando.'
+            );
+          } 
+          // Verificar se é código duplicado
+          else if (mensagemErro.includes('já está cadastrado') || mensagemErro.includes('duplicate') || mensagemErro.includes('422')) {
+            showErrorPopup(
+              'Código Duplicado',
+              'O código informado já está em uso. Por favor, escolha um código diferente para o insumo.'
+            );
+          }
+          // Outros erros
+          else {
+            showErrorPopup(
+              'Erro ao Salvar Insumo',
+              `Ocorreu um erro: ${mensagemErro}. Verifique os dados informados e tente novamente.`
+            );
+          }
         }
 
       } catch (error) {
@@ -3382,14 +3405,30 @@ const cancelarExclusao = () => {
           }
         }
         // ============================================================================
-        // 🔧 TRATAMENTO DE ERRO PADRONIZADO - CONEXÃO INSUMO FORNECEDOR
+        // TRATAMENTO DE ERRO PADRONIZADO - CONEXÃO INSUMO FORNECEDOR
         // ============================================================================
         } catch (error) {
           console.error('Erro ao cadastrar insumo:', error);
-          showErrorPopup(
-            'Falha na Conexão',
-            'Não foi possível conectar com o servidor para cadastrar o insumo. Verifique sua conexão e tente novamente.'
-          );
+          
+          // Verificar o tipo de erro para dar uma mensagem mais precisa
+          const mensagemErro = error.message || '';
+          const ehErroDeConexao = 
+            mensagemErro.includes('Failed to fetch') ||
+            mensagemErro.includes('NetworkError') ||
+            mensagemErro.includes('fetch') ||
+            !navigator.onLine;
+          
+          if (ehErroDeConexao) {
+            showErrorPopup(
+              'Erro de Conexão',
+              'Não foi possível conectar com o servidor. Verifique se o servidor está rodando na porta 8000 e sua conexão de internet está funcionando.'
+            );
+          } else {
+            showErrorPopup(
+              'Erro ao Cadastrar Insumo',
+              `Ocorreu um erro inesperado: ${mensagemErro}. Tente novamente ou verifique os dados informados.`
+            );
+          }
         } finally {
         setIsLoading(false);
       }
