@@ -902,7 +902,7 @@ const FormularioInsumoIsolado = React.memo(({
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Salvando...' : (editingInsumo ? 'Atualizar' : 'Salvar Insumo')}
           </button>
@@ -2939,6 +2939,12 @@ const fetchInsumos = async () => {
     const [showConfirmExclusao, setShowConfirmExclusao] = useState(false);
     const [fornecedorParaExcluir, setFornecedorParaExcluir] = useState<any>(null);
 
+    // Estados para edição e exclusão de insumos de fornecedores (MANTER AQUI)
+    const [editandoInsumoFornecedor, setEditandoInsumoFornecedor] = useState<any>(null);
+    const [showPopupEditarInsumo, setShowPopupEditarInsumo] = useState(false);
+    const [insumoParaExcluir, setInsumoParaExcluir] = useState<any>(null);
+    const [showConfirmExclusaoInsumo, setShowConfirmExclusaoInsumo] = useState(false);
+
     // =========================================================================
     // FUNÇÕES DE CARREGAMENTO DE DADOS
     // =========================================================================
@@ -3046,20 +3052,139 @@ const fetchInsumos = async () => {
 
     const handleEditarInsumoFornecedor = (insumo: any) => {
       console.log('🔵 Editando insumo do fornecedor:', insumo);
-      // TODO: Implementar edição de insumo
-      showErrorPopup(
-        'Em desenvolvimento',
-        'A edição de insumos de fornecedores será implementada em breve.'
-      );
+      setEditandoInsumoFornecedor(insumo);
+      setNovoInsumo({
+        codigo: insumo.codigo || '',
+        nome: insumo.nome || '',
+        grupo: insumo.grupo || '',
+        subgrupo: insumo.subgrupo || '',
+        descricao: insumo.descricao || '',
+        unidade: insumo.unidade || 'kg',
+        preco_compra_real: insumo.preco_unitario || 0,
+        quantidade: 1,
+        fator: 1.0
+      });
+      setShowPopupEditarInsumo(true);
     };
 
     const handleExcluirInsumoFornecedor = (insumo: any) => {
-      console.log('🗑️ Excluindo insumo do fornecedor:', insumo);
-      // TODO: Implementar exclusão de insumo
-      showErrorPopup(
-        'Em desenvolvimento', 
-        'A exclusão de insumos de fornecedores será implementada em breve.'
-      );
+      console.log('🗑️ Preparando exclusão do insumo:', insumo);
+      setInsumoParaExcluir(insumo);
+      setShowConfirmExclusaoInsumo(true);
+    };
+
+    const confirmarEdicaoInsumo = async () => {
+      if (!editandoInsumoFornecedor || !fornecedorSelecionado) return;
+
+      try {
+        setIsLoading(true);
+        
+        const dadosParaAtualizar = {
+          codigo: novoInsumo.codigo,
+          nome: novoInsumo.nome,
+          grupo: novoInsumo.grupo || null,
+          subgrupo: novoInsumo.subgrupo || null,
+          descricao: novoInsumo.descricao || null,
+          unidade: novoInsumo.unidade,
+          preco_unitario: novoInsumo.preco_compra_real
+        };
+
+        console.log('📤 Atualizando insumo:', dadosParaAtualizar);
+
+        const response = await fetch(
+          `http://localhost:8000/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/${editandoInsumoFornecedor.id}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dadosParaAtualizar),
+          }
+        );
+
+        if (response.ok) {
+          await carregarFornecedorDetalhado(fornecedorSelecionado.id);
+          setShowPopupEditarInsumo(false);
+          setEditandoInsumoFornecedor(null);
+          showSuccessPopup(
+            'Insumo Atualizado',
+            `${novoInsumo.nome} foi atualizado com sucesso.`
+          );
+        } else {
+          const error = await response.json();
+          showErrorPopup(
+            'Erro ao Atualizar',
+            error.detail || 'Não foi possível atualizar o insumo.'
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar insumo:', error);
+        showErrorPopup(
+          'Erro de Conexão',
+          'Não foi possível conectar com o servidor.'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const confirmarExclusaoInsumo = async () => {
+      if (!insumoParaExcluir || !fornecedorSelecionado) return;
+
+      try {
+        setIsLoading(true);
+        
+        console.log('🗑️ Excluindo insumo:', insumoParaExcluir.id);
+
+        const response = await fetch(
+          `http://localhost:8000/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/${insumoParaExcluir.id}`,
+          {
+            method: 'DELETE',
+          }
+        );
+
+        if (response.ok) {
+          await carregarFornecedorDetalhado(fornecedorSelecionado.id);
+          setShowConfirmExclusaoInsumo(false);
+          setInsumoParaExcluir(null);
+          showSuccessPopup(
+            'Insumo Excluído',
+            `${insumoParaExcluir.nome} foi removido do catálogo.`
+          );
+        } else {
+          const error = await response.json();
+          showErrorPopup(
+            'Erro ao Excluir',
+            error.detail || 'Não foi possível excluir o insumo.'
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao excluir insumo:', error);
+        showErrorPopup(
+          'Erro de Conexão',
+          'Não foi possível conectar com o servidor.'
+        );
+      } finally {
+        setIsLoading(false);
+        setShowConfirmExclusaoInsumo(false);
+        setInsumoParaExcluir(null);
+      }
+    };
+
+    const cancelarEdicaoInsumo = () => {
+      setShowPopupEditarInsumo(false);
+      setEditandoInsumoFornecedor(null);
+      setNovoInsumo({
+        codigo: '',
+        nome: '',
+        grupo: '',
+        subgrupo: '',
+        descricao: '',
+        unidade: 'kg',
+        preco_compra_real: 0,
+        quantidade: 1,
+        fator: 1.0
+      });
     };
 
 const cancelarExclusao = () => {
@@ -3770,6 +3895,131 @@ const cancelarExclusao = () => {
                 </button>
                 <button
                   onClick={confirmarExclusaoFornecedor}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {isLoading ? 'Excluindo...' : 'Confirmar Exclusão'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* POPUP EDIÇÃO DE INSUMO DO FORNECEDOR */}
+        {showPopupEditarInsumo && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80]">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-blue-50 p-2 rounded-full">
+                  <Edit2 className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Editar Insumo</h3>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                  <input
+                    type="text"
+                    value={novoInsumo.nome}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, nome: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                    <input
+                      type="text"
+                      value={novoInsumo.codigo}
+                      onChange={(e) => setNovoInsumo({...novoInsumo, codigo: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
+                    <select
+                      value={novoInsumo.unidade}
+                      onChange={(e) => setNovoInsumo({...novoInsumo, unidade: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    >
+                      <option value="kg">kg</option>
+                      <option value="g">g</option>
+                      <option value="l">l</option>
+                      <option value="ml">ml</option>
+                      <option value="un">un</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={novoInsumo.preco_compra_real}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, preco_compra_real: parseFloat(e.target.value) || 0})}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  onClick={cancelarEdicaoInsumo}
+                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarEdicaoInsumo}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                >
+                  {isLoading ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* POPUP CONFIRMAÇÃO DE EXCLUSÃO DE INSUMO */}
+        {showConfirmExclusaoInsumo && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80]">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-red-50 p-2 rounded-full">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Confirmar Exclusão</h3>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-600 mb-2">
+                  Tem certeza que deseja excluir o insumo:
+                </p>
+                <p className="font-semibold text-gray-800">
+                  {insumoParaExcluir?.nome}
+                </p>
+                <p className="text-sm text-red-600 mt-2">
+                  Esta ação não pode ser desfeita.
+                </p>
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowConfirmExclusaoInsumo(false);
+                    setInsumoParaExcluir(null);
+                  }}
+                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarExclusaoInsumo}
                   disabled={isLoading}
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                 >
