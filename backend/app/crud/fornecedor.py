@@ -3,7 +3,7 @@
 # ============================================================================
 # Descrição: Implementa todas as operações CRUD (Create, Read, Update, Delete)
 # para fornecedores no banco de dados PostgreSQL
-# Data: 27/08/2025
+# Data: 27/08/2025  | Atualizado 03/09/2025 
 # Autor: Will - Empresa: IOGAR
 # ============================================================================
 
@@ -33,21 +33,21 @@ def get_fornecedor_by_id(db: Session, fornecedor_id: int) -> Optional[Fornecedor
     """
     return db.query(Fornecedor).filter(Fornecedor.id == fornecedor_id).first()
 
-def get_fornecedor_by_cnpj(db: Session, cnpj: str) -> Optional[Fornecedor]:
+def get_fornecedor_by_cpf_cnpj(db: Session, cpf_cnpj: str) -> Optional[Fornecedor]:
     """
-    Busca um fornecedor pelo CNPJ.
+    Busca um fornecedor pelo CPF ou CNPJ.
     
-    Útil para validar se já existe um fornecedor com o mesmo CNPJ
+    Útil para validar se já existe um fornecedor com o mesmo documento
     antes de criar um novo registro.
     
     Args:
         db (Session): Sessão do banco de dados
-        cnpj (str): CNPJ a ser buscado (apenas números)
+        cpf_cnpj (str): CPF ou CNPJ a ser buscado (apenas números)
         
     Returns:
         Optional[Fornecedor]: Fornecedor encontrado ou None se não existir
     """ 
-    return db.query(Fornecedor).filter(Fornecedor.cnpj == cnpj).first()
+    return db.query(Fornecedor).filter(Fornecedor.cpf_cnpj == cpf_cnpj).first()
 
 def get_fornecedores(
     db: Session, 
@@ -83,7 +83,7 @@ def get_fornecedores(
         query = query.filter(
             or_(
                 Fornecedor.nome_razao_social.ilike(termo_busca),
-                Fornecedor.cnpj.ilike(termo_busca),
+                Fornecedor.cpf_cnpj.ilike(termo_busca),
                 Fornecedor.cidade.ilike(termo_busca),
                 Fornecedor.ramo.ilike(termo_busca)
             )
@@ -113,7 +113,7 @@ def count_fornecedores(db: Session, busca: Optional[str] = None) -> int:
         query = query.filter(
             or_(
                 Fornecedor.nome_razao_social.ilike(termo_busca),
-                Fornecedor.cnpj.ilike(termo_busca),
+                Fornecedor.cpf_cnpj.ilike(termo_busca),
                 Fornecedor.cidade.ilike(termo_busca),
                 Fornecedor.ramo.ilike(termo_busca)
             )
@@ -128,8 +128,8 @@ def create_fornecedor(db: Session, fornecedor: FornecedorCreate) -> Fornecedor:
     """
     Cria um novo fornecedor no banco de dados.
     
-    Antes de criar, valida se já existe um fornecedor com o mesmo CNPJ.
-    O CNPJ deve ser único no sistema.
+    Antes de criar, valida se já existe um fornecedor com o mesmo CPF/CNPJ.
+    O documento deve ser único no sistema.
     
     Args:
         db (Session): Sessão do banco de dados
@@ -139,17 +139,18 @@ def create_fornecedor(db: Session, fornecedor: FornecedorCreate) -> Fornecedor:
         Fornecedor: Fornecedor criado com ID gerado automaticamente
         
     Raises:
-        ValueError: Se já existir fornecedor com o mesmo CNPJ
+        ValueError: Se já existir fornecedor com o mesmo CPF/CNPJ
     """
-    # Verifica se já existe fornecedor com o mesmo CNPJ
-    fornecedor_existente = get_fornecedor_by_cnpj(db, fornecedor.cnpj)
+    # Verifica se já existe fornecedor com o mesmo CPF/CNPJ
+    fornecedor_existente = get_fornecedor_by_cpf_cnpj(db, fornecedor.cpf_cnpj)
     if fornecedor_existente:
-        raise ValueError(f"Já existe um fornecedor com CNPJ {fornecedor.cnpj}")
+        raise ValueError(f"Já existe um fornecedor com este documento: {fornecedor.cpf_cnpj}")
+    
     
     # Cria o novo registro no banco
     db_fornecedor = Fornecedor(
         nome_razao_social=fornecedor.nome_razao_social,
-        cnpj=fornecedor.cnpj,
+        cpf_cnpj=fornecedor.cpf_cnpj,
         telefone=fornecedor.telefone,
         ramo=fornecedor.ramo,
         cidade=fornecedor.cidade,
@@ -176,29 +177,20 @@ def update_fornecedor(
     Atualiza um fornecedor existente.
     
     Permite atualização parcial - apenas os campos fornecidos serão atualizados.
-    Valida CNPJ duplicado apenas se o CNPJ foi alterado.
+    CPF/CNPJ não pode ser alterado após a criação por questões de segurança.
     
     Args:
         db (Session): Sessão do banco de dados
         fornecedor_id (int): ID do fornecedor a ser atualizado
-        fornecedor_update (FornecedorUpdate): Dados para atualização
+        fornecedor_update (FornecedorUpdate): Dados a serem atualizados
         
     Returns:
         Optional[Fornecedor]: Fornecedor atualizado ou None se não encontrado
-        
-    Raises:
-        ValueError: Se CNPJ alterado já existir para outro fornecedor
     """
     # Busca o fornecedor existente
     db_fornecedor = get_fornecedor_by_id(db, fornecedor_id)
     if not db_fornecedor:
         return None
-    
-    # Valida CNPJ suplicado se foi alterado
-    if fornecedor_update.cnpj and fornecedor_update.cnpj != db_fornecedor.cnpj:
-        fornecedor_cnpj_existente = get_fornecedor_by_cnpj(db, fornecedor_update.cnpj)
-        if fornecedor_cnpj_existente:
-            raise ValueError(f"Já existe outro fornecedor com CNPJ {fornecedor_update.cnpj}")
         
     # Atualiza apenas os campos fornecidos (aualização parcial)
     update_data = fornecedor_update.model_dump(exclude_unset=True)

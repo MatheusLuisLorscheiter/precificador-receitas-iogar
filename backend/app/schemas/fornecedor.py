@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from app.schemas.fornecedor_insumo import FornecedorInsumoSimples
+from app.utils.cpf_cnpj_validator import validar_cpf_ou_cnpj, limpar_documento
 
 # ============================================================================
 # SCHEMA BASE - Campos comuns para criação e atualização
@@ -31,11 +32,11 @@ class FornecedorBase(BaseModel):
         description="Nome ou Razão Social do fornecedor (Obrigatório)"
     )
 
-    cnpj: str = Field(
+    cpf_cnpj: str = Field(
         ...,
-        min_length=14,
+        min_length=11,
         max_length=18,
-        description="CNPJ do fornecedor (obrigatório) - pode ter pontuação"
+        description="CPF ou CNPJ do fornecedor (obrigatório) - pode ter pontuação"
     )
 
     telefone: Optional[str] = Field(
@@ -66,34 +67,38 @@ class FornecedorBase(BaseModel):
 # VALIDADORES CUSTOMIZADOS
 # ============================================================================
 
-    @field_validator('cnpj')
+    @field_validator('cpf_cnpj')
     @classmethod
     def validar_cnpj(cls, v):
         """
-        Valida o formato do CNPJ.
-        
-        Remove caracteres especiais e valida o comprimento.
-        Aceita CNPJ com ou sem pontuação.
+        Valida CPF ou CNPJ do fornecedor.
+    
+        Remove caracteres especiais e valida se é um CPF ou CNPJ válido.
+        Aceita documentos com ou sem pontuação.
         
         Args:
-            v (str): CNPJ a ser validado
+            v (str): CPF ou CNPJ a ser validado
             
         Returns:
-            str: CNPJ limpo (apenas números)
+            str: Documento limpo (apenas números)
             
         Raises:
-            ValueError: Se CNPJ não tiver 14 dígitos
+            ValueError: Se o documento não for um CPF ou CNPJ válido
         """
         if not v:
-            raise ValueError('CNPJ é obrigatório')
+            raise ValueError('CPF ou CNPJ é obrigatório')
         
-        # Remove caracteres especiais
-        cnpj_limpo = ''.join(filter(str.isdigit, v))
-
-        # Valida se tem exaamente 14 dígitos
-        if len(cnpj_limpo) != 14:
-            raise ValueError('CNPJ deve ter exatamente 14 dígitos')
-        return cnpj_limpo
+        # Valida o documento usando o utilitário
+        eh_valido, tipo_documento = validar_cpf_ou_cnpj(v)
+        
+        if not eh_valido:
+            if tipo_documento is None:
+                raise ValueError('Documento deve ter 11 dígitos (CPF) ou 14 dígitos (CNPJ)')
+            else:
+                raise ValueError(f'{tipo_documento} inválido - verifique os dígitos')
+        
+        # Retorna o documento limpo (apenas números)
+        return limpar_documento(v)
     
     @field_validator('estado')
     @classmethod
@@ -154,13 +159,6 @@ class FornecedorUpdate(BaseModel):
         description="Nome ou Razão Social do fornecedor"
     )
 
-    cnpj: Optional[str] = Field(
-        None,
-        min_length=14,
-        max_length=18,
-        description="CNPJ do fornecedor"
-    )
-
     telefone: Optional[str] = Field(
         None,
         max_length=20,
@@ -219,7 +217,8 @@ class FornecedorResponse(FornecedorBase):
     - id: ID único do fornecedor
     - created_at: Data de criação
     - updated_at: Data da última atualização
-    - insumos: Lista de insumos deste fornecedor
+    - cpf_cnpj: CPF ou CNPJ do fornecedor (apenas números)
+    - fornecedor_insumos: Lista de insumos deste fornecedor
     
     Usado nas respostas de GET, POST, PUT
     """

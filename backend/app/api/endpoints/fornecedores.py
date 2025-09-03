@@ -3,7 +3,7 @@
 # ============================================================================
 # Descrição: Define todas as rotas da API REST para operações com fornecedores
 # Inclui endpoints para CRUD completo + funcionalidades específicas
-# Data: 27/08/2025
+# Data: 27/08/2025  | Atualizado 03/09/2025 
 # Autor: Will - Empresa: IOGAR
 # ============================================================================
 
@@ -157,21 +157,21 @@ def criar_fornecedor(
     Cria um novo fornecedor no sistema.
     
     **Funcionalidades:**
-    - Valida dados de entrada (nome e CNPJ obrigatórios)
-    - Verifica se CNPJ já existe (deve ser único)
-    - Formata e valida CNPJ automaticamente
+    - Valida dados de entrada (nome e CPF/CNPJ obrigatórios)
+    - Verifica se documento já existe (deve ser único)
+    - Valida CPF ou CNPJ automaticamente com dígitos verificadores
     - Retorna fornecedor criado com ID gerado
     
     **Campos obrigatórios:**
     - `nome_razao_social`: Nome ou razão social
-    - `cnpj`: CNPJ (com ou sem formatação)
+    - `cpf_cnpj`: CPF (11 dígitos) ou CNPJ (14 dígitos) com ou sem formatação
     
     **Campos opcionais:**
     - `telefone`, `ramo`, `cidade`, `estado`
     
     **Respostas:**
     - 201: Fornecedor criado com sucesso
-    - 400: Dados inválidos ou CNPJ duplicado
+    - 400: Dados inválidos ou documento duplicado
     """
     try:
         # Tentea criar o forncedor
@@ -179,7 +179,7 @@ def criar_fornecedor(
         return novo_fornecedor
     
     except ValueError as e:
-        # Erro de validação (CNPJ cuplicado, etc)
+        # Erro de validação (CPF/CNPJ inválido ou duplicado, etc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -206,18 +206,18 @@ def atualizar_fornecedor(
     
     **Funcionalidades:**
     - Permite atualização parcial (apenas campos fornecidos)
-    - Valida CNPJ duplicado se alterado
+    - CPF/CNPJ não pode ser alterado por questões de segurança
     - Mantém dados não informados inalterados
     - Atualiza automaticamente timestamp updated_at
     
     **Parâmetros:**
     - `fornecedor_id`: ID do fornecedor a ser atualizado
-    - Corpo da requisição: Campos a serem atualizados
+    - Corpo da requisição: Campos a serem atualizados (exceto CPF/CNPJ)
     
     **Respostas:**
     - 200: Fornecedor atualizado com sucesso
     - 404: Fornecedor não encontrado
-    - 400: Dados inválidos ou CNPJ duplicado
+    - 400: Dados inválidos
     """
     try:
         # Tenta atualizar o fornecedor

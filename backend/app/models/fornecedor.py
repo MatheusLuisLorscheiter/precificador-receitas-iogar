@@ -2,7 +2,7 @@
 # MODELO DE FORNECEDOR - Estrutura da tabela fornecedores
 # ============================================================================
 # Descrição: Define a estrutura da tabela fornecedores no banco de dados
-# Data: 27/08/2025 | Atualizado 28/08/2025
+# Data: 27/08/2025 | Atualizado 03/09/2025 
 # Autor: Will
 # ============================================================================
 
@@ -18,7 +18,7 @@ class Fornecedor(Base):
     
     Campos obrigatórios:
     - nome_razao_social: Nome ou Razão Social da empresa
-    - cnpj: CNPJ da empresa (único)
+    - cpf_cnpj: CPF ou CNPJ da empresa (único)
     
     Campos opcionais:
     - telefone: Telefone de contato
@@ -44,12 +44,12 @@ class Fornecedor(Base):
         comment="Nome ou Razão Social do fornecedor"
     )
     
-    cnpj = Column(
+    cpf_cnpj = Column(
         String(18), 
         nullable=False, 
         unique=True, 
         index=True,
-        comment="CNPJ do fornecedor (formato: XX.XXX.XXX/XXXX-XX)"
+        comment="CPF ou CNPJ do fornecedor (apenas números: 11 dígitos CPF ou 14 dígitos CNPJ)"
     )
     
     # ========================================================================

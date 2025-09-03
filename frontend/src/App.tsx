@@ -6,7 +6,7 @@
  *           inteligente, cálculo de CMV e precificação automatizada.
  *           Interface moderna conectada ao backend FastAPI.
  * 
- * Data: 20/08/2025 | Atuaçizado 21/08/2025
+ * Data: 20/08/2025 | Atualizado todos os dias.
  * Autor: Will - Empresa: IOGAR
  * ============================================================================
  */
@@ -569,7 +569,7 @@ const FormularioInsumoIsolado = React.memo(({
                     setEditandoFornecedor(null);
                     setNovoFornecedor({
                       nome_razao_social: '',
-                      cnpj: '',
+                      cpf_cnpj: '',
                       telefone: '',
                       ramo: '',
                       cidade: '',
@@ -2459,21 +2459,32 @@ const fetchInsumos = async () => {
                 {/* CNPJ */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CNPJ <span className="text-red-500">*</span>
+                    CPF ou CNPJ <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={novoFornecedor.cnpj}
+                    value={novoFornecedor.cpf_cnpj}
                     onChange={(e) => {
-                      // Formatação básica do CNPJ
+                      // Formatação automática para CPF ou CNPJ
                       let valor = e.target.value.replace(/\D/g, '');
-                      if (valor.length <= 14) {
+                      
+                      if (valor.length <= 11) {
+                        // Formatação CPF: XXX.XXX.XXX-XX
+                        valor = valor.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                        valor = valor.replace(/^(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
+                        valor = valor.replace(/^(\d{3})(\d{3})/, '$1.$2');
+                      } else if (valor.length <= 14) {
+                        // Formatação CNPJ: XX.XXX.XXX/XXXX-XX
                         valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-                        setNovoFornecedor({...novoFornecedor, cnpj: valor});
+                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})/, '$1.$2.$3/$4');
+                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})/, '$1.$2.$3');
+                        valor = valor.replace(/^(\d{2})(\d{3})/, '$1.$2');
                       }
+                      
+                      setNovoFornecedor({...novoFornecedor, cpf_cnpj: valor});
                     }}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="00.000.000/0000-00"
+                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
                     maxLength="18"
                   />
                 </div>
@@ -2912,7 +2923,7 @@ const fetchInsumos = async () => {
     const [fornecedorSelecionado, setFornecedorSelecionado] = useState<any>(null);
     const [novoFornecedor, setNovoFornecedor] = useState({
       nome_razao_social: '',
-      cnpj: '',
+      cpf_cnpj: '',
       telefone: '',
       ramo: '',
       cidade: '',
@@ -2986,7 +2997,7 @@ const fetchInsumos = async () => {
 
       setNovoFornecedor({
         nome_razao_social: fornecedor.nome_razao_social,
-        cnpj: fornecedor.cnpj,
+        cpf_cnpj: fornecedor.cpf_cnpj,
         telefone: fornecedor.telefone || '',
         ramo: fornecedor.ramo || '',
         cidade: fornecedor.cidade || '',
@@ -3388,15 +3399,33 @@ const cancelarExclusao = () => {
     // FUNÇÕES AUXILIARES
     // =========================================================================
 
-    const formatarCNPJ = (cnpj: string) => {
-      // Formata CNPJ para exibição: XX.XXX.XXX/XXXX-XX
-      return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    const formatarDocumento = (documento: string) => {
+      // Remove caracteres não numéricos
+      const documentoLimpo = documento.replace(/\D/g, '');
+      
+      if (documentoLimpo.length === 11) {
+        // Formata CPF: XXX.XXX.XXX-XX
+        return documentoLimpo.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+      } else if (documentoLimpo.length === 14) {
+        // Formata CNPJ: XX.XXX.XXX/XXXX-XX
+        return documentoLimpo.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+      } else {
+        // Se não tem 11 nem 14 dígitos, retorna como está
+        return documento;
+      }
     };
 
     // Função para criar fornecedor
     const handleCriarFornecedor = async () => {
-      if (!novoFornecedor.nome_razao_social || !novoFornecedor.cnpj) {
-        showErrorPopup('Campos Obrigatórios', 'Nome/Razão Social e CNPJ são obrigatórios!');
+      if (!novoFornecedor.nome_razao_social || !novoFornecedor.cpf_cnpj) {
+        showErrorPopup('Campos Obrigatórios', 'Nome/Razão Social e CPF/CNPJ são obrigatórios!');
+        return;
+      }
+
+      // Validação básica de CPF/CNPJ no frontend
+      const documentoValidacao = novoFornecedor.cpf_cnpj.replace(/\D/g, '');
+      if (documentoValidacao.length !== 11 && documentoValidacao.length !== 14) {
+        showErrorPopup('Documento Inválido', 'CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos.');
         return;
       }
 
@@ -3405,7 +3434,7 @@ const cancelarExclusao = () => {
         
         const dadosParaEnviar = {
           nome_razao_social: novoFornecedor.nome_razao_social,
-          cnpj: novoFornecedor.cnpj.replace(/\D/g, ''),
+          cpf_cnpj: novoFornecedor.cpf_cnpj.replace(/\D/g, ''),
           telefone: novoFornecedor.telefone || null,
           ramo: novoFornecedor.ramo || null,
           cidade: novoFornecedor.cidade || null,
@@ -3414,7 +3443,7 @@ const cancelarExclusao = () => {
         
         // *** LOG PARA DEBUG ***
         console.log('📤 Dados sendo enviados:', dadosParaEnviar);
-        console.log('📤 CNPJ limpo:', dadosParaEnviar.cnpj);
+        console.log('📤 CPF/CNPJ limpo:', dadosParaEnviar.cpf_cnpj);
         console.log('📤 URL:', 'http://localhost:8000/api/v1/fornecedores/');
         
         const response = await fetch('http://localhost:8000/api/v1/fornecedores/', {
@@ -3432,7 +3461,7 @@ const cancelarExclusao = () => {
           console.log('✅ Fornecedor criado com sucesso:', resultado);
           
           await carregarFornecedores();
-          setNovoFornecedor({ nome_razao_social: '', cnpj: '', telefone: '', ramo: '', cidade: '', estado: '' });
+          setNovoFornecedor({ nome_razao_social: '', cpf_cnpj: '', telefone: '', ramo: '', cidade: '', estado: '' });
           setShowPopupFornecedor(false);
           showSuccessPopup('Fornecedor Cadastrado', `${novoFornecedor.nome_razao_social} foi cadastrado com sucesso.`);
         } else {
@@ -3495,7 +3524,7 @@ const cancelarExclusao = () => {
           await carregarFornecedores();
           await carregarFornecedorDetalhado(editandoFornecedor.id);
           
-          setNovoFornecedor({ nome_razao_social: '', cnpj: '', telefone: '', ramo: '', cidade: '', estado: '' });
+          setNovoFornecedor({ nome_razao_social: '', cpf_cnpj: '', telefone: '', ramo: '', cidade: '', estado: '' });
           setEditandoFornecedor(null);
           setShowPopupFornecedor(false);
           
@@ -3559,7 +3588,7 @@ const cancelarExclusao = () => {
                     <div className="flex justify-between items-start">
                       <div className="flex-1" onClick={() => carregarFornecedorDetalhado(fornecedor.id)}>
                         <h4 className="font-medium text-gray-800">{fornecedor.nome_razao_social}</h4>
-                        <p className="text-sm text-gray-600">CNPJ: {formatarCNPJ(fornecedor.cnpj)}</p>
+                        <p className="text-sm text-gray-600">{fornecedor.cpf_cnpj.length === 11 ? 'CPF' : 'CNPJ'}: {formatarDocumento(fornecedor.cpf_cnpj)}</p>
                         <p className="text-sm text-gray-500">{fornecedor.cidade} - {fornecedor.estado}</p>
                         {fornecedor.ramo && (
                           <p className="text-xs text-green-600 mt-1">Ramo: {fornecedor.ramo}</p>
@@ -3609,11 +3638,11 @@ const cancelarExclusao = () => {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-xl font-bold text-gray-800">{fornecedorSelecionado.nome_razao_social}</h3>
-                      <p className="text-gray-600">CNPJ: {formatarCNPJ(fornecedorSelecionado.cnpj)}</p>
+                      <p className="text-gray-600"><strong>{fornecedorSelecionado.cpf_cnpj.length === 11 ? 'CPF' : 'CNPJ'}:</strong> {formatarDocumento(fornecedorSelecionado.cpf_cnpj)}</p>
                     </div>
                     <button
                       onClick={() => setShowPopupInsumo(true)}
-                      className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                      className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
                     >
                       + Novo Insumo
                     </button>
@@ -3741,20 +3770,38 @@ const cancelarExclusao = () => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CNPJ <span className="text-red-500">*</span>
+                    CPF ou CNPJ <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={novoFornecedor.cnpj}
-                    onChange={(e) => {
+                    value={editandoFornecedor ? formatarDocumento(novoFornecedor.cpf_cnpj) : novoFornecedor.cpf_cnpj}
+                    onChange={editandoFornecedor ? undefined : (e) => {
+                      // Formatação automática para CPF ou CNPJ
                       let valor = e.target.value.replace(/\D/g, '');
-                      if (valor.length <= 14) {
+                      
+                      if (valor.length <= 11) {
+                        // Formatação CPF: XXX.XXX.XXX-XX
+                        valor = valor.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                        valor = valor.replace(/^(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
+                        valor = valor.replace(/^(\d{3})(\d{3})/, '$1.$2');
+                      } else if (valor.length <= 14) {
+                        // Formatação CNPJ: XX.XXX.XXX/XXXX-XX
                         valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-                        setNovoFornecedor({...novoFornecedor, cnpj: valor});
+                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})/, '$1.$2.$3/$4');
+                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})/, '$1.$2.$3');
+                        valor = valor.replace(/^(\d{2})(\d{3})/, '$1.$2');
                       }
+                      
+                      setNovoFornecedor({...novoFornecedor, cpf_cnpj: valor});
                     }}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="00.000.000/0000-00"
+                    disabled={editandoFornecedor}
+                    className={`w-full p-3 border-2 rounded-lg transition-colors ${
+                      editandoFornecedor 
+                        ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed' 
+                        : 'border-gray-300 bg-white focus:border-green-500 focus:outline-none'
+                    }`}
+                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                    maxLength="18"
                   />
                 </div>
 
@@ -3831,7 +3878,7 @@ const cancelarExclusao = () => {
                     setEditandoFornecedor(null);
                     setNovoFornecedor({
                       nome_razao_social: '',
-                      cnpj: '',
+                      cpf_cnpj: '',
                       telefone: '',
                       ramo: '',
                       cidade: '',
