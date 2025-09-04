@@ -89,6 +89,20 @@ class FornecedorInsumo(Base):
         comment="Descrição detalhada do insumo (opcional)"
     )
 
+    quantidade = Column(
+        Integer,
+        nullable=False,
+        default=1,
+        comment="Quantidade de unidades vendidas pelo fornecedor"
+    )
+    
+    fator = Column(
+        DECIMAL(10, 3),
+        nullable=False,
+        default=1.0,
+        comment="Fator para conversão (ex: 0.75 para 750ml, 20.0 para caixa 20un)"
+    )
+
     # ========================================================================
     # RELACIONAMENTOS
     # ========================================================================

@@ -62,6 +62,18 @@ class FornecedorInsumoBase(BaseModel):
         description="Descrição detalhada do insumo (opcional)"
     )
 
+    quantidade: int = Field(
+        default=1,
+        ge=1,
+        description="Quantidade de unidades vendidas pelo fornecedor"
+    )
+    
+    fator: float = Field(
+        default=1.0,
+        gt=0,
+        description="Fator para conversão (ex: 0.75 para 750ml, 20.0 para caixa)"
+    )
+
     # ========================================================================
     # VALIDADORES PYDANTIC V2
     # ========================================================================
@@ -232,6 +244,18 @@ class FornecedorInsumoUpdate(BaseModel):
         None,
         max_length=1000,
         description="Descrição do insumo"
+    )
+
+    quantidade: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Quantidade de unidades vendidas pelo fornecedor"
+    )
+
+    fator: Optional[float] = Field(
+        None,
+        gt=0,
+        description="Fator para conversão"
     )
 
     # ========================================================================

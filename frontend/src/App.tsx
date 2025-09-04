@@ -558,7 +558,10 @@ const FormularioInsumoIsolado = React.memo(({
                 type="checkbox"
                 checked={ehFornecedorAnonimo}
                 onChange={(e) => handleFornecedorAnonimoChange(e.target.checked)}
-                className="w-5 h-5 text-gree-600 rounded focus:ring-gree-500"
+                className="w-5 h-5 rounded focus:ring-2 focus:ring-green-500"
+                style={{ 
+                  accentColor: '#10b981' // Verde do Tailwind green-500
+                }}
               />
               <span className="text-sm font-medium text-gray-700">
                 Marcar Fornecedor como anônimo
@@ -576,7 +579,7 @@ const FormularioInsumoIsolado = React.memo(({
                 <select
                   value={fornecedorSelecionadoForm?.id || ''}
                   onChange={(e) => handleFornecedorChange(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
+                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                 >
                   <option value="">Selecione um fornecedor...</option>
                   {fornecedoresDisponiveis.map((fornecedor) => (
@@ -600,7 +603,7 @@ const FormularioInsumoIsolado = React.memo(({
                 <select
                   value={insumoFornecedorSelecionado?.id || ''}
                   onChange={(e) => handleInsumoFornecedorChange(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
+                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                 >
                   <option value="">Selecione um insumo (opcional)...</option>
                   {insumosDoFornecedor.map((insumo) => (
@@ -635,7 +638,7 @@ const FormularioInsumoIsolado = React.memo(({
                 value={formData.codigo}
                 onChange={(e) => updateField('codigo', e.target.value)}
                 disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors ${
+                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors ${
                   (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
                 }`} // className para mostrar visualmente que está bloqueado
                 placeholder="Ex: INS001"
@@ -655,14 +658,11 @@ const FormularioInsumoIsolado = React.memo(({
                   updateField('nome', e.target.value);
                 }}
                 disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors ${
+                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors ${
                   (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
                 }`}
                 placeholder="Nome do insumo"
               />
-              <div className="text-xs text-gray-500 mt-1">
-                Debug: formData.nome = "{formData.nome}"
-              </div>
             </div>
 
             {/* Grupo */}
@@ -674,7 +674,7 @@ const FormularioInsumoIsolado = React.memo(({
                 type="text"
                 value={formData.grupo}
                 onChange={(e) => updateField('grupo', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                 placeholder="Ex: Carnes, Laticínios"
               />
             </div>
@@ -688,7 +688,7 @@ const FormularioInsumoIsolado = React.memo(({
                 type="text"
                 value={formData.subgrupo}
                 onChange={(e) => updateField('subgrupo', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                 placeholder="Ex: Bovina, Queijos"
               />
             </div>
@@ -702,7 +702,7 @@ const FormularioInsumoIsolado = React.memo(({
                 value={formData.unidade}
                 onChange={(e) => updateField('unidade', e.target.value)}
                 disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors ${
+                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors ${
                   (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
                 }`}
               >
@@ -726,7 +726,7 @@ const FormularioInsumoIsolado = React.memo(({
                 min="0"
                 value={formData.quantidade}
                 onChange={(e) => updateField('quantidade', parseInt(e.target.value) || 0)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                 placeholder="0"
               />
             </div>
@@ -742,7 +742,7 @@ const FormularioInsumoIsolado = React.memo(({
                 min="0"
                 value={formData.fator}
                 onChange={(e) => updateField('fator', parseFloat(e.target.value) || 1)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                 placeholder="1.0"
               />
             </div>
@@ -760,7 +760,7 @@ const FormularioInsumoIsolado = React.memo(({
                 min="0"
                 value={formData.preco_compra_total || ''}
                 onChange={(e) => updateField('preco_compra_total', parseFloat(e.target.value) || 0)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                 placeholder="0.00"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -776,7 +776,7 @@ const FormularioInsumoIsolado = React.memo(({
               <textarea
                 value={formData.descricao}
                 onChange={(e) => updateField('descricao', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white resize-none"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white resize-none"
                 rows="3"
                 placeholder="Informações adicionais sobre o insumo..."
               />
@@ -792,16 +792,16 @@ const FormularioInsumoIsolado = React.memo(({
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Preço por Unidade Calculado */}
-            <div className="p-4 bg-gree-50 border border-gree-200 rounded-lg">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <h5 className="font-medium text-gree-800">Preço por Unidade (Sistema)</h5>
-                <Calculator className="w-5 h-5 text-gree-600" />
+                <h5 className="font-medium text-green-800">Preço por Unidade (Sistema)</h5>
+                <Calculator className="w-5 h-5 text-green-600" />
               </div>
-              <div className="text-2xl font-bold text-gree-800">
+              <div className="text-2xl font-bold text-green-800">
                 R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
                   (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}
               </div>
-              <p className="text-sm text-gree-600 mt-1">
+              <p className="text-sm text-green-600 mt-1">
                 R$ {(formData.preco_compra_total || 0).toFixed(2)} ÷ {formData.quantidade || 1} = 
                 R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
                   (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}/unidade
@@ -837,7 +837,7 @@ const FormularioInsumoIsolado = React.memo(({
                             ? 'bg-green-100 text-green-800' 
                             : diferenca > 0
                             ? 'bg-red-100 text-red-800'
-                            : 'bg-gree-100 text-gree-800'
+                            : 'bg-green-100 text-green-800'
                         }`}>
                           {ehMaisBarato ? '🔉' : diferenca > 0 ? '📈' : '='} 
                           {diferenca === 0 ? 'Mesmo preço' : 
@@ -1496,10 +1496,10 @@ const fetchInsumos = async () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-gray-900">{totalRestaurantes}</p>
-                <p className="text-sm text-gree-600 mt-1">Restaurantes ativos</p>
+                <p className="text-sm text-green-600 mt-1">Restaurantes ativos</p>
               </div>
-              <div className="bg-gree-50 p-3 rounded-lg">
-                <Users className="w-8 h-8 text-gree-600" />
+              <div className="bg-green-50 p-3 rounded-lg">
+                <Users className="w-8 h-8 text-green-600" />
               </div>
             </div>
           </div>
@@ -1540,9 +1540,9 @@ const fetchInsumos = async () => {
             </div>
 
             {/* Integração TOTVS Chef Web */}
-            <div className="bg-white p-4 rounded-lg border border-gree-100">
+            <div className="bg-white p-4 rounded-lg border border-green-100">
               <div className="flex items-center gap-2 mb-2">
-                <LinkIcon className="w-5 h-5 text-gree-600" />
+                <LinkIcon className="w-5 h-5 text-green-600" />
                 <h4 className="font-medium text-gray-900">Integração TOTVS Chef Web</h4>
               </div>
               <p className="text-sm text-gray-600">
@@ -1626,16 +1626,16 @@ const fetchInsumos = async () => {
   <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
     <div className="flex items-center justify-between mb-4">
       <h3 className="text-lg font-semibold text-gray-900">Últimas Receitas</h3>
-      <ChefHat className="w-5 h-5 text-gree-600" />
+      <ChefHat className="w-5 h-5 text-green-600" />
     </div>
     <div className="space-y-3">
       {receitas.slice(-3).map((receita) => (
-        <div key={receita.id} className="flex items-center justify-between p-2 bg-gree-50 rounded-lg">
+        <div key={receita.id} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
           <div>
             <p className="text-sm font-medium text-gray-900">{receita.nome}</p>
             <p className="text-xs text-gray-500">{receita.categoria}</p>
           </div>
-          <span className="text-sm font-medium text-gree-600">
+          <span className="text-sm font-medium text-green-600">
             {receita.porcoes} porções
           </span>
         </div>
@@ -2328,7 +2328,7 @@ const fetchInsumos = async () => {
 
                       {/* Quantidade - vazia para insumos de fornecedor */}
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {insumo.tipo_origem === 'fornecedor' ? '-' : (insumo.quantidade ?? 0)}
+                        {insumo.quantidade ?? 0}
                       </td>
 
                       {/* Unidade - sempre preenchida */}
@@ -2346,7 +2346,7 @@ const fetchInsumos = async () => {
                           : (insumo.quantidade > 0 ? (insumo.preco_compra_real / insumo.quantidade).toFixed(2) : '0.00')
                         }
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.fator}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.fator || 1.0}</td>
                       <td className="px-6 py-4 text-sm">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
@@ -2357,7 +2357,7 @@ const fetchInsumos = async () => {
                             <span className="text-xs text-gray-500">Fornecedor B:</span>
                             <span className="text-xs text-gray-400">Em breve</span>
                           </div>
-                          <button className="w-full mt-2 py-1 px-2 bg-gree-50 text-gree-600 rounded text-xs hover:bg-gree-100 transition-colors">
+                          <button className="w-full mt-2 py-1 px-2 bg-green-50 text-green-600 rounded text-xs hover:bg-green-100 transition-colors">
                             Ver Comparativo
                           </button>
                         </div>
@@ -2512,8 +2512,8 @@ const fetchInsumos = async () => {
               }}
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="bg-gree-50 p-3 rounded-lg">
-                  <Users className="w-6 h-6 text-gree-600" />
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <Users className="w-6 h-6 text-green-600" />
                 </div>
                 {selectedRestaurante?.id === restaurante.id && (
                   <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs">
@@ -2532,7 +2532,7 @@ const fetchInsumos = async () => {
                 </div>
                 {restaurante.telefone && (
                   <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <div className="w-2 h-2 bg-gree-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span>{restaurante.telefone}</span>
                   </div>
                 )}
@@ -2729,14 +2729,14 @@ const fetchInsumos = async () => {
                     </div>
 
                     {/* CMV 25% */}
-                    <div className="bg-gree-50 p-4 rounded-lg border border-gree-100">
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gree-800">CMV 25%</span>
-                        <span className="text-lg font-bold text-gree-600">
+                        <span className="text-sm font-medium text-green-800">CMV 25%</span>
+                        <span className="text-lg font-bold text-green-600">
                           R$ {selectedReceita.cmv_25_porcento?.toFixed(2) || 'N/A'}
                         </span>
                       </div>
-                      <p className="text-xs text-gree-600">Margem equilibrada</p>
+                      <p className="text-xs text-green-600">Margem equilibrada</p>
                     </div>
 
                     {/* CMV 30% */}
@@ -2805,6 +2805,7 @@ const fetchInsumos = async () => {
       cidade: '',
       estado: ''
     });
+
     const [novoInsumo, setNovoInsumo] = useState({
       codigo: '',
       nome: '',
@@ -3193,7 +3194,9 @@ const cancelarExclusao = () => {
           nome: String(novoInsumo.nome || '').trim(), 
           unidade: String(novoInsumo.unidade || 'kg').trim(),
           preco_unitario: Number(novoInsumo.preco_compra_real) || 0,
-          descricao: String(novoInsumo.descricao || '').trim()
+          descricao: String(novoInsumo.descricao || '').trim(),
+          quantidade: Number(novoInsumo.quantidade) || 1,
+          fator: Number(novoInsumo.fator) || 1.0
         };
 
         console.log('🎯 Dados do insumo do fornecedor:', insumoData);
@@ -3217,6 +3220,8 @@ const cancelarExclusao = () => {
             descricao: '',
             unidade: 'kg',
             preco_compra_real: 0,
+            quantidade: 1,
+            fator: 1.0
           });
           setShowPopupInsumo(false);
           
@@ -3485,7 +3490,7 @@ const cancelarExclusao = () => {
                         )}
                       </div>
                       <div className="text-right space-y-2">
-                        <span className="inline-block px-2 py-1 bg-gree-100 text-gree-800 rounded-full text-xs">
+                        <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
                           {fornecedor.fornecedor_insumos?.length || 0} insumos
                         </span>
                         {/* Botões de ação */}
@@ -3495,7 +3500,7 @@ const cancelarExclusao = () => {
                               e.stopPropagation();
                               handleEditarFornecedor(fornecedor);
                             }}
-                            className="p-1 text-gree-600 hover:bg-gree-50 rounded transition-colors"
+                            className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors"
                             title="Editar fornecedor"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -3595,7 +3600,7 @@ const cancelarExclusao = () => {
                                     e.stopPropagation();
                                     handleEditarInsumoFornecedor(insumo);
                                   }}
-                                  className="p-1.5 text-gree-600 hover:text-gree-800 hover:bg-gree-50 rounded transition-colors"
+                                  className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
                                   title="Editar insumo"
                                 >
                                   <Edit2 className="w-4 h-4" />
@@ -3847,8 +3852,8 @@ const cancelarExclusao = () => {
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80]">
             <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="bg-gree-50 p-2 rounded-full">
-                  <Edit2 className="w-6 h-6 text-gree-600" />
+                <div className="bg-green-50 p-2 rounded-full">
+                  <Edit2 className="w-6 h-6 text-green-600" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-800">Editar Insumo</h3>
               </div>
@@ -4030,7 +4035,7 @@ const cancelarExclusao = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Preço Unitário <span className="text-red-500">*</span>
+                    Preço cobrado <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -4041,6 +4046,50 @@ const cancelarExclusao = () => {
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                     placeholder="0.00"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Quantidade <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={novoInsumo.quantidade}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseInt(e.target.value) || 1})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Quantas unidades estão sendo vendidas
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fator <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={novoInsumo.fator}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="1.0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Valor fechado (ex: 0.75 para 750ml, 20.0 para caixa 20un)
+                  </p>
+                </div>
+
+                {/* Campo de cálculo em tempo real */}
+                <div className="col-span-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h5 className="font-medium text-blue-800 mb-2">Valor unitário</h5>
+                  <div className="text-xl font-bold text-blue-800">
+                    R$ {novoInsumo.quantidade > 0 ? 
+                      (novoInsumo.preco_compra_real / novoInsumo.quantidade).toFixed(2) : '0.00'} por unidade
+                  </div>
                 </div>
 
                 <div className="col-span-2">
@@ -4128,14 +4177,14 @@ const cancelarExclusao = () => {
 
               {/* Integração TOTVS Chef Web */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-gree-50 p-3 rounded-lg w-fit mb-4">
-                  <LinkIcon className="w-6 h-6 text-gree-600" />
+                <div className="bg-green-50 p-3 rounded-lg w-fit mb-4">
+                  <LinkIcon className="w-6 h-6 text-green-600" />
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-2">Integração TOTVS Chef Web</h3>
                 <p className="text-gray-600 text-sm mb-4">
                   Conectado ao TOTVS Chef Web para sincronização completa
                 </p>
-                <button className="w-full py-2 px-4 bg-gree-50 text-gree-600 rounded-lg hover:bg-gree-100 transition-colors">
+                <button className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
                   Conectar
                 </button>
               </div>
@@ -4212,12 +4261,12 @@ const cancelarExclusao = () => {
 
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-gree-100 p-2 rounded-lg">
-                    <Database className="w-5 h-5 text-gree-600" />
+                  <div className="bg-green-100 p-2 rounded-lg">
+                    <Database className="w-5 h-5 text-green-600" />
                   </div>
                   <h4 className="font-medium text-gray-900">Dados Sincronizados</h4>
                 </div>
-                <p className="text-2xl font-bold text-gree-600">98%</p>
+                <p className="text-2xl font-bold text-green-600">98%</p>
                 <p className="text-sm text-gray-500">Taxa de sincronização</p>
               </div>
 

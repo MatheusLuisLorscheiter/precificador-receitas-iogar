@@ -201,7 +201,9 @@ def create_fornecedor_insumo(
         nome=insumo.nome,
         unidade=insumo.unidade,
         preco_unitario=insumo.preco_unitario,
-        descricao=insumo.descricao
+        descricao=insumo.descricao,
+        quantidade=insumo.quantidade,
+        fator=insumo.fator
     )
     
     # Salvar no banco
