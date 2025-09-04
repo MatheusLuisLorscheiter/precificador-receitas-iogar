@@ -267,33 +267,55 @@ const FormularioInsumoIsolado = React.memo(({
   setInsumoFornecedorSelecionado,
   showNovoFornecedorPopup,
   setShowNovoFornecedorPopup,
-  carregarInsumosDoFornecedor
+  carregarInsumosDoFornecedor,
+  // Props necessárias para o popup de fornecedor
+  editandoFornecedor,
+  setEditandoFornecedor,
+  novoFornecedor,
+  setNovoFornecedor,
+  handleCriarFornecedor,
+  handleAtualizarFornecedor,
+  isLoading
 }) => {
+
+  // DEBUG LOGS - VERIFICAR PROPS
+  console.log('🔍 DEBUG FormularioInsumoIsolado - Props recebidas:');
+  console.log('🔍 editandoFornecedor:', editandoFornecedor);
+  console.log('🔍 setEditandoFornecedor:', typeof setEditandoFornecedor);
+  console.log('🔍 novoFornecedor:', novoFornecedor);
+  console.log('🔍 setNovoFornecedor:', typeof setNovoFornecedor);
+  console.log('🔍 handleCriarFornecedor:', typeof handleCriarFornecedor);
+  console.log('🔍 handleAtualizarFornecedor:', typeof handleAtualizarFornecedor);
+  console.log('🔍 isLoading:', isLoading);
+  console.log('🔍 showNovoFornecedorPopup:', showNovoFornecedorPopup);
+
   // Estado local do formulário
-  const [formData, setFormData] = useState(() => ({
-    nome: editingInsumo?.nome || '',
-    codigo: editingInsumo?.codigo || '',
-    unidade: editingInsumo?.unidade || 'kg',
-    fator: editingInsumo?.fator || 1,
-    quantidade: editingInsumo?.quantidade || 1, // Padrão 1 para facilitar cálculo
-    grupo: editingInsumo?.grupo || '',
-    subgrupo: editingInsumo?.subgrupo || '',
-    descricao: editingInsumo?.descricao || '',
+  const [formData, setFormData] = useState(() => {
+    const initialData = {
+      nome: editingInsumo?.nome || '',
+      codigo: editingInsumo?.codigo || '',
+      unidade: editingInsumo?.unidade || 'kg',
+      fator: editingInsumo?.fator || 1,
+      quantidade: editingInsumo?.quantidade || 1, // Padrão 1 para facilitar cálculo
+      grupo: editingInsumo?.grupo || '',
+      subgrupo: editingInsumo?.subgrupo || '',
+      descricao: editingInsumo?.descricao || '',
     
     // ============================================================================
-    // 🆕 NOVO CAMPO: PREÇO DE COMPRA TOTAL (VALOR PAGO)
+    // NOVO CAMPO: PREÇO DE COMPRA TOTAL (VALOR PAGO)
     // ============================================================================
     preco_compra_total: editingInsumo?.preco_compra_total || 
-                       (editingInsumo?.preco_compra_real && editingInsumo?.quantidade ? 
-                        editingInsumo.preco_compra_real * editingInsumo.quantidade : 0),
+                         (editingInsumo?.preco_compra_real && editingInsumo?.quantidade ? 
+                          editingInsumo.preco_compra_real * editingInsumo.quantidade : 0),
     
-    // Manter compatibilidade com campo antigo (será calculado automaticamente)
-    preco_compra_real: 0, // Será calculado: preco_compra_total / quantidade
-    
-    // Campos de vinculação com fornecedor para comparação
+    preco_compra_real: 0,
     eh_fornecedor_anonimo: editingInsumo?.eh_fornecedor_anonimo !== undefined ? editingInsumo.eh_fornecedor_anonimo : true,
     fornecedor_insumo_id: editingInsumo?.fornecedor_insumo_id || null
-  }));
+  };
+
+  console.log('🔄 FormData INICIALIZADO com:', initialData);
+    return initialData;
+});
 
   // 🔧 FUNÇÃO OTIMIZADA para atualizar campos
   const updateField = useCallback((field, value) => {
@@ -323,22 +345,25 @@ const FormularioInsumoIsolado = React.memo(({
     setInsumoFornecedorSelecionado(null);
   }, [fornecedoresDisponiveis, setFornecedorSelecionadoForm, carregarInsumosDoFornecedor, setInsumosDoFornecedor, setInsumoFornecedorSelecionado]);
 
-  // 🔧 FUNÇÃO OTIMIZADA para seleção de insumo do fornecedor
+  // FUNÇÃO OTIMIZADA para seleção de insumo do fornecedor
   const handleInsumoFornecedorChange = useCallback((insumoId) => {
     const insumo = insumosDoFornecedor.find(i => i.id === parseInt(insumoId));
     setInsumoFornecedorSelecionado(insumo);
-    
-    if (insumo) {
+  }, [insumosDoFornecedor, setInsumoFornecedorSelecionado]);
+
+  // useEffect para sincronizar formData com insumo selecionado
+  useEffect(() => {
+    if (insumoFornecedorSelecionado) {
+      console.log('🔄 useEffect: Atualizando formData com insumo:', insumoFornecedorSelecionado);
       setFormData(prev => ({
         ...prev,
-        nome: insumo.nome,
-        codigo: insumo.codigo,
-        unidade: insumo.unidade,
-        grupo: prev.grupo || 'Geral',
-        subgrupo: prev.subgrupo || ''
+        nome: insumoFornecedorSelecionado.nome,
+        codigo: insumoFornecedorSelecionado.codigo,
+        unidade: insumoFornecedorSelecionado.unidade,
+        preco_compra_real: insumoFornecedorSelecionado.preco_unitario || 0
       }));
     }
-  }, [insumosDoFornecedor, setInsumoFornecedorSelecionado]);
+  }, [insumoFornecedorSelecionado]);
 
   // 🔧 FUNÇÃO para calcular diferença de preços
   const calcularDiferencaPreco = useCallback(() => {
@@ -533,7 +558,7 @@ const FormularioInsumoIsolado = React.memo(({
                 type="checkbox"
                 checked={ehFornecedorAnonimo}
                 onChange={(e) => handleFornecedorAnonimoChange(e.target.checked)}
-                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                className="w-5 h-5 text-gree-600 rounded focus:ring-gree-500"
               />
               <span className="text-sm font-medium text-gray-700">
                 Marcar Fornecedor como anônimo
@@ -543,15 +568,15 @@ const FormularioInsumoIsolado = React.memo(({
 
           {/* Select de fornecedor */}
           {!ehFornecedorAnonimo && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 gap-4">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Selecionar Fornecedor <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={fornecedorSelecionadoForm?.id || ''}
                   onChange={(e) => handleFornecedorChange(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
                 >
                   <option value="">Selecione um fornecedor...</option>
                   {fornecedoresDisponiveis.map((fornecedor) => (
@@ -560,27 +585,6 @@ const FormularioInsumoIsolado = React.memo(({
                     </option>
                   ))}
                 </select>
-              </div>
-              
-              <div className="flex items-end">
-                <button
-                  onClick={() => {
-                    console.log('🟢 NOVO FORNECEDOR - limpando editandoFornecedor');
-                    setEditandoFornecedor(null);
-                    setNovoFornecedor({
-                      nome_razao_social: '',
-                      cpf_cnpj: '',
-                      telefone: '',
-                      ramo: '',
-                      cidade: '',
-                      estado: ''
-                    });
-                    setShowNovoFornecedorPopup(true);
-                  }}
-                  className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                >
-                  + Novo Fornecedor
-                </button>
               </div>
             </div>
           )}
@@ -596,7 +600,7 @@ const FormularioInsumoIsolado = React.memo(({
                 <select
                   value={insumoFornecedorSelecionado?.id || ''}
                   onChange={(e) => handleInsumoFornecedorChange(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
                 >
                   <option value="">Selecione um insumo (opcional)...</option>
                   {insumosDoFornecedor.map((insumo) => (
@@ -631,7 +635,7 @@ const FormularioInsumoIsolado = React.memo(({
                 value={formData.codigo}
                 onChange={(e) => updateField('codigo', e.target.value)}
                 disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors ${
+                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors ${
                   (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
                 }`} // className para mostrar visualmente que está bloqueado
                 placeholder="Ex: INS001"
@@ -646,13 +650,19 @@ const FormularioInsumoIsolado = React.memo(({
               <input
                 type="text"
                 value={formData.nome}
-                onChange={(e) => updateField('nome', e.target.value)}
+                onChange={(e) => {
+                  console.log('🔍 Campo Nome onChange chamado com:', e.target.value);
+                  updateField('nome', e.target.value);
+                }}
                 disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors ${
+                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors ${
                   (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
-                }`} // <- ALTERAR className
+                }`}
                 placeholder="Nome do insumo"
               />
+              <div className="text-xs text-gray-500 mt-1">
+                Debug: formData.nome = "{formData.nome}"
+              </div>
             </div>
 
             {/* Grupo */}
@@ -664,7 +674,7 @@ const FormularioInsumoIsolado = React.memo(({
                 type="text"
                 value={formData.grupo}
                 onChange={(e) => updateField('grupo', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
                 placeholder="Ex: Carnes, Laticínios"
               />
             </div>
@@ -678,7 +688,7 @@ const FormularioInsumoIsolado = React.memo(({
                 type="text"
                 value={formData.subgrupo}
                 onChange={(e) => updateField('subgrupo', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
                 placeholder="Ex: Bovina, Queijos"
               />
             </div>
@@ -692,7 +702,7 @@ const FormularioInsumoIsolado = React.memo(({
                 value={formData.unidade}
                 onChange={(e) => updateField('unidade', e.target.value)}
                 disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors ${
+                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors ${
                   (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
                 }`}
               >
@@ -716,7 +726,7 @@ const FormularioInsumoIsolado = React.memo(({
                 min="0"
                 value={formData.quantidade}
                 onChange={(e) => updateField('quantidade', parseInt(e.target.value) || 0)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
                 placeholder="0"
               />
             </div>
@@ -732,7 +742,7 @@ const FormularioInsumoIsolado = React.memo(({
                 min="0"
                 value={formData.fator}
                 onChange={(e) => updateField('fator', parseFloat(e.target.value) || 1)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
                 placeholder="1.0"
               />
             </div>
@@ -750,7 +760,7 @@ const FormularioInsumoIsolado = React.memo(({
                 min="0"
                 value={formData.preco_compra_total || ''}
                 onChange={(e) => updateField('preco_compra_total', parseFloat(e.target.value) || 0)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white"
                 placeholder="0.00"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -766,7 +776,7 @@ const FormularioInsumoIsolado = React.memo(({
               <textarea
                 value={formData.descricao}
                 onChange={(e) => updateField('descricao', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors bg-white resize-none"
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-gree-500 focus:outline-none transition-colors bg-white resize-none"
                 rows="3"
                 placeholder="Informações adicionais sobre o insumo..."
               />
@@ -782,16 +792,16 @@ const FormularioInsumoIsolado = React.memo(({
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Preço por Unidade Calculado */}
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-4 bg-gree-50 border border-gree-200 rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <h5 className="font-medium text-blue-800">Preço por Unidade (Sistema)</h5>
-                <Calculator className="w-5 h-5 text-blue-600" />
+                <h5 className="font-medium text-gree-800">Preço por Unidade (Sistema)</h5>
+                <Calculator className="w-5 h-5 text-gree-600" />
               </div>
-              <div className="text-2xl font-bold text-blue-800">
+              <div className="text-2xl font-bold text-gree-800">
                 R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
                   (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}
               </div>
-              <p className="text-sm text-blue-600 mt-1">
+              <p className="text-sm text-gree-600 mt-1">
                 R$ {(formData.preco_compra_total || 0).toFixed(2)} ÷ {formData.quantidade || 1} = 
                 R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
                   (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}/unidade
@@ -827,7 +837,7 @@ const FormularioInsumoIsolado = React.memo(({
                             ? 'bg-green-100 text-green-800' 
                             : diferenca > 0
                             ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
+                            : 'bg-gree-100 text-gree-800'
                         }`}>
                           {ehMaisBarato ? '🔉' : diferenca > 0 ? '📈' : '='} 
                           {diferenca === 0 ? 'Mesmo preço' : 
@@ -913,6 +923,23 @@ const FormularioInsumoIsolado = React.memo(({
 });
 
 // ============================================================================
+// FUNÇÕES ESTÁVEIS PARA FORNECEDOR (FORA DO COMPONENTE INSUMOS)
+// ============================================================================
+const handleCriarFornecedorStable = async () => {
+  console.log('Função placeholder - criar fornecedor');
+  return Promise.resolve();
+};
+
+const handleAtualizarFornecedorStable = async () => {
+  console.log('Função placeholder - atualizar fornecedor');
+  return Promise.resolve();
+};
+
+const setEditandoFornecedorStable = () => {
+  console.log('Função placeholder - set editando fornecedor');
+  };
+
+// ============================================================================
 // COMPONENTE PRINCIPAL DO SISTEMA
 // ============================================================================
 const FoodCostSystem: React.FC = () => {
@@ -972,6 +999,14 @@ const FoodCostSystem: React.FC = () => {
   const [insumoFornecedorSelecionado, setInsumoFornecedorSelecionado] = useState(null);
   const [showNovoFornecedorPopup, setShowNovoFornecedorPopup] = useState(false);
   const [estadosBrasil, setEstadosBrasil] = useState([]);
+  const [novoFornecedor, setNovoFornecedor] = useState({
+    nome_razao_social: '',
+    cpf_cnpj: '',
+    telefone: '',
+    ramo: '',
+    cidade: '',
+    estado: ''
+  });
 
   // Salvar aba ativa no localStorage
   useEffect(() => {
@@ -1240,7 +1275,7 @@ const fetchInsumos = async () => {
     }
   };
 
-  const carregarInsumosDoFornecedor = async (fornecedorId) => {
+  const carregarInsumosDoFornecedor = useCallback(async (fornecedorId) => {
     if (!fornecedorId) {
       setInsumosDoFornecedor([]);
       return;
@@ -1256,7 +1291,7 @@ const fetchInsumos = async () => {
       console.error('Erro ao carregar insumos do fornecedor:', error);
       setInsumosDoFornecedor([]);
     }
-  };
+  }, []);
 
   const carregarEstados = async () => {
     try {
@@ -1300,35 +1335,13 @@ const fetchInsumos = async () => {
     const insumo = insumosDoFornecedor.find(i => i.id === parseInt(insumoId));
     setInsumoFornecedorSelecionado(insumo);
     
-    if (insumo) {
-      setNovoInsumo(prev => ({
-        ...prev,
-        nome: insumo.nome,
-        codigo: insumo.codigo,
-        unidade: insumo.unidade,
-        grupo: prev.grupo || 'Geral',
-        subgrupo: prev.subgrupo || ''
-      }));
-    }
+    // Não modificar novoInsumo aqui - será tratado pelo FormularioInsumoIsolado
   }, [insumosDoFornecedor]);
 
   const calcularDiferencaPreco = useCallback(() => {
-    if (!insumoFornecedorSelecionado || novoInsumo.novoInsumo.preco_compra_real === 0) {
-      return null;
-    }
-
-    const precoSistema = novoInsumo.preco_compra_real;
-    const precoFornecedor = insumoFornecedorSelecionado.preco_unitario;
-    
-    if (precoFornecedor === 0) return null;
-    
-    const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
-    return {
-      percentual: diferenca.toFixed(1),
-      aumentou: diferenca > 0,
-      precoFornecedor: precoFornecedor
-    };
-  }, [insumoFornecedorSelecionado, novoInsumo.preco_compra_real]);
+    // Esta função será removida pois o cálculo agora é feito dentro do FormularioInsumoIsolado
+    return null;
+  }, []);
 
   // ============================================================================
   // COMPONENTE SIDEBAR - NAVEGAÇÃO PRINCIPAL
@@ -1483,10 +1496,10 @@ const fetchInsumos = async () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-gray-900">{totalRestaurantes}</p>
-                <p className="text-sm text-blue-600 mt-1">Restaurantes ativos</p>
+                <p className="text-sm text-gree-600 mt-1">Restaurantes ativos</p>
               </div>
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <Users className="w-8 h-8 text-blue-600" />
+              <div className="bg-gree-50 p-3 rounded-lg">
+                <Users className="w-8 h-8 text-gree-600" />
               </div>
             </div>
           </div>
@@ -1527,9 +1540,9 @@ const fetchInsumos = async () => {
             </div>
 
             {/* Integração TOTVS Chef Web */}
-            <div className="bg-white p-4 rounded-lg border border-blue-100">
+            <div className="bg-white p-4 rounded-lg border border-gree-100">
               <div className="flex items-center gap-2 mb-2">
-                <LinkIcon className="w-5 h-5 text-blue-600" />
+                <LinkIcon className="w-5 h-5 text-gree-600" />
                 <h4 className="font-medium text-gray-900">Integração TOTVS Chef Web</h4>
               </div>
               <p className="text-sm text-gray-600">
@@ -1613,16 +1626,16 @@ const fetchInsumos = async () => {
   <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
     <div className="flex items-center justify-between mb-4">
       <h3 className="text-lg font-semibold text-gray-900">Últimas Receitas</h3>
-      <ChefHat className="w-5 h-5 text-blue-600" />
+      <ChefHat className="w-5 h-5 text-gree-600" />
     </div>
     <div className="space-y-3">
       {receitas.slice(-3).map((receita) => (
-        <div key={receita.id} className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+        <div key={receita.id} className="flex items-center justify-between p-2 bg-gree-50 rounded-lg">
           <div>
             <p className="text-sm font-medium text-gray-900">{receita.nome}</p>
             <p className="text-xs text-gray-500">{receita.categoria}</p>
           </div>
-          <span className="text-sm font-medium text-blue-600">
+          <span className="text-sm font-medium text-gree-600">
             {receita.porcoes} porções
           </span>
         </div>
@@ -1677,14 +1690,14 @@ const fetchInsumos = async () => {
     const handleSubmit = () => {
       // Validar campos obrigatórios
       if (!formData.nome?.trim() || !formData.unidade) {
-        alert('Nome e Unidade são obrigatórios!');
+        showErrorPopup('Campos Obrigatórios', 'Nome e Unidade são obrigatórios!');
         return;
       }
 
       // Validar unidade específica
       const unidadesValidas = ['unidade', 'caixa', 'kg', 'g', 'L', 'ml'];
       if (!unidadesValidas.includes(formData.unidade)) {
-        alert(`Unidade deve ser uma das: ${unidadesValidas.join(', ')}`);
+        showErrorPopup('Unidade Inválida', `Unidade deve ser uma das: ${unidadesValidas.join(', ')}`);
         return;
       }
 
@@ -2050,6 +2063,8 @@ const fetchInsumos = async () => {
       insumoNome: ''
     });
 
+    const [editandoFornecedor, setEditandoFornecedor] = useState(null);
+  
     const handleSearchChange = useCallback((term) => {
       setSearchTerm(term);
     }, [setSearchTerm]);
@@ -2297,8 +2312,8 @@ const fetchInsumos = async () => {
                           {/* Ícone F para insumos de fornecedores */}
                           {insumo.tipo_origem === 'fornecedor' && (
                             <div 
-                              className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
-                              title="Insumo cadastrado por fornecedor"
+                              className="bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
+                              title={`Fornecedor: ${insumo.fornecedor_nome || 'Nome não disponível'}`}
                             >
                               F
                             </div>
@@ -2342,7 +2357,7 @@ const fetchInsumos = async () => {
                             <span className="text-xs text-gray-500">Fornecedor B:</span>
                             <span className="text-xs text-gray-400">Em breve</span>
                           </div>
-                          <button className="w-full mt-2 py-1 px-2 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-colors">
+                          <button className="w-full mt-2 py-1 px-2 bg-gree-50 text-gree-600 rounded text-xs hover:bg-gree-100 transition-colors">
                             Ver Comparativo
                           </button>
                         </div>
@@ -2384,7 +2399,7 @@ const fetchInsumos = async () => {
             </div>
           )}
         </div>
-        {/* 🔧 USAR COMPONENTE ISOLADO */}
+        {/* USAR COMPONENTE ISOLADO */}
         <FormularioInsumoIsolado
           isVisible={showInsumoForm}
           editingInsumo={editingInsumo}
@@ -2407,6 +2422,14 @@ const fetchInsumos = async () => {
           showNovoFornecedorPopup={showNovoFornecedorPopup}
           setShowNovoFornecedorPopup={setShowNovoFornecedorPopup}
           carregarInsumosDoFornecedor={carregarInsumosDoFornecedor}
+          // Props necessárias para o popup de fornecedor que estavam faltando
+          editandoFornecedor={null}
+          setEditandoFornecedor={() => {}}
+          novoFornecedor={{ nome_razao_social: '', cpf_cnpj: '', telefone: '', ramo: '', cidade: '', estado: '' }}
+          setNovoFornecedor={() => {}}
+          handleCriarFornecedor={() => Promise.resolve()}
+          handleAtualizarFornecedor={() => Promise.resolve()}
+          isLoading={loading}
         />
         {/* POPUP CONFIRMAÇÃO DE EXCLUSÃO DE INSUMO - ADICIONAR AQUI */}
         {deleteConfirm.isOpen && (
@@ -2449,176 +2472,6 @@ const fetchInsumos = async () => {
             </div>
           </div>
         )}
-
-        {/* 🆕 POPUP COMPLETO PARA NOVO FORNECEDOR */}
-        {showNovoFornecedorPopup && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60]">
-            <div className="bg-white rounded-lg p-8 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-800">{editandoFornecedor ? 'Editar Fornecedor' : 'Cadastrar Novo Fornecedor'}</h3>
-                <button 
-                  onClick={() => setShowNovoFornecedorPopup(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Nome/Razão Social */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nome/Razão Social <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={novoFornecedor.nome_razao_social}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, nome_razao_social: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Nome ou Razão Social da empresa"
-                  />
-                </div>
-                
-                {/* CNPJ */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CPF ou CNPJ <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={novoFornecedor.cpf_cnpj}
-                    onChange={(e) => {
-                      // Formatação automática para CPF ou CNPJ
-                      let valor = e.target.value.replace(/\D/g, '');
-                      
-                      if (valor.length <= 11) {
-                        // Formatação CPF: XXX.XXX.XXX-XX
-                        valor = valor.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-                        valor = valor.replace(/^(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
-                        valor = valor.replace(/^(\d{3})(\d{3})/, '$1.$2');
-                      } else if (valor.length <= 14) {
-                        // Formatação CNPJ: XX.XXX.XXX/XXXX-XX
-                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})/, '$1.$2.$3/$4');
-                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})/, '$1.$2.$3');
-                        valor = valor.replace(/^(\d{2})(\d{3})/, '$1.$2');
-                      }
-                      
-                      setNovoFornecedor({...novoFornecedor, cpf_cnpj: valor});
-                    }}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                    maxLength="18"
-                  />
-                </div>
-
-                {/* Telefone */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Telefone
-                  </label>
-                  <input
-                    type="text"
-                    value={novoFornecedor.telefone}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, telefone: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
-
-                {/* Ramo */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ramo de Atividade
-                  </label>
-                  <input
-                    type="text"
-                    value={novoFornecedor.ramo}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, ramo: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Ex: Distribuidor de Alimentos"
-                  />
-                </div>
-
-                {/* Cidade */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cidade
-                  </label>
-                  <input
-                    type="text"
-                    value={novoFornecedor.cidade}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, cidade: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Nome da cidade"
-                  />
-                </div>
-
-                {/* Estado */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Estado (UF)
-                  </label>
-                  <select
-                    value={novoFornecedor.estado}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, estado: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                  >
-                    <option value="">Selecione o estado...</option>
-                    {estadosBrasil.map((estado) => (
-                      <option key={estado.sigla} value={estado.sigla}>
-                        {estado.sigla} - {estado.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Botões */}
-              <div className="flex justify-end space-x-4 mt-8">
-                <button
-                  onClick={async () => {
-                    console.log('🔵 BOTÃO CLICADO!');
-                    console.log('🔍 DEBUG: editandoFornecedor =', editandoFornecedor);
-                    console.log('🔍 DEBUG: será criação ou edição?', editandoFornecedor ? 'EDIÇÃO' : 'CRIAÇÃO');
-                    
-                    if (editandoFornecedor) {
-                      console.log('✅ Executando EDIÇÃO');
-                      await handleAtualizarFornecedor();
-                    } else {
-                      console.log('✅ Executando CRIAÇÃO');
-                      await handleCriarFornecedor();
-                    }
-                  }}
-                  disabled={isLoading}
-                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Salvando...' : (editandoFornecedor ? 'Atualizar Fornecedor' : 'Cadastrar Fornecedor')}
-                </button>
-                <button
-                  onClick={async () => {
-                      // *** DEBUG DA CONDIÇÃO ***
-                    console.log('🔍 DEBUG: editandoFornecedor =', editandoFornecedor);
-                    console.log('🔍 DEBUG: será criação ou edição?', editandoFornecedor ? 'EDIÇÃO' : 'CRIAÇÃO');
-
-                    if (editandoFornecedor) {
-                      console.log('✅ Chamando EDIÇÃO');
-                      await handleAtualizarFornecedor();
-                    } else {
-                      console.log('✅ Chamando CRIAÇÃO');
-                      await handleCriarFornecedor();
-                    }
-                  }}
-                  disabled={loading}
-                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Cadastrando...' : 'Cadastrar Fornecedor'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
     );
   };
@@ -2659,8 +2512,8 @@ const fetchInsumos = async () => {
               }}
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <Users className="w-6 h-6 text-blue-600" />
+                <div className="bg-gree-50 p-3 rounded-lg">
+                  <Users className="w-6 h-6 text-gree-600" />
                 </div>
                 {selectedRestaurante?.id === restaurante.id && (
                   <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs">
@@ -2679,7 +2532,7 @@ const fetchInsumos = async () => {
                 </div>
                 {restaurante.telefone && (
                   <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-gree-500 rounded-full"></div>
                     <span>{restaurante.telefone}</span>
                   </div>
                 )}
@@ -2876,14 +2729,14 @@ const fetchInsumos = async () => {
                     </div>
 
                     {/* CMV 25% */}
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <div className="bg-gree-50 p-4 rounded-lg border border-gree-100">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-blue-800">CMV 25%</span>
-                        <span className="text-lg font-bold text-blue-600">
+                        <span className="text-sm font-medium text-gree-800">CMV 25%</span>
+                        <span className="text-lg font-bold text-gree-600">
                           R$ {selectedReceita.cmv_25_porcento?.toFixed(2) || 'N/A'}
                         </span>
                       </div>
-                      <p className="text-xs text-blue-600">Margem equilibrada</p>
+                      <p className="text-xs text-gree-600">Margem equilibrada</p>
                     </div>
 
                     {/* CMV 30% */}
@@ -3166,7 +3019,7 @@ const fetchInsumos = async () => {
       if (!insumoParaExcluir || !fornecedorSelecionado) return;
 
       try {
-        setIsLoading(true);
+        setLoading(false);
         
         console.log('🗑️ Excluindo insumo:', insumoParaExcluir.id);
 
@@ -3199,7 +3052,7 @@ const fetchInsumos = async () => {
           'Não foi possível conectar com o servidor.'
         );
       } finally {
-        setIsLoading(false);
+        setLoading(false);  // ← CORREÇÃO: usar a variável correta do Insumos
         setShowConfirmExclusaoInsumo(false);
         setInsumoParaExcluir(null);
       }
@@ -3237,7 +3090,6 @@ const cancelarExclusao = () => {
 
     const adicionarFornecedor = async () => {
       try {
-        setIsLoading(true);
         const response = await fetch(`http://localhost:8000/api/v1/fornecedores/`, { // <- Note: removido ${fornecedorId} e adicionado {
           method: 'POST',
           headers: {
@@ -3281,7 +3133,6 @@ const cancelarExclusao = () => {
           'Não foi possível conectar com o servidor para cadastrar o fornecedor. Verifique sua conexão de internet e tente novamente.'
         );
       } finally {
-        setIsLoading(false);
       }
     };
 
@@ -3634,7 +3485,7 @@ const cancelarExclusao = () => {
                         )}
                       </div>
                       <div className="text-right space-y-2">
-                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                        <span className="inline-block px-2 py-1 bg-gree-100 text-gree-800 rounded-full text-xs">
                           {fornecedor.fornecedor_insumos?.length || 0} insumos
                         </span>
                         {/* Botões de ação */}
@@ -3644,7 +3495,7 @@ const cancelarExclusao = () => {
                               e.stopPropagation();
                               handleEditarFornecedor(fornecedor);
                             }}
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            className="p-1 text-gree-600 hover:bg-gree-50 rounded transition-colors"
                             title="Editar fornecedor"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -3744,7 +3595,7 @@ const cancelarExclusao = () => {
                                     e.stopPropagation();
                                     handleEditarInsumoFornecedor(insumo);
                                   }}
-                                  className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                  className="p-1.5 text-gree-600 hover:text-gree-800 hover:bg-gree-50 rounded transition-colors"
                                   title="Editar insumo"
                                 >
                                   <Edit2 className="w-4 h-4" />
@@ -3996,8 +3847,8 @@ const cancelarExclusao = () => {
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80]">
             <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="bg-blue-50 p-2 rounded-full">
-                  <Edit2 className="w-6 h-6 text-blue-600" />
+                <div className="bg-gree-50 p-2 rounded-full">
+                  <Edit2 className="w-6 h-6 text-gree-600" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-800">Editar Insumo</h3>
               </div>
@@ -4277,14 +4128,14 @@ const cancelarExclusao = () => {
 
               {/* Integração TOTVS Chef Web */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-blue-50 p-3 rounded-lg w-fit mb-4">
-                  <LinkIcon className="w-6 h-6 text-blue-600" />
+                <div className="bg-gree-50 p-3 rounded-lg w-fit mb-4">
+                  <LinkIcon className="w-6 h-6 text-gree-600" />
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-2">Integração TOTVS Chef Web</h3>
                 <p className="text-gray-600 text-sm mb-4">
                   Conectado ao TOTVS Chef Web para sincronização completa
                 </p>
-                <button className="w-full py-2 px-4 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                <button className="w-full py-2 px-4 bg-gree-50 text-gree-600 rounded-lg hover:bg-gree-100 transition-colors">
                   Conectar
                 </button>
               </div>
@@ -4361,12 +4212,12 @@ const cancelarExclusao = () => {
 
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-blue-100 p-2 rounded-lg">
-                    <Database className="w-5 h-5 text-blue-600" />
+                  <div className="bg-gree-100 p-2 rounded-lg">
+                    <Database className="w-5 h-5 text-gree-600" />
                   </div>
                   <h4 className="font-medium text-gray-900">Dados Sincronizados</h4>
                 </div>
-                <p className="text-2xl font-bold text-blue-600">98%</p>
+                <p className="text-2xl font-bold text-gree-600">98%</p>
                 <p className="text-sm text-gray-500">Taxa de sincronização</p>
               </div>
 
