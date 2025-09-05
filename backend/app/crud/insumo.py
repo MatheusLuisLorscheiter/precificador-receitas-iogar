@@ -25,10 +25,11 @@ def calcular_comparacao_precos(db: Session, insumo: Insumo) -> dict:
     Calcula a comparação de preços entre insumo do sistema e fornecedor.
     
     Esta função:
-    1. Calcula o preço por unidade do insumo do sistema
-    2. Busca o preço do fornecedor (se vinculado)
-    3. Calcula a diferença percentual
-    4. Determina se é mais barato ou mais caro
+    1. Calcula o preço por unidade base do insumo do sistema (normalizado pelo fator)
+    2. Busca o preço do fornecedor e normaliza pelo fator dele
+    3. Compara os preços na mesma unidade base
+    4. Calcula a diferença percentual
+    5. Determina se é mais barato ou mais caro
     
     Args:
         db (Session): Sessão do banco de dados
@@ -45,16 +46,22 @@ def calcular_comparacao_precos(db: Session, insumo: Insumo) -> dict:
     }
     
     # ========================================================================
-    # CALCULAR PREÇO POR UNIDADE DO SISTEMA
+    # CALCULAR PREÇO POR UNIDADE BASE DO SISTEMA (NORMALIZADO PELO FATOR)
     # ========================================================================
-    if hasattr(insumo, 'preco_compra') and insumo.preco_compra and insumo.quantidade:
-        # Converter de centavos para reais e multiplicar pela quantidade
-        resultado['preco_por_unidade'] = round(
-            (insumo.preco_compra / 100) * insumo.quantidade, 2
-        )
+    if (hasattr(insumo, 'preco_compra') and insumo.preco_compra and 
+        insumo.quantidade):
+    
+        # Converter de centavos para reais
+        preco_total_reais = insumo.preco_compra / 100
+        
+        # Calcular preço por unidade da embalagem
+        # Exemplo: R$ 14,22 ÷ 3 unidades = R$ 4,74 por unidade de 800ml
+        preco_por_unidade_embalagem = preco_total_reais / insumo.quantidade
+        
+        resultado['preco_por_unidade'] = round(preco_por_unidade_embalagem, 2)
     
     # ========================================================================
-    # BUSCAR PREÇO DO FORNECEDOR (SE VINCULADO)
+    # BUSCAR PREÇO DO FORNECEDOR E NORMALIZAR PELO FATOR DELE
     # ========================================================================
     if (hasattr(insumo, 'fornecedor_insumo_id') and 
         insumo.fornecedor_insumo_id):
@@ -64,23 +71,54 @@ def calcular_comparacao_precos(db: Session, insumo: Insumo) -> dict:
         ).first()
         
         if (fornecedor_insumo and 
-            hasattr(fornecedor_insumo, 'preco_unitario_centavos') and
-            fornecedor_insumo.preco_unitario_centavos):
-            # Converter de centavos para reais
+            hasattr(fornecedor_insumo, 'preco_unitario') and
+            fornecedor_insumo.preco_unitario and
+            hasattr(fornecedor_insumo, 'fator') and
+            fornecedor_insumo.fator):
+            
+            # Calcular preço por unidade base do fornecedor
+            # Exemplo fornecedor: R$ 3,49 por unidade de 200ml (fator 0,2)
+            # Preço por litro: R$ 3,49 ÷ 0,2L = R$ 17,45/L
+            preco_fornecedor_por_unidade_base = (
+                float(fornecedor_insumo.preco_unitario) / fornecedor_insumo.fator
+            )
+            
             resultado['fornecedor_preco_unidade'] = round(
-                fornecedor_insumo.preco_unitario_centavos / 100, 2
+                preco_fornecedor_por_unidade_base, 4
             )
     
     # ========================================================================
-    # CALCULAR DIFERENÇA PERCENTUAL
+    # CALCULAR DIFERENÇA PERCENTUAL NA MESMA BASE
     # ========================================================================
     if resultado['preco_por_unidade'] and resultado['fornecedor_preco_unidade']:
         preco_sistema = resultado['preco_por_unidade']
         preco_fornecedor = resultado['fornecedor_preco_unidade']
         
-        # Fórmula: ((preço_sistema - preço_fornecedor) / preço_fornecedor) * 100
-        # Resultado positivo = sistema mais caro
-        # Resultado negativo = sistema mais barato
+        # ================================================================
+        # APLICAR REGRA DE 3 PARA COMPARAR NA MESMA UNIDADE
+        # ================================================================
+        # Buscar o fornecedor_insumo para pegar o fator
+        if (hasattr(insumo, 'fornecedor_insumo_id') and 
+            insumo.fornecedor_insumo_id):
+            
+            fornecedor_insumo = db.query(FornecedorInsumo).filter(
+                FornecedorInsumo.id == insumo.fornecedor_insumo_id
+            ).first()
+            
+            if (fornecedor_insumo and hasattr(insumo, 'fator') and 
+                insumo.fator and fornecedor_insumo.fator):
+                
+                # REGRA DE 3:
+                # fator_insumo (0,8)     -------- preco_sistema (4,74)
+                # fator_fornecedor (0,2) -------- X
+                # X = (fator_fornecedor × preco_sistema) / fator_insumo
+                preco_sistema_convertido = (
+                    fornecedor_insumo.fator * preco_sistema
+                ) / insumo.fator
+                
+                preco_sistema = preco_sistema_convertido
+        
+        # Calcular diferença percentual com preços na mesma unidade
         diferenca_percentual = (
             (preco_sistema - preco_fornecedor) / preco_fornecedor
         ) * 100

@@ -360,6 +360,7 @@ const FormularioInsumoIsolado = React.memo(({
         nome: insumoFornecedorSelecionado.nome,
         codigo: insumoFornecedorSelecionado.codigo,
         unidade: insumoFornecedorSelecionado.unidade,
+        fator: insumoFornecedorSelecionado.fator || 1, // ✅ PREENCHIMENTO AUTOMÁTICO
         preco_compra_real: insumoFornecedorSelecionado.preco_unitario || 0
       }));
     }
@@ -742,7 +743,12 @@ const FormularioInsumoIsolado = React.memo(({
                 min="0"
                 value={formData.fator}
                 onChange={(e) => updateField('fator', parseFloat(e.target.value) || 1)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
+                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) 
+                    ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed' 
+                    : 'border-gray-300 bg-white focus:border-green-500'
+                }`}
                 placeholder="1.0"
               />
             </div>
@@ -798,13 +804,32 @@ const FormularioInsumoIsolado = React.memo(({
                 <Calculator className="w-5 h-5 text-green-600" />
               </div>
               <div className="text-2xl font-bold text-green-800">
-                R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
-                  (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}
+                R$ {(() => {
+                  if (!formData.preco_compra_total || !formData.quantidade || formData.quantidade <= 0) {
+                    return '0.00';
+                  }
+                  
+                  const precoUnidadeSistema = formData.preco_compra_total / formData.quantidade;
+                  
+                  // Se há fornecedor, usar regra de 3 para converter (mesmo cálculo da comparação)
+                  if (!ehFornecedorAnonimo && insumoFornecedorSelecionado && formData.fator && insumoFornecedorSelecionado.fator) {
+                    // REGRA DE 3: X = (fator_fornecedor × preco_unidade_sistema) / fator_insumo
+                    const precoConvertido = (insumoFornecedorSelecionado.fator * precoUnidadeSistema) / formData.fator;
+                    return precoConvertido.toFixed(2);
+                  }
+                  
+                  // Senão, mostrar preço por unidade normal
+                  return precoUnidadeSistema.toFixed(2);
+                })()}
               </div>
               <p className="text-sm text-green-600 mt-1">
-                R$ {(formData.preco_compra_total || 0).toFixed(2)} ÷ {formData.quantidade || 1} = 
-                R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
-                  (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}/unidade
+                {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
+                  <>Preço convertido para unidade do fornecedor ({(insumoFornecedorSelecionado.fator || 1) * 1000}ml)</>
+                ) : (
+                  <>R$ {(formData.preco_compra_total || 0).toFixed(2)} ÷ {formData.quantidade || 1} = 
+                  R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
+                    (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}/unidade</>
+                )}
               </p>
             </div>
 
@@ -822,9 +847,28 @@ const FormularioInsumoIsolado = React.memo(({
                 </div>
                 <div className="mt-2">
                   {(() => {
-                    // Calcular preço por unidade do sistema
-                    const precoSistema = formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
-                      formData.preco_compra_total / formData.quantidade : 0;
+                      // ====================================================================
+                      // REGRA DE 3 PARA CONVERSÃO DE UNIDADES
+                      // ====================================================================
+                    const precoSistema = (() => {
+                      if (!formData.preco_compra_total || !formData.quantidade || formData.quantidade <= 0) {
+                        return 0;
+                      }
+                      
+                      const precoUnidadeSistema = formData.preco_compra_total / formData.quantidade;
+                      
+                      // Se há fornecedor, usar regra de 3 para converter
+                      if (insumoFornecedorSelecionado && formData.fator && insumoFornecedorSelecionado.fator) {
+                        // fator_insumo -------- preco_unidade_sistema
+                        // fator_fornecedor --- X
+                        // X = (fator_fornecedor × preco_unidade_sistema) / fator_insumo
+                        const X = (insumoFornecedorSelecionado.fator * precoUnidadeSistema) / formData.fator;
+                        return X;
+                      }
+                      
+                      return precoUnidadeSistema;
+                    })();
+
                     const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
                     
                     if (precoSistema > 0 && precoFornecedor > 0) {
@@ -855,8 +899,25 @@ const FormularioInsumoIsolado = React.memo(({
                 
                 {/* Mostrar detalhes da comparação se houver diferença significativa */}
                 {(() => {
-                  const precoSistema = formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
-                    formData.preco_compra_total / formData.quantidade : 0;
+                  // ====================================================================
+                  // USAR O MESMO CÁLCULO CORRETO DA SEÇÃO ANTERIOR (considerando fator)
+                  // ====================================================================
+                  const precoSistema = (() => {
+                    if (!formData.preco_compra_total || !formData.quantidade || formData.quantidade <= 0) {
+                      return 0;
+                    }
+                    
+                    const precoUnidadeSistema = formData.preco_compra_total / formData.quantidade;
+                    
+                    if (insumoFornecedorSelecionado && formData.fator && insumoFornecedorSelecionado.fator) {
+                      // Regra de 3: X = (fator_fornecedor × preco_unidade_sistema) / fator_insumo
+                      const X = (insumoFornecedorSelecionado.fator * precoUnidadeSistema) / formData.fator;
+                      return X;
+                    }
+                    
+                    return precoUnidadeSistema;
+                  })();
+                  
                   const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
                   
                   if (precoSistema > 0 && precoFornecedor > 0) {
