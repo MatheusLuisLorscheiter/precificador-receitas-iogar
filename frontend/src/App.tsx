@@ -1134,7 +1134,7 @@ const fetchInsumos = async () => {
                 preco_compra_real: insumo.preco_unitario,
                 codigo: insumo.codigo,
                 // Campos que ficam vazios para insumos de fornecedor
-                fator: null,
+                fator: insumo.fator || null,
                 quantidade: null,
                 grupo: null,
                 subgrupo: null,
@@ -2407,7 +2407,12 @@ const fetchInsumos = async () => {
                           : (insumo.quantidade > 0 ? (insumo.preco_compra_real / insumo.quantidade).toFixed(2) : '0.00')
                         }
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.fator || 1.0}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {insumo.fator !== null && insumo.fator !== undefined ? 
+                          parseFloat(parseFloat(insumo.fator).toFixed(2)) : 
+                          ''
+                        }
+                      </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="space-y-1">
                           <div className="flex items-center justify-between">
@@ -3274,6 +3279,7 @@ const cancelarExclusao = () => {
           // Recarrega dados do fornecedor para mostrar o novo insumo
           await carregarFornecedorDetalhado(fornecedorSelecionado.id);
           
+     
           // Limpa formulário e fecha popup
           setNovoInsumo({
             codigo: '',

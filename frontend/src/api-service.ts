@@ -130,7 +130,7 @@ class ApiService {
     }
     
     // ============================================================================
-    // 🆕 MAPEAR EXATAMENTE PARA O SCHEMA InsumoCreate DO BACKEND
+    // MAPEAR EXATAMENTE PARA O SCHEMA InsumoCreate DO BACKEND
     // ============================================================================
     const dadosBackend = {
       grupo: String(insumo.grupo || 'Geral').trim(),
@@ -141,7 +141,8 @@ class ApiService {
       fator: Number(insumo.fator) || 1.0,
       unidade: String(insumo.unidade || 'kg').trim(),
       preco_compra_real: Number(insumo.preco_compra_real || insumo.preco_compra_total || 0),
-      fornecedor_id: insumo.fornecedor_id || null
+      fornecedor_id: insumo.fornecedor_id || null,
+      fornecedor_insumo_id: insumo.fornecedor_insumo_id || null
     };
 
     console.log('📦 Dados MAPEADOS para backend:', dadosBackend);

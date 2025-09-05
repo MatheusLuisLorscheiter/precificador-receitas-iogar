@@ -337,7 +337,8 @@ class FornecedorInsumoSimples(BaseModel):
     nome: str
     unidade: str
     preco_unitario: float
-
+    fator: float
+    
     model_config = {"from_attributes": True}
 
 

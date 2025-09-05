@@ -104,6 +104,10 @@ class InsumoCreate(InsumoBase):
         None,
         description="ID do fornecedor deste insumo (opcional)"
     )
+    fornecedor_insumo_id: Optional[int] = Field(
+        None,
+        description="ID do insumo no catálogo do fornecedor (opcional)"
+    )
 
     class Config:
         """

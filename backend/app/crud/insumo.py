@@ -354,6 +354,38 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
     if insumo.preco_compra_real is not None:
         preco_centavos = int(insumo.preco_compra_real * 100)
     
+    # ============================================================================
+    # CORRIGIR FATOR: Copiar automaticamente do fornecedor_insumo se fornecido
+    # ============================================================================
+    fator_final = insumo.fator
+    fornecedor_insumo_id_final = None
+    
+    # 🔍 DEBUG: Logs para identificar o problema
+    print(f"🔍 DEBUG - Dados recebidos:")
+    print(f"   fator original: {insumo.fator}")
+    print(f"   fornecedor_insumo_id: {insumo.fornecedor_insumo_id}")
+    
+    if insumo.fornecedor_insumo_id:
+        print(f"🔍 DEBUG - Buscando fornecedor_insumo com ID: {insumo.fornecedor_insumo_id}")
+        
+        # Buscar o insumo do fornecedor para copiar o fator correto
+        fornecedor_insumo = db.query(FornecedorInsumo).filter(
+            FornecedorInsumo.id == insumo.fornecedor_insumo_id
+        ).first()
+        
+        if fornecedor_insumo:
+            print(f"🔍 DEBUG - Fornecedor_insumo encontrado:")
+            print(f"   fator do fornecedor: {fornecedor_insumo.fator}")
+            fator_final = fornecedor_insumo.fator  # Copiar fator do fornecedor
+            fornecedor_insumo_id_final = insumo.fornecedor_insumo_id
+            print(f"🔍 DEBUG - Fator final definido: {fator_final}")
+        else:
+            print(f"❌ DEBUG - Fornecedor_insumo NÃO encontrado!")
+    else:
+        print(f"🔍 DEBUG - fornecedor_insumo_id é None, mantendo fator original")
+    
+    print(f"🔍 DEBUG - Criando insumo com fator: {fator_final}")
+    
     # Criar objeto do modelo
     db_insumo = Insumo(
         grupo=insumo.grupo,
@@ -361,9 +393,11 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
         codigo=insumo.codigo.upper(),
         nome=insumo.nome,
         quantidade=insumo.quantidade,
-        fator=insumo.fator,
+        fator=fator_final,  # Usar fator corrigido
         unidade=insumo.unidade,
-        preco_compra=preco_centavos
+        preco_compra=preco_centavos,
+        fornecedor_insumo_id=fornecedor_insumo_id_final,  # Vincular ao fornecedor_insumo
+        eh_fornecedor_anonimo=False if fornecedor_insumo_id_final else True
     )
 
     try:
@@ -436,6 +470,26 @@ def update_insumo(db: Session, insumo_id: int, insumo_update: InsumoUpdate) -> O
             update_data["preco_compra"] = int(preco_real * 100)
         else:
             update_data["preco_compra"] = None
+
+    # ============================================================================
+    # Copiar automaticamente do fornecedor_insumo se fornecido na atualização
+    # ============================================================================
+    if "fornecedor_insumo_id" in update_data and update_data["fornecedor_insumo_id"]:
+        # Buscar o insumo do fornecedor para copiar o fator correto
+        fornecedor_insumo = db.query(FornecedorInsumo).filter(
+            FornecedorInsumo.id == update_data["fornecedor_insumo_id"]
+        ).first()
+        
+        if fornecedor_insumo:
+            update_data["fator"] = fornecedor_insumo.fator  # Copiar fator do fornecedor
+            update_data["eh_fornecedor_anonimo"] = False
+        else:
+            # Se fornecedor_insumo_id foi fornecido mas não existe, remover e marcar como anônimo
+            update_data.pop("fornecedor_insumo_id")
+            update_data["eh_fornecedor_anonimo"] = True
+    elif "fornecedor_insumo_id" in update_data and update_data["fornecedor_insumo_id"] is None:
+        # Se fornecedor_insumo_id foi explicitamente definido como None, marcar como anônimo
+        update_data["eh_fornecedor_anonimo"] = True
 
     # Converter código para maiúsculo se fornecido
     if "codigo" in update_data:
