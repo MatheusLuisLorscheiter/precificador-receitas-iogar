@@ -126,7 +126,7 @@ class FornecedorInsumoBase(BaseModel):
     @classmethod
     def validar_unidade(cls, v: str) -> str:
         """
-        Valida a unidade de medida.
+        Valida a unidade de medida conforme padrão do sistema.
         
         Args:
             v (str): Unidade a ser validada
@@ -137,10 +137,7 @@ class FornecedorInsumoBase(BaseModel):
         if not v or not v.strip():
             raise ValueError('Unidade não pode estar vazia')
         
-        unidades_validas = [
-            'kg', 'g', 'mg', 'L', 'ml', 'unidade', 'un', 'pç', 'cx', 'pct', 
-            'dz', 'cento', 'ton', 'saca', 'lata', 'garrafa', 'frasco'
-        ]
+        unidades_validas = ['kg', 'g', 'L', 'ml', 'unidade', 'caixa', 'pacote']
         
         unidade_limpa = v.strip().lower()
         
@@ -152,14 +149,20 @@ class FornecedorInsumoBase(BaseModel):
             'litro': 'L',
             'mililitro': 'ml',
             'und': 'unidade',
-            'pc': 'pç',
-            'peca': 'pç',
-            'caixa': 'cx',
-            'pacote': 'pct',
-            'duzia': 'dz'
+            'un': 'unidade',
+            'pc': 'unidade',
+            'pç': 'unidade',
+            'peca': 'unidade',
+            'cx': 'caixa',
+            'pct': 'pacote',
+            'pacote': 'pacote'
         }
         
         unidade_final = mapeamentos.get(unidade_limpa, unidade_limpa)
+
+        # Validar se a unidade final está no padrão aceito
+        if unidade_final not in unidades_validas:
+            raise ValueError(f'Unidade deve ser uma das: {", ".join(unidades_validas)}')
         
         return unidade_final
 
@@ -338,7 +341,7 @@ class FornecedorInsumoSimples(BaseModel):
     unidade: str
     preco_unitario: float
     fator: float
-    
+
     model_config = {"from_attributes": True}
 
 

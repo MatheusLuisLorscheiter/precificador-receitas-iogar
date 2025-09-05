@@ -38,14 +38,17 @@ class InsumoBase(BaseModel):
     def validar_unidade(cls, v):
         """
         Valida se a unidade de medida é permitida.
-        
-        Unidades aceitas:
+    
+        Unidades aceitas (padrão do sistema):
+        - kg: Quilograma para peso
+        - g: Grama para peso
+        - L: Litro para volume
+        - ml: Mililitro para volume
         - unidade: Para produtos contáveis
         - caixa: Para embalagens
-        - kg, g: Para peso
-        - L, ml: Para volume
+        - pacote: Para embalagens menores
         """
-        unidades_validas = ['unidade', 'caixa', 'kg', 'g', 'L', 'ml']
+        unidades_validas = ['kg', 'g', 'L', 'ml', 'unidade', 'caixa', 'pacote']
         if v not in unidades_validas:
             raise ValueError(f'Unidade deve ser uma das: {", ".join(unidades_validas)}')
         return v

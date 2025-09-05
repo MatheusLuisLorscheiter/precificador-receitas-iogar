@@ -103,22 +103,23 @@ def custo_unitario_real(self):
 
 def validar_unidade_compativel(self):
     """
-    valida se a unidade é compativel com o nome
+    Valida se a unidade é compatível com o padrão do sistema.
     """
     unidades_compativeis = {
         "kg": ["g", "kg"],
-        "g": ["g"],
-        "l": ["ml", "l"],
-        "ml": ["ml"],
-        "undade": ["unidade"],
-        "caixa": ["unidade", "caixa"]
+        "g": ["g", "kg"],
+        "L": ["ml", "L"],
+        "ml": ["ml", "L"],
+        "unidade": ["unidade"],
+        "caixa": ["unidade", "caixa", "pacote"],
+        "pacote": ["unidade", "caixa", "pacote"]
     }
 
     if not self.insumo:
         return False
     
-    unidade_validas = unidades_compativeis.get(self.insumo.unidade,  [self.insumo.unidade])
-    return self.unidade_medida in unidade_validas
+    unidades_validas = unidades_compativeis.get(self.insumo.unidade, [self.insumo.unidade])
+    return self.unidade_medida in unidades_validas
 
 def obter_info_uso(self):
     """

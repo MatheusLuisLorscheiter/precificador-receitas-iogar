@@ -704,17 +704,18 @@ const FormularioInsumoIsolado = React.memo(({
                 value={formData.unidade}
                 onChange={(e) => updateField('unidade', e.target.value)}
                 disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors ${
-                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
+                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) 
+                    ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
                 }`}
               >
                 <option value="kg">Kg</option>
-                <option value="g">G</option>
+                <option value="g">g</option>
                 <option value="L">L</option>
                 <option value="ml">ml</option>
                 <option value="unidade">Unidade</option>
-                <option value="cx">Caixa</option>
-                <option value="pct">Pacote</option>
+                <option value="caixa">Caixa</option>
+                <option value="pacote">Pacote</option>
               </select>
             </div>
 
@@ -1757,7 +1758,7 @@ const fetchInsumos = async () => {
       }
 
       // Validar unidade específica
-      const unidadesValidas = ['unidade', 'caixa', 'kg', 'g', 'L', 'ml'];
+      const unidadesValidas = ['kg', 'g', 'L', 'ml', 'unidade', 'caixa', 'pacote'];
       if (!unidadesValidas.includes(formData.unidade)) {
         showErrorPopup('Unidade Inválida', `Unidade deve ser uma das: ${unidadesValidas.join(', ')}`);
         return;
@@ -1853,6 +1854,7 @@ const fetchInsumos = async () => {
                   <option value="L">Litro (L)</option>
                   <option value="ml">Mililitro (ml)</option>
                   <option value="unidade">Unidade (un)</option>
+                  <option value="pacote">Pacote</option>
                   <option value="caixa">Caixa</option>
                 </select>
               </div>
@@ -3960,6 +3962,8 @@ const cancelarExclusao = () => {
                       <option value="l">l</option>
                       <option value="ml">ml</option>
                       <option value="un">un</option>
+                      <option value="caixa">cx</option>
+                      <option value="pacote">pac</option>
                     </select>
                   </div>
                 </div>
@@ -4098,6 +4102,8 @@ const cancelarExclusao = () => {
                     <option value="L">L</option>
                     <option value="ml">ml</option>
                     <option value="unidade">Unidade</option>
+                    <option value="caixa">Caixa</option>
+                    <option value="pacote">Pacote</option>
                   </select>
                 </div>
 
