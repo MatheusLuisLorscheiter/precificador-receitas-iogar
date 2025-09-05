@@ -92,10 +92,16 @@ interface ReceitaInsumo {
 // ============================================================================
 
 const FadePopup: React.FC<PopupProps> = ({ type, title, message, isVisible, onClose }) => {
-  // Estado para controlar animação de saída
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // Efeito para controlar o fade out
+  // Função handleClose estável
+  const handleClose = useCallback(() => {
+    setIsAnimating(false);
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  }, [onClose]);
+
   useEffect(() => {
     if (isVisible) {
       setIsAnimating(true);
@@ -104,18 +110,13 @@ const FadePopup: React.FC<PopupProps> = ({ type, title, message, isVisible, onCl
         handleClose();
       }, 4000);
       return () => clearTimeout(timer);
+    } else {
+      // Se não está visível, garantir que não está animando
+      setIsAnimating(false);
     }
-  }, [isVisible]);
+  }, [isVisible, handleClose]);
 
-  // Função para fechar popup com animação
-  const handleClose = () => {
-    setIsAnimating(false);
-    setTimeout(() => {
-      onClose();
-    }, 300); // Tempo da animação de fade out
-  };
-
-  // Se não está visível, não renderiza nada
+  // Se não está visível E não está animando, não renderiza
   if (!isVisible && !isAnimating) return null;
 
   // Definir cores baseadas no tipo
