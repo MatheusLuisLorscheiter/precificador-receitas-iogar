@@ -137,7 +137,7 @@ class FornecedorInsumoBase(BaseModel):
         if not v or not v.strip():
             raise ValueError('Unidade não pode estar vazia')
         
-        unidades_validas = ['kg', 'g', 'L', 'ml', 'unidade', 'caixa', 'pacote']
+        unidades_validas = ['kg', 'g', 'L', 'ml', 'unidade', 'caixa', 'pacote', 'un', 'cx', 'pct', 'l', 'G']
         
         unidade_limpa = v.strip().lower()
         
@@ -340,6 +340,7 @@ class FornecedorInsumoSimples(BaseModel):
     nome: str
     unidade: str
     preco_unitario: float
+    quantidade: int
     fator: float
 
     model_config = {"from_attributes": True}

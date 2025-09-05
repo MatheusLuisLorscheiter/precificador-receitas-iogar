@@ -1137,7 +1137,7 @@ const fetchInsumos = async () => {
                 codigo: insumo.codigo,
                 // Campos que ficam vazios para insumos de fornecedor
                 fator: insumo.fator || null,
-                quantidade: null,
+                quantidade: insumo.quantidade || 1,
                 grupo: null,
                 subgrupo: null,
                 descricao: insumo.descricao,
@@ -3018,8 +3018,8 @@ const fetchInsumos = async () => {
         descricao: insumo.descricao || '',
         unidade: insumo.unidade || 'kg',
         preco_compra_real: insumo.preco_unitario || 0,
-        quantidade: 1,
-        fator: 1.0
+        quantidade: insumo.quantidade || 1,
+        fator: insumo.fator || 1.0
       });
       setShowPopupEditarInsumo(true);
     };
@@ -3043,7 +3043,9 @@ const fetchInsumos = async () => {
           subgrupo: novoInsumo.subgrupo || null,
           descricao: novoInsumo.descricao || null,
           unidade: novoInsumo.unidade,
-          preco_unitario: novoInsumo.preco_compra_real
+          preco_unitario: novoInsumo.preco_compra_real,
+          quantidade: novoInsumo.quantidade || 1,
+          fator: novoInsumo.fator || 1.0
         };
 
         console.log('📤 Atualizando insumo:', dadosParaAtualizar);
@@ -3957,17 +3959,42 @@ const cancelarExclusao = () => {
                       onChange={(e) => setNovoInsumo({...novoInsumo, unidade: e.target.value})}
                       className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                     >
-                      <option value="kg">kg</option>
+                      <option value="kg">Kg</option>
                       <option value="g">g</option>
-                      <option value="l">l</option>
+                      <option value="L">L</option>
                       <option value="ml">ml</option>
-                      <option value="un">un</option>
-                      <option value="caixa">cx</option>
-                      <option value="pacote">pac</option>
+                      <option value="unidade">Unidade</option>
+                      <option value="caixa">Caixa</option>
+                      <option value="pacote">Pacote</option>
                     </select>
                   </div>
                 </div>
-                
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={novoInsumo.quantidade}
+                      onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseInt(e.target.value) || 1})}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fator</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      value={novoInsumo.fator}
+                      onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value) || 1.0})}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
                   <input
