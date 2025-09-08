@@ -124,13 +124,22 @@ class Taxonomia(Base):
     
     # Relacionamento com insumos (1 taxonomia : N insumos)
     insumos = relationship(
-        "Insumo", 
+        "Insumo",
         back_populates="taxonomia"
     )
     
-    # Relacionamento com fornecedor_insumos (1 taxonomia : N fornecedor_insumos)
-    # Será implementado posteriormente
-    # fornecedor_insumos = relationship("FornecedorInsumo", back_populates="taxonomia")
+    # Relacionamento com insumos de fornecedores
+    fornecedor_insumos = relationship(
+        "FornecedorInsumo",
+        back_populates="taxonomia"
+    )
+    
+    # Relacionamento com aliases (Sistema de Mapeamento - Fase 2)
+    aliases = relationship(
+        "TaxonomiaAlias",
+        back_populates="taxonomia",
+        cascade="all, delete-orphan"
+    )
 
     # ========================================================================
     # MÉTODOS DA CLASSE

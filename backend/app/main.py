@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 
 # Imports dos routers/endpoints das APIs
 try:
-    from app.api.endpoints import insumos, receitas, fornecedores, taxonomias
+    from app.api.endpoints import insumos, receitas, fornecedores, taxonomias, fornecedor_insumos, taxonomia_aliases
     # Tentar importar o novo módulo
     try:
         from app.api.endpoints import fornecedor_insumos
@@ -196,6 +196,18 @@ app.include_router(
     tags=["taxonomias"],
     responses={
         404: {"description": "Taxonomia não encontrada"},
+        422: {"description": "Erro de validação"},
+        500: {"description": "Erro interno do servidor"}
+    }
+)
+
+# Router para operações com aliases de taxonomias (Sistema de Mapeamento - Fase 2)
+app.include_router(
+    taxonomia_aliases.router,
+    prefix="/api/v1/taxonomias",
+    tags=["taxonomia-aliases"],
+    responses={
+        404: {"description": "Alias não encontrado"},
         422: {"description": "Erro de validação"},
         500: {"description": "Erro interno do servidor"}
     }
