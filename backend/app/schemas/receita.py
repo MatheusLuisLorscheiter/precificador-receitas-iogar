@@ -2,7 +2,7 @@
 #   SCHEMAS PYDANTIC PARA RECEITAS - Validação de dados
 #   Descrição: Este arquivo define os schemas para validação de entrada e saída
 #   das APIs de receitas, restaurantes e relacionamentos
-#   Data: 13/08/2025 | Atualizado 19/08/2025
+#   Data: 13/08/2025
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 

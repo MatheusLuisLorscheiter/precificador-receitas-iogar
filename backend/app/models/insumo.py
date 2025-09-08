@@ -1,7 +1,7 @@
 #   ===================================================================================================
 #   Insumo Model -  Representa os ingredientes de cada receita
 #   Descrição: Esse modelo define a estrutura dos insumos que serão utilizados nas receitas.
-#   Data: 07/08/2025 | Atualizado: 25/08/2025 e 27/08/2025
+#   Data: 07/08/2025
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
@@ -50,6 +50,23 @@ class Insumo(BaseModel):
         comment="TRUE = sem fornecedor específico, FALSE = vinculado a fornecedor"
     )
 
+    # FK para Taxonomia Master (sistema novo de padronização)
+    taxonomia_id = Column(
+        Integer,
+        ForeignKey("taxonomias.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID da taxonomia hierárquica master (sistema de padronização)"
+    )
+
+    # Campo para marcar se é fornecedor anônimo
+    eh_fornecedor_anonimo = Column(
+        Boolean,
+        default=True,
+        nullable=False,
+        comment="TRUE = sem fornecedor específico, FALSE = vinculado a fornecedor"
+    )
+
 
     #   ===================================================================================================
     #   Relacionamentos com outras tabelas
@@ -62,6 +79,12 @@ class Insumo(BaseModel):
     fornecedor_insumo = relationship(
         "FornecedorInsumo",
         back_populates="insumos_sistema"
+    )
+
+    # Relacionamento com Taxonomia Master (sistema novo de padronização)
+    taxonomia = relationship(
+        "Taxonomia",
+        back_populates="insumos"
     )
 
     def __repr__(self):
@@ -92,6 +115,7 @@ class Insumo(BaseModel):
         if self.eh_fornecedor_anonimo or not self.fornecedor_insumo:
             return "Fornecedor Anônimo"
         return self.fornecedor_insumo.fornecedor.nome_razao_social
+    
     
     @property
     def fornecedor_preco_unitario(self) -> float:

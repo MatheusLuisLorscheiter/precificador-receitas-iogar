@@ -2,7 +2,7 @@
 #   API REST para receitas - Endpoints HTTP
 #   Descrição: Este arquivo define todas as rotas HTTP para operações com receitas,
 #   restaurantes e cálculos de preços
-#   Data: 15/08/2025 | Atualizado: 19/08/2025 e 20/08/2025
+#   Data: 15/08/2025
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 

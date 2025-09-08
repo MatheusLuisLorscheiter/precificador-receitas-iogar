@@ -2,7 +2,7 @@
 #   Schemas Pydantic para Insumos - Validação de dados
 #   Descrição: Este arquivo define os schemas para validação de entrada e saída
 #   das APIs de insumos usando Pydantic
-#   Data: 08/08/2025 | Atualizado: 19/08/2025 e 25/08/2025
+#   Data: 08/08/2025
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
@@ -110,6 +110,10 @@ class InsumoCreate(InsumoBase):
     fornecedor_insumo_id: Optional[int] = Field(
         None,
         description="ID do insumo no catálogo do fornecedor (opcional)"
+    )
+    taxonomia_id: Optional[int] = Field(
+        None,
+        description="ID da taxonomia hierárquica master (sistema de padronização)"
     )
 
     class Config:
@@ -236,6 +240,11 @@ class InsumoUpdate(BaseModel):
         description="ID do fornecedor deste insumo"
     )
 
+    taxonomia_id: Optional[int] = Field(
+        None,
+        description="ID da taxonomia hierárquica master para atualizar"
+    )
+
 # ===================================================================================================
 # Schemas para resposta
 # ===================================================================================================
@@ -293,6 +302,12 @@ class InsumoResponse(InsumoBase):
     fornecedor_id: Optional[int] = Field(
         None, 
         description="ID do fornecedor deste insumo"
+    )
+
+    # Relacionamento com taxonomia (sistema novo de padronização)
+    taxonomia_id: Optional[int] = Field(
+        None,
+        description="ID da taxonomia hierárquica master"
     )
 
     class Config:

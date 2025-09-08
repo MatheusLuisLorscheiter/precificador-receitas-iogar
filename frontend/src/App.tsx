@@ -6,7 +6,7 @@
  *           inteligente, cálculo de CMV e precificação automatizada.
  *           Interface moderna conectada ao backend FastAPI.
  * 
- * Data: 20/08/2025 | Atualizado todos os dias.
+ * Data: 20/08/2025
  * Autor: Will - Empresa: IOGAR
  * ============================================================================
  */

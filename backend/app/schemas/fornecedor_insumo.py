@@ -3,7 +3,7 @@
 # ============================================================================
 # Descrição: Schemas Pydantic para validação e serialização dos insumos
 # oferecidos por fornecedores (catálogo simples)
-# Data: 28/08/2025 | Atualizado: 01/09/2025
+# Data: 28/08/2025
 # Autor: Will - Empresa: IOGAR
 # ============================================================================
 

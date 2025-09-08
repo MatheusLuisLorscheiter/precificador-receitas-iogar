@@ -2,7 +2,7 @@
 #   Aplicação Principal FastAPI
 #   Descrição: Este é o arquivo principal que configura e inicia a aplicação FastAPI
 #   com todas as rotas de insumos e receitas
-#   Data: 15/08/2025 (Atualizada)
+#   Data: 15/08/2025
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 
 # Imports dos routers/endpoints das APIs
 try:
-    from app.api.endpoints import insumos, receitas, fornecedores
+    from app.api.endpoints import insumos, receitas, fornecedores, taxonomias
     # Tentar importar o novo módulo
     try:
         from app.api.endpoints import fornecedor_insumos
@@ -30,9 +30,16 @@ except ImportError as e:
 from app.database import engine
 from app.models.base import Base
 
+# ============================================================================
+# IMPORTAÇÕES DOS MODELOS (para registrar no SQLAlchemy)
+# ============================================================================
+from app.models import taxonomia, insumo, fornecedor, fornecedor_insumo, receita
+
 # Imports para variáveis de ambiente
 import os
 import time
+
+
 
 #   ===================================================================================================
 #   Configuração do ciclo de vida da aplicação
@@ -182,10 +189,22 @@ app.include_router(
     }
 )
 
+# Router para operações com taxonomias hierárquicas
+app.include_router(
+    taxonomias.router,
+    prefix="/api/v1/taxonomias",
+    tags=["taxonomias"],
+    responses={
+        404: {"description": "Taxonomia não encontrada"},
+        422: {"description": "Erro de validação"},
+        500: {"description": "Erro interno do servidor"}
+    }
+)
+
 # Router para operações com insumos do catálogo dos fornecedores (condicional)
 if HAS_FORNECEDOR_INSUMOS:
     app.include_router(
-        fornecedor_insumos.router,  # ← Este é o correto!
+        fornecedor_insumos.router,
         prefix="/api/v1", 
         tags=["fornecedor-insumos"],
         responses={
@@ -194,6 +213,8 @@ if HAS_FORNECEDOR_INSUMOS:
             500: {"description": "Erro interno do servidor"}
         }
     )
+
+
 
 #   ===================================================================================================
 #   Middleware para logging de requisições

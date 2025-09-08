@@ -2,7 +2,7 @@
 # MODELO DE FORNECEDOR - Estrutura da tabela fornecedores
 # ============================================================================
 # Descrição: Define a estrutura da tabela fornecedores no banco de dados
-# Data: 27/08/2025 | Atualizado 03/09/2025 
+# Data: 27/08/2025
 # Autor: Will
 # ============================================================================
 

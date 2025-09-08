@@ -2,7 +2,7 @@
 #   CRUD RECEITAS - Operações de banco de dados para receitas
 #   Descrição: Este arquivo contém todas as operações de banco de dados para receitas,
 #   restaurantes e relacionamentos receita-insumo
-#   Data: 14/08/2025 | Atualizado 19/08/2025 e 20/08/2025
+#   Data: 14/08/2025
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 

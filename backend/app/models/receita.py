@@ -2,7 +2,7 @@
 #   Modelos de Receitas - Restaurantes, Receitas e Relacionamentos
 #   Descrição: Este arquivo define os modelos SQLAlchemy para receitas, restaurantes e 
 #   relacionamentos receita-insumo com cálculos automáticos de CMV e preços sugeridos
-#   Data: 13/08/2025 | Atualizado: 18/08/2025 e 19/08/2025
+#   Data: 13/08/2025
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
