@@ -80,7 +80,7 @@ def calcular_comparacao_precos(db: Session, insumo: Insumo) -> dict:
             # Exemplo fornecedor: R$ 3,49 por unidade de 200ml (fator 0,2)
             # Preço por litro: R$ 3,49 ÷ 0,2L = R$ 17,45/L
             preco_fornecedor_por_unidade_base = (
-                float(fornecedor_insumo.preco_unitario) / fornecedor_insumo.fator
+                float(fornecedor_insumo.preco_unitario) / float(fornecedor_insumo.fator)
             )
             
             resultado['fornecedor_preco_unidade'] = round(

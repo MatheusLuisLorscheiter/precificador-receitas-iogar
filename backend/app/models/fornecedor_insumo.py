@@ -132,7 +132,25 @@ class FornecedorInsumo(Base):
         Returns:
             float: Preço unitário em reais
         """
+        if self.preco_unitario is None:
+            return 0.0
+        
+        # Conversão segura de Decimal para float
         return float(self.preco_unitario)
+
+    @property
+    def fator_real(self) -> float:
+        """
+        Converte o fator de Decimal para float.
+        
+        Returns:
+            float: Fator de conversão
+        """
+        if self.fator is None:
+            return 1.0
+        
+        # Conversão segura de Decimal para float  
+        return float(self.fator)
     
     @property
     def codigo_completo(self) -> str:

@@ -82,9 +82,10 @@ def listar_insumos(
 
     # Converter preços para reais e retornar
     for insumo in insumos:
-        # Adiciona propriedade calculada para preço em reais
-        if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
-            insumo.preco_compra_real = insumo.preco_compra / 100
+        # Conversão segura - adiciona propriedade calculada para preço em reais
+        if hasattr(insumo, 'preco_compra') and insumo.preco_compra is not None:
+            # Usar a property que já foi corrigida
+            insumo.preco_compra_real = insumo.preco_compra_real  # Usa a property corrigida
         else:
             insumo.preco_compra_real = None
 
@@ -179,8 +180,9 @@ def obter_insumo(
         )
     
     # Converter preço para reais
-    if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
+    if hasattr(insumo, 'preco_compra') and insumo.preco_compra is not None:
         insumo.preco_compra_centavos = insumo.preco_compra
+        # A property preco_compra_real já foi corrigida no modelo
     else:
         insumo.preco_compra_centavos = None
 
@@ -271,8 +273,9 @@ def criar_insumos_lote(
     # Converter preços para reais
     for insumo in insumos_criados:
         if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
-            insumo.preco_compra_real = insumo.preco_compra / 100
+            # Usa a property que já foi corrigida no modelo
             insumo.preco_compra_centavos = insumo.preco_compra
+            # A property preco_compra_real já calcula corretamente
         else:
             insumo.preco_compra_real = None
             insumo.preco_compra_centavos = None
@@ -315,7 +318,6 @@ def atualizar_insumo(
             )
         # Converter preço para reais
         if hasattr(insumo_atualizado, 'preco_compra') and insumo_atualizado.preco_compra:
-           insumo_atualizado.preco_compra_real = insumo_atualizado.preco_compra / 100
            insumo_atualizado.preco_compra_centavos = insumo_atualizado.preco_compra
         else:
             insumo_atualizado.preco_compra_real = None

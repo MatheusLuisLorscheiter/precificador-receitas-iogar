@@ -201,12 +201,22 @@ def obter_insumos_sem_taxonomia() -> List[Dict]:
     try:
         response = requests.get(f"{BASE_URL}/api/v1/insumos/?limit=1000")
         if response.status_code == 200:
+            # A API de insumos retorna diretamente List[InsumoListResponse]
+            # NÃO usa wrapper como {'insumos': [...]}
             data = response.json()
             insumos_sem_taxonomia = []
             
-            for insumo in data.get("insumos", []):
-                if not insumo.get("taxonomia_id"):
-                    insumos_sem_taxonomia.append(insumo)
+            # data já é uma lista, não um dict com propriedade 'insumos'
+            if isinstance(data, list):
+                for insumo in data:
+                    if not insumo.get("taxonomia_id"):
+                        insumos_sem_taxonomia.append(insumo)
+            else:
+                # Fallback caso a estrutura mude no futuro
+                insumos_lista = data.get("insumos", data if isinstance(data, list) else [])
+                for insumo in insumos_lista:
+                    if not insumo.get("taxonomia_id"):
+                        insumos_sem_taxonomia.append(insumo)
             
             print(f"📦 {len(insumos_sem_taxonomia)} insumos diretos sem taxonomia")
             return insumos_sem_taxonomia
@@ -222,23 +232,56 @@ def obter_fornecedor_insumos_sem_taxonomia() -> List[Dict]:
     Obtém todos os insumos de fornecedores que não possuem taxonomia vinculada.
     """
     try:
-        response = requests.get(f"{BASE_URL}/api/v1/fornecedores/insumos/?limit=1000")
-        if response.status_code == 200:
-            data = response.json()
-            fornecedor_insumos_sem_taxonomia = []
-            
-            # Assumindo que a API retorna os insumos de fornecedor
-            for insumo in data.get("insumos", []):
-                if not insumo.get("taxonomia_id"):
-                    fornecedor_insumos_sem_taxonomia.append(insumo)
-            
-            print(f"🏪 {len(fornecedor_insumos_sem_taxonomia)} insumos de fornecedores sem taxonomia")
-            return fornecedor_insumos_sem_taxonomia
-        else:
-            print("⚠️  Endpoint de fornecedor_insumos não disponível ou vazio")
+        # Primeiro, obter todos os fornecedores
+        response_fornecedores = requests.get(f"{BASE_URL}/api/v1/fornecedores/?limit=1000")
+        if response_fornecedores.status_code != 200:
+            print("⚠️  Erro ao carregar lista de fornecedores")
             return []
+        
+        fornecedores_data = response_fornecedores.json()
+        fornecedores = fornecedores_data.get("fornecedores", [])
+        
+        if not fornecedores:
+            print("⚠️  Nenhum fornecedor encontrado")
+            return []
+        
+        # Coletar insumos de todos os fornecedores
+        fornecedor_insumos_sem_taxonomia = []
+        total_fornecedores = len(fornecedores)
+        
+        print(f"🔍 Verificando insumos de {total_fornecedores} fornecedores...")
+        
+        for i, fornecedor in enumerate(fornecedores, 1):
+            fornecedor_id = fornecedor["id"]
+            
+            try:
+                # Buscar insumos do fornecedor específico
+                response = requests.get(f"{BASE_URL}/api/v1/fornecedores/{fornecedor_id}/insumos/?limit=1000")
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    # A API retorna FornecedorInsumoListResponse com propriedade 'insumos'
+                    insumos = data.get("insumos", [])
+                    
+                    # Filtrar insumos sem taxonomia
+                    for insumo in insumos:
+                        if not insumo.get("taxonomia_id"):
+                            fornecedor_insumos_sem_taxonomia.append(insumo)
+                    
+                    print(f"    📦 Fornecedor {i}/{total_fornecedores}: {len(insumos)} insumos")
+                    
+                else:
+                    print(f"    ⚠️  Erro ao buscar insumos do fornecedor {fornecedor_id}: HTTP {response.status_code}")
+                    
+            except Exception as e:
+                print(f"    ❌ Erro ao processar fornecedor {fornecedor_id}: {e}")
+                continue
+        
+        print(f"🏪 {len(fornecedor_insumos_sem_taxonomia)} insumos de fornecedores sem taxonomia")
+        return fornecedor_insumos_sem_taxonomia
+        
     except Exception as e:
-        print(f"⚠️  Endpoint de fornecedor_insumos: {e}")
+        print(f"❌ Erro geral: {e}")
         return []
 
 def processar_sugestoes(insumos: List[Dict], taxonomias_disponiveis: Dict, tipo: str):
@@ -313,6 +356,7 @@ def aplicar_vinculacoes(sugestoes_aprovadas: List[Dict]):
     
     sucessos = 0
     erros = 0
+    avisos = 0
     
     for sugestao in sugestoes_aprovadas:
         insumo = sugestao["insumo"]
@@ -321,30 +365,60 @@ def aplicar_vinculacoes(sugestoes_aprovadas: List[Dict]):
         
         try:
             if tipo == "insumos diretos":
-                # Atualizar insumo direto
+                # Atualizar insumo direto - endpoint correto
                 url = f"{BASE_URL}/api/v1/insumos/{insumo['id']}"
                 data = {"taxonomia_id": taxonomia_id}
                 response = requests.put(url, json=data)
+                
+                if response.status_code in [200, 201]:
+                    sucessos += 1
+                    print(f"✅ {insumo['nome']} vinculado")
+                else:
+                    erros += 1
+                    print(f"❌ Erro ao vincular {insumo['nome']}: HTTP {response.status_code}")
+                    if response.status_code == 400:
+                        try:
+                            error_detail = response.json()
+                            print(f"    Detalhes: {error_detail.get('detail', 'Erro de validação')}")
+                        except:
+                            pass
             else:
-                # Atualizar insumo de fornecedor (endpoint pode variar)
-                url = f"{BASE_URL}/api/v1/fornecedores/insumos/{insumo['id']}"
-                data = {"taxonomia_id": taxonomia_id}
-                response = requests.put(url, json=data)
-            
-            if response.status_code in [200, 201]:
-                sucessos += 1
-                print(f"✅ {insumo['nome']} vinculado")
-            else:
-                erros += 1
-                print(f"❌ Erro ao vincular {insumo['nome']}: {response.status_code}")
+                # ========================================================================
+                # PROBLEMA IDENTIFICADO: INSUMOS DE FORNECEDOR NÃO SUPORTAM TAXONOMIA_ID
+                # ========================================================================
+                # O schema FornecedorInsumoUpdate não possui campo taxonomia_id
+                # A API de fornecedor_insumos não foi projetada para usar taxonomias
+                # Isso precisa ser implementado no backend primeiro
+                
+                avisos += 1
+                print(f"⚠️  {insumo['nome']} - Taxonomias não suportadas para insumos de fornecedor")
+                print(f"    💡 Sugestão: Implementar taxonomia_id no FornecedorInsumoUpdate schema")
+                print(f"    🔗 Endpoint seria: PUT /api/v1/fornecedores/{insumo.get('fornecedor_id', 'ID')}/insumos/{insumo['id']}")
+                
+                # TODO: Quando implementado no backend, usar este código:
+                # fornecedor_id = insumo.get('fornecedor_id')
+                # if not fornecedor_id:
+                #     print(f"    ❌ fornecedor_id não encontrado no insumo")
+                #     erros += 1
+                #     continue
+                # 
+                # url = f"{BASE_URL}/api/v1/fornecedores/{fornecedor_id}/insumos/{insumo['id']}"
+                # data = {"taxonomia_id": taxonomia_id}  # ← Precisa ser adicionado ao schema
+                # response = requests.put(url, json=data)
                 
         except Exception as e:
             erros += 1
-            print(f"❌ Erro ao vincular {insumo['nome']}: {e}")
+            print(f"❌ Erro ao processar {insumo['nome']}: {e}")
     
     print(f"\n📊 Resultado:")
     print(f"   ✅ Sucessos: {sucessos}")
     print(f"   ❌ Erros: {erros}")
+    if avisos > 0:
+        print(f"   ⚠️  Avisos (limitações): {avisos}")
+        print(f"\n💡 Próximos passos para insumos de fornecedor:")
+        print(f"   1. Adicionar taxonomia_id ao schema FornecedorInsumoUpdate")
+        print(f"   2. Atualizar endpoint PUT de fornecedor_insumos")
+        print(f"   3. Implementar suporte a taxonomias no CRUD de fornecedor_insumo")
 
 def main():
     """

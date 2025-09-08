@@ -97,12 +97,22 @@ class Insumo(BaseModel):
     @property
     def preco_compra_real(self):
         """Converte o preço de centavos para reais."""
-        return self.preco_compra / 100 if self.preco_compra else 0
+        if not self.preco_compra:
+            return 0.0
+        # Garantir que a operação seja feita com tipos compatíveis
+        preco_centavos = float(self.preco_compra) if self.preco_compra else 0.0
+        return preco_centavos / 100.0
     
     @preco_compra_real.setter
     def preco_compra_real(self, valor):
         """Converte reais para centavos"""
-        self.preco_compra = int(valor * 100) if valor else 0
+        if valor is None:
+            self.preco_compra = None
+        else:
+            # Garantir que o valor seja convertido corretamente
+            valor_float = float(valor) if valor else 0.0
+            self.preco_compra = int(valor_float * 100)
+
 
     @property
     def fornecedor_nome(self) -> str:
@@ -127,7 +137,10 @@ class Insumo(BaseModel):
         """
         if self.eh_fornecedor_anonimo or not self.fornecedor_insumo:
             return 0.0
-        return self.fornecedor_insumo.preco_unitario_real
+        
+        # Garantir conversão segura de Decimal para float
+        preco_unitario = self.fornecedor_insumo.preco_unitario
+        return float(preco_unitario) if preco_unitario is not None else 0.0
 
     #   ===================================================================================================
     #   Novos campos para valor de compra por Kg e total comprado
