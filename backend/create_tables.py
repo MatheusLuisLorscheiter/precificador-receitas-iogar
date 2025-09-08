@@ -93,99 +93,39 @@ def criar_dados_teste():
     
     try:
         # ========================================================================
-        # 1. CRIAR TAXONOMIAS MASTER (NOVO SISTEMA DE PADRONIZAÇÃO)
+        # 1. TAXONOMIAS - CRIADAS VIA SCRIPTS ESPECIALIZADOS
         # ========================================================================
-        print(" 🏷️  Criando taxonomias master...")
+        print(" 🏷️  Taxonomias disponíveis via scripts especializados:")
+        print("     • Para restaurantes gerais: python popular_taxonomias_gerais.py")
+        print("     • Para restaurantes japoneses: python popular_taxonomias_japonesas.py")
+        print("     • Execute os scripts antes de criar insumos para vinculação automática")
         
-        taxonomias_data = [
-            # CARNES
-            {"categoria": "Carnes", "subcategoria": "Bovino", "especificacao": "Moído", "variante": "Premium", 
-             "descricao": "Carnes bovinas moídas de qualidade premium"},
-            {"categoria": "Carnes", "subcategoria": "Bovino", "especificacao": "Filé", "variante": "Premium", 
-             "descricao": "Filés bovinos de qualidade premium"},
-            {"categoria": "Carnes", "subcategoria": "Suíno", "especificacao": "Costela", "variante": "Standard", 
-             "descricao": "Costela suína padrão"},
-            {"categoria": "Carnes", "subcategoria": "Frango", "especificacao": "Peito", "variante": "Orgânico", 
-             "descricao": "Peito de frango orgânico"},
+        # Verificar quantas taxonomias já existem
+        total_taxonomias = db.query(Taxonomia).count()
+        if total_taxonomias > 0:
+            print(f"     ✅ {total_taxonomias} taxonomias já criadas no sistema")
             
-            # PEIXES
-            {"categoria": "Peixes", "subcategoria": "Salmão", "especificacao": "Filé", "variante": "Fresco", 
-             "descricao": "Filé de salmão fresco"},
-            {"categoria": "Peixes", "subcategoria": "Tilápia", "especificacao": "Inteiro", "variante": "Congelado", 
-             "descricao": "Tilápia inteira congelada"},
-            
-            # VERDURAS
-            {"categoria": "Verduras", "subcategoria": "Tomate", "especificacao": "Inteiro", "variante": "Orgânico", 
-             "descricao": "Tomate inteiro orgânico"},
-            {"categoria": "Verduras", "subcategoria": "Cebola", "especificacao": "Inteira", "variante": "Standard", 
-             "descricao": "Cebola inteira padrão"},
-            {"categoria": "Verduras", "subcategoria": "Alface", "especificacao": "Folhas", "variante": "Hidropônico", 
-             "descricao": "Alface hidropônico em folhas"},
-            
-            # LATICÍNIOS
-            {"categoria": "Laticínios", "subcategoria": "Queijo", "especificacao": "Mussarela", "variante": "Premium", 
-             "descricao": "Queijo mussarela premium"},
-            {"categoria": "Laticínios", "subcategoria": "Leite", "especificacao": "Integral", "variante": "UHT", 
-             "descricao": "Leite integral UHT"},
-            
-            # GRÃOS
-            {"categoria": "Grãos", "subcategoria": "Arroz", "especificacao": "Branco", "variante": "Tipo 1", 
-             "descricao": "Arroz branco tipo 1"},
-            {"categoria": "Grãos", "subcategoria": "Feijão", "especificacao": "Carioca", "variante": "Premium", 
-             "descricao": "Feijão carioca premium"},
-            
-            # MASSAS
-            {"categoria": "Massas", "subcategoria": "Espaguete", "especificacao": "Seco", "variante": "Standard", 
-             "descricao": "Macarrão espaguete seco padrão"},
-            {"categoria": "Massas", "subcategoria": "Penne", "especificacao": "Seco", "variante": "Premium", 
-             "descricao": "Macarrão penne seco premium"},
-            
-            # ÓLEOS E TEMPEROS
-            {"categoria": "Óleos", "subcategoria": "Azeite", "especificacao": "Extra Virgem", "variante": "Premium", 
-             "descricao": "Azeite extra virgem premium"},
-            {"categoria": "Temperos", "subcategoria": "Sal", "especificacao": "Refinado", "variante": "Standard", 
-             "descricao": "Sal refinado padrão"},
-            {"categoria": "Temperos", "subcategoria": "Pimenta", "especificacao": "Preta", "variante": "Moída", 
-             "descricao": "Pimenta preta moída"}
-        ]
+            # Mostrar exemplos das taxonomias existentes
+            exemplos = db.query(Taxonomia).limit(3).all()
+            for taxonomia in exemplos:
+                print(f"     📋 {taxonomia.codigo_taxonomia}: {taxonomia.nome_completo}")
+        else:
+            print("     ⚠️  Nenhuma taxonomia encontrada - execute os scripts primeiro")
         
-        taxonomias_criadas = []
-        for data in taxonomias_data:
-            # Verificar se já existe para evitar duplicatas
-            existing = db.query(Taxonomia).filter(
-                Taxonomia.categoria == data["categoria"],
-                Taxonomia.subcategoria == data["subcategoria"],
-                Taxonomia.especificacao == data["especificacao"],
-                Taxonomia.variante == data["variante"]
-            ).first()
-            
-            if not existing:
-                # Criar nova taxonomia
-                taxonomia = Taxonomia(**data)
-                
-                # Gerar código e nome completo automaticamente
-                taxonomia.codigo_taxonomia = taxonomia.gerar_codigo_taxonomia()
-                taxonomia.nome_completo = taxonomia.gerar_nome_completo()
-                
-                db.add(taxonomia)
-                db.commit()
-                db.refresh(taxonomia)
-                taxonomias_criadas.append(taxonomia)
-                print(f"    ✅ {taxonomia.nome_completo} - Código: {taxonomia.codigo_taxonomia}")
-            else:
-                taxonomias_criadas.append(existing)
-                print(f"    ⚠️  {existing.nome_completo} (já existia)")
-        
-        print(f"    📊 Total de taxonomias criadas: {len(taxonomias_criadas)}")
+        # Lista vazia para manter compatibilidade com código posterior
+        taxonomias_criadas = db.query(Taxonomia).all()
 
         # ========================================================================
         # 2. CRIAR INSUMOS (ATUALIZADO PARA USAR TAXONOMIAS)
         # ========================================================================
         print(" 📦 Criando insumos...")
         
-        # Função auxiliar para buscar taxonomia
+        # Função auxiliar para buscar taxonomia (requer taxonomias pré-existentes)
         def buscar_taxonomia(categoria, subcategoria, especificacao=None, variante=None):
-            """Busca uma taxonomia pelos critérios fornecidos"""
+            """
+            Busca uma taxonomia pelos critérios fornecidos.
+            IMPORTANTE: Execute os scripts de taxonomia antes de usar esta função.
+            """
             query = db.query(Taxonomia).filter(
                 Taxonomia.categoria == categoria,
                 Taxonomia.subcategoria == subcategoria

@@ -124,6 +124,37 @@ async def criar_taxonomia(
             detail=f"Erro interno: {str(e)}"
         )
 
+# ============================================================================
+# ENDPOINTS DE ESTATÍSTICAS E MÉTRICAS
+# ============================================================================
+
+@router.get("/estatisticas", summary="Estatísticas das Taxonomias")
+async def estatisticas_taxonomias(db: Session = Depends(get_db)):
+    """
+    Retorna estatísticas gerais sobre as taxonomias do sistema.
+    
+    Métricas incluídas:
+    - Total de taxonomias (ativas/inativas)
+    - Número de categorias e subcategorias únicas
+    - Percentual de insumos com taxonomia vinculada
+    - Distribuição por categoria
+    
+    Útil para dashboards e relatórios gerenciais.
+    """
+    try:
+        estatisticas = crud_taxonomia.get_estatisticas_taxonomia(db=db)
+        
+        return {
+            "message": "Estatísticas das taxonomias",
+            "data": estatisticas
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro interno: {str(e)}"
+        )
+
 @router.get("/{taxonomia_id}", response_model=TaxonomiaResponse, summary="Buscar Taxonomia por ID")
 async def buscar_taxonomia(
     taxonomia_id: int = Path(..., ge=1, description="ID da taxonomia"),
@@ -442,36 +473,6 @@ async def criar_taxonomias_lote(
             detail=f"Erro interno: {str(e)}"
         )
 
-# ============================================================================
-# ENDPOINTS DE ESTATÍSTICAS E MÉTRICAS
-# ============================================================================
-
-@router.get("/estatisticas", summary="Estatísticas das Taxonomias")
-async def estatisticas_taxonomias(db: Session = Depends(get_db)):
-    """
-    Retorna estatísticas gerais sobre as taxonomias do sistema.
-    
-    Métricas incluídas:
-    - Total de taxonomias (ativas/inativas)
-    - Número de categorias e subcategorias únicas
-    - Percentual de insumos com taxonomia vinculada
-    - Distribuição por categoria
-    
-    Útil para dashboards e relatórios gerenciais.
-    """
-    try:
-        estatisticas = crud_taxonomia.get_estatisticas_taxonomia(db=db)
-        
-        return {
-            "message": "Estatísticas das taxonomias",
-            "data": estatisticas
-        }
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erro interno: {str(e)}"
-        )
 
 # ============================================================================
 # ENDPOINTS DE BUSCA AVANÇADA
