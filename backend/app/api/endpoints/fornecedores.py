@@ -36,7 +36,7 @@ router = APIRouter()
 @router.get("/", response_model=FornecedorListResponse)
 def listar_fornecedores(
     skip: int = Query(0, ge=0, description="Número de registros a pular"),
-    limit: int = Query(20, ge=1, le=100, description="Máximo de registros por pégina"),
+    limit: int = Query(20, ge=1, le=100, description="Máximo de registros por página"),  # CORRIGIDO
     busca: Optional[str] = Query(None, description="Termo de busca (nome, CNPJ, cidade, ramo)"),
     db: Session = Depends(get_db)
 ):
@@ -112,7 +112,7 @@ def obter_fornecedor(
     if not fornecedor:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Forncedor com ID {fornecedor_id} não foi encontrado"
+            detail=f"Fornecedor com ID {fornecedor_id} não foi encontrado"
         )
     
     return fornecedor
@@ -174,7 +174,7 @@ def criar_fornecedor(
     - 400: Dados inválidos ou documento duplicado
     """
     try:
-        # Tentea criar o forncedor
+        # Tenta criar o fornecedor
         novo_fornecedor = crud_fornecedor.create_fornecedor(db=db, fornecedor=fornecedor)
         return novo_fornecedor
     
@@ -334,7 +334,7 @@ def listar_estados_brasileiros():
 # ============================================================================
 
 @router.get("/ramo/{ramo}", response_model=List[FornecedorResponse])
-def lisar_fornecedores_por_ramo(
+def listar_fornecedores_por_ramo(
     ramo: str,
     db: Session = Depends(get_db)
 ):
@@ -353,48 +353,4 @@ def lisar_fornecedores_por_ramo(
     - GET /fornecedores/ramo/alimenticio - Fornecedores do ramo alimentício
     """
     fornecedor = crud_fornecedor.get_fornecedores_por_ramo(db=db, ramo=ramo)
-    return FornecedorResponse
-
-@router.get("/{fornecedor_id}/insumos", response_model=List[dict])
-def listar_insumo_do_fornecedor(
-    fornecedor_id: int,
-    db: Session = Depends(get_db)
-):
-    """
-    Lista todos os insumos de um fornecedor específico.
-    
-    **Funcionalidades:**
-    - Retorna apenas os insumos do fornecedor
-    - Usado para popular a lista de insumos na tela
-    - Inclui preços e informações completas
-    
-    **Parâmetros:**
-    - `fornecedor_id`: ID do fornecedor
-    
-    **Respostas:**
-    - 200: Lista de insumos
-    - 404: Fornecedor não encontrado
-    """
-    # Verifica se o fornecedor existe
-    fornecedor = crud_fornecedor.get_fornecedor_by_id(db=db, fornecedor_id=fornecedor_id)
-
-    if not fornecedor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Fornecedor com ID {fornecedor_id} não foi encontrado"
-        )
-
-    # Converter os objetos FornecedorInsumo para dicionários
-    insumos_dict = []
-    for insumo in fornecedor.fornecedor_insumos:
-        insumos_dict.append({
-            'id': insumo.id,
-            'codigo': insumo.codigo,
-            'nome': insumo.nome,
-            'unidade': insumo.unidade,
-            'preco_unitario': float(insumo.preco_unitario),
-            'descricao': insumo.descricao,
-            'fornecedor_id': insumo.fornecedor_id
-        })
-    
-    return insumos_dict
+    return fornecedor
