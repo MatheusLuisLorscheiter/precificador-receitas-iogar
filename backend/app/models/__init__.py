@@ -6,11 +6,13 @@
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
-# Importar Base primeiro
-from .base import Base, BaseModel
-
-# Importar modelos de insumos
+# Importar modelos de fornecedores e insumos
+from .fornecedor import Fornecedor
+from .fornecedor_insumo import FornecedorInsumo
 from .insumo import Insumo
+
+# Importar modelos de taxonomia
+from .taxonomia import Taxonomia
 
 # Importar modelos de receitas
 from .receita import Restaurante, Receita, ReceitaInsumo
@@ -19,7 +21,10 @@ from .receita import Restaurante, Receita, ReceitaInsumo
 __all__ = [
     "Base", 
     "BaseModel", 
+    "Fornecedor",
+    "FornecedorInsumo", 
     "Insumo",
+    "Taxonomia",
     "Restaurante",
     "Receita",
     "ReceitaInsumo"

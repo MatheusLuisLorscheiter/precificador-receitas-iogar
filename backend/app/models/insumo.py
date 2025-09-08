@@ -73,7 +73,7 @@ class Insumo(BaseModel):
     #   ===================================================================================================
 
     # Relacionamento com receitas
-    # receitas = relationship("ReceitaInsumo", back_populates="insumo")
+    receitas = relationship("ReceitaInsumo", back_populates="insumo")
 
     # Relacionamento com Fornecedor (muitos insumos para um fornecedor)
     fornecedor_insumo = relationship(

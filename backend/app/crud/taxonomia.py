@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from app.models.taxonomia import Taxonomia
 from app.schemas.taxonomia import TaxonomiaCreate, TaxonomiaUpdate, TaxonomiaFilter
+from app.models.insumo import Insumo
 
 # ============================================================================
 # OPERAÇÕES DE CRIAÇÃO
@@ -458,7 +459,6 @@ def delete_taxonomia(db: Session, taxonomia_id: int) -> bool:
         return False
     
     # Verificar se taxonomia está sendo usada por insumos
-    from app.models.insumo import Insumo
     insumos_usando = db.query(Insumo).filter(Insumo.taxonomia_id == taxonomia_id).count()
     
     if insumos_usando > 0:
@@ -513,25 +513,62 @@ def get_estatisticas_taxonomia(db: Session) -> dict:
     Returns:
         dict: Estatísticas das taxonomias
     """
-    total_taxonomias = db.query(Taxonomia).count()
-    total_ativas = db.query(Taxonomia).filter(Taxonomia.ativo == True).count()
-    total_categorias = db.query(Taxonomia.categoria).distinct().count()
-    total_subcategorias = db.query(Taxonomia.subcategoria).distinct().count()
-    
-    # Contar insumos usando taxonomias
-    from app.models.insumo import Insumo
-    insumos_com_taxonomia = db.query(Insumo).filter(Insumo.taxonomia_id.isnot(None)).count()
-    total_insumos = db.query(Insumo).count()
-    
-    return {
-        "total_taxonomias": total_taxonomias,
-        "taxonomias_ativas": total_ativas,
-        "taxonomias_inativas": total_taxonomias - total_ativas,
-        "total_categorias": total_categorias,
-        "total_subcategorias": total_subcategorias,
-        "insumos_com_taxonomia": insumos_com_taxonomia,
-        "total_insumos": total_insumos,
-        "percentual_insumos_com_taxonomia": round(
+    try:
+        print("🔍 DEBUG: Iniciando get_estatisticas_taxonomia")
+        
+        # Teste 1: Contar taxonomias
+        print("🔍 DEBUG: Contando taxonomias...")
+        total_taxonomias = db.query(Taxonomia).count()
+        print(f"🔍 DEBUG: total_taxonomias = {total_taxonomias}")
+        
+        # Teste 2: Contar ativas
+        print("🔍 DEBUG: Contando taxonomias ativas...")
+        total_ativas = db.query(Taxonomia).filter(Taxonomia.ativo == True).count()
+        print(f"🔍 DEBUG: total_ativas = {total_ativas}")
+        
+        # Teste 3: Contar categorias
+        print("🔍 DEBUG: Contando categorias...")
+        total_categorias = db.query(Taxonomia.categoria).distinct().count()
+        print(f"🔍 DEBUG: total_categorias = {total_categorias}")
+        
+        # Teste 4: Contar subcategorias
+        print("🔍 DEBUG: Contando subcategorias...")
+        total_subcategorias = db.query(Taxonomia.subcategoria).distinct().count()
+        print(f"🔍 DEBUG: total_subcategorias = {total_subcategorias}")
+        
+        # Teste 5: Contar insumos (aqui pode estar o problema)
+        print("🔍 DEBUG: Contando insumos com taxonomia...")
+        insumos_com_taxonomia = db.query(Insumo).filter(Insumo.taxonomia_id.isnot(None)).count()
+        print(f"🔍 DEBUG: insumos_com_taxonomia = {insumos_com_taxonomia}")
+        
+        print("🔍 DEBUG: Contando total de insumos...")
+        total_insumos = db.query(Insumo).count()
+        print(f"🔍 DEBUG: total_insumos = {total_insumos}")
+        
+        # Teste 6: Calcular percentual
+        print("🔍 DEBUG: Calculando percentual...")
+        percentual = round(
             (insumos_com_taxonomia / total_insumos * 100) if total_insumos > 0 else 0, 2
         )
-    }
+        print(f"🔍 DEBUG: percentual = {percentual}")
+        
+        resultado = {
+            "total_taxonomias": total_taxonomias,
+            "taxonomias_ativas": total_ativas,
+            "taxonomias_inativas": total_taxonomias - total_ativas,
+            "total_categorias": total_categorias,
+            "total_subcategorias": total_subcategorias,
+            "insumos_com_taxonomia": insumos_com_taxonomia,
+            "total_insumos": total_insumos,
+            "percentual_insumos_com_taxonomia": percentual
+        }
+        
+        print(f"🔍 DEBUG: Resultado final = {resultado}")
+        return resultado
+        
+    except Exception as e:
+        print(f"❌ DEBUG ERROR: {str(e)}")
+        print(f"❌ DEBUG ERROR TYPE: {type(e)}")
+        import traceback
+        traceback.print_exc()
+        raise e

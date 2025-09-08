@@ -1,8 +1,8 @@
 # ============================================================================
-# SCHEMAS TAXONOMIA ALIAS - Sistema de Mapeamento Inteligente (Fase 2)
+# SCHEMAS TAXONOMIA ALIAS - Sistema de Mapeamento Inteligente de Taxonomias
 # ============================================================================
-# Descrição: Schemas Pydantic para validação e serialização do sistema
-# de mapeamento de aliases para taxonomias
+# Descrição: Schemas para sistema de aliases e sinônimos de taxonomias
+# Permite mapear diferentes nomes para a mesma taxonomia hierárquica
 # Data: 08/09/2025
 # Autor: Will - Empresa: IOGAR
 # ============================================================================
@@ -10,292 +10,357 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
-import re
-import unicodedata
-
+from enum import Enum
 
 # ============================================================================
-# SCHEMA BASE - Campos comuns
+# ENUMS PARA CONTROLE DE TIPO E ORIGEM
+# ============================================================================
+
+class TipoAlias(str, Enum):
+    """Tipos de aliases disponíveis"""
+    SINONIMO = "sinonimo"          # Sinônimo direto (ex: "salmão" -> "salmon")
+    VARIACAO = "variacao"          # Variação do nome (ex: "file" -> "filé")
+    MARCA = "marca"                # Nome comercial/marca (ex: "Seara" -> "Frango")
+    REGIONAL = "regional"          # Variação regional (ex: "macaxeira" -> "mandioca")
+    ABREVIACAO = "abreviacao"      # Abreviação (ex: "kg" -> "quilograma")
+
+class OrigemAlias(str, Enum):
+    """Origem do alias no sistema"""
+    MANUAL = "manual"              # Criado manualmente
+    AUTOMATICO = "automatico"     # Gerado automaticamente
+    IMPORTACAO = "importacao"     # Vindo de importação (TOTVS, CSV)
+    IA = "ia"                     # Sugerido por IA/ML
+
+# ============================================================================
+# SCHEMA BASE PARA ALIAS
 # ============================================================================
 
 class TaxonomiaAliasBase(BaseModel):
     """
-    Schema base para TaxonomiaAlias com campos comuns.
+    Schema base para aliases de taxonomia.
     
-    Define os campos básicos para mapeamento de nomes alternativos
-    para taxonomias hierárquicas.
+    Permite mapear diferentes nomes/termos para a mesma taxonomia,
+    facilitando o reconhecimento automático durante importações.
     """
-
-    nome_alternativo: str = Field(
+    
+    nome_original: str = Field(
         ...,
-        min_length=2,
+        min_length=1,
         max_length=255,
-        description="Nome alternativo que será mapeado para a taxonomia"
+        description="Nome/termo original que será mapeado"
     )
-
-    tipo_alias: str = Field(
-        default="manual",
-        description="Tipo do alias: manual, automatico, importacao, ia"
+    
+    tipo: TipoAlias = Field(
+        default=TipoAlias.SINONIMO,
+        description="Tipo do alias (sinônimo, variação, marca, etc.)"
     )
-
+    
+    origem: OrigemAlias = Field(
+        default=OrigemAlias.MANUAL,
+        description="Origem/fonte do alias"
+    )
+    
     confianca: int = Field(
         default=100,
         ge=0,
         le=100,
-        description="Nível de confiança do mapeamento (0-100)"
+        description="Nível de confiança do mapeamento (0-100%)"
     )
-
-    origem: Optional[str] = Field(
-        None,
-        max_length=100,
-        description="Origem do alias (fornecedor, sistema, usuário, etc.)"
-    )
-
+    
     observacoes: Optional[str] = Field(
         None,
-        max_length=1000,
-        description="Observações sobre o mapeamento"
+        max_length=500,
+        description="Observações sobre o alias"
     )
-
+    
     ativo: bool = Field(
         default=True,
         description="Se o alias está ativo para uso"
     )
 
     # ========================================================================
-    # VALIDADORES PYDANTIC
+    # VALIDADORES
     # ========================================================================
-
-    @field_validator('nome_alternativo')
+    
+    @field_validator('nome_original')
     @classmethod
-    def validar_nome_alternativo(cls, v: str) -> str:
-        """
-        Valida e limpa o nome alternativo.
-        """
-        if not v or not v.strip():
-            raise ValueError("Nome alternativo não pode estar vazio")
-        
-        # Remove espaços extras e caracteres especiais desnecessários
-        nome_limpo = re.sub(r'\s+', ' ', v.strip())
-        
-        if len(nome_limpo) < 2:
-            raise ValueError("Nome alternativo deve ter pelo menos 2 caracteres")
-            
-        return nome_limpo
-
-    @field_validator('tipo_alias')
-    @classmethod
-    def validar_tipo_alias(cls, v: str) -> str:
-        """
-        Valida o tipo de alias.
-        """
-        tipos_validos = ["manual", "automatico", "importacao", "ia"]
-        
-        if v.lower() not in tipos_validos:
-            raise ValueError(f"Tipo deve ser um de: {', '.join(tipos_validos)}")
-            
-        return v.lower()
-
-    @staticmethod
-    def normalizar_nome(nome: str) -> str:
-        """
-        Normaliza um nome para busca (remove acentos, converte para minúsculo).
-        
-        Usado internamente para gerar o campo nome_normalizado.
-        """
-        # Remove acentos
-        nome_sem_acentos = unicodedata.normalize('NFD', nome)
-        nome_sem_acentos = ''.join(c for c in nome_sem_acentos if unicodedata.category(c) != 'Mn')
-        
-        # Converte para minúsculo e remove espaços extras
-        nome_normalizado = re.sub(r'\s+', ' ', nome_sem_acentos.lower().strip())
-        
-        # Remove caracteres especiais, mantém apenas letras, números e espaços
-        nome_normalizado = re.sub(r'[^a-z0-9\s]', '', nome_normalizado)
-        
-        return nome_normalizado
-
+    def validar_nome_original(cls, v: str) -> str:
+        """Normaliza o nome original para busca"""
+        return v.strip().lower()
 
 # ============================================================================
-# SCHEMA DE CRIAÇÃO
+# SCHEMAS PARA OPERAÇÕES CRUD
 # ============================================================================
 
 class TaxonomiaAliasCreate(TaxonomiaAliasBase):
     """
-    Schema para criação de novo alias de taxonomia.
+    Schema para criação de novo alias.
     
-    Inclui o ID da taxonomia de destino obrigatório.
+    Requer o ID da taxonomia de destino para vincular o alias.
     """
-
+    
     taxonomia_id: int = Field(
         ...,
         gt=0,
-        description="ID da taxonomia de destino"
+        description="ID da taxonomia hierárquica de destino"
     )
-
-
-# ============================================================================
-# SCHEMA DE ATUALIZAÇÃO
-# ============================================================================
 
 class TaxonomiaAliasUpdate(BaseModel):
     """
     Schema para atualização de alias existente.
     
-    Todos os campos são opcionais para permitir atualizações parciais.
+    Todos os campos são opcionais para permitir atualização parcial.
     """
-
-    nome_alternativo: Optional[str] = Field(
+    
+    nome_original: Optional[str] = Field(
         None,
-        min_length=2,
-        max_length=255
+        min_length=1,
+        max_length=255,
+        description="Nome/termo original"
     )
-
-    tipo_alias: Optional[str] = None
-    confianca: Optional[int] = Field(None, ge=0, le=100)
-    origem: Optional[str] = Field(None, max_length=100)
-    observacoes: Optional[str] = Field(None, max_length=1000)
-    ativo: Optional[bool] = None
-
-    @field_validator('nome_alternativo')
-    @classmethod
-    def validar_nome_alternativo(cls, v: Optional[str]) -> Optional[str]:
-        """
-        Aplica a mesma validação do schema base se fornecido.
-        """
-        if v is not None:
-            return TaxonomiaAliasBase.validar_nome_alternativo(v)
-        return v
-
-    @field_validator('tipo_alias')
-    @classmethod
-    def validar_tipo_alias(cls, v: Optional[str]) -> Optional[str]:
-        """
-        Aplica a mesma validação do schema base se fornecido.
-        """
-        if v is not None:
-            return TaxonomiaAliasBase.validar_tipo_alias(v)
-        return v
-
-
-# ============================================================================
-# SCHEMA DE RESPOSTA
-# ============================================================================
-
-class TaxonomiaAliasResponse(TaxonomiaAliasBase):
-    """
-    Schema de resposta da API para alias de taxonomia.
-    
-    Inclui campos gerados automaticamente e dados da taxonomia de destino.
-    """
-
-    id: int = Field(description="ID único do alias")
-    taxonomia_id: int = Field(description="ID da taxonomia de destino")
-    nome_normalizado: str = Field(description="Versão normalizada do nome")
-    created_at: datetime = Field(description="Data de criação")
-    updated_at: Optional[datetime] = Field(description="Data da última atualização")
-
-    # Dados da taxonomia de destino (opcional, carregado via join)
-    taxonomia_nome_completo: Optional[str] = Field(
-        None,
-        description="Nome completo da taxonomia de destino"
-    )
-    
-    taxonomia_codigo: Optional[str] = Field(
-        None,
-        description="Código da taxonomia de destino"
-    )
-
-    class Config:
-        from_attributes = True
-
-
-# ============================================================================
-# SCHEMA PARA LISTAGEM COM PAGINAÇÃO
-# ============================================================================
-
-class TaxonomiaAliasListResponse(BaseModel):
-    """
-    Schema para resposta de listagem de aliases com paginação.
-    """
-
-    aliases: List[TaxonomiaAliasResponse] = Field(
-        description="Lista de aliases encontrados"
-    )
-
-    total: int = Field(
-        description="Total de aliases encontrados"
-    )
-
-    pagina: int = Field(
-        default=1,
-        description="Página atual"
-    )
-
-    por_pagina: int = Field(
-        default=20,
-        description="Quantidade de itens por página"
-    )
-
-
-# ============================================================================
-# SCHEMA PARA BUSCA DE MAPEAMENTO
-# ============================================================================
-
-class TaxonomiaMapeamentoResponse(BaseModel):
-    """
-    Schema para resposta de busca de mapeamento por nome.
-    
-    Usado no sistema de mapeamento inteligente.
-    """
-
-    nome_buscado: str = Field(description="Nome que foi buscado")
-    
-    encontrado: bool = Field(description="Se foi encontrado mapeamento")
     
     taxonomia_id: Optional[int] = Field(
         None,
-        description="ID da taxonomia encontrada"
+        gt=0,
+        description="ID da taxonomia de destino"
     )
     
-    taxonomia_nome_completo: Optional[str] = Field(
+    tipo: Optional[TipoAlias] = Field(
         None,
-        description="Nome completo da taxonomia"
+        description="Tipo do alias"
     )
     
-    alias_usado: Optional[str] = Field(
+    origem: Optional[OrigemAlias] = Field(
         None,
-        description="Alias que foi usado para o mapeamento"
+        description="Origem do alias"
     )
     
     confianca: Optional[int] = Field(
         None,
-        description="Nível de confiança do mapeamento"
+        ge=0,
+        le=100,
+        description="Nível de confiança"
     )
     
-    tipo_match: Optional[str] = Field(
+    observacoes: Optional[str] = Field(
         None,
-        description="Tipo de match: exato, normalizado, parcial"
+        max_length=500,
+        description="Observações"
+    )
+    
+    ativo: Optional[bool] = Field(
+        None,
+        description="Status ativo"
     )
 
+class TaxonomiaAliasResponse(TaxonomiaAliasBase):
+    """
+    Schema de resposta completa do alias.
+    
+    Inclui dados do alias e informações da taxonomia vinculada.
+    """
+    
+    id: int = Field(description="ID único do alias")
+    taxonomia_id: int = Field(description="ID da taxonomia vinculada")
+    created_at: Optional[datetime] = Field(description="Data de criação")
+    updated_at: Optional[datetime] = Field(description="Data da última atualização")
+    
+    # Dados da taxonomia vinculada (informações básicas)
+    taxonomia_nome_completo: Optional[str] = Field(description="Nome completo da taxonomia")
+    taxonomia_codigo: Optional[str] = Field(description="Código da taxonomia")
+    
+    model_config = {"from_attributes": True}
 
 # ============================================================================
-# SCHEMA PARA SUGESTÕES AUTOMÁTICAS
+# SCHEMAS PARA BUSCA E MAPEAMENTO
+# ============================================================================
+
+class TaxonomiaAliasBusca(BaseModel):
+    """
+    Schema para busca de aliases por termo.
+    
+    Usado no mapeamento inteligente para encontrar taxonomias
+    baseado em nomes variados de insumos.
+    """
+    
+    termo_busca: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Termo para buscar aliases"
+    )
+    
+    limite_resultados: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Máximo de resultados a retornar"
+    )
+    
+    confianca_minima: int = Field(
+        default=70,
+        ge=0,
+        le=100,
+        description="Confiança mínima dos resultados"
+    )
+
+class TaxonomiaMapeamento(BaseModel):
+    """
+    Schema para resultado de mapeamento automático.
+    
+    Retorna a taxonomia encontrada com informações de confiança.
+    """
+    
+    alias_id: int = Field(description="ID do alias que fez o match")
+    alias_nome: str = Field(description="Nome do alias encontrado")
+    taxonomia_id: int = Field(description="ID da taxonomia mapeada")
+    taxonomia_nome_completo: str = Field(description="Nome completo da taxonomia")
+    taxonomia_codigo: str = Field(description="Código da taxonomia")
+    confianca: int = Field(description="Nível de confiança do mapeamento")
+    tipo_alias: TipoAlias = Field(description="Tipo do alias encontrado")
+
+# ============================================================================
+# SCHEMAS PARA ESTATÍSTICAS
+# ============================================================================
+
+class TaxonomiaAliasStats(BaseModel):
+    """
+    Schema para estatísticas do sistema de aliases.
+    
+    Usado para retornar métricas sobre o sistema de mapeamento inteligente.
+    """
+    
+    total_aliases: int = Field(description="Total de aliases cadastrados")
+    total_taxonomias_com_aliases: int = Field(description="Total de taxonomias com aliases")
+    total_mapeamentos_automaticos: int = Field(description="Total de mapeamentos automáticos")
+    total_mapeamentos_manuais: int = Field(description="Total de mapeamentos manuais")
+    eficiencia_mapeamento: float = Field(description="Percentual de eficiência do mapeamento")
+    aliases_mais_usados: List[str] = Field(description="Lista dos aliases mais utilizados")
+    taxonomias_sem_aliases: int = Field(description="Total de taxonomias sem aliases")
+    
+    # Estatísticas por tipo
+    total_por_tipo: dict = Field(description="Total de aliases por tipo")
+    total_por_origem: dict = Field(description="Total de aliases por origem")
+    
+    # Estatísticas de confiança
+    confianca_media: float = Field(description="Confiança média dos aliases")
+    aliases_baixa_confianca: int = Field(description="Aliases com confiança < 70%")
+    
+    model_config = {"from_attributes": True}
+
+# ============================================================================
+# SCHEMA PARA RESPOSTA DE MAPEAMENTO
+# ============================================================================
+
+class TaxonomiaMapeamentoResponse(BaseModel):
+    """
+    Schema de resposta para operações de mapeamento de aliases.
+    
+    Retorna o resultado de uma operação de mapeamento com detalhes
+    sobre a taxonomia encontrada e informações de confiança.
+    """
+    
+    sucesso: bool = Field(description="Se o mapeamento foi bem-sucedido")
+    termo_original: str = Field(description="Termo original pesquisado")
+    taxonomia_encontrada: Optional[TaxonomiaMapeamento] = Field(description="Taxonomia mapeada (se encontrada)")
+    sugestoes_alternativas: List[TaxonomiaMapeamento] = Field(default=[], description="Sugestões alternativas")
+    confianca_total: float = Field(description="Confiança total do mapeamento")
+    requer_revisao: bool = Field(description="Se requer revisão manual")
+    mensagem: str = Field(description="Mensagem explicativa do resultado")
+    
+    model_config = {"from_attributes": True}
+
+# ============================================================================
+# SCHEMA PARA RESPOSTA DE SUGESTÕES
 # ============================================================================
 
 class TaxonomiaSugestaoResponse(BaseModel):
     """
-    Schema para resposta de sugestões automáticas de mapeamento.
+    Schema de resposta para sugestões automáticas de taxonomia.
+    
+    Usado quando o sistema analisa um termo e sugere possíveis
+    taxonomias com base nos aliases existentes.
     """
-
-    nome_original: str = Field(description="Nome original a ser mapeado")
     
-    sugestoes: List[dict] = Field(
-        description="Lista de sugestões ordenadas por relevância"
-    )
-    
+    termo_analisado: str = Field(description="Termo que foi analisado")
     total_sugestoes: int = Field(description="Total de sugestões encontradas")
-
+    sugestoes: List[TaxonomiaMapeamento] = Field(description="Lista de sugestões ordenadas por confiança")
+    melhor_sugestao: Optional[TaxonomiaMapeamento] = Field(description="Melhor sugestão (maior confiança)")
+    requer_revisao_manual: bool = Field(description="Se as sugestões requerem revisão manual")
+    confianca_maxima: float = Field(description="Maior confiança encontrada")
+    algoritmo_utilizado: str = Field(default="alias_matching", description="Algoritmo usado para sugerir")
+    tempo_processamento_ms: float = Field(description="Tempo de processamento em milissegundos")
+    
+    model_config = {"from_attributes": True}
 
 # ============================================================================
-# SCHE
+# SCHEMAS PARA OPERAÇÕES EM LOTE
+# ============================================================================
+
+class TaxonomiaAliasLote(BaseModel):
+    """
+    Schema para criação de aliases em lote.
+    
+    Usado para importação massiva de aliases via CSV ou API.
+    """
+    
+    aliases: List[TaxonomiaAliasCreate] = Field(
+        ...,
+        max_items=100,
+        description="Lista de aliases para criar (máximo 100)"
+    )
+
+class TaxonomiaAliasLoteResponse(BaseModel):
+    """
+    Schema de resposta para operações em lote.
+    """
+    
+    total_processados: int = Field(description="Total de aliases processados")
+    total_criados: int = Field(description="Total de aliases criados com sucesso")
+    total_erros: int = Field(description="Total de erros durante criação")
+    aliases_criados: List[TaxonomiaAliasResponse] = Field(description="Aliases criados")
+    erros: List[str] = Field(description="Lista de erros encontrados")
+
+# ============================================================================
+# SCHEMAS PARA SUGESTÕES DE IA
+# ============================================================================
+
+class TaxonomiaSugestaoIA(BaseModel):
+    """
+    Schema para sugestões automáticas de mapeamento via IA.
+    
+    Usado quando o sistema precisa sugerir taxonomias para termos
+    não reconhecidos automaticamente.
+    """
+    
+    termo_original: str = Field(description="Termo original a ser mapeado")
+    sugestoes: List[TaxonomiaMapeamento] = Field(description="Lista de sugestões ordenadas por confiança")
+    requer_revisao: bool = Field(description="Se a sugestão requer revisão manual")
+    
+class TaxonomiaValidacaoMapeamento(BaseModel):
+    """
+    Schema para validação de mapeamento proposto.
+    
+    Usado para confirmar ou rejeitar sugestões automáticas.
+    """
+    
+    termo_original: str = Field(description="Termo original")
+    taxonomia_id: int = Field(description="ID da taxonomia sugerida")
+    aceitar: bool = Field(description="Se aceita a sugestão")
+    observacoes: Optional[str] = Field(None, description="Observações da validação")
+
+# ============================================================================
+# SCHEMA PARA LISTA PAGINADA
+# ============================================================================
+
+class TaxonomiaAliasListResponse(BaseModel):
+    """
+    Schema para resposta de lista paginada de aliases.
+    """
+    
+    aliases: List[TaxonomiaAliasResponse] = Field(description="Lista de aliases")
+    total: int = Field(description="Total de aliases encontrados")
+    skip: int = Field(description="Número de registros pulados")
+    limit: int = Field(description="Limite de registros por página")
+    
+    model_config = {"from_attributes": True}

@@ -10,7 +10,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.models.base import Base
 
 
 class Taxonomia(Base):
@@ -129,10 +129,7 @@ class Taxonomia(Base):
     )
     
     # Relacionamento com insumos de fornecedores
-    fornecedor_insumos = relationship(
-        "FornecedorInsumo",
-        back_populates="taxonomia"
-    )
+    # fornecedor_insumos = relationship("FornecedorInsumo", back_populates="taxonomia")
     
     # Relacionamento com aliases (Sistema de Mapeamento - Fase 2)
     aliases = relationship(

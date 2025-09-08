@@ -14,14 +14,23 @@ from contextlib import asynccontextmanager
 
 # Imports dos routers/endpoints das APIs
 try:
-    from app.api.endpoints import insumos, receitas, fornecedores, taxonomias, fornecedor_insumos, taxonomia_aliases
-    # Tentar importar o novo módulo
+    from app.api.endpoints import insumos, receitas, fornecedores, taxonomias
+    # Tentar importar o módulo fornecedor_insumos
     try:
         from app.api.endpoints import fornecedor_insumos
         HAS_FORNECEDOR_INSUMOS = True
     except ImportError:
         print("⚠️  Módulo fornecedor_insumos não encontrado, pulando...")
         HAS_FORNECEDOR_INSUMOS = False
+    
+    # Tentar importar o módulo taxonomia_aliases
+    try:
+        from app.api.endpoints import taxonomia_aliases
+        HAS_TAXONOMIA_ALIASES = True
+    except ImportError:
+        print("⚠️  Módulo taxonomia_aliases não encontrado, pulando...")
+        HAS_TAXONOMIA_ALIASES = False
+        
 except ImportError as e:
     print(f"❌ Erro ao importar endpoints: {e}")
     raise
@@ -202,16 +211,20 @@ app.include_router(
 )
 
 # Router para operações com aliases de taxonomias (Sistema de Mapeamento - Fase 2)
-app.include_router(
-    taxonomia_aliases.router,
-    prefix="/api/v1/taxonomias",
-    tags=["taxonomia-aliases"],
-    responses={
-        404: {"description": "Alias não encontrado"},
-        422: {"description": "Erro de validação"},
-        500: {"description": "Erro interno do servidor"}
-    }
-)
+if HAS_TAXONOMIA_ALIASES:
+    app.include_router(
+        taxonomia_aliases.router,
+        prefix="/api/v1/taxonomias",
+        tags=["taxonomia-aliases"],
+        responses={
+            404: {"description": "Alias não encontrado"},
+            422: {"description": "Erro de validação"},
+            500: {"description": "Erro interno do servidor"}
+        }
+    )
+    print("✅ Router taxonomia_aliases incluído com sucesso")
+else:
+    print("⚠️  Router taxonomia_aliases não incluído (módulo não disponível)")
 
 # Router para operações com insumos do catálogo dos fornecedores (condicional)
 if HAS_FORNECEDOR_INSUMOS:

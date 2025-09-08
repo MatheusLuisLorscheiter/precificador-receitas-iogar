@@ -10,7 +10,7 @@
 
 from sqlalchemy import Column, Integer, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.models.base import Base
 
 class ReceitaInsumo(Base):
     """

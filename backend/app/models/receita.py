@@ -387,7 +387,7 @@ class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do Base
     receita = relationship("Receita", back_populates="receita_insumos")
     
     # Relacionamento com insumo (N para 1)
-    insumo = relationship("Insumo")  # Relacionamento com a tabela insumos
+    insumo = relationship("Insumo", back_populates="receitas")  # Relacionamento com a tabela insumos
 
     # ===================================================================================================
     # Métodos de cálculo de custos (CORRIGIDOS COM CONVERSÃO DE UNIDADES)
