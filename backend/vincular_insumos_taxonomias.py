@@ -62,6 +62,253 @@ MAPEAMENTOS_PALAVRAS_CHAVE = {
     "shiitake": ("Vegetais", "Cogumelos", "Shiitake", "Fresco"),
     "shimeji": ("Vegetais", "Cogumelos", "Shimeji", "Fresco"),
     "enoki": ("Vegetais", "Cogumelos", "Enoki", "Fresco"),
+
+    # INGREDIENTES ASIÁTICOS PREMIUM (Restaurantes japoneses de SP)
+    "edamame": ("Vegetais", "Soja", "Edamame", "Fresco"),
+    "wasabi": ("Temperos", "Wasabi", "Fresco", "Premium"),
+    "shichimi": ("Temperos", "Shichimi", "Togarashi", "Premium"),
+    "togarashi": ("Temperos", "Shichimi", "Togarashi", "Premium"),
+    "ponzu": ("Temperos", "Ponzu", "Molho", "Premium"),
+    "yuzu": ("Temperos", "Yuzu", "Cítrico", "Premium"),
+    "mirin": ("Temperos", "Mirin", "Líquido", "Premium"),
+    "sake": ("Bebidas", "Sake", "Culinário", "Premium"),
+    
+    # CARNES PREMIUM (Restaurantes contemporâneos de SP)
+    "wagyu": ("Carnes", "Bovino", "Wagyu", "Premium"),
+    "duck": ("Carnes", "Pato", "Inteiro", "Premium"),
+    "pato": ("Carnes", "Pato", "Peito", "Premium"),
+    "cordeiro": ("Carnes", "Cordeiro", "Lombo", "Premium"),
+    "cabrito": ("Carnes", "Cabrito", "Lombo", "Premium"),
+    "vitela": ("Carnes", "Vitela", "Filé", "Premium"),
+    
+    # PEIXES PREMIUM (Restaurantes de alta gastronomia)
+    "black cod": ("Peixes", "Black Cod", "Filé", "Premium"),
+    "blackcod": ("Peixes", "Black Cod", "Filé", "Premium"),
+    "cod": ("Peixes", "Bacalhau", "Filé", "Premium"),
+    "linguado": ("Peixes", "Linguado", "Filé", "Fresco"),
+    "rodovalho": ("Peixes", "Rodovalho", "Filé", "Premium"),
+    "saint peter": ("Peixes", "Saint Peter", "Filé", "Premium"),
+    
+    # FRUTOS DO MAR PREMIUM
+    "ouriço": ("Frutos do Mar", "Ouriço", "Inteiro", "Fresco"),
+    "ostras": ("Frutos do Mar", "Ostra", "Inteira", "Fresca"),
+    "ostra": ("Frutos do Mar", "Ostra", "Inteira", "Fresca"),
+    "carabineiro": ("Frutos do Mar", "Carabineiro", "Inteiro", "Premium"),
+    "vieira": ("Frutos do Mar", "Vieira", "Inteira", "Fresca"),
+    "santola": ("Frutos do Mar", "Santola", "Inteira", "Fresca"),
+    
+    # VEGETAIS SAZONAIS (Ingredientes locais valorizados)
+    "cavaquinha": ("Verduras", "Cavaquinha", "Fresca", "Regional"),
+    "endívia": ("Verduras", "Endívia", "Inteira", "Hidropônica"),
+    "endivia": ("Verduras", "Endívia", "Inteira", "Hidropônica"),
+    "shissô": ("Vegetais", "Shissô", "Folha", "Premium"),
+    "shisso": ("Vegetais", "Shissô", "Folha", "Premium"),
+    "perilla": ("Vegetais", "Shissô", "Folha", "Premium"),
+    
+    # COGUMELOS PREMIUM
+    "maitake": ("Vegetais", "Cogumelos", "Maitake", "Fresco"),
+    "eryngii": ("Vegetais", "Cogumelos", "Eryngii", "Fresco"),
+    "bunashimeji": ("Vegetais", "Cogumelos", "Bunashimeji", "Fresco"),
+    "honshimeji": ("Vegetais", "Cogumelos", "Honshimeji", "Fresco"),
+    
+    # INGREDIENTES MEXICANOS CONTEMPORÂNEOS (Metzi)
+    "tomatillo": ("Verduras", "Tomatillo", "Inteiro", "Fresco"),
+    "chile": ("Temperos", "Chile", "Inteiro", "Fresco"),
+    "chiles": ("Temperos", "Chile", "Inteiro", "Fresco"),
+    "poblano": ("Temperos", "Chile", "Poblano", "Fresco"),
+    "jalapeño": ("Temperos", "Chile", "Jalapeño", "Fresco"),
+    "jalapeno": ("Temperos", "Chile", "Jalapeño", "Fresco"),
+    "chipotle": ("Temperos", "Chile", "Chipotle", "Seco"),
+    "habanero": ("Temperos", "Chile", "Habanero", "Fresco"),
+    
+    # ESPECIARIAS INTERNACIONAIS
+    "sumac": ("Temperos", "Sumac", "Pó", "Premium"),
+    "za'atar": ("Temperos", "Za'atar", "Mistura", "Premium"),
+    "zaatar": ("Temperos", "Za'atar", "Mistura", "Premium"),
+    "harissa": ("Temperos", "Harissa", "Pasta", "Premium"),
+    "berbere": ("Temperos", "Berbere", "Mistura", "Premium"),
+
+    # INGREDIENTES BRASILEIROS MODERNOS (Oteque, Lasai, Oro)
+    "tucumã": ("Frutas", "Tucumã", "Inteiro", "Amazônico"),
+    "pupunha": ("Verduras", "Pupunha", "Inteira", "Regional"),
+    "jambu": ("Verduras", "Jambu", "Folha", "Amazônico"),
+    "crispy jambu": ("Verduras", "Jambu", "Crispy", "Processado"),
+    "ora-pro-nóbis": ("Verduras", "Ora-pro-nóbis", "Folha", "PANC"),
+    "taioba": ("Verduras", "Taioba", "Folha", "PANC"),
+    "bertalha": ("Verduras", "Bertalha", "Folha", "PANC"),
+    "capim limão": ("Temperos", "Capim Limão", "Fresco", "Regional"),
+    "capim-limão": ("Temperos", "Capim Limão", "Fresco", "Regional"),
+    
+    # PEIXES DE ÁGUA DOCE AMAZÔNICOS (Casa do Saulo)
+    "pirarucu": ("Peixes", "Pirarucu", "Filé", "Amazônico"),
+    "tambaqui": ("Peixes", "Tambaqui", "Filé", "Amazônico"),
+    "filhote": ("Peixes", "Filhote", "Filé", "Amazônico"),
+    "pintado": ("Peixes", "Pintado", "Filé", "Regional"),
+    "dourado": ("Peixes", "Dourado", "Filé", "Regional"),
+    "surubim": ("Peixes", "Surubim", "Filé", "Regional"),
+    
+    # FRUTOS DO MAR LOCAIS (Oro, restaurantes costeiros)
+    "siri": ("Frutos do Mar", "Siri", "Casquinha", "Local"),
+    "lagosta": ("Frutos do Mar", "Lagosta", "Inteira", "Premium"),
+    "polvo": ("Frutos do Mar", "Polvo", "Inteiro", "Fresco"),
+    "mexilhão": ("Frutos do Mar", "Mexilhão", "Inteiro", "Fresco"),
+    "mexilhoes": ("Frutos do Mar", "Mexilhão", "Inteiro", "Fresco"),
+    "berbigão": ("Frutos do Mar", "Berbigão", "Inteiro", "Fresco"),
+    
+    # INGREDIENTES FRANCESES (Térèze, Le Napoleon)
+    "foie gras": ("Carnes", "Foie Gras", "Inteiro", "Premium"),
+    "foie": ("Carnes", "Foie Gras", "Inteiro", "Premium"),
+    "escargot": ("Frutos do Mar", "Escargot", "Inteiro", "Premium"),
+    "escargots": ("Frutos do Mar", "Escargot", "Inteiro", "Premium"),
+    "confit": ("Carnes", "Pato", "Confit", "Premium"),
+    "magret": ("Carnes", "Pato", "Magret", "Premium"),
+    "rillettes": ("Embutidos", "Rillettes", "Pasta", "Premium"),
+    "bouquet garni": ("Temperos", "Bouquet Garni", "Mistura", "Premium"),
+    "herbes": ("Temperos", "Ervas", "Provence", "Premium"),
+    "provence": ("Temperos", "Ervas", "Provence", "Premium"),
+    
+    # MASSAS ARTESANAIS ITALIANAS (Cipriani, Grado)
+    "burrata": ("Laticínios", "Burrata", "Fresca", "Premium"),
+    "stracciatella": ("Laticínios", "Stracciatella", "Fresca", "Premium"),
+    "ricotta": ("Laticínios", "Ricotta", "Fresca", "Premium"),
+    "parmigiano": ("Laticínios", "Parmigiano", "Reggiano", "Premium"),
+    "gorgonzola": ("Laticínios", "Gorgonzola", "Inteiro", "Premium"),
+    "pecorino": ("Laticínios", "Pecorino", "Romano", "Premium"),
+    "bottarga": ("Conservas", "Bottarga", "Pó", "Premium"),
+    "pancetta": ("Embutidos", "Pancetta", "Fatiada", "Premium"),
+    "guanciale": ("Embutidos", "Guanciale", "Cubos", "Premium"),
+    "nduja": ("Embutidos", "Nduja", "Pasta", "Premium"),
+    
+    # INGREDIENTES PERUANOS (Ceviche, culinária peruana)
+    "ají amarillo": ("Temperos", "Ají Amarillo", "Pasta", "Peruano"),
+    "aji amarillo": ("Temperos", "Ají Amarillo", "Pasta", "Peruano"),
+    "ají rocoto": ("Temperos", "Ají Rocoto", "Inteiro", "Peruano"),
+    "rocoto": ("Temperos", "Ají Rocoto", "Inteiro", "Peruano"),
+    "leche de tigre": ("Temperos", "Leche de Tigre", "Líquido", "Peruano"),
+    "chicha": ("Bebidas", "Chicha", "Morada", "Peruano"),
+    "quinoa": ("Grãos", "Quinoa", "Grão", "Andino"),
+    "kiwicha": ("Grãos", "Kiwicha", "Grão", "Andino"),
+    
+    # FRUTAS TROPICAIS E EXÓTICAS
+    "pitanga": ("Frutas", "Pitanga", "Inteira", "Regional"),
+    "cajá": ("Frutas", "Cajá", "Inteiro", "Regional"),
+    "caju": ("Frutas", "Caju", "Inteiro", "Regional"),
+    "jabuticaba": ("Frutas", "Jabuticaba", "Inteira", "Regional"),
+    "cambuci": ("Frutas", "Cambuci", "Inteiro", "Regional"),
+    "uvaia": ("Frutas", "Uvaia", "Inteira", "Regional"),
+    "physalis": ("Frutas", "Physalis", "Inteira", "Premium"),
+    
+    # CASTANHAS E OLEAGINOSAS BRASILEIRAS
+    "castanha do pará": ("Oleaginosas", "Castanha", "Pará", "Regional"),
+    "castanha-do-pará": ("Oleaginosas", "Castanha", "Pará", "Regional"),
+    "baru": ("Oleaginosas", "Baru", "Inteiro", "Cerrado"),
+    "pequi": ("Frutas", "Pequi", "Inteiro", "Cerrado"),
+    "buriti": ("Frutas", "Buriti", "Polpa", "Cerrado"),
+    "macaúba": ("Oleaginosas", "Macaúba", "Óleo", "Cerrado"),
+
+    # INGREDIENTES TRADICIONAIS MINEIROS
+    "linguiça": ("Embutidos", "Linguiça", "Artesanal", "Mineira"),
+    "linguica": ("Embutidos", "Linguiça", "Artesanal", "Mineira"),
+    "torresmo": ("Embutidos", "Torresmo", "Crocante", "Mineiro"),
+    "toucinho": ("Embutidos", "Toucinho", "Defumado", "Mineiro"),
+    "paio": ("Embutidos", "Paio", "Defumado", "Mineiro"),
+    "chouriço": ("Embutidos", "Chouriço", "Defumado", "Mineiro"),
+    "lombo": ("Carnes", "Suíno", "Lombo", "Mineiro"),
+    "costelinha": ("Carnes", "Suíno", "Costela", "Mineira"),
+    "leitão": ("Carnes", "Leitão", "Inteiro", "Pururuca"),
+    
+    # QUEIJOS ARTESANAIS MINEIROS
+    "queijo minas": ("Laticínios", "Queijo", "Minas", "Artesanal"),
+    "queijo-minas": ("Laticínios", "Queijo", "Minas", "Artesanal"),
+    "minas frescal": ("Laticínios", "Queijo", "Minas Frescal", "Artesanal"),
+    "minas padrão": ("Laticínios", "Queijo", "Minas Padrão", "Curado"),
+    "canastra": ("Laticínios", "Queijo", "Canastra", "Artesanal"),
+    "serro": ("Laticínios", "Queijo", "Serro", "Artesanal"),
+    "araxá": ("Laticínios", "Queijo", "Araxá", "Artesanal"),
+    "campo das vertentes": ("Laticínios", "Queijo", "Campo das Vertentes", "Artesanal"),
+    "coalho": ("Laticínios", "Queijo", "Coalho", "Artesanal"),
+    
+    # VEGETAIS E VERDURAS REGIONAIS
+    "couve": ("Verduras", "Couve", "Mineira", "Refogada"),
+    "quiabo": ("Verduras", "Quiabo", "Inteiro", "Fresco"),
+    "jiló": ("Verduras", "Jiló", "Inteiro", "Fresco"),
+    "jilo": ("Verduras", "Jiló", "Inteiro", "Fresco"),
+    "maxixe": ("Verduras", "Maxixe", "Inteiro", "Fresco"),
+    "chuchu": ("Verduras", "Chuchu", "Inteiro", "Fresco"),
+    "abóbora": ("Verduras", "Abóbora", "Inteira", "Caipira"),
+    "abobrinha": ("Verduras", "Abobrinha", "Inteira", "Caipira"),
+    "mandioca": ("Tubérculos", "Mandioca", "Inteira", "Regional"),
+    "aipim": ("Tubérculos", "Mandioca", "Inteira", "Regional"),
+    "inhame": ("Tubérculos", "Inhame", "Inteiro", "Regional"),
+    "cará": ("Tubérculos", "Cará", "Inteiro", "Regional"),
+    
+    # GRÃOS E FARINHAS REGIONAIS
+    "feijão": ("Grãos", "Feijão", "Carioca", "Regional"),
+    "feijao": ("Grãos", "Feijão", "Carioca", "Regional"),
+    "feijão preto": ("Grãos", "Feijão", "Preto", "Regional"),
+    "feijão-preto": ("Grãos", "Feijão", "Preto", "Regional"),
+    "feijão mulatinho": ("Grãos", "Feijão", "Mulatinho", "Regional"),
+    "feijão tropeiro": ("Preparados", "Feijão", "Tropeiro", "Tradicional"),
+    "tutu": ("Preparados", "Tutu", "Feijão", "Tradicional"),
+    "farinha de milho": ("Farinhas", "Milho", "Fina", "Regional"),
+    "farinha-de-milho": ("Farinhas", "Milho", "Fina", "Regional"),
+    "fubá": ("Farinhas", "Fubá", "Fino", "Regional"),
+    "polvilho": ("Farinhas", "Polvilho", "Doce", "Regional"),
+    "polvilho azedo": ("Farinhas", "Polvilho", "Azedo", "Regional"),
+    "polvilho-azedo": ("Farinhas", "Polvilho", "Azedo", "Regional"),
+    "quirera": ("Farinhas", "Quirera", "Milho", "Regional"),
+    "canjiquinha": ("Grãos", "Canjiquinha", "Milho", "Regional"),
+    
+    # TEMPEROS E CONDIMENTOS MINEIROS
+    "pimenta biquinho": ("Temperos", "Pimenta", "Biquinho", "Mineira"),
+    "pimenta-biquinho": ("Temperos", "Pimenta", "Biquinho", "Mineira"),
+    "pimenta dedo-de-moça": ("Temperos", "Pimenta", "Dedo-de-moça", "Regional"),
+    "dedo de moça": ("Temperos", "Pimenta", "Dedo-de-moça", "Regional"),
+    "malagueta": ("Temperos", "Pimenta", "Malagueta", "Regional"),
+    "urucum": ("Temperos", "Urucum", "Pó", "Regional"),
+    "colorau": ("Temperos", "Colorau", "Pó", "Regional"),
+    "cominho": ("Temperos", "Cominho", "Pó", "Regional"),
+    
+    # DOCES E CONSERVAS TRADICIONAIS
+    "doce de leite": ("Doces", "Doce de Leite", "Viçosa", "Artesanal"),
+    "doce-de-leite": ("Doces", "Doce de Leite", "Viçosa", "Artesanal"),
+    "goiabada": ("Doces", "Goiabada", "Cascão", "Artesanal"),
+    "marmelada": ("Doces", "Marmelada", "Inteira", "Artesanal"),
+    "pessegada": ("Doces", "Pessegada", "Inteira", "Artesanal"),
+    "doce de abóbora": ("Doces", "Doce", "Abóbora", "Artesanal"),
+    "doce-de-abóbora": ("Doces", "Doce", "Abóbora", "Artesanal"),
+    "rapadura": ("Doces", "Rapadura", "Inteira", "Artesanal"),
+    
+    # CACHAÇAS E BEBIDAS ARTESANAIS
+    "cachaça": ("Bebidas", "Cachaça", "Artesanal", "Mineira"),
+    "pinga": ("Bebidas", "Cachaça", "Artesanal", "Mineira"),
+    "aguardente": ("Bebidas", "Aguardente", "Cana", "Mineira"),
+    "caninha": ("Bebidas", "Cachaça", "Artesanal", "Mineira"),
+    "seleta": ("Bebidas", "Cachaça", "Seleta", "Premium"),
+    "salinas": ("Bebidas", "Cachaça", "Salinas", "Premium"),
+    
+    # FRUTAS REGIONAIS
+    "pequi": ("Frutas", "Pequi", "Inteiro", "Cerrado"),
+    "araticum": ("Frutas", "Araticum", "Inteiro", "Cerrado"),
+    "mangaba": ("Frutas", "Mangaba", "Inteira", "Cerrado"),
+    "murici": ("Frutas", "Murici", "Inteiro", "Cerrado"),
+    "cagaita": ("Frutas", "Cagaita", "Inteira", "Cerrado"),
+    "gabiroba": ("Frutas", "Gabiroba", "Inteira", "Cerrado"),
+    
+    # CAFÉ ESPECIAL
+    "café": ("Bebidas", "Café", "Especial", "Mineiro"),
+    "café especial": ("Bebidas", "Café", "Especial", "Premium"),
+    "café-especial": ("Bebidas", "Café", "Especial", "Premium"),
+    "café bourbon": ("Bebidas", "Café", "Bourbon", "Premium"),
+    "café catuaí": ("Bebidas", "Café", "Catuaí", "Premium"),
+    "café mundo novo": ("Bebidas", "Café", "Mundo Novo", "Premium"),
+    
+    # INGREDIENTES ALEMÃES (Sul de MG - Monte Verde)
+    "sauerkraut": ("Conservas", "Sauerkraut", "Repolho", "Alemão"),
+    "kassler": ("Embutidos", "Kassler", "Defumado", "Alemão"),
+    "bratwurst": ("Embutidos", "Bratwurst", "Alemã", "Premium"),
+    "weisswurst": ("Embutidos", "Weisswurst", "Alemã", "Premium"),
+    "leberwurst": ("Embutidos", "Leberwurst", "Alemã", "Premium"),
     
     # LATICÍNIOS
     "queijo": ("Laticínios", "Queijo", "Mussarela", "Premium"),
