@@ -33,6 +33,165 @@ MAPEAMENTOS_PALAVRAS_CHAVE = {
     "merluza": ("Peixes", "Merluza", "Filé", "Congelado"),
     "sardinha": ("Peixes", "Sardinha", "Inteira", "Fresca"),
     
+    # EXPANSÃO SÃO PAULO - PEIXES PREMIUM
+    "black cod": ("Peixes", "Black Cod", "Filé", "Premium"),
+    "bacalhau do alasca": ("Peixes", "Black Cod", "Filé", "Premium"),
+    "rodovalho": ("Peixes", "Rodovalho", "Filé", "Premium"),
+    "saint peter": ("Peixes", "Saint Peter", "Filé", "Premium"),
+    "john dory": ("Peixes", "Saint Peter", "Filé", "Premium"),
+    
+    # EXPANSÃO SÃO PAULO - FRUTOS DO MAR
+    "ouriço": ("Frutos do Mar", "Ouriço", "Inteiro", "Fresco"),
+    "ouriço do mar": ("Frutos do Mar", "Ouriço", "Inteiro", "Fresco"),
+    "ostras": ("Frutos do Mar", "Ostras", "Frescas", "Premium"),
+    "ostra": ("Frutos do Mar", "Ostras", "Frescas", "Premium"),
+    "carabineiro": ("Frutos do Mar", "Carabineiro", "Inteiro", "Premium"),
+    "vieira": ("Frutos do Mar", "Vieira", "Fresca", "Premium"),
+    "vieiras": ("Frutos do Mar", "Vieira", "Fresca", "Premium"),
+    "santola": ("Frutos do Mar", "Santola", "Inteira", "Premium"),
+    
+    # EXPANSÃO SÃO PAULO - CARNES PREMIUM
+    "wagyu": ("Carnes", "Bovino", "Wagyu", "Premium"),
+    "kobe": ("Carnes", "Bovino", "Wagyu", "Premium"),
+    "pato": ("Carnes", "Pato", "Inteiro", "Premium"),
+    "magret": ("Carnes", "Pato", "Peito", "Premium"),
+    "cordeiro": ("Carnes", "Cordeiro", "Paleta", "Premium"),
+    "cabrito": ("Carnes", "Cabrito", "Pernil", "Premium"),
+    "vitela": ("Carnes", "Vitela", "Filé", "Premium"),
+    
+    # EXPANSÃO SÃO PAULO - TEMPEROS ASIÁTICOS
+    "wasabi": ("Temperos", "Wasabi", "Fresco", "Premium"),
+    "shichimi": ("Temperos", "Shichimi", "Togarashi", "Premium"),
+    "ponzu": ("Temperos", "Ponzu", "Molho", "Premium"),
+    "yuzu": ("Temperos", "Yuzu", "Fruta", "Premium"),
+    "mirin": ("Temperos", "Mirin", "Sake", "Premium"),
+    
+    # EXPANSÃO SÃO PAULO - TEMPEROS MEXICANOS
+    "tomatillo": ("Verduras", "Tomatillo", "Verde", "Mexicano"),
+    "poblano": ("Temperos", "Poblano", "Pimenta", "Mexicano"),
+    "jalapeño": ("Temperos", "Jalapeño", "Pimenta", "Mexicano"),
+    "jalapeno": ("Temperos", "Jalapeño", "Pimenta", "Mexicano"),
+    "chipotle": ("Temperos", "Chipotle", "Defumado", "Mexicano"),
+    "habanero": ("Temperos", "Habanero", "Pimenta", "Mexicano"),
+
+    # EXPANSÃO RIO DE JANEIRO - BRASILEIROS MODERNOS
+    "tucumã": ("Frutas", "Tucumã", "Polpa", "Amazonico"),
+    "jambu": ("Verduras", "Jambu", "Folha", "Amazonico"),
+    "ora-pro-nóbis": ("Verduras", "Ora-pro-nóbis", "Folha", "PANC"),
+    "ora pro nobis": ("Verduras", "Ora-pro-nóbis", "Folha", "PANC"),
+    "taioba": ("Verduras", "Taioba", "Folha", "PANC"),
+    "beldroega": ("Verduras", "Beldroega", "Folha", "PANC"),
+    "capuchinha": ("Verduras", "Capuchinha", "Flor", "PANC"),
+    
+    # EXPANSÃO RIO DE JANEIRO - PEIXES AMAZÔNICOS
+    "pirarucu": ("Peixes", "Pirarucu", "Filé", "Amazonico"),
+    "tambaqui": ("Peixes", "Tambaqui", "Filé", "Amazonico"),
+    "filhote": ("Peixes", "Filhote", "Filé", "Amazonico"),
+    "pintado": ("Peixes", "Pintado", "Filé", "Amazonico"),
+    "surubim": ("Peixes", "Surubim", "Filé", "Amazonico"),
+    "tucunaré": ("Peixes", "Tucunaré", "Filé", "Amazonico"),
+    "tucunare": ("Peixes", "Tucunaré", "Filé", "Amazonico"),
+    "dourado": ("Peixes", "Dourado", "Filé", "Fluvial"),
+    "pacu": ("Peixes", "Pacu", "Filé", "Fluvial"),
+    
+    # EXPANSÃO RIO DE JANEIRO - FRANCESES
+    "foie gras": ("Carnes", "Pato", "Foie Gras", "Premium"),
+    "escargot": ("Frutos do Mar", "Escargot", "Caracol", "Premium"),
+    "confit": ("Carnes", "Pato", "Confit", "Premium"),
+    "magret de canard": ("Carnes", "Pato", "Peito", "Premium"),
+    "bouquet garni": ("Temperos", "Bouquet Garni", "Ervas", "Frances"),
+    "herbes de provence": ("Temperos", "Herbes Provence", "Ervas", "Frances"),
+    
+    # EXPANSÃO RIO DE JANEIRO - ITALIANOS
+    "burrata": ("Laticínios", "Queijo", "Burrata", "Italiana"),
+    "stracciatella": ("Laticínios", "Queijo", "Stracciatella", "Italiana"),
+    "bottarga": ("Frutos do Mar", "Bottarga", "Ovas", "Italiana"),
+    "pancetta": ("Embutidos", "Pancetta", "Suína", "Italiana"),
+    "guanciale": ("Embutidos", "Guanciale", "Suína", "Italiana"),
+    "bresaola": ("Embutidos", "Bresaola", "Bovina", "Italiana"),
+    "prosciutto": ("Embutidos", "Prosciutto", "Suína", "Italiana"),
+    "gorgonzola": ("Laticínios", "Queijo", "Gorgonzola", "Italiana"),
+    "pecorino": ("Laticínios", "Queijo", "Pecorino", "Italiana"),
+    
+    # EXPANSÃO RIO DE JANEIRO - PERUANOS
+    "ají amarillo": ("Temperos", "Ají Amarillo", "Pimenta", "Peruano"),
+    "aji amarillo": ("Temperos", "Ají Amarillo", "Pimenta", "Peruano"),
+    "ají rocoto": ("Temperos", "Ají Rocoto", "Pimenta", "Peruano"),
+    "aji rocoto": ("Temperos", "Ají Rocoto", "Pimenta", "Peruano"),
+    "leche de tigre": ("Temperos", "Leche de Tigre", "Molho", "Peruano"),
+    "quinoa": ("Grãos", "Quinoa", "Integral", "Andino"),
+    "quinua": ("Grãos", "Quinoa", "Integral", "Andino"),
+    "kiwicha": ("Grãos", "Kiwicha", "Integral", "Andino"),
+    "chuño": ("Tuberculos", "Chuño", "Desidratado", "Andino"),
+
+    # EXPANSÃO MINAS GERAIS - TRADICIONAIS MINEIROS
+    "linguiça": ("Embutidos", "Linguiça", "Artesanal", "Mineira"),
+    "linguica": ("Embutidos", "Linguiça", "Artesanal", "Mineira"),
+    "torresmo": ("Carnes", "Suíno", "Torresmo", "Frito"),
+    "toucinho": ("Carnes", "Suíno", "Toucinho", "Defumado"),
+    "paio": ("Embutidos", "Paio", "Defumado", "Mineira"),
+    "costelinha": ("Carnes", "Suíno", "Costela", "Fresca"),
+    "lombinho": ("Carnes", "Suíno", "Lombo", "Defumado"),
+    "chouriço": ("Embutidos", "Chouriço", "Defumado", "Mineira"),
+    "chourico": ("Embutidos", "Chouriço", "Defumado", "Mineira"),
+    
+    # EXPANSÃO MINAS GERAIS - QUEIJOS ARTESANAIS
+    "canastra": ("Laticínios", "Queijo", "Canastra", "Artesanal"),
+    "serro": ("Laticínios", "Queijo", "Serro", "Artesanal"),
+    "araxá": ("Laticínios", "Queijo", "Araxá", "Artesanal"),
+    "araxa": ("Laticínios", "Queijo", "Araxá", "Artesanal"),
+    "campo das vertentes": ("Laticínios", "Queijo", "Campo das Vertentes", "Artesanal"),
+    "cabacinha": ("Laticínios", "Queijo", "Cabacinha", "Artesanal"),
+    "coalho": ("Laticínios", "Queijo", "Coalho", "Nordestino"),
+    "minas padrão": ("Laticínios", "Queijo", "Minas Padrão", "Industrial"),
+    "minas padrao": ("Laticínios", "Queijo", "Minas Padrão", "Industrial"),
+    "minas frescal": ("Laticínios", "Queijo", "Minas Frescal", "Fresco"),
+    
+    # EXPANSÃO MINAS GERAIS - REGIONAIS
+    "couve": ("Verduras", "Couve", "Folha", "Mineira"),
+    "couve mineira": ("Verduras", "Couve", "Folha", "Mineira"),
+    "quiabo": ("Verduras", "Quiabo", "Inteiro", "Fresco"),
+    "jiló": ("Verduras", "Jiló", "Inteiro", "Fresco"),
+    "jilo": ("Verduras", "Jiló", "Inteiro", "Fresco"),
+    "maxixe": ("Verduras", "Maxixe", "Inteiro", "Fresco"),
+    "chuchu": ("Verduras", "Chuchu", "Inteiro", "Fresco"),
+    "mandioca": ("Tuberculos", "Mandioca", "Inteira", "Fresca"),
+    "aipim": ("Tuberculos", "Mandioca", "Inteira", "Fresca"),
+    "macaxeira": ("Tuberculos", "Mandioca", "Inteira", "Fresca"),
+    "inhame": ("Tuberculos", "Inhame", "Inteiro", "Fresco"),
+    "taiá": ("Tuberculos", "Taiá", "Inteiro", "Fresco"),
+    "taia": ("Tuberculos", "Taiá", "Inteiro", "Fresco"),
+    
+    # EXPANSÃO MINAS GERAIS - CACHAÇAS E AGUARDENTES
+    "cachaça": ("Bebidas", "Cachaça", "Artesanal", "Mineira"),
+    "cachaca": ("Bebidas", "Cachaça", "Artesanal", "Mineira"),
+    "cachaça seleta": ("Bebidas", "Cachaça", "Seleta", "Premium"),
+    "salinas": ("Bebidas", "Cachaça", "Salinas", "Premium"),
+    "aguardente": ("Bebidas", "Aguardente", "Artesanal", "Mineira"),
+    "pinga": ("Bebidas", "Cachaça", "Industrial", "Popular"),
+    
+    # EXPANSÃO MINAS GERAIS - FRUTAS DO CERRADO
+    "araticum": ("Frutas", "Araticum", "Polpa", "Cerrado"),
+    "mangaba": ("Frutas", "Mangaba", "Inteira", "Cerrado"),
+    "murici": ("Frutas", "Murici", "Polpa", "Cerrado"),
+    "gabiroba": ("Frutas", "Gabiroba", "Inteira", "Cerrado"),
+    "pequi": ("Frutas", "Pequi", "Polpa", "Cerrado"),
+    "cagaita": ("Frutas", "Cagaita", "Inteira", "Cerrado"),
+    "jatobá": ("Frutas", "Jatobá", "Farinha", "Cerrado"),
+    "jatoba": ("Frutas", "Jatobá", "Farinha", "Cerrado"),
+    "baru": ("Castanhas", "Baru", "Inteira", "Cerrado"),
+    "buriti": ("Frutas", "Buriti", "Polpa", "Cerrado"),
+    "macaúba": ("Frutas", "Macaúba", "Polpa", "Cerrado"),
+    "macauba": ("Frutas", "Macaúba", "Polpa", "Cerrado"),
+    
+    # EXPANSÃO MINAS GERAIS - DOCES TRADICIONAIS
+    "goiabada": ("Doces", "Goiabada", "Cascão", "Mineira"),
+    "doce de leite": ("Doces", "Doce de Leite", "Cremoso", "Mineira"),
+    "rapadura": ("Doces", "Rapadura", "Artesanal", "Nordestina"),
+    "pé de moleque": ("Doces", "Pé de Moleque", "Amendoim", "Mineira"),
+    "pe de moleque": ("Doces", "Pé de Moleque", "Amendoim", "Mineira"),
+    "cocada": ("Doces", "Cocada", "Coco", "Nordestina"),
+    
     # CARNES
     "carne": ("Carnes", "Bovino", "Filé", "Premium"),
     "boi": ("Carnes", "Bovino", "Filé", "Premium"),

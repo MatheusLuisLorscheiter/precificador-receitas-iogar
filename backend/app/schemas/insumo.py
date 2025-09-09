@@ -351,17 +351,26 @@ class InsumoResponse(InsumoBase):
 
 class InsumoListResponse(BaseModel):
     """
-    Schema para listagem de insumos com informações resumidas.
+    Schema simplificado para resposta de listagem de insumos.
+    
+    Usado no endpoint GET /api/v1/insumos/ para exibir listas.
+    Inclui campos essenciais incluindo taxonomia_id.
     """
-    id: int
-    codigo: str
-    nome: str
-    grupo: str
-    subgrupo: str
-    unidade: str
-    fator: float
-    preco_compra_real: Optional[float] = None
-    quantidade: int = Field(default=1, description="Quantidade comprada")
+    id: int = Field(description="ID único do insumo")
+    codigo: str = Field(description="Código do insumo")
+    nome: str = Field(description="Nome do insumo")
+    grupo: str = Field(description="Grupo do insumo")
+    subgrupo: str = Field(description="Subgrupo do insumo")
+    unidade: str = Field(description="Unidade de medida")
+    fator: float = Field(description="Fator de conversão")
+    preco_compra_real: Optional[float] = Field(description="Preço de compra em reais")
+    quantidade: int = Field(description="Quantidade")
+    
+    # Campo importante para taxonomias
+    taxonomia_id: Optional[int] = Field(
+        None,
+        description="ID da taxonomia hierárquica master"
+    )
 
     class Config:
         from_attributes = True
