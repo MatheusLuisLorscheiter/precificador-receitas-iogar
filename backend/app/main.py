@@ -27,8 +27,9 @@ try:
     try:
         from app.api.endpoints import taxonomia_aliases
         HAS_TAXONOMIA_ALIASES = True
-    except ImportError:
-        print("⚠️  Módulo taxonomia_aliases não encontrado, pulando...")
+        print("✅ Módulo taxonomia_aliases importado com sucesso")
+    except ImportError as e:
+        print(f"⚠️  Módulo taxonomia_aliases não encontrado: {e}")
         HAS_TAXONOMIA_ALIASES = False
         
 except ImportError as e:
@@ -42,7 +43,7 @@ from app.models.base import Base
 # ============================================================================
 # IMPORTAÇÕES DOS MODELOS (para registrar no SQLAlchemy)
 # ============================================================================
-from app.models import taxonomia, insumo, fornecedor, fornecedor_insumo, receita
+from app.models import taxonomia, taxonomia_alias, insumo, fornecedor, fornecedor_insumo, receita
 
 # Imports para variáveis de ambiente
 import os

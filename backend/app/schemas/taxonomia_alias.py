@@ -43,7 +43,7 @@ class TaxonomiaAliasBase(BaseModel):
     facilitando o reconhecimento automático durante importações.
     """
     
-    nome_original: str = Field(
+    nome_alternativo: str = Field(
         ...,
         min_length=1,
         max_length=255,
@@ -82,7 +82,7 @@ class TaxonomiaAliasBase(BaseModel):
     # VALIDADORES
     # ========================================================================
     
-    @field_validator('nome_original')
+    @field_validator('nome_alternativo')
     @classmethod
     def validar_nome_original(cls, v: str) -> str:
         """Normaliza o nome original para busca"""
@@ -116,7 +116,7 @@ class TaxonomiaAliasUpdate(BaseModel):
         None,
         min_length=1,
         max_length=255,
-        description="Nome/termo original"
+        description="Nome alternativo"
     )
     
     taxonomia_id: Optional[int] = Field(

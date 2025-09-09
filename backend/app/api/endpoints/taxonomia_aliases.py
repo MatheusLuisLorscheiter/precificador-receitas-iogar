@@ -86,8 +86,8 @@ async def listar_aliases(
         return TaxonomiaAliasListResponse(
             aliases=aliases_response,
             total=total,
-            pagina=(skip // limit) + 1,
-            por_pagina=limit
+            skip=skip,
+            limit=limit
         )
         
     except Exception as e:

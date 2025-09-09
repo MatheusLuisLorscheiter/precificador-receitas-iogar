@@ -114,7 +114,7 @@ MAPEAMENTOS_PALAVRAS_CHAVE = {
     "bacon": ("Embutidos", "Bacon", "Fatiado", "Defumado"),
     
     # FRUTOS DO MAR
-    "camarão": ("Frutos do Mar", "Camarão", "Descascado", "Médio"),
+    "camarão": ("Frutos Do Mar", "Camarão", "Descascado", "Médio"),
     "camarao": ("Frutos do Mar", "Camarão", "Descascado", "Médio"),
     "lula": ("Frutos do Mar", "Lula", "Anéis", "Fresco"),
     "polvo": ("Frutos do Mar", "Polvo", "Inteiro", "Cozido"),
