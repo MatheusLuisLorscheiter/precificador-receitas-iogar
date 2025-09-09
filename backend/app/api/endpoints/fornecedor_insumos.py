@@ -254,21 +254,23 @@ def atualizar_insumo_do_catalogo(
     - Valida código único se alterado
     - Mantém validações dos schemas
     - Preserva relacionamentos existentes
+    - Suporta vinculação com taxonomias hierárquicas
     
     **Validações:**
     - Insumo deve pertencer ao fornecedor
     - Código único por fornecedor (se alterado)
     - Preço maior que zero (se fornecido)
+    - Taxonomia deve existir (se fornecida)
     - Outros validadores do schema
     
     **Parâmetros:**
     - `fornecedor_id`: ID do fornecedor
     - `insumo_id`: ID do insumo a atualizar
-    - `insumo_update`: Campos a atualizar (parcial)
+    - `insumo_update`: Campos a atualizar (parcial, incluindo taxonomia_id)
     
     **Respostas:**
     - 200: Insumo atualizado com sucesso
-    - 400: Dados inválidos ou código duplicado
+    - 400: Dados inválidos, código duplicado ou taxonomia inexistente
     - 404: Insumo ou fornecedor não encontrado
     """
     try:

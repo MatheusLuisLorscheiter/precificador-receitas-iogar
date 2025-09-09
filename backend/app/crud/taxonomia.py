@@ -505,70 +505,124 @@ def soft_delete_taxonomia(db: Session, taxonomia_id: int) -> bool:
 
 def get_estatisticas_taxonomia(db: Session) -> dict:
     """
-    Retorna estatísticas gerais sobre as taxonomias.
+    Retorna estatísticas completas das taxonomias e sistema de mapeamento.
+    
+    Inclui métricas de taxonomias, insumos mapeados, aliases e distribuição por categorias.
     
     Args:
         db (Session): Sessão do banco de dados
         
     Returns:
-        dict: Estatísticas das taxonomias
+        dict: Estatísticas completas do sistema de taxonomias
     """
     try:
-        print("🔍 DEBUG: Iniciando get_estatisticas_taxonomia")
-        
-        # Teste 1: Contar taxonomias
-        print("🔍 DEBUG: Contando taxonomias...")
+        # ========================================================================
+        # ESTATÍSTICAS BÁSICAS DE TAXONOMIAS
+        # ========================================================================
         total_taxonomias = db.query(Taxonomia).count()
-        print(f"🔍 DEBUG: total_taxonomias = {total_taxonomias}")
-        
-        # Teste 2: Contar ativas
-        print("🔍 DEBUG: Contando taxonomias ativas...")
         total_ativas = db.query(Taxonomia).filter(Taxonomia.ativo == True).count()
-        print(f"🔍 DEBUG: total_ativas = {total_ativas}")
-        
-        # Teste 3: Contar categorias
-        print("🔍 DEBUG: Contando categorias...")
         total_categorias = db.query(Taxonomia.categoria).distinct().count()
-        print(f"🔍 DEBUG: total_categorias = {total_categorias}")
-        
-        # Teste 4: Contar subcategorias
-        print("🔍 DEBUG: Contando subcategorias...")
         total_subcategorias = db.query(Taxonomia.subcategoria).distinct().count()
-        print(f"🔍 DEBUG: total_subcategorias = {total_subcategorias}")
         
-        # Teste 5: Contar insumos (aqui pode estar o problema)
-        print("🔍 DEBUG: Contando insumos com taxonomia...")
+        # ========================================================================
+        # ESTATÍSTICAS DE MAPEAMENTO DE INSUMOS
+        # ========================================================================
         insumos_com_taxonomia = db.query(Insumo).filter(Insumo.taxonomia_id.isnot(None)).count()
-        print(f"🔍 DEBUG: insumos_com_taxonomia = {insumos_com_taxonomia}")
-        
-        print("🔍 DEBUG: Contando total de insumos...")
         total_insumos = db.query(Insumo).count()
-        print(f"🔍 DEBUG: total_insumos = {total_insumos}")
-        
-        # Teste 6: Calcular percentual
-        print("🔍 DEBUG: Calculando percentual...")
-        percentual = round(
+        percentual_mapeados = round(
             (insumos_com_taxonomia / total_insumos * 100) if total_insumos > 0 else 0, 2
         )
-        print(f"🔍 DEBUG: percentual = {percentual}")
+        
+        # ========================================================================
+        # DISTRIBUIÇÃO POR CATEGORIA
+        # ========================================================================
+        # Obter taxonomias por categoria com contagem de insumos
+        distribuicao_categoria = db.query(
+            Taxonomia.categoria,
+            func.count(Taxonomia.id).label('total_taxonomias'),
+            func.count(Insumo.id).label('insumos_vinculados')
+        ).outerjoin(Insumo, Taxonomia.id == Insumo.taxonomia_id)\
+         .group_by(Taxonomia.categoria)\
+         .order_by(func.count(Insumo.id).desc())\
+         .all()
+        
+        # Formatar distribuição para resposta
+        distribuicao = []
+        for categoria, total_tax, insumos_vinc in distribuicao_categoria:
+            distribuicao.append({
+                "categoria": categoria,
+                "total_taxonomias": total_tax,
+                "insumos_vinculados": insumos_vinc,
+                "percentual_uso": round(
+                    (insumos_vinc / insumos_com_taxonomia * 100) if insumos_com_taxonomia > 0 else 0, 2
+                )
+            })
+        
+        # ========================================================================
+        # ESTATÍSTICAS DO SISTEMA DE ALIASES (se disponível)
+        # ========================================================================
+        try:
+            from app.crud import taxonomia_alias as crud_alias
+            stats_aliases = crud_alias.get_alias_stats(db)
+            aliases_disponiveis = True
+        except:
+            stats_aliases = {
+                "total_aliases": 0,
+                "aliases_ativos": 0,
+                "taxonomias_com_aliases": 0
+            }
+            aliases_disponiveis = False
+        
+        # ========================================================================
+        # MÉTRICAS DE EFICIÊNCIA DO SISTEMA
+        # ========================================================================
+        cobertura_aliases = round(
+            (stats_aliases.get('taxonomias_com_aliases', 0) / total_taxonomias * 100) if total_taxonomias > 0 else 0, 2
+        )
+        
+        eficiencia_global = round(
+            (percentual_mapeados + cobertura_aliases) / 2, 2
+        )
         
         resultado = {
+            # Estatísticas básicas
             "total_taxonomias": total_taxonomias,
             "taxonomias_ativas": total_ativas,
             "taxonomias_inativas": total_taxonomias - total_ativas,
             "total_categorias": total_categorias,
             "total_subcategorias": total_subcategorias,
-            "insumos_com_taxonomia": insumos_com_taxonomia,
-            "total_insumos": total_insumos,
-            "percentual_insumos_com_taxonomia": percentual
+            
+            # Mapeamento de insumos
+            "mapeamento_insumos": {
+                "insumos_com_taxonomia": insumos_com_taxonomia,
+                "total_insumos": total_insumos,
+                "percentual_mapeados": percentual_mapeados,
+                "insumos_sem_taxonomia": total_insumos - insumos_com_taxonomia
+            },
+            
+            # Distribuição por categoria
+            "distribuicao_por_categoria": distribuicao,
+            
+            # Sistema de aliases
+            "sistema_aliases": {
+                "disponivel": aliases_disponiveis,
+                "total_aliases": stats_aliases.get('total_aliases', 0),
+                "aliases_ativos": stats_aliases.get('aliases_ativos', 0),
+                "cobertura_percentual": cobertura_aliases
+            },
+            
+            # Métricas de eficiência
+            "metricas_eficiencia": {
+                "eficiencia_global": eficiencia_global,
+                "status_sistema": "excelente" if eficiencia_global >= 80 else
+                                "bom" if eficiencia_global >= 60 else
+                                "em_desenvolvimento"
+            }
         }
         
-        print(f"🔍 DEBUG: Resultado final = {resultado}")
         return resultado
         
     except Exception as e:
-        print(f"❌ DEBUG ERROR: {str(e)}")
-        print(f"❌ DEBUG ERROR TYPE: {type(e)}")
         import traceback
         traceback.print_exc()
         raise e

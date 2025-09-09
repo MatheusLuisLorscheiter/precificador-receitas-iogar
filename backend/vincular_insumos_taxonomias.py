@@ -790,27 +790,48 @@ def aplicar_vinculacoes(sugestoes_aprovadas: List[Dict]):
                             pass
             else:
                 # ========================================================================
-                # PROBLEMA IDENTIFICADO: INSUMOS DE FORNECEDOR NÃO SUPORTAM TAXONOMIA_ID
+                # VINCULAÇÃO DE INSUMO DE FORNECEDOR COM TAXONOMIA
                 # ========================================================================
-                # O schema FornecedorInsumoUpdate não possui campo taxonomia_id
-                # A API de fornecedor_insumos não foi projetada para usar taxonomias
-                # Isso precisa ser implementado no backend primeiro
+                # Agora que o schema FornecedorInsumoUpdate suporta taxonomia_id,
+                # podemos vincular insumos de fornecedores às taxonomias
                 
-                avisos += 1
-                print(f"⚠️  {insumo['nome']} - Taxonomias não suportadas para insumos de fornecedor")
-                print(f"    💡 Sugestão: Implementar taxonomia_id no FornecedorInsumoUpdate schema")
-                print(f"    🔗 Endpoint seria: PUT /api/v1/fornecedores/{insumo.get('fornecedor_id', 'ID')}/insumos/{insumo['id']}")
+                fornecedor_id = insumo.get('fornecedor_id')
+                if not fornecedor_id:
+                    print(f"    ❌ fornecedor_id não encontrado no insumo")
+                    erros += 1
+                    continue
                 
-                # TODO: Quando implementado no backend, usar este código:
-                # fornecedor_id = insumo.get('fornecedor_id')
-                # if not fornecedor_id:
-                #     print(f"    ❌ fornecedor_id não encontrado no insumo")
-                #     erros += 1
-                #     continue
-                # 
-                # url = f"{BASE_URL}/api/v1/fornecedores/{fornecedor_id}/insumos/{insumo['id']}"
-                # data = {"taxonomia_id": taxonomia_id}  # ← Precisa ser adicionado ao schema
-                # response = requests.put(url, json=data)
+                # Fazer requisição para vincular taxonomia ao insumo de fornecedor
+                url = f"{BASE_URL}/api/v1/fornecedores/{fornecedor_id}/insumos/{insumo['id']}"
+                data = {"taxonomia_id": taxonomia_id}
+                
+                try:
+                    response = requests.put(url, json=data)
+                    
+                    if response.status_code == 200:
+                        sucessos += 1
+                        print(f"✅ {insumo['nome']} → {taxonomia_escolhida['nome']}")
+                        
+                    elif response.status_code == 404:
+                        erros += 1
+                        print(f"❌ {insumo['nome']} - Insumo ou fornecedor não encontrado")
+                        
+                    elif response.status_code == 400:
+                        erros += 1
+                        print(f"❌ {insumo['nome']} - Erro de validação")
+                        try:
+                            error_detail = response.json()
+                            print(f"    Detalhes: {error_detail.get('detail', 'Erro de validação')}")
+                        except:
+                            pass
+                            
+                    else:
+                        erros += 1
+                        print(f"❌ {insumo['nome']} - Erro HTTP {response.status_code}")
+                        
+                except requests.exceptions.RequestException as e:
+                    erros += 1
+                    print(f"❌ {insumo['nome']} - Erro de conexão: {e}")
                 
         except Exception as e:
             erros += 1

@@ -262,6 +262,16 @@ class FornecedorInsumoUpdate(BaseModel):
     )
 
     # ========================================================================
+    # CAMPO PARA INTEGRAÇÃO COM SISTEMA DE TAXONOMIAS
+    # ========================================================================
+    
+    taxonomia_id: Optional[int] = Field(
+        None,
+        ge=1,
+        description="ID da taxonomia hierárquica para classificação do insumo"
+    )
+
+    # ========================================================================
     # VALIDADORES PARA CAMPOS OPCIONAIS
     # ========================================================================
 

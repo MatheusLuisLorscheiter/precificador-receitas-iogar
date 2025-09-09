@@ -219,8 +219,8 @@ def create_fornecedor_insumo(
 # ============================================================================
 
 def update_fornecedor_insumo(
-    db: Session,
-    insumo_id: int,
+    db: Session, 
+    insumo_id: int, 
     insumo_update: FornecedorInsumoUpdate
 ) -> Optional[FornecedorInsumo]:
     """
@@ -228,6 +228,7 @@ def update_fornecedor_insumo(
     
     Permite atualização parcial - apenas os campos fornecidos serão atualizados.
     Valida código duplicado apenas se o código foi alterado.
+    Suporta vinculação com taxonomias hierárquicas.
     
     Args:
         db (Session): Sessão do banco de dados
@@ -252,6 +253,15 @@ def update_fornecedor_insumo(
         )
         if insumo_existente:
             raise ValueError(f"O código '{insumo_update.codigo}' já está cadastrado para este fornecedor")
+    
+    # ========================================================================
+    # VALIDAÇÃO DE TAXONOMIA (SE FORNECIDA)
+    # ========================================================================
+    if insumo_update.taxonomia_id is not None:
+        from app.crud.taxonomia import get_taxonomia_by_id
+        taxonomia_existe = get_taxonomia_by_id(db, insumo_update.taxonomia_id)
+        if not taxonomia_existe:
+            raise ValueError(f"Taxonomia com ID {insumo_update.taxonomia_id} não encontrada")
     
     # Atualizar apenas os campos fornecidos
     update_data = insumo_update.model_dump(exclude_unset=True)
