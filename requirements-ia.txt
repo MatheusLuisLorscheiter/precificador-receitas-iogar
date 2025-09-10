@@ -1,0 +1,55 @@
+# ============================================================================
+# DEPENDÊNCIAS DO SISTEMA DE IA - FOOD COST SYSTEM
+# ============================================================================
+# Descrição: Dependências específicas para o sistema de IA integrado
+# Tecnologias: spaCy, fuzzywuzzy, processamento NLP
+# Data: 10/09/2025
+# Autor: Will - Empresa: IOGAR
+# ============================================================================
+
+# Processamento de Linguagem Natural (NLP)
+spacy>=3.6.0,<4.0.0
+# Modelo português será baixado separadamente com: python -m spacy download pt_core_news_sm
+
+# Similaridade de Strings e Matching
+fuzzywuzzy>=0.18.0
+python-levenshtein>=0.20.0
+
+# Normalização de Texto
+unidecode>=1.3.6
+
+# Dependências Auxiliares para IA
+# (já incluídas no requirements.txt principal, mas listadas para referência)
+# fastapi>=0.104.0
+# pydantic>=2.0.0
+# sqlalchemy>=2.0.0
+# requests>=2.31.0
+
+# ============================================================================
+# DEPENDÊNCIAS OPCIONAIS PARA FUNCIONALIDADES AVANÇADAS
+# ============================================================================
+
+# Para análises estatísticas mais avançadas (opcional)
+# numpy>=1.24.0
+# pandas>=2.0.0
+
+# Para otimizações de performance (opcional)  
+# cython>=0.29.0
+
+# ============================================================================
+# COMANDOS DE INSTALAÇÃO
+# ============================================================================
+# 
+# 1. Instalar dependências:
+#    pip install -r requirements-ia.txt
+#
+# 2. Baixar modelo português do spaCy:
+#    python -m spacy download pt_core_news_sm
+#
+# 3. Executar configuração automática:
+#    python backend/setup_ia.py
+#
+# 4. Testar sistema:
+#    python backend/teste_sistema_ia.py
+#
+# ============================================================================

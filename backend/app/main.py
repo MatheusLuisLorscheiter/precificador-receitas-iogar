@@ -211,7 +211,7 @@ app.include_router(
     }
 )
 
-# Router para sistema de IA de classificação (FASE 2)
+# Router para sistema de IA de classificação
 try:
     from app.api.endpoints import ia as ia_endpoints
     app.include_router(

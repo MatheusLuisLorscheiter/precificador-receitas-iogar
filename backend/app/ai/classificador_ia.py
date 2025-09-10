@@ -1,7 +1,7 @@
 # ============================================================================
-# SISTEMA DE IA LOCAL GRATUITA - CLASSIFICADOR DE INSUMOS
+# SISTEMA DE IA LOCAL GRATUITA - CLASSIFICADOR DE INSUMOS INTEGRADO
 # ============================================================================
-# Descrição: Core da IA para classificação automática de insumos em taxonomia
+# Descrição: Core da IA integrada ao sistema existente de taxonomias
 # Tecnologias: spaCy, fuzzywuzzy, re, json (100% gratuito)
 # Sistema de aprendizado com feedback do usuário
 # Data: 10/09/2025
@@ -35,7 +35,6 @@ from sqlalchemy.orm import Session
 
 # Imports do projeto
 from app.crud import taxonomia as crud_taxonomia
-from app.models.taxonomia import Taxonomia
 
 # ============================================================================
 # CONFIGURAÇÕES E CONSTANTES
@@ -45,34 +44,34 @@ from app.models.taxonomia import Taxonomia
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Caminhos dos arquivos de conhecimento
-BASE_CONHECIMENTO_PATH = Path("backend/app/ai/data/base_conhecimento.json")
+# Caminhos dos arquivos de dados
 PADROES_APRENDIDOS_PATH = Path("backend/app/ai/data/padroes_aprendidos.json")
 LOGS_FEEDBACK_PATH = Path("backend/app/ai/data/logs_feedback.json")
 
 # Criar diretórios se não existirem
-BASE_CONHECIMENTO_PATH.parent.mkdir(parents=True, exist_ok=True)
+PADROES_APRENDIDOS_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 # ============================================================================
-# CLASSE PRINCIPAL DO CLASSIFICADOR IA
+# CLASSE PRINCIPAL DO CLASSIFICADOR IA INTEGRADO
 # ============================================================================
 
 class ClassificadorIA:
     """
     Sistema de IA local gratuita para classificação automática de insumos.
+    INTEGRADO ao sistema existente de taxonomias e aliases.
     
     Funcionalidades:
     - Análise NLP de nomes de produtos
-    - Classificação em taxonomia hierárquica 
+    - Integração com sistema de taxonomias existente
     - Sistema de scoring e confiança
     - Aprendizado contínuo com feedback
-    - Base de conhecimento evolutiva
+    - Complementa mapeamento inteligente existente
     
     Tecnologias utilizadas:
     - spaCy: processamento de linguagem natural
     - fuzzywuzzy: similaridade entre strings
-    - JSON: base de conhecimento local
-    - regex: limpeza e normalização
+    - Sistema de taxonomias existente
+    - Sistema de aliases existente
     """
     
     def __init__(self, db_session: Session = None):
@@ -90,19 +89,22 @@ class ClassificadorIA:
         self._inicializar_nlp()
         self._carregar_padroes_aprendidos()
         
-        # Importar CRUDs do sistema existente
-        from app.crud import taxonomia as crud_taxonomia
-        from app.crud import taxonomia_alias as crud_alias
-        from app.utils import mapeamento_inteligente
-        
+        # Importar CRUDs do sistema existente (com fallback)
         self.crud_taxonomia = crud_taxonomia
-        self.crud_alias = crud_alias
-        self.mapeamento_inteligente = mapeamento_inteligente
+        self.crud_alias = None
+        self.mapeamento_inteligente = None
         
-        # Inicializar componentes
-        self._inicializar_nlp()
-        self._carregar_base_conhecimento()
-        self._carregar_padroes_aprendidos()
+        try:
+            from app.crud import taxonomia_alias as crud_alias
+            self.crud_alias = crud_alias
+        except ImportError:
+            logger.warning("Módulo taxonomia_alias não encontrado")
+        
+        try:
+            from app.utils import mapeamento_inteligente
+            self.mapeamento_inteligente = mapeamento_inteligente
+        except ImportError:
+            logger.warning("Módulo mapeamento_inteligente não encontrado")
         
         logger.info("ClassificadorIA inicializado com sucesso")
     
@@ -129,26 +131,6 @@ class ClassificadorIA:
             logger.error(f"Erro ao inicializar NLP: {e}")
             self.nlp = None
     
-    def _carregar_base_conhecimento(self) -> None:
-        """
-        Carrega base de conhecimento do arquivo JSON.
-        
-        Se arquivo não existir, cria estrutura inicial.
-        """
-        try:
-            if BASE_CONHECIMENTO_PATH.exists():
-                with open(BASE_CONHECIMENTO_PATH, 'r', encoding='utf-8') as file:
-                    self.base_conhecimento = json.load(file)
-                logger.info(f"Base de conhecimento carregada: {len(self.base_conhecimento)} entradas")
-            else:
-                # Criar base inicial
-                self.base_conhecimento = self._criar_base_conhecimento_inicial()
-                self._salvar_base_conhecimento()
-                logger.info("Base de conhecimento inicial criada")
-        except Exception as e:
-            logger.error(f"Erro ao carregar base de conhecimento: {e}")
-            self.base_conhecimento = self._criar_base_conhecimento_inicial()
-    
     def _carregar_padroes_aprendidos(self) -> None:
         """
         Carrega padrões aprendidos do arquivo JSON.
@@ -170,121 +152,27 @@ class ClassificadorIA:
             logger.error(f"Erro ao carregar padrões aprendidos: {e}")
             self.padroes_aprendidos = self._criar_padroes_iniciais()
     
-    def _analisar_nlp_complementar(self, nome_produto: str) -> List[Dict]:
-    """
-    Análise NLP complementar quando sistema existente não encontra correspondência.
-    
-    Args:
-        nome_produto: Nome do produto para análise
+    def _criar_padroes_iniciais(self) -> Dict:
+        """
+        Cria padrões iniciais aprendidos pelo sistema.
         
-    Returns:
-        Lista de candidatos baseados em análise NLP
-    """
-    candidatos = []
-    tokens = self.extrair_tokens(nome_produto)
-    
-    if len(tokens) < 1:
-        return candidatos
-    
-    # Padrões básicos baseados em palavras-chave conhecidas
-    padroes_categorias = {
-        'carnes': ['alcatra', 'bife', 'lombo', 'frango', 'peito', 'carne'],
-        'peixes': ['salmao', 'salmão', 'tilapia', 'peixe', 'file'],
-        'verduras': ['tomate', 'cebola', 'alface', 'verdura'],
-        'laticinios': ['leite', 'queijo', 'iogurte', 'manteiga'],
-        'temperos': ['sal', 'pimenta', 'oregano', 'tempero'],
-        'oleos': ['oleo', 'óleo', 'azeite']
-    }
-    
-    for categoria, palavras_chave in padroes_categorias.items():
-        for token in tokens:
-            for palavra in palavras_chave:
-                similaridade = self.calcular_similaridade(token, palavra)
-                if similaridade > 0.7:
-                    candidatos.append({
-                        "tipo": "nlp_analise",
-                        "categoria_sugerida": categoria.title(),
-                        "score": similaridade * 0.6,  # Score reduzido para priorizar sistema existente
-                        "fonte": "analise_nlp",
-                        "palavra_encontrada": palavra
-                    })
-    
-    return candidatos
-
-    def _remover_duplicatas_taxonomias(self, candidatos: List[Dict]) -> List[Dict]:
-        """Remove candidatos duplicados baseados na taxonomia."""
-        candidatos_unicos = []
-        taxonomias_vistas = set()
-        
-        for candidato in candidatos:
-            # Identificador único da taxonomia
-            if candidato.get("taxonomia"):
-                taxonomia = candidato["taxonomia"]
-                identificador = f"{taxonomia.categoria}_{taxonomia.subcategoria}_{taxonomia.especificacao}"
-            elif candidato.get("taxonomia_data"):
-                data = candidato["taxonomia_data"]
-                identificador = f"{data.get('categoria', '')}_{data.get('subcategoria', '')}_{data.get('especificacao', '')}"
-            else:
-                identificador = candidato.get("categoria_sugerida", str(len(candidatos_unicos)))
-            
-            if identificador not in taxonomias_vistas:
-                taxonomias_vistas.add(identificador)
-                candidatos_unicos.append(candidato)
-        
-        return candidatos_unicos
-
-    def _buscar_taxonomia_por_classificacao(self, classificacao: Dict):
-        """Busca taxonomia no banco baseada na classificação sugerida."""
-        if not self.db_session:
-            return None
-        
-        try:
-            return self.crud_taxonomia.get_taxonomia_by_hierarquia(
-                db=self.db_session,
-                categoria=classificacao.get("categoria"),
-                subcategoria=classificacao.get("subcategoria"),
-                especificacao=classificacao.get("especificacao"),
-                variante=classificacao.get("variante")
-            )
-        except Exception as e:
-            logger.error(f"Erro ao buscar taxonomia: {e}")
-            return None
-
-    def _buscar_ou_criar_taxonomia(self, taxonomia_data: Dict):
-        """Busca taxonomia existente ou cria nova se não existir."""
-        if not self.db_session:
-            return None
-        
-        try:
-            # Primeiro tentar buscar existente
-            taxonomia = self.crud_taxonomia.get_taxonomia_by_hierarquia(
-                db=self.db_session,
-                categoria=taxonomia_data.get("categoria"),
-                subcategoria=taxonomia_data.get("subcategoria"),
-                especificacao=taxonomia_data.get("especificacao"),
-                variante=taxonomia_data.get("variante")
-            )
-            
-            if taxonomia:
-                return taxonomia
-            
-            # Criar nova taxonomia se não existir
-            from app.schemas.taxonomia import TaxonomiaCreate
-            
-            nova_taxonomia = TaxonomiaCreate(
-                categoria=taxonomia_data["categoria"],
-                subcategoria=taxonomia_data["subcategoria"],
-                especificacao=taxonomia_data.get("especificacao"),
-                variante=taxonomia_data.get("variante"),
-                descricao=f"Criada automaticamente via IA para produto: {taxonomia_data.get('produto_origem', 'N/A')}",
-                ativo=True
-            )
-            
-            return self.crud_taxonomia.create_taxonomia(db=self.db_session, taxonomia=nova_taxonomia)
-            
-        except Exception as e:
-            logger.error(f"Erro ao buscar/criar taxonomia: {e}")
-            return None            
+        Returns:
+            Dict: Padrões organizados por categoria
+        """
+        return {
+            "sufixos_unidade": ["kg", "g", "l", "ml", "cx", "un", "und", "lata", "pct"],
+            "prefixos_marca": ["seara", "sadia", "perdigao", "aurora", "tio", "uncle"],
+            "palavras_estado": ["fresco", "fresh", "congelado", "frozen", "seco", "dry"],
+            "termos_qualidade": ["premium", "select", "extra", "especial", "gourmet"],
+            "termos_origem": ["atlantico", "pacifico", "brasileiro", "nacional", "importado"],
+            "palavras_ignorar": ["de", "da", "do", "com", "para", "em", "no", "na"],
+            "sinonimos_regionais": {
+                "macaxeira": "mandioca",
+                "aipim": "mandioca", 
+                "jerimum": "abobora",
+                "chuchu": "chuchu"
+            }
+        }
     
     def _salvar_padroes_aprendidos(self) -> None:
         """Salva padrões aprendidos no arquivo JSON."""
@@ -381,6 +269,69 @@ class ClassificadorIA:
         melhor_score = max(ratio, partial_ratio, token_sort, token_set)
         return melhor_score / 100.0
     
+    def _analisar_nlp_complementar(self, nome_produto: str) -> List[Dict]:
+        """
+        Análise NLP complementar quando sistema existente não encontra correspondência.
+        
+        Args:
+            nome_produto: Nome do produto para análise
+            
+        Returns:
+            Lista de candidatos baseados em análise NLP
+        """
+        candidatos = []
+        tokens = self.extrair_tokens(nome_produto)
+        
+        if len(tokens) < 1:
+            return candidatos
+        
+        # Padrões básicos baseados em palavras-chave conhecidas
+        padroes_categorias = {
+            'carnes': ['alcatra', 'bife', 'lombo', 'frango', 'peito', 'carne'],
+            'peixes': ['salmao', 'salmão', 'tilapia', 'peixe', 'file'],
+            'verduras': ['tomate', 'cebola', 'alface', 'verdura'],
+            'laticinios': ['leite', 'queijo', 'iogurte', 'manteiga'],
+            'temperos': ['sal', 'pimenta', 'oregano', 'tempero'],
+            'oleos': ['oleo', 'óleo', 'azeite']
+        }
+        
+        for categoria, palavras_chave in padroes_categorias.items():
+            for token in tokens:
+                for palavra in palavras_chave:
+                    similaridade = self.calcular_similaridade(token, palavra)
+                    if similaridade > 0.7:
+                        candidatos.append({
+                            "tipo": "nlp_analise",
+                            "categoria_sugerida": categoria.title(),
+                            "score": similaridade * 0.6,  # Score reduzido para priorizar sistema existente
+                            "fonte": "analise_nlp",
+                            "palavra_encontrada": palavra
+                        })
+        
+        return candidatos
+    
+    def _remover_duplicatas_taxonomias(self, candidatos: List[Dict]) -> List[Dict]:
+        """Remove candidatos duplicados baseados na taxonomia."""
+        candidatos_unicos = []
+        taxonomias_vistas = set()
+        
+        for candidato in candidatos:
+            # Identificador único da taxonomia
+            if candidato.get("taxonomia"):
+                taxonomia = candidato["taxonomia"]
+                identificador = f"{taxonomia.categoria}_{taxonomia.subcategoria}_{taxonomia.especificacao}"
+            elif candidato.get("taxonomia_data"):
+                data = candidato["taxonomia_data"]
+                identificador = f"{data.get('categoria', '')}_{data.get('subcategoria', '')}_{data.get('especificacao', '')}"
+            else:
+                identificador = candidato.get("categoria_sugerida", str(len(candidatos_unicos)))
+            
+            if identificador not in taxonomias_vistas:
+                taxonomias_vistas.add(identificador)
+                candidatos_unicos.append(candidato)
+        
+        return candidatos_unicos
+    
     def buscar_taxonomias_existentes(self, nome_produto: str) -> List[Dict]:
         """
         Busca correspondências no sistema de taxonomias e aliases existente.
@@ -396,42 +347,63 @@ class ClassificadorIA:
         
         candidatos = []
         
-        # 1. Buscar no sistema de aliases existente
-        try:
-            aliases_encontrados = self.crud_alias.buscar_aliases_por_termo(
-                db=self.db_session, 
-                termo=nome_produto, 
-                limite=5
-            )
-            
-            for alias_match in aliases_encontrados:
-                if alias_match.taxonomia:
-                    candidatos.append({
-                        "tipo": "alias_existente",
-                        "taxonomia": alias_match.taxonomia,
-                        "score": alias_match.confianca / 100.0,
-                        "fonte": "sistema_aliases"
-                    })
-        except Exception as e:
-            logger.warning(f"Erro ao buscar aliases: {e}")
+        # 1. Buscar no sistema de aliases existente (se disponível)
+        if self.crud_alias:
+            try:
+                # Tentar diferentes métodos de busca de aliases
+                if hasattr(self.crud_alias, 'buscar_aliases_por_termo'):
+                    aliases_encontrados = self.crud_alias.buscar_aliases_por_termo(
+                        db=self.db_session, 
+                        termo=nome_produto, 
+                        limite=5
+                    )
+                elif hasattr(self.crud_alias, 'buscar_por_termo'):
+                    aliases_encontrados = self.crud_alias.buscar_por_termo(
+                        db=self.db_session, 
+                        termo=nome_produto
+                    )
+                else:
+                    aliases_encontrados = []
+                
+                for alias_match in aliases_encontrados:
+                    if hasattr(alias_match, 'taxonomia') and alias_match.taxonomia:
+                        candidatos.append({
+                            "tipo": "alias_existente",
+                            "taxonomia": alias_match.taxonomia,
+                            "score": getattr(alias_match, 'confianca', 80) / 100.0,
+                            "fonte": "sistema_aliases"
+                        })
+            except Exception as e:
+                logger.warning(f"Erro ao buscar aliases: {e}")
         
-        # 2. Usar mapeamento inteligente existente
-        try:
-            sugestoes_mapeamento = self.mapeamento_inteligente.sugerir_taxonomias_inteligente(
-                db=self.db_session,
-                nome_insumo=nome_produto,
-                limite=3
-            )
-            
-            for sugestao in sugestoes_mapeamento:
-                candidatos.append({
-                    "tipo": "mapeamento_inteligente",
-                    "taxonomia_data": sugestao,
-                    "score": sugestao.get('score', 0.0),
-                    "fonte": "mapeamento_existente"
-                })
-        except Exception as e:
-            logger.warning(f"Erro no mapeamento inteligente: {e}")
+        # 2. Usar mapeamento inteligente existente (se disponível)
+        if self.mapeamento_inteligente:
+            try:
+                if hasattr(self.mapeamento_inteligente, 'sugerir_taxonomias_inteligente'):
+                    sugestoes_mapeamento = self.mapeamento_inteligente.sugerir_taxonomias_inteligente(
+                        db=self.db_session,
+                        nome_insumo=nome_produto,
+                        limite=3
+                    )
+                elif hasattr(self.mapeamento_inteligente, 'mapear_produto_para_taxonomia'):
+                    resultado = self.mapeamento_inteligente.mapear_produto_para_taxonomia(
+                        db=self.db_session,
+                        nome_insumo=nome_produto
+                    )
+                    sugestoes_mapeamento = [resultado] if resultado else []
+                else:
+                    sugestoes_mapeamento = []
+                
+                for sugestao in sugestoes_mapeamento:
+                    if sugestao:
+                        candidatos.append({
+                            "tipo": "mapeamento_inteligente",
+                            "taxonomia_data": sugestao,
+                            "score": sugestao.get('score', 0.7) if isinstance(sugestao, dict) else 0.7,
+                            "fonte": "mapeamento_existente"
+                        })
+            except Exception as e:
+                logger.warning(f"Erro no mapeamento inteligente: {e}")
         
         # 3. Complementar com análise NLP própria
         candidatos_nlp = self._analisar_nlp_complementar(nome_produto)
@@ -541,7 +513,7 @@ class ClassificadorIA:
                 "erro": f"Erro interno: {str(e)}",
                 "confianca": 0.0
             }
-
+    
     def _formatar_alternativas(self, candidatos: List[Dict]) -> List[Dict]:
         """Formata candidatos alternativos para resposta."""
         alternativas = []
@@ -571,135 +543,180 @@ class ClassificadorIA:
     def registrar_feedback(self, nome_produto: str, classificacao_sugerida: Dict, 
                           acao: str, taxonomia_correta: Dict = None) -> bool:
         """
-        Registra feedback do usuário para aprendizado.
-        
-        Args:
-            nome_produto (str): Nome do produto classificado
-            classificacao_sugerida (Dict): Classificação que foi sugerida
-            acao (str): "aceitar" ou "corrigir"
-            taxonomia_correta (Dict): Taxonomia correta (se corrigido)
-            
-        Returns:
-            bool: True se feedback foi registrado com sucesso
+        Registra feedback do usuário integrando com sistema existente.
         """
         try:
-            timestamp = datetime.now().isoformat()
-            
-            # Registrar log do feedback
-            feedback_log = {
-                "timestamp": timestamp,
-                "nome_produto": nome_produto,
-                "classificacao_sugerida": classificacao_sugerida,
-                "acao": acao,
-                "taxonomia_correta": taxonomia_correta
-            }
-            
-            # Salvar log (para auditoria)
-            self._salvar_log_feedback(feedback_log)
+            if not self.db_session:
+                return False
             
             if acao == "aceitar":
-                self._processar_feedback_positivo(nome_produto, classificacao_sugerida)
+                return self._processar_feedback_positivo_integrado(nome_produto, classificacao_sugerida)
             elif acao == "corrigir":
-                self._processar_correcao(nome_produto, classificacao_sugerida, taxonomia_correta)
+                return self._processar_correcao_integrada(nome_produto, classificacao_sugerida, taxonomia_correta)
             
-            # Salvar base atualizada
-            self._salvar_base_conhecimento()
-            
-            logger.info(f"Feedback registrado: {acao} para '{nome_produto}'")
-            return True
+            return False
             
         except Exception as e:
             logger.error(f"Erro ao registrar feedback: {e}")
             return False
     
-    def _processar_feedback_positivo(self, nome_produto: str, classificacao: Dict) -> None:
-        """Processa feedback positivo (usuário aceitou a sugestão)."""
-        # Encontrar entrada na base de conhecimento
-        chave_encontrada = None
-        for chave, dados in self.base_conhecimento.get("conhecimento", {}).items():
-            if (dados.get("categoria") == classificacao.get("categoria") and
-                dados.get("subcategoria") == classificacao.get("subcategoria")):
-                chave_encontrada = chave
-                break
-        
-        if chave_encontrada:
-            # Incrementar confirmações
-            self.base_conhecimento["conhecimento"][chave_encontrada]["confirmacoes"] += 1
+    def _processar_feedback_positivo_integrado(self, nome_produto: str, classificacao: Dict) -> bool:
+        """Processa feedback positivo usando sistema de aliases existente."""
+        try:
+            # Buscar taxonomia no banco
+            taxonomia = self._buscar_taxonomia_por_classificacao(classificacao)
+            if not taxonomia:
+                return False
             
-            # Adicionar nome do produto aos aliases se não existir
-            aliases = self.base_conhecimento["conhecimento"][chave_encontrada]["aliases"]
-            nome_normalizado = self.normalizar_texto(nome_produto)
-            if nome_normalizado not in aliases:
-                aliases.append(nome_normalizado)
-            
-            # Atualizar confiança
-            confirmacoes = self.base_conhecimento["conhecimento"][chave_encontrada]["confirmacoes"]
-            correcoes = self.base_conhecimento["conhecimento"][chave_encontrada]["correcoes"]
-            nova_confianca = min(confirmacoes / (confirmacoes + correcoes), 0.95)
-            self.base_conhecimento["conhecimento"][chave_encontrada]["confianca"] = nova_confianca
-    
-    def _processar_correcao(self, nome_produto: str, classificacao_errada: Dict, 
-                           taxonomia_correta: Dict) -> None:
-        """Processa correção (usuário corrigiu a classificação)."""
-        # Encontrar e penalizar classificação errada
-        for chave, dados in self.base_conhecimento.get("conhecimento", {}).items():
-            if (dados.get("categoria") == classificacao_errada.get("categoria") and
-                dados.get("subcategoria") == classificacao_errada.get("subcategoria")):
-                dados["correcoes"] += 1
+            # Se crud_alias disponível, criar/atualizar alias
+            if self.crud_alias:
+                # Verificar se alias já existe
+                alias_existente = None
+                if hasattr(self.crud_alias, 'buscar_alias_por_nome'):
+                    alias_existente = self.crud_alias.buscar_alias_por_nome(
+                        db=self.db_session,
+                        nome_alternativo=nome_produto
+                    )
                 
-                # Atualizar confiança
-                confirmacoes = dados["confirmacoes"]
-                correcoes = dados["correcoes"]
-                if confirmacoes + correcoes > 0:
-                    nova_confianca = confirmacoes / (confirmacoes + correcoes)
-                    dados["confianca"] = max(nova_confianca, 0.1)  # Mínimo 10%
-                break
-        
-        # Criar ou atualizar entrada correta
-        chave_correta = self._gerar_chave_taxonomia(taxonomia_correta)
-        
-        if chave_correta in self.base_conhecimento.get("conhecimento", {}):
-            # Atualizar existente
-            dados_corretos = self.base_conhecimento["conhecimento"][chave_correta]
-            dados_corretos["confirmacoes"] += 1
+                if not alias_existente:
+                    # Criar novo alias usando sistema existente
+                    try:
+                        from app.schemas.taxonomia_alias import TaxonomiaAliasCreate
+                        
+                        novo_alias = TaxonomiaAliasCreate(
+                            nome_alternativo=nome_produto,
+                            taxonomia_id=taxonomia.id,
+                            tipo="ia",
+                            origem="ia",
+                            confianca=80,
+                            ativo=True
+                        )
+                        
+                        self.crud_alias.create_alias(db=self.db_session, alias=novo_alias)
+                        logger.info(f"Novo alias criado via IA: '{nome_produto}' -> {taxonomia.nome_completo}")
+                    except Exception as e:
+                        logger.warning(f"Erro ao criar alias: {e}")
+                else:
+                    # Incrementar confiança do alias existente
+                    if hasattr(self.crud_alias, 'incrementar_confirmacao'):
+                        self.crud_alias.incrementar_confirmacao(db=self.db_session, alias_id=alias_existente.id)
             
-            # Adicionar alias
-            nome_normalizado = self.normalizar_texto(nome_produto)
-            if nome_normalizado not in dados_corretos["aliases"]:
-                dados_corretos["aliases"].append(nome_normalizado)
-        else:
-            # Criar nova entrada
-            self.base_conhecimento["conhecimento"][chave_correta] = {
-                "aliases": [self.normalizar_texto(nome_produto)],
-                "palavras_chave": self.extrair_tokens(nome_produto),
-                "categoria": taxonomia_correta.get("categoria"),
-                "subcategoria": taxonomia_correta.get("subcategoria"),
-                "especificacao": taxonomia_correta.get("especificacao"),
-                "variante": taxonomia_correta.get("variante"),
-                "confianca": 0.6,  # Confiança inicial moderada
-                "confirmacoes": 1,
-                "correcoes": 0
-            }
+            # Salvar log de feedback
+            self._salvar_log_feedback({
+                "timestamp": datetime.now().isoformat(),
+                "nome_produto": nome_produto,
+                "acao": "aceitar",
+                "classificacao": classificacao,
+                "resultado": "alias_criado_ou_confirmado"
+            })
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erro no feedback positivo: {e}")
+            return False
     
-    def _gerar_chave_taxonomia(self, taxonomia: Dict) -> str:
-        """
-        Gera chave única para entrada na base de conhecimento.
-        
-        Args:
-            taxonomia (Dict): Dados da taxonomia
+    def _processar_correcao_integrada(self, nome_produto: str, classificacao_errada: Dict, 
+                                     taxonomia_correta: Dict) -> bool:
+        """Processa correção usando sistema de taxonomias existente."""
+        try:
+            # Buscar ou criar taxonomia correta
+            taxonomia = self._buscar_ou_criar_taxonomia(taxonomia_correta)
+            if not taxonomia:
+                return False
             
-        Returns:
-            str: Chave única
-        """
-        categoria = self.normalizar_texto(taxonomia.get("categoria", ""))
-        subcategoria = self.normalizar_texto(taxonomia.get("subcategoria", ""))
-        especificacao = self.normalizar_texto(taxonomia.get("especificacao", ""))
-        
-        chave = f"{categoria}_{subcategoria}"
-        if especificacao:
-            chave += f"_{especificacao}"
+            # Criar alias para a taxonomia correta (se crud_alias disponível)
+            if self.crud_alias:
+                try:
+                    from app.schemas.taxonomia_alias import TaxonomiaAliasCreate
+                    
+                    alias_correto = TaxonomiaAliasCreate(
+                        nome_alternativo=nome_produto,
+                        taxonomia_id=taxonomia.id,
+                        tipo="ia",
+                        origem="ia",
+                        confianca=70,  # Confiança inicial moderada
+                        ativo=True
+                    )
+                    
+                    self.crud_alias.create_alias(db=self.db_session, alias=alias_correto)
+                    logger.info(f"Correção aplicada via IA: '{nome_produto}' -> {taxonomia.nome_completo}")
+                except Exception as e:
+                    logger.warning(f"Erro ao criar alias de correção: {e}")
             
-        return chave
+            # Salvar log de feedback
+            self._salvar_log_feedback({
+                "timestamp": datetime.now().isoformat(),
+                "nome_produto": nome_produto,
+                "acao": "corrigir",
+                "classificacao_errada": classificacao_errada,
+                "taxonomia_correta": taxonomia_correta,
+                "resultado": "correcao_aplicada"
+            })
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erro na correção: {e}")
+            return False
+    
+    def _buscar_taxonomia_por_classificacao(self, classificacao: Dict):
+        """Busca taxonomia no banco baseada na classificação sugerida."""
+        if not self.db_session:
+            return None
+        
+        try:
+            if hasattr(self.crud_taxonomia, 'get_taxonomia_by_hierarquia'):
+                return self.crud_taxonomia.get_taxonomia_by_hierarquia(
+                    db=self.db_session,
+                    categoria=classificacao.get("categoria"),
+                    subcategoria=classificacao.get("subcategoria"),
+                    especificacao=classificacao.get("especificacao"),
+                    variante=classificacao.get("variante")
+                )
+            else:
+                # Busca alternativa
+                return self.crud_taxonomia.get_taxonomia_by_id(
+                    db=self.db_session,
+                    taxonomia_id=classificacao.get("taxonomia_id")
+                )
+        except Exception as e:
+            logger.error(f"Erro ao buscar taxonomia: {e}")
+            return None
+    
+    def _buscar_ou_criar_taxonomia(self, taxonomia_data: Dict):
+        """Busca taxonomia existente ou cria nova se não existir."""
+        if not self.db_session:
+            return None
+        
+        try:
+            # Primeiro tentar buscar existente
+            taxonomia = self._buscar_taxonomia_por_classificacao(taxonomia_data)
+            
+            if taxonomia:
+                return taxonomia
+            
+            # Criar nova taxonomia se não existir
+            try:
+                from app.schemas.taxonomia import TaxonomiaCreate
+                
+                nova_taxonomia = TaxonomiaCreate(
+                    categoria=taxonomia_data["categoria"],
+                    subcategoria=taxonomia_data["subcategoria"],
+                    especificacao=taxonomia_data.get("especificacao"),
+                    variante=taxonomia_data.get("variante"),
+                    descricao=f"Criada automaticamente via IA para produto: {taxonomia_data.get('produto_origem', 'N/A')}",
+                    ativo=True
+                )
+                
+                return self.crud_taxonomia.create_taxonomia(db=self.db_session, taxonomia=nova_taxonomia)
+            except Exception as e:
+                logger.warning(f"Erro ao criar nova taxonomia: {e}")
+                return None
+            
+        except Exception as e:
+            logger.error(f"Erro ao buscar/criar taxonomia: {e}")
+            return None
     
     def _salvar_log_feedback(self, feedback_log: Dict) -> None:
         """Salva log de feedback para auditoria."""
@@ -707,7 +724,8 @@ class ClassificadorIA:
             logs = []
             if LOGS_FEEDBACK_PATH.exists():
                 with open(LOGS_FEEDBACK_PATH, 'r', encoding='utf-8') as file:
-                    logs = json.load(file)
+                    data = json.load(file)
+                    logs = data.get("logs", []) if isinstance(data, dict) else data
             
             logs.append(feedback_log)
             
@@ -715,54 +733,92 @@ class ClassificadorIA:
             if len(logs) > 1000:
                 logs = logs[-1000:]
             
+            # Salvar logs com estrutura atualizada
+            logs_data = {
+                "versao": "2.0.0",
+                "created_at": datetime.now().isoformat(),
+                "descricao": "Logs de feedback do sistema de IA integrado",
+                "logs": logs
+            }
+            
             with open(LOGS_FEEDBACK_PATH, 'w', encoding='utf-8') as file:
-                json.dump(logs, file, ensure_ascii=False, indent=2)
+                json.dump(logs_data, file, ensure_ascii=False, indent=2)
                 
         except Exception as e:
             logger.error(f"Erro ao salvar log de feedback: {e}")
     
     def obter_estatisticas(self) -> Dict[str, Any]:
         """
-        Retorna estatísticas do sistema de IA.
+        Retorna estatísticas do sistema de IA integrado.
         
         Returns:
             Dict: Estatísticas do sistema
         """
         try:
-            total_entradas = len(self.base_conhecimento.get("conhecimento", {}))
-            total_confirmacoes = sum(
-                dados.get("confirmacoes", 0) 
-                for dados in self.base_conhecimento.get("conhecimento", {}).values()
-            )
-            total_correcoes = sum(
-                dados.get("correcoes", 0)
-                for dados in self.base_conhecimento.get("conhecimento", {}).values()
-            )
-            
-            if total_confirmacoes + total_correcoes > 0:
-                taxa_acerto = total_confirmacoes / (total_confirmacoes + total_correcoes)
-            else:
-                taxa_acerto = 0.0
-            
-            # Estatísticas por categoria
-            categorias = {}
-            for dados in self.base_conhecimento.get("conhecimento", {}).values():
-                categoria = dados.get("categoria", "Não classificado")
-                if categoria not in categorias:
-                    categorias[categoria] = 0
-                categorias[categoria] += 1
-            
-            return {
-                "total_entradas_conhecimento": total_entradas,
-                "total_confirmacoes": total_confirmacoes,
-                "total_correcoes": total_correcoes,
-                "taxa_acerto": round(taxa_acerto, 3),
-                "distribuicao_categorias": categorias,
-                "versao_base": self.base_conhecimento.get("versao", "1.0.0"),
-                "ultima_atualizacao": self.base_conhecimento.get("ultima_atualizacao"),
+            # Estatísticas do sistema integrado
+            stats = {
+                "versao_sistema": "2.0.0",
+                "tipo": "integrado",
                 "spacy_disponivel": self.nlp is not None,
-                "fuzzywuzzy_disponivel": fuzz is not None
+                "fuzzywuzzy_disponivel": fuzz is not None,
+                "crud_alias_disponivel": self.crud_alias is not None,
+                "mapeamento_inteligente_disponivel": self.mapeamento_inteligente is not None
             }
+            
+            # Estatísticas de logs se disponível
+            try:
+                if LOGS_FEEDBACK_PATH.exists():
+                    with open(LOGS_FEEDBACK_PATH, 'r', encoding='utf-8') as file:
+                        data = json.load(file)
+                        logs = data.get("logs", []) if isinstance(data, dict) else data
+                        
+                        total_feedbacks = len(logs)
+                        total_confirmacoes = sum(1 for log in logs if log.get("acao") == "aceitar")
+                        total_correcoes = sum(1 for log in logs if log.get("acao") == "corrigir")
+                        
+                        if total_feedbacks > 0:
+                            taxa_acerto = total_confirmacoes / total_feedbacks
+                        else:
+                            taxa_acerto = 0.0
+                        
+                        stats.update({
+                            "total_feedbacks": total_feedbacks,
+                            "total_confirmacoes": total_confirmacoes,
+                            "total_correcoes": total_correcoes,
+                            "taxa_acerto": round(taxa_acerto, 3)
+                        })
+                else:
+                    stats.update({
+                        "total_feedbacks": 0,
+                        "total_confirmacoes": 0,
+                        "total_correcoes": 0,
+                        "taxa_acerto": 0.0
+                    })
+            except Exception as e:
+                logger.warning(f"Erro ao carregar estatísticas de logs: {e}")
+                stats.update({
+                    "erro_logs": str(e),
+                    "total_feedbacks": 0,
+                    "total_confirmacoes": 0,
+                    "total_correcoes": 0,
+                    "taxa_acerto": 0.0
+                })
+            
+            # Estatísticas do banco se disponível
+            if self.db_session and self.crud_taxonomia:
+                try:
+                    # Tentar obter estatísticas das taxonomias
+                    if hasattr(self.crud_taxonomia, 'get_estatisticas'):
+                        stats_banco = self.crud_taxonomia.get_estatisticas(db=self.db_session)
+                        stats.update(stats_banco)
+                    else:
+                        stats["total_taxonomias"] = "N/A"
+                except Exception as e:
+                    logger.warning(f"Erro ao obter estatísticas do banco: {e}")
+                    stats["erro_banco"] = str(e)
+            
+            stats["ultima_atualizacao"] = datetime.now().isoformat()
+            return stats
             
         except Exception as e:
             logger.error(f"Erro ao gerar estatísticas: {e}")

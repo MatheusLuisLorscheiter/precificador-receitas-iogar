@@ -18,7 +18,7 @@ from typing import List, Dict, Optional, Tuple
 BASE_URL = "http://localhost:8000"
 
 # ============================================================================
-# DICIONÁRIO DE MAPEAMENTO INTELIGENTE
+# DICIONÁRIO DE MAPEAMENTO INTELIGENTE (Base de conhecimento)
 # ============================================================================
 
 MAPEAMENTOS_PALAVRAS_CHAVE = {

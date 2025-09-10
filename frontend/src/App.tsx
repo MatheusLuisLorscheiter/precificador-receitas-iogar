@@ -27,6 +27,9 @@ import {
   Target, Eye
 } from 'lucide-react';
 
+// Importar componente da IA
+import ClassificadorIA from './components/ClassificadorIA.tsx';
+
 // ============================================================================
 // POPUP COM FADE - IMPLEMENTAÇÃO PARA FORMULÁRIO DE CADASTRAR INSUMO
 // ============================================================================
@@ -1417,6 +1420,7 @@ const fetchInsumos = async () => {
       { id: 'insumos', label: 'Insumos', icon: Package },
       { id: 'restaurantes', label: 'Restaurantes', icon: Users },
       { id: 'receitas', label: 'Receitas', icon: ChefHat },
+      { id: 'ia', label: 'Sistema de IA', icon: Brain },
       { id: 'automacao', label: 'Automação IOGAR', icon: Zap },
       { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
       { id: 'settings', label: 'Configurações', icon: Settings }
@@ -4245,6 +4249,7 @@ const cancelarExclusao = () => {
         {activeTab === 'restaurantes' && <Restaurantes />}
         {activeTab === 'receitas' && <Receitas />}
         {activeTab === 'fornecedores' && <Fornecedores />}
+        {activeTab === 'ia' && <ClassificadorIA />}
         
         {/* Páginas em desenvolvimento - Automação */}
         {activeTab === 'automacao' && (

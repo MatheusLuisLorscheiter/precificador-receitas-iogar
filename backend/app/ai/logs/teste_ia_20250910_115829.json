@@ -1,0 +1,122 @@
+{
+  "inicio": "2025-09-10T11:58:06.991240",
+  "testes_executados": 10,
+  "testes_sucesso": 9,
+  "testes_falha": 1,
+  "detalhes": [
+    {
+      "teste": "spacy_modelo_portugues",
+      "sucesso": true,
+      "timestamp": "2025-09-10T11:58:08.593781",
+      "detalhes": {}
+    },
+    {
+      "teste": "fuzzywuzzy",
+      "sucesso": true,
+      "timestamp": "2025-09-10T11:58:08.630919",
+      "detalhes": {}
+    },
+    {
+      "teste": "unidecode",
+      "sucesso": true,
+      "timestamp": "2025-09-10T11:58:08.630919",
+      "detalhes": {}
+    },
+    {
+      "teste": "estrutura_arquivos",
+      "sucesso": true,
+      "timestamp": "2025-09-10T11:58:08.635922",
+      "detalhes": {}
+    },
+    {
+      "teste": "classificador_local",
+      "sucesso": true,
+      "timestamp": "2025-09-10T11:58:09.681536",
+      "detalhes": {
+        "produtos_testados": 10,
+        "produtos_classificados": 0,
+        "taxa_sucesso": 0.0
+      }
+    },
+    {
+      "teste": "servidor_ativo",
+      "sucesso": true,
+      "timestamp": "2025-09-10T11:58:11.761203",
+      "detalhes": {}
+    },
+    {
+      "teste": "endpoint_status",
+      "sucesso": true,
+      "timestamp": "2025-09-10T11:58:14.972218",
+      "detalhes": {
+        "sistema_ativo": true,
+        "versao": "2.0.0",
+        "spacy_disponivel": true,
+        "fuzzywuzzy_disponivel": true,
+        "modelo_portugues": true,
+        "base_conhecimento_ok": false,
+        "padroes_aprendidos_ok": true,
+        "logs_feedback_ok": false,
+        "classificacoes_ultimas_24h": 0,
+        "tempo_medio_resposta_ms": 0.0,
+        "avisos": [
+          "Base de conhecimento será criada automaticamente"
+        ],
+        "erros": [],
+        "timestamp": "2025-09-10T11:58:14.971198"
+      }
+    },
+    {
+      "teste": "endpoint_classificacao",
+      "sucesso": true,
+      "timestamp": "2025-09-10T11:58:25.423663",
+      "detalhes": {
+        "produtos_testados": 5,
+        "classificacoes_sucesso": 5,
+        "taxa_sucesso": 1.0
+      }
+    },
+    {
+      "teste": "endpoint_feedback",
+      "sucesso": false,
+      "timestamp": "2025-09-10T11:58:27.490930",
+      "detalhes": {
+        "status_code": 422
+      }
+    },
+    {
+      "teste": "endpoint_estatisticas",
+      "sucesso": true,
+      "timestamp": "2025-09-10T11:58:29.560600",
+      "detalhes": {
+        "total_entradas_conhecimento": 0,
+        "total_classificacoes_realizadas": 0,
+        "total_feedbacks_recebidos": 0,
+        "taxa_acerto_geral": 0.0,
+        "confianca_media": 0.0,
+        "tempo_medio_classificacao_ms": 0.0,
+        "total_confirmacoes": 0,
+        "total_correcoes": 0,
+        "entradas_criadas_feedback": 0,
+        "distribuicao_categorias": {},
+        "estatisticas_por_categoria": [],
+        "versao_base_conhecimento": "1.0.0",
+        "ultima_atualizacao": "2025-09-10T11:58:29.550416",
+        "dependencias_disponiveis": {
+          "spacy": true,
+          "fuzzywuzzy": true,
+          "modelo_portugues": true
+        },
+        "entradas_baixa_confianca": 0,
+        "entradas_alta_confianca": 0,
+        "categorias_sem_entradas": 0,
+        "timestamp": "2025-09-10T11:58:29.550416"
+      }
+    }
+  ],
+  "fim": "2025-09-10T11:58:29.585750",
+  "sistema": {
+    "python_version": "3.11.0 (main, Oct 24 2022, 18:26:48) [MSC v.1933 64 bit (AMD64)]",
+    "platform": "win32"
+  }
+}
