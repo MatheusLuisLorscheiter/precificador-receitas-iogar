@@ -29,6 +29,7 @@ import {
 
 // Importar componente da IA
 import ClassificadorIA from './components/ClassificadorIA.tsx';
+import PopupClassificacaoIA from './components/PopupClassificacaoIA.tsx';
 
 // ============================================================================
 // POPUP COM FADE - IMPLEMENTAÇÃO PARA FORMULÁRIO DE CADASTRAR INSUMO
@@ -1024,6 +1025,9 @@ const FoodCostSystem: React.FC = () => {
   const [selectedRestaurante, setSelectedRestaurante] = useState<Restaurante | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [showInsumoForm, setShowInsumoForm] = useState<boolean>(false);
+  // Estados para popup de classificação IA
+  const [showClassificacaoPopup, setShowClassificacaoPopup] = useState<boolean>(false);
+  const [insumoRecemCriado, setInsumoRecemCriado] = useState<{id: number, nome: string} | null>(null);
   const [showReceitaForm, setShowReceitaForm] = useState<boolean>(false);
   const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null);
   const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
@@ -2213,20 +2217,30 @@ const fetchInsumos = async () => {
             );
           }
 
-          // 🆕 Limpar estados do formulário
+          // 🆕 INTEGRAÇÃO COM SISTEMA DE IA - Mostrar popup de classificação
+          if (!editingInsumo && response.data) {
+            // Apenas para novos insumos (não edição)
+            setInsumoRecemCriado({
+              id: response.data.id,
+              nome: response.data.nome
+            });
+            setShowClassificacaoPopup(true);
+          }
+
+          // Limpar estados do formulário
           setShowInsumoForm(false);
           setEditingInsumo(null);
           setEhFornecedorAnonimo(true);
           setFornecedorSelecionadoForm(null);
           setInsumosDoFornecedor([]);
           setInsumoFornecedorSelecionado(null);
-          setNovoInsumo({ 
-            nome: '', 
+          setNovoInsumo({
+            nome: '',
             codigo: '',
-            unidade: 'kg', 
+            unidade: 'kg',
             preco_compra_real: 0, // ✅ Usar apenas este campo
-            fator: 1.0, 
-            quantidade: 1, 
+            fator: 1.0,
+            quantidade: 1,
             grupo: 'Geral', // ✅ Valor padrão obrigatório
             subgrupo: 'Geral' // ✅ Valor padrão obrigatório
           });

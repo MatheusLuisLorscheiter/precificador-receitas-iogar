@@ -20,6 +20,12 @@ import {
   BarChart3
 } from 'lucide-react';
 
+// Importar funções de popup do sistema
+declare global {
+  function showSuccessPopup(title: string, message: string): void;
+  function showErrorPopup(title: string, message: string): void;
+}
+
 
 // Interfaces
 interface TaxonomiaClassificada {
@@ -60,6 +66,232 @@ interface EstatisticasIA {
   total_confirmacoes: number;
   total_correcoes: number;
 }
+
+// ============================================================================
+// COMPONENTE PARA INSUMOS SEM CLASSIFICAÇÃO
+// ============================================================================
+
+const InsumosSemClassificacao: React.FC = () => {
+  const [insumosSemClassificacao, setInsumosSemClassificacao] = useState<any[]>([]);
+  const [carregandoInsumos, setCarregandoInsumos] = useState(false);
+
+  const carregarInsumosSemClassificacao = async () => {
+    setCarregandoInsumos(true);
+    try {
+      const response = await fetch('/api/v1/insumos/sem-classificacao?limit=50');
+      if (response.ok) {
+        const insumos = await response.json();
+        setInsumosSemClassificacao(insumos);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar insumos:', error);
+    } finally {
+      setCarregandoInsumos(false);
+    }
+  };
+
+  useEffect(() => {
+    carregarInsumosSemClassificacao();
+  }, []);
+
+  const classificarInsumo = async (insumoId: number, nomeInsumo: string) => {
+    try {
+      // Classificar via IA
+      const response = await fetch('/api/v1/ia/classificar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome_produto: nomeInsumo,
+          incluir_alternativas: false,
+          confianca_minima: 0.6
+        })
+      });
+
+      if (response.ok) {
+        const resultado = await response.json();
+        
+        if (resultado.sucesso && resultado.taxonomia_sugerida) {
+          // Mostrar resultado e perguntar se aceita
+          const aceitar = confirm(
+            `IA sugere classificação:\n\n` +
+            `Categoria: ${resultado.taxonomia_sugerida.categoria}\n` +
+            `Subcategoria: ${resultado.taxonomia_sugerida.subcategoria}\n` +
+            `${resultado.taxonomia_sugerida.especificacao ? `Especificação: ${resultado.taxonomia_sugerida.especificacao}\n` : ''}` +
+            `${resultado.taxonomia_sugerida.variante ? `Variante: ${resultado.taxonomia_sugerida.variante}\n` : ''}` +
+            `\nConfiança: ${(resultado.confianca * 100).toFixed(1)}%\n\n` +
+            `Aceitar esta classificação?`
+          );
+
+          if (aceitar) {
+            // Buscar taxonomia_id baseada na classificação
+            try {
+              const taxonomiaResponse = await fetch(
+                `/api/v1/taxonomias/buscar-por-hierarquia?` +
+                `categoria=${encodeURIComponent(resultado.taxonomia_sugerida.categoria)}&` +
+                `subcategoria=${encodeURIComponent(resultado.taxonomia_sugerida.subcategoria)}` +
+                (resultado.taxonomia_sugerida.especificacao ? `&especificacao=${encodeURIComponent(resultado.taxonomia_sugerida.especificacao)}` : '') +
+                (resultado.taxonomia_sugerida.variante ? `&variante=${encodeURIComponent(resultado.taxonomia_sugerida.variante)}` : '')
+              );
+
+              if (taxonomiaResponse.ok) {
+                const taxonomiaData = await taxonomiaResponse.json();
+                
+                if (taxonomiaData && taxonomiaData.id) {
+                  // Associar taxonomia ao insumo
+                  const associarResponse = await fetch(`/api/v1/insumos/${insumoId}/taxonomia?taxonomia_id=${taxonomiaData.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' }
+                  });
+
+                  if (associarResponse.ok) {
+                    showSuccessPopup('Classificação Aplicada', 'Insumo classificado com sucesso pela IA!');
+                    
+                    // Enviar feedback positivo para IA
+                    await fetch('/api/v1/ia/feedback', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        produto_original: nomeInsumo,
+                        acao: 'aceitar',
+                        taxonomia_correta: resultado.taxonomia_sugerida,
+                        comentario: 'Classificação aceita via interface'
+                      })
+                    });
+                    
+                    carregarInsumosSemClassificacao(); // Recarregar lista
+                  } else {
+                    showErrorPopup('Erro na Associação', 'Não foi possível associar a taxonomia ao insumo');
+                  }
+                } else {
+                  showErrorPopup('Taxonomia Não Encontrada', 'Esta classificação não existe no sistema. Será necessário criar uma nova taxonomia.');
+                }
+              } else {
+                showErrorPopup('Erro na Busca', 'Não foi possível buscar a taxonomia no sistema');
+              }
+            } catch (error) {
+              console.error('Erro ao associar taxonomia:', error);
+              showErrorPopup('Erro na Associação', 'Falha ao associar taxonomia ao insumo');
+            }
+          } else {
+            // Enviar feedback negativo para IA
+            try {
+              await fetch('/api/v1/ia/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  produto_original: nomeInsumo,
+                  acao: 'corrigir',
+                  taxonomia_correta: null,
+                  comentario: 'Classificação rejeitada pelo usuário'
+                })
+              });
+            } catch (error) {
+              console.error('Erro ao enviar feedback:', error);
+            }
+            
+            showSuccessPopup('Feedback Registrado', 'Classificação rejeitada. Use a correção manual se necessário.');
+          } else {
+            showSuccessPopup('Classificação rejeitada. Você pode corrigir manualmente.');
+          }
+        } else {
+          showErrorPopup('Classificação Sem Sucesso', `IA não conseguiu classificar "${nomeInsumo}". ${resultado.mensagem || 'Produto não reconhecido'}`);
+        }
+      } else {
+        showErrorPopup('Erro de Conexão', 'Não foi possível conectar com o sistema de IA');
+      }
+    } catch (error) {
+      console.error('Erro na classificação:', error);
+      showErrorPopup('Erro na Classificação', 'Falha ao classificar o produto via IA');
+    }
+  };
+
+  if (carregandoInsumos) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-gray-500">Carregando insumos...</div>
+      </div>
+    );
+  }
+
+  if (insumosSemClassificacao.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-gray-500 mb-2">✅ Todos os insumos estão classificados!</div>
+        <div className="text-sm text-gray-400">Nenhum insumo aguardando classificação</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="text-sm text-gray-600 mb-4">
+        {insumosSemClassificacao.length} insumo(s) aguardando classificação
+      </div>
+      
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Produto
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Código
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Unidade
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Grupo Atual
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Ações
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {insumosSemClassificacao.map((insumo) => (
+              <tr key={insumo.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {insumo.nome}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {insumo.codigo}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {insumo.unidade}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {insumo.grupo} > {insumo.subgrupo}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <button
+                    onClick={() => classificarInsumo(insumo.id, insumo.nome)}
+                    className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700"
+                  >
+                    Classificar com IA
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
+      <div className="flex justify-between items-center pt-4">
+        <button
+          onClick={carregarInsumosSemClassificacao}
+          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          🔄 Atualizar Lista
+        </button>
+        <div className="text-sm text-gray-500">
+          Use "Classificar com IA" para sugestões automáticas
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ClassificadorIA: React.FC = () => {
   // Estados principais
@@ -191,7 +423,7 @@ const ClassificadorIA: React.FC = () => {
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       <div className="flex items-center gap-3">
-        <Brain className="w-8 h-8 text-blue-600" />
+        <Brain className="w-8 h-8 text-green-600" />
         <div>
           <h1 className="text-3xl font-bold">Sistema de IA</h1>
           <p className="text-gray-600">Classificação Inteligente de Insumos</p>
@@ -261,7 +493,7 @@ const ClassificadorIA: React.FC = () => {
           onClick={() => setAbaSelecionada('classificar')}
           className={`px-4 py-2 border-b-2 font-medium text-sm ${
             abaSelecionada === 'classificar'
-              ? 'border-blue-500 text-blue-600'
+              ? 'border-green-500 text-green-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -271,7 +503,7 @@ const ClassificadorIA: React.FC = () => {
           onClick={() => setAbaSelecionada('historico')}
           className={`px-4 py-2 border-b-2 font-medium text-sm ${
             abaSelecionada === 'historico'
-              ? 'border-blue-500 text-blue-600'
+              ? 'border-green-500 text-green-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -281,7 +513,7 @@ const ClassificadorIA: React.FC = () => {
           onClick={() => setAbaSelecionada('estatisticas')}
           className={`px-4 py-2 border-b-2 font-medium text-sm ${
             abaSelecionada === 'estatisticas'
-              ? 'border-blue-500 text-blue-600'
+              ? 'border-green-500 text-green-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -293,120 +525,15 @@ const ClassificadorIA: React.FC = () => {
       <div className="mt-6">
         {abaSelecionada === 'classificar' && (
           <div className="space-y-6">
-            {/* Formulário de classificação */}
+            {/* Tabela de insumos aguardando classificação */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Search className="w-5 h-5" />
-                <h3 className="text-lg font-semibold">Classificar Produto</h3>
+                <h3 className="text-lg font-semibold">Insumos Aguardando Classificação</h3>
               </div>
               
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Digite o nome do produto (ex: Salmão Atlântico Filé)"
-                    value={produtoInput}
-                    onChange={(e) => setProdutoInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && !carregando && classificarProduto()}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={classificarProduto}
-                    disabled={carregando || !produtoInput.trim()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                  >
-                    {carregando ? "Analisando..." : "Classificar"}
-                  </button>
-                </div>
-                
-                {erro && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800">
-                    {erro}
-                  </div>
-                )}
-              </div>
+              <InsumosSemClassificacao />
             </div>
-
-            {/* Resultado da classificação */}
-            {classificacao && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  {obterIconeStatus(classificacao.status)}
-                  <h3 className="text-lg font-semibold">Resultado da Classificação</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Produto</label>
-                      <p className="font-medium">{classificacao.termo_analisado}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Confiança</label>
-                      <p className={`font-medium ${obterCorConfianca(classificacao.confianca)}`}>
-                        {(classificacao.confianca * 100).toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-
-                  {classificacao.taxonomia_sugerida && (
-                    <div className="border rounded-lg p-4 bg-gray-50">
-                      <label className="text-sm font-medium text-gray-600 block mb-2">
-                        Taxonomia Sugerida
-                      </label>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="font-medium">Categoria:</span> {classificacao.taxonomia_sugerida.categoria}
-                        </div>
-                        <div>
-                          <span className="font-medium">Subcategoria:</span> {classificacao.taxonomia_sugerida.subcategoria}
-                        </div>
-                        {classificacao.taxonomia_sugerida.especificacao && (
-                          <div>
-                            <span className="font-medium">Especificação:</span> {classificacao.taxonomia_sugerida.especificacao}
-                          </div>
-                        )}
-                        {classificacao.taxonomia_sugerida.variante && (
-                          <div>
-                            <span className="font-medium">Variante:</span> {classificacao.taxonomia_sugerida.variante}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Feedback */}
-                  <div className="border-t pt-4">
-                    <label className="text-sm font-medium text-gray-600 block mb-2">
-                      Feedback (Opcional)
-                    </label>
-                    <textarea
-                      placeholder="Comentários sobre a classificação..."
-                      value={comentarioFeedback}
-                      onChange={(e) => setComentarioFeedback(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-                      rows={3}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => enviarFeedback('aceitar')}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        Classificação Correta
-                      </button>
-                      <button
-                        onClick={() => enviarFeedback('corrigir')}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        Precisa Correção
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -466,7 +593,7 @@ const ClassificadorIA: React.FC = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-600">Confiança Média</label>
-                    <p className="text-2xl font-bold text-blue-600">
+                    <p className="text-2xl font-bold text-green-600">
                       {(estatisticas.confianca_media * 100).toFixed(1)}%
                     </p>
                   </div>

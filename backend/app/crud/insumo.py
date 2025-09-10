@@ -167,6 +167,73 @@ def get_insumo_by_id(db: Session, insumo_id: int) -> Optional[Insumo]:
     
     return insumo
 
+def get_insumos_sem_taxonomia(db: Session, skip: int = 0, limit: int = 100) -> List[Insumo]:
+    """
+    Busca insumos que não possuem taxonomia associada.
+    
+    Retorna insumos onde taxonomia_id é NULL, útil para:
+    - Sistema de IA identificar produtos para classificação
+    - Relatórios de insumos pendentes de classificação
+    - Fluxo de trabalho de organização de produtos
+    
+    Args:
+        db (Session): Sessão do banco de dados
+        skip (int): Número de registros a pular (paginação)
+        limit (int): Número máximo de registros a retornar
+        
+    Returns:
+        List[Insumo]: Lista de insumos sem taxonomia_id
+    """
+    return (
+        db.query(Insumo)
+        .filter(Insumo.taxonomia_id.is_(None))
+        .order_by(Insumo.nome)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+def associar_taxonomia_insumo(db: Session, insumo_id: int, taxonomia_id: int) -> Optional[Insumo]:
+    """
+    Associa uma taxonomia hierárquica a um insumo específico.
+    
+    Valida se tanto o insumo quanto a taxonomia existem antes de fazer
+    a associação. Útil para classificação manual ou via sistema de IA.
+    
+    Args:
+        db (Session): Sessão do banco de dados
+        insumo_id (int): ID do insumo a ser classificado
+        taxonomia_id (int): ID da taxonomia a ser associada
+        
+    Returns:
+        Optional[Insumo]: Insumo atualizado ou None se não encontrado
+        
+    Raises:
+        ValueError: Se a taxonomia não existir ou estiver inativa
+    """
+    # Verificar se insumo existe
+    insumo = db.query(Insumo).filter(Insumo.id == insumo_id).first()
+    if not insumo:
+        return None
+    
+    # Verificar se taxonomia existe e está ativa
+    from app.crud.taxonomia import get_taxonomia_by_id
+    taxonomia = get_taxonomia_by_id(db, taxonomia_id)
+    if not taxonomia:
+        raise ValueError(f"Taxonomia com ID {taxonomia_id} não encontrada")
+    
+    if not taxonomia.ativo:
+        raise ValueError(f"Taxonomia com ID {taxonomia_id} está inativa")
+    
+    # Associar taxonomia ao insumo
+    insumo.taxonomia_id = taxonomia_id
+    
+    # Salvar no banco
+    db.commit()
+    db.refresh(insumo)
+    
+    return insumo
+
 def get_insumo_by_codigo(db: Session, codigo: str) -> Optional[Insumo]:
     """
     Busca um insumo pelo código.

@@ -331,6 +331,61 @@ def atualizar_insumo(
             detail=str(e)
         )
     
+@router.put("/{insumo_id}/taxonomia", response_model=InsumoResponse, summary="Associar taxonomia ao insumo")
+def associar_taxonomia_insumo(
+    insumo_id: int,
+    taxonomia_id: int = Query(..., ge=1, description="ID da taxonomia a ser associada"),
+    db: Session = Depends(get_db)
+):
+    """
+    Associa uma taxonomia hierárquica a um insumo específico.
+    
+    **Funcionalidades:**
+    - Vincula insumo a uma taxonomia existente
+    - Valida se taxonomia existe antes de associar
+    - Útil para classificação manual ou via sistema de IA
+    - Permite correção de classificações automáticas
+    
+    **Parâmetros:**
+    - **insumo_id**: ID do insumo a ser classificado
+    - **taxonomia_id**: ID da taxonomia hierárquica
+    
+    **Validações:**
+    - Insumo deve existir
+    - Taxonomia deve existir
+    - Taxonomia deve estar ativa
+    
+    **Retorna:**
+    - Insumo atualizado com taxonomia associada
+    - Dados completos incluindo informações da taxonomia
+    """
+    try:
+        # Verificar se insumo existe
+        insumo_atualizado = crud_insumo.associar_taxonomia_insumo(
+            db=db,
+            insumo_id=insumo_id,
+            taxonomia_id=taxonomia_id
+        )
+        
+        if not insumo_atualizado:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Insumo com ID {insumo_id} não encontrado"
+            )
+        
+        return insumo_atualizado
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno: {str(e)}"
+        )
+    
 #   ===================================================================================================
 #   Endpoints de Exclusão (DELETE)
 #   =================================================================================================== 
@@ -444,3 +499,29 @@ def estatisticas_insumos(db: Session = Depends(get_db)):
         "preco_minimo":   preco_minimo,
         "preco_maximo":   preco_maximo
     }
+
+# ============================================================================
+# ENDPOINTS PARA INTEGRAÇÃO COM SISTEMA DE IA
+# ============================================================================
+
+@router.get("/sem-classificacao", response_model=List[InsumoListResponse], summary="Listar insumos sem classificação")
+def listar_insumos_sem_classificacao(
+    skip: int = Query(0, ge=0, description="Registros para pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros"),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista insumos que ainda não possuem taxonomia associada.
+    
+    **Funcionalidades:**
+    - Busca insumos com taxonomia_id = NULL
+    - Útil para identificar produtos que precisam de classificação
+    - Suporte a paginação
+    - Integração com sistema de IA de classificação
+    
+    **Retorna:**
+    - Lista de insumos sem taxonomia_id definida
+    - Inclui todos os campos necessários para classificação
+    - Ordenação por nome para facilitar revisão
+    """
+    return crud_insumo.get_insumos_sem_taxonomia(db=db, skip=skip, limit=limit)

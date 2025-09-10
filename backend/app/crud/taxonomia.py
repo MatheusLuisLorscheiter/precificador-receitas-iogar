@@ -111,6 +111,85 @@ def get_taxonomia_by_id(db: Session, taxonomia_id: int) -> Optional[Taxonomia]:
     """
     return db.query(Taxonomia).filter(Taxonomia.id == taxonomia_id).first()
 
+def get_categorias_unicas(db: Session) -> List[str]:
+    """
+    Retorna lista única de categorias existentes.
+    
+    Busca apenas taxonomias ativas e retorna categorias ordenadas alfabeticamente.
+    Útil para popular dropdowns de seleção.
+    """
+    result = (
+        db.query(Taxonomia.categoria)
+        .filter(Taxonomia.ativo == True)
+        .distinct()
+        .order_by(Taxonomia.categoria)
+        .all()
+    )
+    return [categoria[0] for categoria in result]
+
+
+def get_subcategorias_unicas(db: Session, categoria: Optional[str] = None) -> List[str]:
+    """
+    Retorna lista única de subcategorias.
+    
+    Se categoria for fornecida, filtra apenas subcategorias daquela categoria.
+    Útil para implementar cascata de seleção.
+    """
+    query = db.query(Taxonomia.subcategoria).filter(Taxonomia.ativo == True)
+    
+    if categoria:
+        query = query.filter(Taxonomia.categoria == categoria)
+    
+    result = query.distinct().order_by(Taxonomia.subcategoria).all()
+    return [subcategoria[0] for subcategoria in result]
+
+
+def get_taxonomia_por_hierarquia(
+    db: Session, 
+    categoria: str, 
+    subcategoria: str,
+    especificacao: Optional[str] = None,
+    variante: Optional[str] = None
+) -> Optional[Taxonomia]:
+    """
+    Busca uma taxonomia específica pela hierarquia completa.
+    
+    Útil para o sistema de IA encontrar o taxonomia_id baseado
+    na classificação sugerida.
+    
+    Args:
+        db: Sessão do banco de dados
+        categoria: Categoria da taxonomia
+        subcategoria: Subcategoria da taxonomia
+        especificacao: Especificação da taxonomia (opcional)
+        variante: Variante da taxonomia (opcional)
+        
+    Returns:
+        Taxonomia encontrada ou None se não existir
+    """
+    query = (
+        db.query(Taxonomia)
+        .filter(
+            Taxonomia.categoria == categoria,
+            Taxonomia.subcategoria == subcategoria,
+            Taxonomia.ativo == True
+        )
+    )
+    
+    # Filtrar especificação (None deve ser tratado como NULL no banco)
+    if especificacao:
+        query = query.filter(Taxonomia.especificacao == especificacao)
+    else:
+        query = query.filter(Taxonomia.especificacao.is_(None))
+    
+    # Filtrar variante (None deve ser tratado como NULL no banco)
+    if variante:
+        query = query.filter(Taxonomia.variante == variante)
+    else:
+        query = query.filter(Taxonomia.variante.is_(None))
+    
+    return query.first()
+
 def get_taxonomia_by_codigo(db: Session, codigo: str) -> Optional[Taxonomia]:
     """
     Busca uma taxonomia pelo código único.

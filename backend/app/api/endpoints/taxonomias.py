@@ -342,6 +342,61 @@ async def listar_subcategorias(
             status_code=500,
             detail=f"Erro interno: {str(e)}"
         )
+    
+@router.get("/categorias-unicas", response_model=List[str], summary="Listar categorias únicas")
+async def listar_categorias_unicas(db: Session = Depends(get_db)):
+    """
+    Retorna lista única de categorias existentes.
+    
+    Útil para:
+    - Dropdown de seleção de categorias
+    - Filtros de busca
+    - Interface de classificação manual
+    """
+    return crud_taxonomia.get_categorias_unicas(db=db)
+
+
+@router.get("/subcategorias-unicas", response_model=List[str], summary="Listar subcategorias únicas")
+async def listar_subcategorias_unicas(
+    categoria: Optional[str] = Query(None, description="Filtrar por categoria específica"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna lista única de subcategorias.
+    
+    Se categoria for fornecida, retorna apenas subcategorias daquela categoria.
+    Útil para cascata de seleção categoria > subcategoria.
+    """
+    return crud_taxonomia.get_subcategorias_unicas(db=db, categoria=categoria)
+
+
+@router.get("/buscar-por-hierarquia", response_model=Optional[TaxonomiaResponse], summary="Buscar taxonomia por hierarquia")
+async def buscar_taxonomia_por_hierarquia(
+    categoria: str = Query(..., description="Categoria da taxonomia"),
+    subcategoria: str = Query(..., description="Subcategoria da taxonomia"),
+    especificacao: Optional[str] = Query(None, description="Especificação da taxonomia"),
+    variante: Optional[str] = Query(None, description="Variante da taxonomia"),
+    db: Session = Depends(get_db)
+):
+    """
+    Busca uma taxonomia específica pela hierarquia completa.
+    
+    Útil para:
+    - Sistema de IA encontrar taxonomia_id baseada na classificação
+    - Verificar se combinação específica existe
+    - Integração com sistema de classificação automática
+    
+    Se não encontrar exata, retorna None.
+    """
+    taxonomia = crud_taxonomia.get_taxonomia_por_hierarquia(
+        db=db,
+        categoria=categoria,
+        subcategoria=subcategoria,
+        especificacao=especificacao,
+        variante=variante
+    )
+    
+    return taxonomia    
 
 @router.get("/hierarquia/especificacoes/{categoria}/{subcategoria}", response_model=TaxonomiaHierarquia, summary="Listar Especificações")
 async def listar_especificacoes(
