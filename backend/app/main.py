@@ -211,6 +211,27 @@ app.include_router(
     }
 )
 
+# Router para sistema de IA de classificação (FASE 2)
+try:
+    from app.api.endpoints import ia as ia_endpoints
+    app.include_router(
+        ia_endpoints.router,
+        prefix="/api/v1/ia",
+        tags=["ia-classificacao"],
+        responses={
+            404: {"description": "Recurso não encontrado"},
+            422: {"description": "Erro de validação"},
+            500: {"description": "Erro interno do servidor"},
+            503: {"description": "Sistema de IA indisponível"}
+        }
+    )
+    print("✅ Router de IA incluído com sucesso")
+except ImportError as e:
+    print(f"⚠️  Sistema de IA não disponível: {e}")
+    print("💡 Instale as dependências: pip install spacy fuzzywuzzy python-levenshtein")
+except Exception as e:
+    print(f"❌ Erro ao carregar sistema de IA: {e}")
+
 # Router para operações com aliases de taxonomias (Sistema de Mapeamento - Fase 2)
 if HAS_TAXONOMIA_ALIASES:
     app.include_router(
