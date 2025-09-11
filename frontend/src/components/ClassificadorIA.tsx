@@ -78,7 +78,7 @@ const InsumosSemClassificacao: React.FC = () => {
   const carregarInsumosSemClassificacao = async () => {
     setCarregandoInsumos(true);
     try {
-      const response = await fetch('/api/v1/insumos/sem-classificacao?limit=50');
+      const response = await fetch('/api/v1/insumos/sem-classificacao?skip=0&limit=50');
       if (response.ok) {
         const insumos = await response.json();
         setInsumosSemClassificacao(insumos);
@@ -378,11 +378,11 @@ const ClassificadorIA: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          produto_original: classificacao.termo_analisado,
-          taxonomia_sugerida: classificacao.taxonomia_sugerida,
+          nome_produto: classificacao.termo_analisado,
+          classificacao_sugerida: classificacao.taxonomia_sugerida,
           acao,
           taxonomia_correta: classificacao.taxonomia_sugerida,
-          comentario: comentarioFeedback
+          observacoes: comentarioFeedback
         }),
       });
 

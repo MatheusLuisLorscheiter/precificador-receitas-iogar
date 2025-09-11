@@ -150,6 +150,7 @@ class InsumoUpdate(BaseModel):
     fator: Optional[float] = Field(None, gt=0)
     unidade: Optional[str] = None
     preco_compra_real: Optional[float] = Field(None, ge=0)
+    aguardando_classificacao: Optional[bool] = Field(default=None, description="Se está aguardando classificação")
 
 #   ============================================================================
 #   CAMPOS PARA COMPARAÇÃO DE PREÇOS COM FORNECEDORES

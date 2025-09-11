@@ -2205,28 +2205,24 @@ const fetchInsumos = async () => {
           await fetchInsumos();
           
           // Se foi criação bem-sucedida, mostrar popup de sucesso
-          if (!editingInsumo) {
-            showSuccessPopup(
-              'Insumo Cadastrado!',
-              `${dadosParaEnvio.nome} foi cadastrado com sucesso ${ehFornecedorAnonimo ? 'como fornecedor anônimo' : `vinculado ao fornecedor ${fornecedorSelecionadoForm?.nome_razao_social}`}.`
-            );
-          } else {
+          if (editingInsumo) {
             showSuccessPopup(
               'Insumo Atualizado!',
               `${dadosParaEnvio.nome} foi atualizado com sucesso.`
             );
           }
 
-          // 🆕 INTEGRAÇÃO COM SISTEMA DE IA - Mostrar popup de classificação
+          // INTEGRAÇÃO COM SISTEMA DE IA - Mostrar popup de classificação
           if (!editingInsumo && response.data) {
             setInsumoRecemCriado({
               id: response.data.id,
               nome: response.data.nome
             });
+            // Fechar formulário primeiro e aguardar um pouco antes de mostrar popup de classificação
+            setShowInsumoForm(false);
             setTimeout(() => {
               setShowClassificacaoPopup(true);
-              setShowInsumoForm(false);
-            }, 0);
+            }, 200);
           } else {
             setShowInsumoForm(false);
           }
@@ -4457,6 +4453,8 @@ const cancelarExclusao = () => {
           console.log('Feedback enviado');
           setShowClassificacaoPopup(false);
         }}
+        showSuccessPopup={showSuccessPopup}
+        showErrorPopup={showErrorPopup}
       />
     </div>
     );

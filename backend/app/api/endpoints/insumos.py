@@ -525,3 +525,25 @@ def listar_insumos_sem_classificacao(
     - Ordenação por nome para facilitar revisão
     """
     return crud_insumo.get_insumos_sem_taxonomia(db=db, skip=skip, limit=limit)
+
+@router.put("/{insumo_id}/marcar-aguardando-classificacao", response_model=InsumoResponse, summary="Marcar insumo como aguardando classificação")
+def marcar_aguardando_classificacao(
+    insumo_id: int,
+    db: Session = Depends(get_db)
+):
+    """Marca um insumo como aguardando classificação pela IA."""
+    
+    # Buscar insumo
+    insumo = crud_insumo.get(db=db, id=insumo_id)
+    if not insumo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Insumo não encontrado"
+        )
+    
+    # Marcar como aguardando classificação
+    from app.schemas.insumo import InsumoUpdate
+    update_data = InsumoUpdate(aguardando_classificacao=True)
+    insumo_atualizado = crud_insumo.update(db=db, db_obj=insumo, obj_in=update_data)
+    
+    return insumo_atualizado

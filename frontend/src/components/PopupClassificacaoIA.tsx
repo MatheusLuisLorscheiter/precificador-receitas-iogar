@@ -39,6 +39,8 @@ interface PopupClassificacaoIAProps {
   onClose: () => void;
   onClassificacaoAceita: (taxonomiaId: number) => void;
   onFeedbackEnviado: () => void;
+  showSuccessPopup: (title: string, message: string) => void;
+  showErrorPopup: (title: string, message: string) => void;
 }
 
 // ============================================================================
@@ -51,7 +53,9 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   insumoId,
   onClose,
   onClassificacaoAceita,
-  onFeedbackEnviado
+  onFeedbackEnviado,
+  showSuccessPopup,
+  showErrorPopup
 }) => {
   // Estados do componente
   const [classificacao, setClassificacao] = useState<ClassificacaoResposta | null>(null);
@@ -201,19 +205,28 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   // ============================================================================
 
   const handleAceitarClassificacao = async () => {
-    if (!classificacao?.taxonomia_sugerida || !insumoId) return;
+  if (!classificacao?.taxonomia_sugerida || !insumoId) return;
 
-    try {
-      // Aqui você precisará implementar a busca do taxonomia_id baseado na taxonomia sugerida
-      // Por enquanto, vou simular com um ID fictício
-      const taxonomiaId = 1; // TODO: Implementar busca real
-      
-      onClassificacaoAceita(taxonomiaId);
-      onClose();
-    } catch (error) {
-      console.error('Erro ao aceitar classificação:', error);
+  try {
+    // Aqui você precisará implementar a busca do taxonomia_id baseado na taxonomia sugerida
+    // Por enquanto, vou simular com um ID fictício
+    const taxonomiaId = 1; // TODO: Implementar busca real
+    
+    onClassificacaoAceita(taxonomiaId);
+    
+    // Mostrar popup de sucesso após classificação aceita
+    if (typeof showSuccessPopup === 'function') {
+      showSuccessPopup(
+        'Insumo Cadastrado e Classificado!',
+        `${nomeInsumo} foi cadastrado e classificado automaticamente com sucesso.`
+      );
     }
-  };
+    
+    onClose();
+  } catch (error) {
+    console.error('Erro ao aceitar classificação:', error);
+  }
+};
 
   const handleSalvarCorrecao = async () => {
     if (!categoriaSelecionada || !subcategoriaSelecionada) {
@@ -228,7 +241,8 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          produto_original: nomeInsumo,
+          nome_produto: nomeInsumo,
+          classificacao_sugerida: classificacao?.taxonomia_sugerida || {},
           acao: 'corrigir',
           taxonomia_correta: {
             categoria: categoriaSelecionada,
@@ -236,11 +250,18 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
             especificacao: especificacao || null,
             variante: variante || null
           },
-          comentario: 'Correção manual via interface'
+          observacoes: 'Correção manual via interface'
         })
       });
 
       onFeedbackEnviado();
+      // Mostrar popup de sucesso após classificação manual
+      if (typeof showSuccessPopup === 'function') {
+        showSuccessPopup(
+          'Insumo Cadastrado e Classificado!',
+          nomeInsumo + ' foi cadastrado e classificado manualmente com sucesso.'
+        );
+      }
       onClose();
     } catch (error) {
       console.error('Erro ao enviar feedback:', error);
@@ -331,13 +352,56 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
               )}
 
               {!mostrarCorrecao && !classificacao.taxonomia_sugerida && (
-                <button
-                  onClick={() => setMostrarCorrecao(true)}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
-                >
-                  <Edit className="w-4 h-4" />
-                  Classificar Manualmente
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setMostrarCorrecao(true)}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Classificar Manualmente
+                  </button>
+                  
+                  <button
+                    onClick={async () => {
+                      try {
+                        // Marcar insumo como aguardando classificação no backend
+                        const response = await fetch(`/api/v1/insumos/${insumoId}/marcar-aguardando-classificacao`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        if (response.ok) {
+                          if (typeof showSuccessPopup === 'function') {
+                            showSuccessPopup(
+                              'Insumo Cadastrado!',
+                              `${nomeInsumo} foi cadastrado e ficará em "Aguardando Classificação" para posterior organização.`
+                            );
+                          }
+                        } else {
+                          if (typeof showErrorPopup === 'function') {
+                            showErrorPopup(
+                              'Erro',
+                              'Não foi possível marcar o insumo como aguardando classificação.'
+                            );
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Erro ao marcar insumo:', error);
+                        if (typeof showErrorPopup === 'function') {
+                          showErrorPopup(
+                            'Erro de Conexão',
+                            'Falha ao conectar com o servidor.'
+                          );
+                        }
+                      }
+                      onClose();
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    Ignorar
+                  </button>
+                </div>
               )}
 
               {/* Formulário de correção */}

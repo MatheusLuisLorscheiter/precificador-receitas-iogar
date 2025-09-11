@@ -59,12 +59,12 @@ class Insumo(BaseModel):
         comment="ID da taxonomia hierárquica master (sistema de padronização)"
     )
 
-    # Campo para marcar se é fornecedor anônimo
-    eh_fornecedor_anonimo = Column(
+    # Campo para controle da classificação IA
+    aguardando_classificacao = Column(
         Boolean,
-        default=True,
-        nullable=False,
-        comment="TRUE = sem fornecedor específico, FALSE = vinculado a fornecedor"
+        default=False,
+        nullable=True,  # ← MUDAR para True temporariamente
+        comment="TRUE = aguardando classificação pela IA, FALSE = não precisa ou já classificado"
     )
 
 
