@@ -190,8 +190,6 @@ const InsumosSemClassificacao: React.FC = () => {
             }
             
             showSuccessPopup('Feedback Registrado', 'Classificação rejeitada. Use a correção manual se necessário.');
-          } else {
-            showSuccessPopup('Classificação rejeitada. Você pode corrigir manualmente.');
           }
         } else {
           showErrorPopup('Classificação Sem Sucesso', `IA não conseguiu classificar "${nomeInsumo}". ${resultado.mensagem || 'Produto não reconhecido'}`);
@@ -262,7 +260,7 @@ const InsumosSemClassificacao: React.FC = () => {
                   {insumo.unidade}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {insumo.grupo} > {insumo.subgrupo}
+                  {insumo.grupo} &gt; {insumo.subgrupo}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <button

@@ -88,9 +88,12 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
 
       if (response.ok) {
         const resultado = await response.json();
+        console.log('🤖 Resultado da API de classificação:', resultado);
+        console.log('🤖 Sucesso:', resultado.sucesso);
+        console.log('🤖 Taxonomia sugerida:', resultado.taxonomia_sugerida);
         setClassificacao(resultado);
       } else {
-        console.error('Erro na classificação:', response.statusText);
+        console.error('❌ API retornou erro:', response.status, response.statusText);
         setClassificacao({
           sucesso: false,
           status: 'erro',
@@ -117,19 +120,30 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
 
   const carregarCategorias = async () => {
     try {
-      const response = await fetch('/api/v1/taxonomias/categorias-unicas');
+      console.log('🏷️ Carregando categorias da taxonomia...');
+      const response = await fetch('/api/v1/taxonomias/categorias');
+      console.log('🏷️ Response status:', response.status);
+      
       if (response.ok) {
         const cats = await response.json();
+        console.log('🏷️ Categorias recebidas:', cats);
+        console.log('🏷️ Tipo dos dados:', typeof cats);
+        console.log('🏷️ É array?', Array.isArray(cats));
+        console.log('🏷️ Quantidade:', cats?.length || 0);
         setCategorias(cats);
+      } else {
+        console.error('🏷️ Erro HTTP:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('🏷️ Resposta de erro:', errorText);
       }
     } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
+      console.error('🏷️ Erro ao carregar categorias:', error);
     }
   };
 
   const carregarSubcategorias = async (categoria: string) => {
     try {
-      const response = await fetch(`/api/v1/taxonomias/subcategorias-unicas?categoria=${encodeURIComponent(categoria)}`);
+      const response = await fetch(`/api/v1/taxonomias/subcategorias?categoria=${encodeURIComponent(categoria)}`);
       if (response.ok) {
         const subs = await response.json();
         setSubcategorias(subs);
@@ -222,7 +236,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-blue-600" />
+            <Brain className="w-5 h-5 text-green-600" />
             <h3 className="text-lg font-semibold">Classificação IA</h3>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
@@ -239,7 +253,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
 
           {carregandoClassificacao ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-green-600" />
               <span className="ml-2">Analisando produto...</span>
             </div>
           ) : classificacao ? (
@@ -261,12 +275,10 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                   <div className="text-sm space-y-1">
                     <p><strong>Categoria:</strong> {classificacao.taxonomia_sugerida.categoria}</p>
                     <p><strong>Subcategoria:</strong> {classificacao.taxonomia_sugerida.subcategoria}</p>
-                    {classificacao.taxonomia_sugerida.especificacao && (
-                      <p><strong>Especificação:</strong> {classificacao.taxonomia_sugerida.especificacao}</p>
-                    )}
-                    {classificacao.taxonomia_sugerida.variante && (
-                      <p><strong>Variante:</strong> {classificacao.taxonomia_sugerida.variante}</p>
-                    )}
+                    <p><strong>Especificação:</strong> {classificacao.taxonomia_sugerida.especificacao || 
+                      <span className="text-gray-500 italic">a definir</span>}</p>
+                    <p><strong>Variante:</strong> {classificacao.taxonomia_sugerida.variante || 
+                      <span className="text-gray-500 italic">a definir</span>}</p>
                   </div>
                 ) : (
                   <p className="text-sm text-gray-600">{classificacao.mensagem}</p>
@@ -296,7 +308,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
               {!mostrarCorrecao && !classificacao.taxonomia_sugerida && (
                 <button
                   onClick={() => setMostrarCorrecao(true)}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
                 >
                   <Edit className="w-4 h-4" />
                   Classificar Manualmente
@@ -313,7 +325,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                     <select
                       value={categoriaSelecionada}
                       onChange={(e) => setCategoriaSelecionada(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
                     >
                       <option value="">Selecione uma categoria</option>
                       {categorias.map(cat => (
@@ -328,7 +340,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                       value={subcategoriaSelecionada}
                       onChange={(e) => setSubcategoriaSelecionada(e.target.value)}
                       disabled={!categoriaSelecionada}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
                     >
                       <option value="">Selecione uma subcategoria</option>
                       {subcategorias.map(sub => (
@@ -344,7 +356,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                       value={especificacao}
                       onChange={(e) => setEspecificacao(e.target.value)}
                       placeholder="Ex.: Orgânico, congelado, fresco"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
                     />
                   </div>
 
@@ -355,3 +367,40 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                       value={variante}
                       onChange={(e) => setVariante(e.target.value)}
                       placeholder="Ex.: Marca, Origem, qualidade"
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+
+                  {/* Botões do formulário de correção */}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={handleSalvarCorrecao}
+                      disabled={enviandoFeedback || !categoriaSelecionada || !subcategoriaSelecionada}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
+                    >
+                      {enviandoFeedback ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
+                      Salvar Correção
+                    </button>
+                    
+                    <button
+                      onClick={() => setMostrarCorrecao(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PopupClassificacaoIA

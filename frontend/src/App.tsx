@@ -4438,9 +4438,25 @@ const cancelarExclusao = () => {
         isVisible={showPopup}
         onClose={globalClosePopup || (() => setShowPopup(false))}
       />
+
+      {/* Popup de classificação IA */}
+      <PopupClassificacaoIA
+        isVisible={showClassificacaoPopup}
+        nomeInsumo={insumoRecemCriado?.nome || ''}
+        insumoId={insumoRecemCriado?.id || null}
+        onClose={() => setShowClassificacaoPopup(false)}
+        onClassificacaoAceita={(taxonomiaId) => {
+          console.log('Classificação aceita com taxonomia ID:', taxonomiaId);
+          setShowClassificacaoPopup(false);
+        }}
+        onFeedbackEnviado={() => {
+          console.log('Feedback enviado');
+          setShowClassificacaoPopup(false);
+        }}
+      />
     </div>
-  );
-};
+    );
+  };
 
 // Exportação do componente principal
 export default FoodCostSystem;
