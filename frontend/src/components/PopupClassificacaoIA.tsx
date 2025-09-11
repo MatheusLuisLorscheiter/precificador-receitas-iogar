@@ -119,39 +119,55 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   };
 
   const carregarCategorias = async () => {
-    try {
-      console.log('🏷️ Carregando categorias da taxonomia...');
-      const response = await fetch('/api/v1/taxonomias/categorias');
-      console.log('🏷️ Response status:', response.status);
+  try {
+    console.log('Carregando categorias da taxonomia...');
+    const response = await fetch('http://localhost:8000/api/v1/taxonomias/hierarquia/categorias');
+    console.log('Response status:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Dados recebidos:', data);
+      console.log('Tipo dos dados:', typeof data);
       
-      if (response.ok) {
-        const cats = await response.json();
-        console.log('🏷️ Categorias recebidas:', cats);
-        console.log('🏷️ Tipo dos dados:', typeof cats);
-        console.log('🏷️ É array?', Array.isArray(cats));
-        console.log('🏷️ Quantidade:', cats?.length || 0);
-        setCategorias(cats);
-      } else {
-        console.error('🏷️ Erro HTTP:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('🏷️ Resposta de erro:', errorText);
-      }
-    } catch (error) {
-      console.error('🏷️ Erro ao carregar categorias:', error);
+      // O endpoint hierárquico retorna: { nivel: "categoria", opcoes: [...], total: number }
+      const cats = data.opcoes || [];
+      console.log('Categorias extraídas:', cats);
+      console.log('É array?', Array.isArray(cats));
+      console.log('Quantidade:', cats.length || 0);
+      setCategorias(cats);
+    } else {
+      console.error('Erro HTTP:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('Resposta de erro:', errorText);
     }
-  };
+  } catch (error) {
+    console.error('Erro ao carregar categorias:', error);
+  }
+};
 
   const carregarSubcategorias = async (categoria: string) => {
-    try {
-      const response = await fetch(`/api/v1/taxonomias/subcategorias?categoria=${encodeURIComponent(categoria)}`);
-      if (response.ok) {
-        const subs = await response.json();
-        setSubcategorias(subs);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar subcategorias:', error);
+  try {
+    console.log('Carregando subcategorias para categoria:', categoria);
+    const response = await fetch(`http://localhost:8000/api/v1/taxonomias/hierarquia/subcategorias/${encodeURIComponent(categoria)}`);
+    console.log('Response status subcategorias:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Dados de subcategorias recebidos:', data);
+      
+      // O endpoint hierárquico retorna: { nivel: "subcategoria", opcoes: [...], total: number }
+      const subs = data.opcoes || [];
+      console.log('Subcategorias extraídas:', subs);
+      setSubcategorias(subs);
+    } else {
+      console.error('Erro HTTP subcategorias:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('Resposta de erro subcategorias:', errorText);
     }
-  };
+  } catch (error) {
+    console.error('Erro ao carregar subcategorias:', error);
+  }
+};
 
   // ============================================================================
   // EFFECTS
