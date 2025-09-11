@@ -167,30 +167,25 @@ def get_insumo_by_id(db: Session, insumo_id: int) -> Optional[Insumo]:
     
     return insumo
 
-def get_insumos_sem_taxonomia(db: Session, skip: int = 0, limit: int = 100) -> List[Insumo]:
+def count_insumos_sem_taxonomia(db: Session) -> int:
     """
-    Busca insumos que não possuem taxonomia associada.
+    Conta o total de insumos que ainda não possuem taxonomia_id associada.
     
-    Retorna insumos onde taxonomia_id é NULL, útil para:
-    - Sistema de IA identificar produtos para classificação
-    - Relatórios de insumos pendentes de classificação
-    - Fluxo de trabalho de organização de produtos
+    Útil para:
+    - Calcular paginação no sistema de IA
+    - Relatórios de progresso de classificação
+    - Estatísticas do sistema
     
     Args:
         db (Session): Sessão do banco de dados
-        skip (int): Número de registros a pular (paginação)
-        limit (int): Número máximo de registros a retornar
         
     Returns:
-        List[Insumo]: Lista de insumos sem taxonomia_id
+        int: Número total de insumos sem taxonomia_id
     """
     return (
         db.query(Insumo)
         .filter(Insumo.taxonomia_id.is_(None))
-        .order_by(Insumo.nome)
-        .offset(skip)
-        .limit(limit)
-        .all()
+        .count()
     )
 
 def associar_taxonomia_insumo(db: Session, insumo_id: int, taxonomia_id: int) -> Optional[Insumo]:
@@ -312,6 +307,30 @@ def get_insumos(
 
     # Aplicar paginação e ordenação
     return query.order_by(Insumo.grupo, Insumo.subgrupo, Insumo.nome).offset(skip).limit(limit).all()
+
+def get_insumos_sem_taxonomia(db: Session, skip: int = 0, limit: int = 100):
+    """
+    Busca insumos que não possuem taxonomia associada.
+    """
+    # Buscar insumos sem taxonomia_id ou aguardando classificação
+    return db.query(Insumo).filter(
+        or_(
+            Insumo.taxonomia_id.is_(None),
+            Insumo.aguardando_classificacao == True
+        )
+    ).offset(skip).limit(limit).all()
+
+
+def count_insumos_sem_taxonomia(db: Session):
+    """
+    Conta total de insumos sem taxonomia.
+    """
+    return db.query(Insumo).filter(
+        or_(
+            Insumo.taxonomia_id.is_(None),
+            Insumo.aguardando_classificacao == True
+        )
+    ).count()
 
 def count_insumos(db: Session, filters: Optional[InsumoFilter] = None) -> int:
     """

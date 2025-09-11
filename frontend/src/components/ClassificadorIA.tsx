@@ -79,14 +79,19 @@ const InsumosSemClassificacao: React.FC = () => {
   const carregarInsumosSemClassificacao = async () => {
     setCarregandoInsumos(true);
     try {
-      // Usar URL relativa para aproveitar o proxy do Vite
-      const response = await fetch(`/api/v1/insumos/sem-classificacao?skip=0&limit=50`);
+      // Usar URL absoluta temporariamente para diagnosticar problema de proxy
+      const response = await fetch(`http://localhost:8000/api/v1/insumos/sem-classificacao?skip=0&limit=50`);
       if (response.ok) {
         const insumos = await response.json();
+        console.log('✅ Insumos sem classificacao carregados:', insumos.length);
         setInsumosSemClassificacao(insumos);
+      } else {
+        console.error('❌ Erro na resposta:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('❌ Detalhes do erro:', errorText);
       }
     } catch (error) {
-      console.error('Erro ao carregar insumos:', error);
+      console.error('❌ Erro ao carregar insumos:', error);
     } finally {
       setCarregandoInsumos(false);
     }

@@ -9,7 +9,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-
+from app import schemas
 from app.api.deps import get_db
 from app.crud import insumo as crud_insumo
 from app.schemas.insumo import (
@@ -156,6 +156,50 @@ def buscar_insumos(
             insumo.preco_compra_centavos = None
 
     return insumos
+
+@router.get("/sem-classificacao", response_model=List[dict], summary="Listar insumos sem classificação")
+def listar_insumos_sem_classificacao(
+    skip: int = Query(0, ge=0, description="Registros para pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros"),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista insumos que ainda não possuem taxonomia associada.
+    
+    **Funcionalidades:**
+    - Busca insumos com taxonomia_id = NULL ou aguardando_classificacao = True
+    - Útil para identificar produtos que precisam de classificação
+    - Suporte a paginação
+    - Integração com sistema de IA de classificação
+    
+    **Retorna:**
+    - Lista de insumos sem taxonomia_id definida ou aguardando classificação
+    - Inclui todos os campos necessários para classificação
+    - Ordenação por nome para facilitar revisão
+    """
+    insumos = crud_insumo.get_insumos_sem_taxonomia(db=db, skip=skip, limit=limit)
+    
+    # Contar total para paginação
+    total = crud_insumo.count_insumos_sem_taxonomia(db=db)
+    
+    print(f"📤 Retornando {len(insumos)} insumos sem classificação")
+    print("=" * 80)
+    # Converter para dict para evitar problemas de serialização
+    return [
+        {
+            "id": insumo.id,
+            "nome": insumo.nome,
+            "codigo": insumo.codigo,
+            "grupo": insumo.grupo,
+            "subgrupo": insumo.subgrupo,
+            "unidade": insumo.unidade,
+            "preco_compra_real": insumo.preco_compra_real,
+            "aguardando_classificacao": insumo.aguardando_classificacao,
+            "taxonomia_id": insumo.taxonomia_id
+        }
+        for insumo in insumos
+    ]
+
 
 @router.get("/{insumo_id}", response_model=InsumoListResponse, summary="Buscar insumo por ID")
 def obter_insumo(
@@ -503,29 +547,6 @@ def estatisticas_insumos(db: Session = Depends(get_db)):
 # ============================================================================
 # ENDPOINTS PARA INTEGRAÇÃO COM SISTEMA DE IA
 # ============================================================================
-
-@router.get("/sem-classificacao", response_model=List[InsumoListResponse], summary="Listar insumos sem classificação")
-def listar_insumos_sem_classificacao(
-    skip: int = Query(0, ge=0, description="Registros para pular"),
-    limit: int = Query(100, ge=1, le=1000, description="Limite de registros"),
-    db: Session = Depends(get_db)
-):
-    """
-    Lista insumos que ainda não possuem taxonomia associada.
-    
-    **Funcionalidades:**
-    - Busca insumos com taxonomia_id = NULL
-    - Útil para identificar produtos que precisam de classificação
-    - Suporte a paginação
-    - Integração com sistema de IA de classificação
-    
-    **Retorna:**
-    - Lista de insumos sem taxonomia_id definida
-    - Inclui todos os campos necessários para classificação
-    - Ordenação por nome para facilitar revisão
-    """
-    return crud_insumo.get_insumos_sem_taxonomia(db=db, skip=skip, limit=limit)
-
 @router.put("/{insumo_id}/marcar-aguardando-classificacao", response_model=InsumoResponse, summary="Marcar insumo como aguardando classificação")
 def marcar_aguardando_classificacao(
     insumo_id: int,

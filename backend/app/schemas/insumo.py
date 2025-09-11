@@ -355,7 +355,7 @@ class InsumoListResponse(BaseModel):
     Schema simplificado para resposta de listagem de insumos.
     
     Usado no endpoint GET /api/v1/insumos/ para exibir listas.
-    Inclui campos essenciais incluindo taxonomia_id.
+    Inclui campos essenciais incluindo taxonomia_id e aguardando_classificacao.
     """
     id: int = Field(description="ID único do insumo")
     codigo: str = Field(description="Código do insumo")
@@ -371,6 +371,12 @@ class InsumoListResponse(BaseModel):
     taxonomia_id: Optional[int] = Field(
         None,
         description="ID da taxonomia hierárquica master"
+    )
+    
+    # Campo para controle da classificação IA
+    aguardando_classificacao: Optional[bool] = Field(
+        None,
+        description="TRUE = aguardando classificação pela IA, FALSE = não precisa ou já classificado"
     )
 
     class Config:
