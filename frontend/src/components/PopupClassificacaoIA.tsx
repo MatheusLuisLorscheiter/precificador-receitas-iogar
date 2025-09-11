@@ -123,9 +123,9 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   };
 
   const carregarCategorias = async () => {
-  try {
-    console.log('Carregando categorias da taxonomia...');
-    const response = await fetch('http://localhost:8000/api/v1/taxonomias/hierarquia/categorias');
+    try {
+      console.log('Carregando categorias da taxonomia...');
+      const response = await fetch('http://localhost:8000/api/v1/taxonomias/hierarquia/categorias');
     console.log('Response status:', response.status);
     
     if (response.ok) {

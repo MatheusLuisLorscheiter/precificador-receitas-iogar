@@ -75,10 +75,12 @@ const InsumosSemClassificacao: React.FC = () => {
   const [insumosSemClassificacao, setInsumosSemClassificacao] = useState<any[]>([]);
   const [carregandoInsumos, setCarregandoInsumos] = useState(false);
 
+  // Função para carregar insumos sem classificação
   const carregarInsumosSemClassificacao = async () => {
     setCarregandoInsumos(true);
     try {
-      const response = await fetch('/api/v1/insumos/sem-classificacao?skip=0&limit=50');
+      // Usar URL relativa para aproveitar o proxy do Vite
+      const response = await fetch(`/api/v1/insumos/sem-classificacao?skip=0&limit=50`);
       if (response.ok) {
         const insumos = await response.json();
         setInsumosSemClassificacao(insumos);

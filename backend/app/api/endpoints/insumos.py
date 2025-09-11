@@ -534,7 +534,7 @@ def marcar_aguardando_classificacao(
     """Marca um insumo como aguardando classificação pela IA."""
     
     # Buscar insumo
-    insumo = crud_insumo.get(db=db, id=insumo_id)
+    insumo = crud_insumo.get_insumo_by_id(db=db, insumo_id=insumo_id)
     if not insumo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -544,6 +544,13 @@ def marcar_aguardando_classificacao(
     # Marcar como aguardando classificação
     from app.schemas.insumo import InsumoUpdate
     update_data = InsumoUpdate(aguardando_classificacao=True)
-    insumo_atualizado = crud_insumo.update(db=db, db_obj=insumo, obj_in=update_data)
-    
+    # Usar o método correto do CRUD com os parâmetros adequados
+    insumo_atualizado = crud_insumo.update_insumo(db=db, insumo_id=insumo_id, insumo_update=update_data)
+
+    if not insumo_atualizado:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Insumo não encontrado"
+        )
+
     return insumo_atualizado
