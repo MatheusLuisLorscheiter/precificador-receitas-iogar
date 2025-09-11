@@ -174,11 +174,20 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   // ============================================================================
 
   useEffect(() => {
-    if (isVisible && nomeInsumo) {
-      classificarProduto();
-      carregarCategorias();
-    }
-  }, [isVisible, nomeInsumo]);
+  if (isVisible && nomeInsumo) {
+    // Limpar estados da classificação manual anterior
+    setCategoriaSelecionada('');
+    setSubcategoriaSelecionada('');
+    setEspecificacao('');
+    setVariante('');
+    setSubcategorias([]);
+    setMostrarCorrecao(false);
+    
+    // Iniciar classificação automática e carregar categorias
+    classificarProduto();
+    carregarCategorias();
+  }
+}, [isVisible, nomeInsumo]);
 
   useEffect(() => {
     if (categoriaSelecionada) {
@@ -341,7 +350,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                     <select
                       value={categoriaSelecionada}
                       onChange={(e) => setCategoriaSelecionada(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                     >
                       <option value="">Selecione uma categoria</option>
                       {categorias.map(cat => (
@@ -356,7 +365,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                       value={subcategoriaSelecionada}
                       onChange={(e) => setSubcategoriaSelecionada(e.target.value)}
                       disabled={!categoriaSelecionada}
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                     >
                       <option value="">Selecione uma subcategoria</option>
                       {subcategorias.map(sub => (
@@ -372,7 +381,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                       value={especificacao}
                       onChange={(e) => setEspecificacao(e.target.value)}
                       placeholder="Ex.: Orgânico, congelado, fresco"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                     />
                   </div>
 
@@ -383,7 +392,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                       value={variante}
                       onChange={(e) => setVariante(e.target.value)}
                       placeholder="Ex.: Marca, Origem, qualidade"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500"
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                     />
                   </div>
 

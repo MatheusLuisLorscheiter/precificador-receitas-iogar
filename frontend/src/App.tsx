@@ -2219,12 +2219,16 @@ const fetchInsumos = async () => {
 
           // 🆕 INTEGRAÇÃO COM SISTEMA DE IA - Mostrar popup de classificação
           if (!editingInsumo && response.data) {
-            // Apenas para novos insumos (não edição)
             setInsumoRecemCriado({
               id: response.data.id,
               nome: response.data.nome
             });
-            setShowClassificacaoPopup(true);
+            setTimeout(() => {
+              setShowClassificacaoPopup(true);
+              setShowInsumoForm(false);
+            }, 0);
+          } else {
+            setShowInsumoForm(false);
           }
 
           // Limpar estados do formulário
