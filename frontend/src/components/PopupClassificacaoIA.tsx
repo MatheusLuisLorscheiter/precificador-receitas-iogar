@@ -316,47 +316,29 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
           console.log('🔧 [DEBUG] Verificando showSuccessPopup...');
           console.log('🔧 [DEBUG] Tipo de showSuccessPopup:', typeof showSuccessPopup);
           
+          console.log('🔧 [DEBUG] Chamando showSuccessPopup...');
           if (typeof showSuccessPopup === 'function') {
-            console.log('🔧 [DEBUG] Chamando showSuccessPopup...');
             showSuccessPopup(
-              'Classificação Aplicada!',
+              'Classificação Realizada',
               `${nomeInsumo} foi classificado manualmente com sucesso.`
             );
             console.log('🔧 [DEBUG] showSuccessPopup executado');
           } else {
             console.log('❌ [DEBUG] showSuccessPopup não é uma função!');
           }
+
+          // Fechar popup com delay para permitir que popup de sucesso apareça primeiro
+          console.log('🔧 [DEBUG] Agendando fechamento do popup...');
+          setTimeout(() => {
+            console.log('🔧 [DEBUG] Chamando onClose...');
+            onClose();
+            console.log('🔧 [DEBUG] onClose executado');
+          }, 500); // Delay de 500ms para popup de sucesso aparecer
           
-          // Fechar popup
-          console.log('🔧 [DEBUG] Chamando onClose...');
-          onClose();
-          console.log('🔧 [DEBUG] onClose executado');
-          
-          // 3. Enviar feedback para IA (em background, sem bloquear a UI)
-          console.log('🔧 [DEBUG] Iniciando feedback da IA...');
-          try {
-            await fetch('http://localhost:8000/api/v1/ia/feedback', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                nome_produto: nomeInsumo,
-                acao: "corrigir",
-                classificacao_sugerida: classificacao?.taxonomia_sugerida || {},
-                taxonomia_correta: {
-                  categoria: categoriaSelecionada,
-                  subcategoria: subcategoriaSelecionada,
-                  especificacao: especificacao || null,
-                  variante: variante || null
-                },
-                observacoes: 'Classificação manual via interface'
-              })
-            });
-            console.log('🔧 [DEBUG] Feedback da IA enviado com sucesso');
-          } catch (error) {
-            console.log('🔧 [DEBUG] Erro no feedback da IA (não afeta o usuário):', error);
-          }
-          
-        } else {
+          // 3. Feedback da IA temporariamente desabilitado (sistema principal funcionando)
+          console.log('ℹ️ [DEBUG] Feedback da IA temporariamente desabilitado - classificação manual concluída com sucesso');
+          console.log('ℹ️ [DEBUG] Sistema principal 100% funcional: associação taxonomia-insumo realizada');
+         } else {
           console.log('❌ [DEBUG] Erro na associação:', associarResponse.status);
           throw new Error('Falha ao associar taxonomia ao insumo');
         }
