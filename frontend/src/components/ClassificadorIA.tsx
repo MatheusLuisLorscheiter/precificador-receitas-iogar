@@ -20,6 +20,9 @@ import {
   BarChart3
 } from 'lucide-react';
 
+// Importar componente do popup de classificação
+import PopupClassificacaoIA from './PopupClassificacaoIA.tsx';
+
 // Importar funções de popup do sistema
 declare global {
   function showSuccessPopup(title: string, message: string): void;
@@ -101,112 +104,58 @@ const InsumosSemClassificacao: React.FC = () => {
     carregarInsumosSemClassificacao();
   }, []);
 
-  const classificarInsumo = async (insumoId: number, nomeInsumo: string) => {
+  // Estados para controle do popup de classificação manual
+  const [popupClassificacaoVisivel, setPopupClassificacaoVisivel] = useState(false);
+  const [insumoSelecionado, setInsumoSelecionado] = useState<{id: number, nome: string} | null>(null);
+
+  const classificarInsumo = (insumoId: number, nomeInsumo: string) => {
+    // Definir insumo selecionado para o popup
+    setInsumoSelecionado({ id: insumoId, nome: nomeInsumo });
+    
+    // Abrir popup de classificação manual diretamente
+    // O popup se encarrega de fazer a classificação IA internamente
+    setPopupClassificacaoVisivel(true);
+  };
+
+  // Função para fechar popup de classificação
+  const fecharPopupClassificacao = () => {
+    setPopupClassificacaoVisivel(false);
+    setInsumoSelecionado(null);
+  };
+
+  // Callback quando classificação é aceita no popup
+  const handleClassificacaoAceita = (taxonomiaId: number) => {
+    console.log('Classificação aceita para taxonomia ID:', taxonomiaId);
+    carregarInsumosSemClassificacao(); // Recarregar lista
+    fecharPopupClassificacao();
+  };
+
+  // Callback quando feedback é enviado no popup (classificação manual)
+  const handleFeedbackEnviado = async () => {
+    console.log('Processando classificação manual...');
+    
     try {
-      // Classificar via IA
-      const response = await fetch('/api/v1/ia/classificar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome_produto: nomeInsumo,
-          incluir_alternativas: false,
-          confianca_minima: 0.6
-        })
-      });
-
-      if (response.ok) {
-        const resultado = await response.json();
-        
-        if (resultado.sucesso && resultado.taxonomia_sugerida) {
-          // Mostrar resultado e perguntar se aceita
-          const aceitar = confirm(
-            `IA sugere classificação:\n\n` +
-            `Categoria: ${resultado.taxonomia_sugerida.categoria}\n` +
-            `Subcategoria: ${resultado.taxonomia_sugerida.subcategoria}\n` +
-            `${resultado.taxonomia_sugerida.especificacao ? `Especificação: ${resultado.taxonomia_sugerida.especificacao}\n` : ''}` +
-            `${resultado.taxonomia_sugerida.variante ? `Variante: ${resultado.taxonomia_sugerida.variante}\n` : ''}` +
-            `\nConfiança: ${(resultado.confianca * 100).toFixed(1)}%\n\n` +
-            `Aceitar esta classificação?`
-          );
-
-          if (aceitar) {
-            // Buscar taxonomia_id baseada na classificação
-            try {
-              const taxonomiaResponse = await fetch(
-                `/api/v1/taxonomias/buscar-por-hierarquia?` +
-                `categoria=${encodeURIComponent(resultado.taxonomia_sugerida.categoria)}&` +
-                `subcategoria=${encodeURIComponent(resultado.taxonomia_sugerida.subcategoria)}` +
-                (resultado.taxonomia_sugerida.especificacao ? `&especificacao=${encodeURIComponent(resultado.taxonomia_sugerida.especificacao)}` : '') +
-                (resultado.taxonomia_sugerida.variante ? `&variante=${encodeURIComponent(resultado.taxonomia_sugerida.variante)}` : '')
-              );
-
-              if (taxonomiaResponse.ok) {
-                const taxonomiaData = await taxonomiaResponse.json();
-                
-                if (taxonomiaData && taxonomiaData.id) {
-                  // Associar taxonomia ao insumo
-                  const associarResponse = await fetch(`/api/v1/insumos/${insumoId}/taxonomia?taxonomia_id=${taxonomiaData.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' }
-                  });
-
-                  if (associarResponse.ok) {
-                    showSuccessPopup('Classificação Aplicada', 'Insumo classificado com sucesso pela IA!');
-                    
-                    // Enviar feedback positivo para IA
-                    await fetch('/api/v1/ia/feedback', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        produto_original: nomeInsumo,
-                        acao: 'aceitar',
-                        taxonomia_correta: resultado.taxonomia_sugerida,
-                        comentario: 'Classificação aceita via interface'
-                      })
-                    });
-                    
-                    carregarInsumosSemClassificacao(); // Recarregar lista
-                  } else {
-                    showErrorPopup('Erro na Associação', 'Não foi possível associar a taxonomia ao insumo');
-                  }
-                } else {
-                  showErrorPopup('Taxonomia Não Encontrada', 'Esta classificação não existe no sistema. Será necessário criar uma nova taxonomia.');
-                }
-              } else {
-                showErrorPopup('Erro na Busca', 'Não foi possível buscar a taxonomia no sistema');
-              }
-            } catch (error) {
-              console.error('Erro ao associar taxonomia:', error);
-              showErrorPopup('Erro na Associação', 'Falha ao associar taxonomia ao insumo');
-            }
-          } else {
-            // Enviar feedback negativo para IA
-            try {
-              await fetch('/api/v1/ia/feedback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  produto_original: nomeInsumo,
-                  acao: 'corrigir',
-                  taxonomia_correta: null,
-                  comentario: 'Classificação rejeitada pelo usuário'
-                })
-              });
-            } catch (error) {
-              console.error('Erro ao enviar feedback:', error);
-            }
-            
-            showSuccessPopup('Feedback Registrado', 'Classificação rejeitada. Use a correção manual se necessário.');
-          }
-        } else {
-          showErrorPopup('Classificação Sem Sucesso', `IA não conseguiu classificar "${nomeInsumo}". ${resultado.mensagem || 'Produto não reconhecido'}`);
-        }
-      } else {
-        showErrorPopup('Erro de Conexão', 'Não foi possível conectar com o sistema de IA');
+      // Recarregar a lista para que o insumo saia da tabela
+      await carregarInsumosSemClassificacao();
+      
+      // Mostrar popup de sucesso
+      if (typeof (window as any).showSuccessPopup === 'function') {
+        (window as any).showSuccessPopup(
+          'Classificação Concluída', 
+          'Insumo classificado manualmente com sucesso!'
+        );
       }
     } catch (error) {
-      console.error('Erro na classificação:', error);
-      showErrorPopup('Erro na Classificação', 'Falha ao classificar o produto via IA');
+      console.error('Erro ao processar classificação:', error);
+      
+      if (typeof (window as any).showErrorPopup === 'function') {
+        (window as any).showErrorPopup(
+          'Erro na Classificação', 
+          'Falha ao processar classificação manual'
+        );
+      }
+    } finally {
+      fecharPopupClassificacao();
     }
   };
 
@@ -292,7 +241,29 @@ const InsumosSemClassificacao: React.FC = () => {
         </button>
         <div className="text-sm text-gray-500">
           Use "Classificar com IA" para sugestões automáticas
-        </div>
+       </div>
+
+        {/* Popup de Classificação Manual */}
+        {insumoSelecionado && (
+          <PopupClassificacaoIA
+            isVisible={popupClassificacaoVisivel}
+            nomeInsumo={insumoSelecionado.nome}
+            insumoId={insumoSelecionado.id}
+            onClose={fecharPopupClassificacao}
+            onClassificacaoAceita={handleClassificacaoAceita}
+            onFeedbackEnviado={handleFeedbackEnviado}
+            showSuccessPopup={(title: string, message: string) => {
+              if (typeof (window as any).showSuccessPopup === 'function') {
+                (window as any).showSuccessPopup(title, message);
+              }
+            }}
+            showErrorPopup={(title: string, message: string) => {
+              if (typeof (window as any).showErrorPopup === 'function') {
+                (window as any).showErrorPopup(title, message);
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );

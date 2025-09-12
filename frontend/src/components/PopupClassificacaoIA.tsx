@@ -236,40 +236,80 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
 
     setEnviandoFeedback(true);
     try {
-      // Enviar feedback para IA
-      await fetch('/api/v1/ia/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome_produto: nomeInsumo,
-          classificacao_sugerida: classificacao?.taxonomia_sugerida || {},
-          acao: 'corrigir',
-          taxonomia_correta: {
-            categoria: categoriaSelecionada,
-            subcategoria: subcategoriaSelecionada,
-            especificacao: especificacao || null,
-            variante: variante || null
-          },
-          observacoes: 'Correção manual via interface'
-        })
-      });
+      // 1. Buscar todas as taxonomias e filtrar localmente
+      const todasTaxonomias = await fetch('http://localhost:8000/api/v1/taxonomias/?limit=1000');
+      
+      if (todasTaxonomias.ok) {
+        const taxonomias = await todasTaxonomias.json();
+        
+        // Filtrar taxonomia que corresponde à seleção
+        const taxonomiaEncontrada = taxonomias.find((tax: any) => 
+          tax.categoria === categoriaSelecionada && 
+          tax.subcategoria === subcategoriaSelecionada &&
+          (!especificacao || tax.especificacao === especificacao) &&
+          (!variante || tax.variante === variante)
+        );
+        
+        if (taxonomiaEncontrada && taxonomiaEncontrada.id) {
+          // 2. Associar taxonomia ao insumo
+          const associarResponse = await fetch(`http://localhost:8000/api/v1/insumos/${insumoId}/taxonomia?taxonomia_id=${taxonomiaData.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+          });
 
-      onFeedbackEnviado();
-      // Mostrar popup de sucesso após classificação manual
-      if (typeof showSuccessPopup === 'function') {
-        showSuccessPopup(
-          'Insumo Cadastrado e Classificado!',
-          nomeInsumo + ' foi cadastrado e classificado manualmente com sucesso.'
+          if (associarResponse.ok) {
+            // 3. Enviar feedback positivo para IA
+            await fetch('/api/v1/ia/feedback', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                nome_produto: nomeInsumo,
+                classificacao_sugerida: classificacao?.taxonomia_sugerida || {},
+                acao: 'corrigir',
+                taxonomia_correta: {
+                  categoria: categoriaSelecionada,
+                  subcategoria: subcategoriaSelecionada,
+                  especificacao: especificacao || null,
+                  variante: variante || null
+                },
+                observacoes: 'Classificação manual via interface'
+              })
+            });
+
+            // Chamar callback de sucesso
+            onFeedbackEnviado();
+            
+            // Mostrar popup de sucesso
+            if (typeof showSuccessPopup === 'function') {
+              showSuccessPopup(
+                'Classificação Aplicada!',
+                `${nomeInsumo} foi classificado manualmente com sucesso.`
+              );
+            }
+            
+            onClose();
+          } else {
+            throw new Error('Falha ao associar taxonomia ao insumo');
+          }
+        } else {
+          throw new Error('Taxonomia não encontrada no sistema');
+        }
+      } else {
+        throw new Error('Falha na busca por taxonomia');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar classificação:', error);
+      
+      if (typeof showErrorPopup === 'function') {
+        showErrorPopup(
+          'Erro na Classificação',
+          'Não foi possível classificar o insumo. Tente novamente.'
         );
       }
-      onClose();
-    } catch (error) {
-      console.error('Erro ao enviar feedback:', error);
     } finally {
       setEnviandoFeedback(false);
     }
   };
-
   // ============================================================================
   // RENDER
   // ============================================================================
