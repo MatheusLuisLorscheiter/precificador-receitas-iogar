@@ -1129,7 +1129,7 @@ const FoodCostSystem: React.FC = () => {
     telefone: ''
   });
   const [estatisticasRestaurante, setEstatisticasRestaurante] = useState<RestauranteEstatisticas | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [showInsumoForm, setShowInsumoForm] = useState<boolean>(false);
   // Estados para popup de classificação IA
   const [showClassificacaoPopup, setShowClassificacaoPopup] = useState<boolean>(false);
@@ -1318,14 +1318,14 @@ const fetchInsumos = async () => {
   } catch (error) {
     console.error('Erro geral ao buscar insumos:', error);
   } finally {
-    //setLoading(false);
+    setLoading(false);
   }
 };
   
   // Busca todos os restaurantes do backend
   const fetchRestaurantes = async () => {
     try {
-      //setLoading(true);
+      setLoading(true);
       const response = await apiService.getRestaurantes();
       if (response.data) {
         setRestaurantes(response.data);
@@ -1342,7 +1342,7 @@ const fetchInsumos = async () => {
         { id: 1, nome: "Restaurante Demo", endereco: "Endereço Demo" }
       ]);
     } finally {
-      //setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -1366,7 +1366,7 @@ const fetchInsumos = async () => {
   // Busca receitas de um restaurante específico
   const fetchReceitasByRestaurante = async (restauranteId: number) => {
     try {
-      //setLoading(true);
+      setLoading(true);
       const response = await apiService.getReceitas();
       if (response.data) {
         // Filtrar receitas pelo restaurante
@@ -1380,7 +1380,40 @@ const fetchInsumos = async () => {
     } catch (error) {
       console.error('Erro ao buscar receitas do restaurante:', error);
     } finally {
-      //setLoading(false);
+      setLoading(false);
+    }
+  };
+
+  // Carrega restaurantes com fallback para diferentes endpoints
+  const carregarRestaurantes = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8000/api/v1/restaurantes/com-unidades');
+      const data = await response.json();
+      setRestaurantes(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar restaurantes:', error);
+      // Fallback para método grid se com-unidades falhar
+      try {
+        const fallbackResponse = await fetch('http://localhost:8000/api/v1/restaurantes/grid');
+        const fallbackData = await fallbackResponse.json();
+        setRestaurantes(fallbackData || []);
+      } catch (fallbackError) {
+        console.error('Erro no fallback de restaurantes:', fallbackError);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carrega estatísticas de um restaurante específico
+  const carregarEstatisticasRestaurante = async (restauranteId: number) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restauranteId}/estatisticas`);
+      const data = await response.json();
+      setEstatisticasRestaurante(data);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas do restaurante:', error);
     }
   };
 
@@ -1396,7 +1429,6 @@ const fetchInsumos = async () => {
           await fetchReceitas();
           await carregarFornecedoresDisponiveis();
           await carregarEstados();
-          await carregarRestaurantes();
           await carregarTiposEstabelecimento();
         } else {
           console.error('❌ Falha na conexão com a API');
@@ -3895,27 +3927,6 @@ const fetchInsumos = async () => {
     // FUNÇÕES DE CARREGAMENTO DE RESTAURANTES
     // =========================================================================
 
-    const carregarRestaurantes = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('http://localhost:8000/api/v1/restaurantes/com-unidades');
-        const data = await response.json();
-        setRestaurantes(data || []);
-      } catch (error) {
-        console.error('Erro ao carregar restaurantes:', error);
-        // Fallback para método grid se com-unidades falhar
-        try {
-          const fallbackResponse = await fetch('http://localhost:8000/api/v1/restaurantes/grid');
-          const fallbackData = await fallbackResponse.json();
-          setRestaurantes(fallbackData || []);
-        } catch (fallbackError) {
-          console.error('Erro no fallback de restaurantes:', fallbackError);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     const carregarTiposEstabelecimento = async () => {
       try {
         const response = await fetch('http://localhost:8000/api/v1/restaurantes/tipos');
@@ -3928,16 +3939,6 @@ const fetchInsumos = async () => {
       }
     };
 
-    const carregarEstatisticasRestaurante = async (restauranteId: number) => {
-      try {
-        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restauranteId}/estatisticas`);
-        const data = await response.json();
-        setEstatisticasRestaurante(data);
-      } catch (error) {
-        console.error('Erro ao carregar estatísticas do restaurante:', error);
-        setEstatisticasRestaurante(null);
-      }
-    };
 
     // =========================================================================
     // FUNÇÕES DE MANIPULAÇÃO DE RESTAURANTES
