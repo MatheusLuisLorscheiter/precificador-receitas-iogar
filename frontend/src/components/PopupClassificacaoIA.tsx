@@ -229,43 +229,119 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
 };
 
   const handleSalvarCorrecao = async () => {
-    if (!categoriaSelecionada || !subcategoriaSelecionada) {
-      alert('Categoria e Subcategoria são obrigatórias');
-      return;
-    }
+  console.log('🔧 [DEBUG] Iniciando handleSalvarCorrecao');
+  console.log('🔧 [DEBUG] Categoria:', categoriaSelecionada);
+  console.log('🔧 [DEBUG] Subcategoria:', subcategoriaSelecionada);
+  
+  if (!categoriaSelecionada || !subcategoriaSelecionada) {
+    console.log('❌ [DEBUG] Validação falhou - categoria ou subcategoria vazia');
+    alert('Categoria e Subcategoria são obrigatórias');
+    return;
+  }
 
-    setEnviandoFeedback(true);
-    try {
-      // 1. Buscar todas as taxonomias e filtrar localmente
-      const todasTaxonomias = await fetch('http://localhost:8000/api/v1/taxonomias/?limit=1000');
+  setEnviandoFeedback(true);
+  console.log('🔧 [DEBUG] Estado enviandoFeedback setado para true');
+  
+  try {
+    console.log('🔧 [DEBUG] Iniciando busca de taxonomias...');
+    // 1. Buscar todas as taxonomias e filtrar localmente
+    const todasTaxonomias = await fetch('http://localhost:8000/api/v1/taxonomias/?limit=1000');
+    
+    if (todasTaxonomias.ok) {
+      console.log('🔧 [DEBUG] Taxonomias carregadas com sucesso');
+      const responseData = await todasTaxonomias.json();
       
-      if (todasTaxonomias.ok) {
-        const taxonomias = await todasTaxonomias.json();
-        
-        // Filtrar taxonomia que corresponde à seleção
-        const taxonomiaEncontrada = taxonomias.find((tax: any) => 
-          tax.categoria === categoriaSelecionada && 
-          tax.subcategoria === subcategoriaSelecionada &&
-          (!especificacao || tax.especificacao === especificacao) &&
-          (!variante || tax.variante === variante)
-        );
-        
-        if (taxonomiaEncontrada && taxonomiaEncontrada.id) {
-          // 2. Associar taxonomia ao insumo
-          const associarResponse = await fetch(`http://localhost:8000/api/v1/insumos/${insumoId}/taxonomia?taxonomia_id=${taxonomiaData.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' }
-          });
+      // Extrair array de taxonomias da resposta TaxonomiaListResponse
+      const taxonomias = responseData.taxonomias || [];
+      console.log('🔧 [DEBUG] Total de taxonomias carregadas:', taxonomias.length);
 
-          if (associarResponse.ok) {
-            // 3. Enviar feedback positivo para IA
-            await fetch('/api/v1/ia/feedback', {
+      // Log para debug da busca
+      console.log('🔧 [DEBUG] Procurando por:');
+      console.log('  - Categoria:', `"${categoriaSelecionada}"`);
+      console.log('  - Subcategoria:', `"${subcategoriaSelecionada}"`);
+      console.log('🔧 [DEBUG] Primeiras 3 taxonomias do banco:');
+      taxonomias.slice(0, 3).forEach((tax, index) => {
+        console.log(`  ${index + 1}:`, {
+          categoria: `"${tax.categoria}"`,
+          subcategoria: `"${tax.subcategoria}"`,
+          id: tax.id
+        });
+      });
+
+      console.log('🔧 [DEBUG] Taxonomias que começam com "Frutos":');
+      const frutosMarTaxonomias = taxonomias.filter(tax => 
+        tax.categoria && tax.categoria.toLowerCase().includes('frutos')
+      );
+      console.log('Total encontradas:', frutosMarTaxonomias.length);
+      frutosMarTaxonomias.forEach((tax, index) => {
+        console.log(`  ${index + 1}:`, {
+          categoria: `"${tax.categoria}"`,
+          subcategoria: `"${tax.subcategoria}"`,
+          id: tax.id
+        });
+      });
+      
+      // Filtrar taxonomia que corresponde à seleção
+      const taxonomiaEncontrada = taxonomias.find((tax: any) => 
+        tax.categoria?.replace(/"/g, '') === categoriaSelecionada && 
+        tax.subcategoria?.replace(/"/g, '') === subcategoriaSelecionada &&
+        (!especificacao || tax.especificacao?.replace(/"/g, '') === especificacao) &&
+        (!variante || tax.variante?.replace(/"/g, '') === variante)
+      );
+      
+      console.log('🔧 [DEBUG] Taxonomia encontrada:', taxonomiaEncontrada);
+      
+      if (taxonomiaEncontrada && taxonomiaEncontrada.id) {
+        console.log('🔧 [DEBUG] Taxonomia ID:', taxonomiaEncontrada.id);
+        console.log('🔧 [DEBUG] Insumo ID:', insumoId);
+        
+        // 2. Associar taxonomia ao insumo
+        console.log('🔧 [DEBUG] Iniciando associação taxonomia->insumo...');
+        const associarResponse = await fetch(`http://localhost:8000/api/v1/insumos/${insumoId}/taxonomia?taxonomia_id=${taxonomiaEncontrada.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        console.log('🔧 [DEBUG] Response da associação:', associarResponse.status);
+
+        if (associarResponse.ok) {
+          console.log('🔧 [DEBUG] Associação bem-sucedida!');
+          
+          // Chamar callback de sucesso PRIMEIRO
+          console.log('🔧 [DEBUG] Chamando onFeedbackEnviado...');
+          onFeedbackEnviado();
+          console.log('🔧 [DEBUG] onFeedbackEnviado executado');
+          
+          // Mostrar popup de sucesso PRIMEIRO
+          console.log('🔧 [DEBUG] Verificando showSuccessPopup...');
+          console.log('🔧 [DEBUG] Tipo de showSuccessPopup:', typeof showSuccessPopup);
+          
+          if (typeof showSuccessPopup === 'function') {
+            console.log('🔧 [DEBUG] Chamando showSuccessPopup...');
+            showSuccessPopup(
+              'Classificação Aplicada!',
+              `${nomeInsumo} foi classificado manualmente com sucesso.`
+            );
+            console.log('🔧 [DEBUG] showSuccessPopup executado');
+          } else {
+            console.log('❌ [DEBUG] showSuccessPopup não é uma função!');
+          }
+          
+          // Fechar popup
+          console.log('🔧 [DEBUG] Chamando onClose...');
+          onClose();
+          console.log('🔧 [DEBUG] onClose executado');
+          
+          // 3. Enviar feedback para IA (em background, sem bloquear a UI)
+          console.log('🔧 [DEBUG] Iniciando feedback da IA...');
+          try {
+            await fetch('http://localhost:8000/api/v1/ia/feedback', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 nome_produto: nomeInsumo,
+                acao: "corrigir",
                 classificacao_sugerida: classificacao?.taxonomia_sugerida || {},
-                acao: 'corrigir',
                 taxonomia_correta: {
                   categoria: categoriaSelecionada,
                   subcategoria: subcategoriaSelecionada,
@@ -275,41 +351,38 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                 observacoes: 'Classificação manual via interface'
               })
             });
-
-            // Chamar callback de sucesso
-            onFeedbackEnviado();
-            
-            // Mostrar popup de sucesso
-            if (typeof showSuccessPopup === 'function') {
-              showSuccessPopup(
-                'Classificação Aplicada!',
-                `${nomeInsumo} foi classificado manualmente com sucesso.`
-              );
-            }
-            
-            onClose();
-          } else {
-            throw new Error('Falha ao associar taxonomia ao insumo');
+            console.log('🔧 [DEBUG] Feedback da IA enviado com sucesso');
+          } catch (error) {
+            console.log('🔧 [DEBUG] Erro no feedback da IA (não afeta o usuário):', error);
           }
+          
         } else {
-          throw new Error('Taxonomia não encontrada no sistema');
+          console.log('❌ [DEBUG] Erro na associação:', associarResponse.status);
+          throw new Error('Falha ao associar taxonomia ao insumo');
         }
       } else {
-        throw new Error('Falha na busca por taxonomia');
+        console.log('❌ [DEBUG] Taxonomia não encontrada no sistema');
+        throw new Error('Taxonomia não encontrada no sistema');
       }
-    } catch (error) {
-      console.error('Erro ao salvar classificação:', error);
-      
-      if (typeof showErrorPopup === 'function') {
-        showErrorPopup(
-          'Erro na Classificação',
-          'Não foi possível classificar o insumo. Tente novamente.'
-        );
-      }
-    } finally {
-      setEnviandoFeedback(false);
+    } else {
+      console.log('❌ [DEBUG] Erro ao buscar taxonomias:', todasTaxonomias.status);
+      throw new Error('Falha na busca por taxonomia');
     }
-  };
+  } catch (error) {
+    console.log('❌ [DEBUG] Erro geral na função:', error);
+    console.error('Erro ao salvar classificação:', error);
+    
+    if (typeof showErrorPopup === 'function') {
+      showErrorPopup(
+        'Erro na Classificação',
+        'Não foi possível classificar o insumo. Tente novamente.'
+      );
+    }
+  } finally {
+    console.log('🔧 [DEBUG] Finalizando - setando enviandoFeedback para false');
+    setEnviandoFeedback(false);
+  }
+};
   // ============================================================================
   // RENDER
   // ============================================================================
