@@ -54,9 +54,9 @@ def converter_para_unidade_base(quantidade: float, unidade: str) -> float:
 # MODELO RESTAURANTE - Estabelecimentos que possuem receitas
 # ===================================================================================================
 
-class Restaurante(Base): 
+class Restaurante(Base):
     """
-    Modelo para restaurantes que possuem receitas.
+    Modelo para restaurantes - estabelecimentos que possuem receitas.
     
     ATENÇÃO: Não herda de BaseModel porque restaurante tem estrutura diferente.
     Restaurante não precisa de grupo, subgrupo, codigo, etc. que são específicos
@@ -64,14 +64,19 @@ class Restaurante(Base):
     
     Campos:
     - id, created_at, updated_at (controle automático)
-    - nome: Nome do restaurante
+    - nome: Nome do restaurante/rede
     - cnpj: CNPJ do estabelecimento  
-    - endereco: Endereço completo
-    - telefone: Telefone de contato
+    - tipo: Tipo do estabelecimento (restaurante, bar, quiosque, etc.)
+    - tem_delivery: Se oferece serviço de delivery
     - ativo: Se o restaurante está ativo
+    - eh_matriz: Se é a unidade matriz (primeira unidade cadastrada)
+    - restaurante_pai_id: Para unidades/filiais (referencia a matriz)
+    - endereco, bairro, cidade, estado, telefone: Dados de localização
     
     Relacionamentos:
     - receitas: Lista de receitas deste restaurante (1:N)
+    - unidades: Lista de unidades/filiais (1:N para matriz)
+    - restaurante_pai: Referência para a matriz (N:1 para filiais)
     """
     __tablename__ = "restaurantes"
     
@@ -89,23 +94,57 @@ class Restaurante(Base):
     # Campos específicos do restaurante
     # ===================================================================================================
     
-    nome = Column(String(200), nullable=False, comment="Nome do restaurante")
+    nome = Column(String(200), nullable=False, comment="Nome do restaurante/rede")
     cnpj = Column(String(18), unique=True, nullable=True, comment="CNPJ do restaurante")
-    endereco = Column(Text, nullable=True, comment="Endereço completo do restaurante")
-    telefone = Column(String(20), nullable=True, comment="Telefone de contato") 
+    tipo = Column(String(50), nullable=False, default="restaurante", 
+                 comment="Tipo: restaurante, bar, quiosque, lanchonete, etc.")
+    tem_delivery = Column(Boolean, default=False, comment="Se oferece delivery")
     ativo = Column(Boolean, default=True, comment="Se o restaurante está ativo")
+    
+    # Campos para sistema de unidades/filiais
+    eh_matriz = Column(Boolean, default=True, comment="Se é a unidade matriz")
+    restaurante_pai_id = Column(Integer, ForeignKey("restaurantes.id"), nullable=True,
+                               comment="ID da matriz (apenas para filiais)")
+    
+    # Campos de localização detalhados
+    endereco = Column(Text, nullable=True, comment="Endereço (rua, número)")
+    bairro = Column(String(100), nullable=True, comment="Bairro")
+    cidade = Column(String(100), nullable=True, comment="Cidade")
+    estado = Column(String(2), nullable=True, comment="Estado (sigla: SP, RJ, etc.)")
+    telefone = Column(String(20), nullable=True, comment="Telefone de contato")
 
     # ===================================================================================================
     # Relacionamentos SQLAlchemy
     # ===================================================================================================
     
     # Relacionamento com receitas (1 para N)
-    # Um restaurante pode ter muitas receitas
     receitas = relationship("Receita", back_populates="restaurante", cascade="all, delete-orphan")
+    
+    # Relacionamento para unidades/filiais
+    # Para matriz: lista todas as filiais
+    unidades = relationship("Restaurante", 
+                           foreign_keys=[restaurante_pai_id],
+                           remote_side=[id],
+                           cascade="all, delete-orphan")
+    
+    # Para filial: referência à matriz
+    restaurante_pai = relationship("Restaurante", 
+                                  foreign_keys=[restaurante_pai_id],
+                                  remote_side=[id])
 
     def __repr__(self):
         """Representação em string do objeto para debug"""
-        return f"<Restaurante(id={self.id}, nome='{self.nome}')>"
+        tipo_unidade = "Matriz" if self.eh_matriz else "Filial"
+        return f"<Restaurante(id={self.id}, nome='{self.nome}', tipo='{tipo_unidade}')>"
+    
+    @property
+    def quantidade_unidades(self) -> int:
+        """Retorna quantidade total de unidades (matriz + filiais)"""
+        if self.eh_matriz:
+            return 1 + len(self.unidades) if self.unidades else 1
+        else:
+            # Se é filial, busca pela matriz
+            return self.restaurante_pai.quantidade_unidades if self.restaurante_pai else 1
 
 # ===================================================================================================
 # MODELO RECEITA - Produtos finais que são vendidos

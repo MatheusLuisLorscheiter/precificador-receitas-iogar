@@ -15,6 +15,16 @@ from contextlib import asynccontextmanager
 # Imports dos routers/endpoints das APIs
 try:
     from app.api.endpoints import insumos, receitas, fornecedores, taxonomias
+    
+    # Importar endpoints de restaurantes
+    try:
+        from app.api.endpoints import restaurantes
+        HAS_RESTAURANTES = True
+        print("✅ Módulo restaurantes importado com sucesso")
+    except ImportError as e:
+        print(f"⚠️  Módulo restaurantes não encontrado: {e}")
+        HAS_RESTAURANTES = False
+    
     # Tentar importar o módulo fornecedor_insumos
     try:
         from app.api.endpoints import fornecedor_insumos
@@ -73,6 +83,7 @@ async def lifespan(app: FastAPI):
     # Informações úteis para o desenvolvedor
     print("🔍 CRUD Insumos: http://localhost:8000/api/v1/insumos")
     print("🔍 CRUD Receitas: http://localhost:8000/api/v1/receitas")
+    print("🏪 CRUD Restaurantes: http://localhost:8000/api/v1/restaurantes")
     print("📖 Documentação: http://localhost:8000/docs")
     print("🔄 ReDoc: http://localhost:8000/redoc")
     
@@ -231,6 +242,22 @@ except ImportError as e:
     print("💡 Instale as dependências: pip install spacy fuzzywuzzy python-levenshtein")
 except Exception as e:
     print(f"❌ Erro ao carregar sistema de IA: {e}")
+
+# Router para operações com restaurantes (Sistema de Gestão - Fase 3)
+if HAS_RESTAURANTES:
+    app.include_router(
+        restaurantes.router,
+        prefix="/api/v1/restaurantes",
+        tags=["restaurantes"],
+        responses={
+            404: {"description": "Restaurante não encontrado"},
+            422: {"description": "Erro de validação"},
+            500: {"description": "Erro interno do servidor"}
+        }
+    )
+    print("✅ Router restaurantes incluído com sucesso")
+else:
+    print("⚠️ Router restaurantes não incluído (módulo não disponível)")
 
 # Router para operações com aliases de taxonomias (Sistema de Mapeamento - Fase 2)
 if HAS_TAXONOMIA_ALIASES:

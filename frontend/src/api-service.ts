@@ -346,15 +346,132 @@ class ApiService {
   // MÉTODOS PARA RESTAURANTES - AJUSTADOS PARA SEU BACKEND
   // ================================
 
-  // Listar todos os restaurantes - ROTA TEMPORÁRIA
-  async getRestaurantes(): Promise<ApiResponse<any[]>> {
-    // Como a rota real não existe, retornar dados mockados temporariamente
-    return {
-      data: [
-        { id: 1, nome: "Restaurante Teste 1", endereco: "Rua A, 123" },
-        { id: 2, nome: "Restaurante Teste 2", endereco: "Rua B, 456" }
-      ]
+  // Listar restaurantes em formato grid otimizado
+  async getRestaurantesGrid(): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>('/api/v1/restaurantes/grid');
+  }
+
+  // Listar restaurantes com unidades/filiais aninhadas
+  async getRestaurantesComUnidades(): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>('/api/v1/restaurantes/com-unidades');
+  }
+
+  // Listar tipos de estabelecimento disponíveis
+  async getTiposRestaurante(): Promise<ApiResponse<string[]>> {
+    return this.request<string[]>('/api/v1/restaurantes/tipos');
+  }
+
+  // Buscar restaurante específico por ID
+  async getRestauranteById(id: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/api/v1/restaurantes/${id}`);
+  }
+
+  // Buscar estatísticas de um restaurante
+  async getRestauranteEstatisticas(id: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/api/v1/restaurantes/${id}/estatisticas`);
+  }
+
+  // Criar novo restaurante matriz
+  async createRestaurante(restaurante: any): Promise<ApiResponse<any>> {
+    // Validar CNPJ obrigatório para matriz
+    if (!restaurante.cnpj) {
+      return {
+        error: true,
+        message: 'CNPJ é obrigatório para restaurante matriz'
+      };
+    }
+
+    const dadosBackend = {
+      nome: restaurante.nome,
+      cnpj: restaurante.cnpj,
+      tipo: restaurante.tipo || 'restaurante',
+      tem_delivery: restaurante.tem_delivery || false,
+      endereco: restaurante.endereco || null,
+      bairro: restaurante.bairro || null,
+      cidade: restaurante.cidade || null,
+      estado: restaurante.estado || null,
+      telefone: restaurante.telefone || null,
+      ativo: restaurante.ativo !== false
     };
+
+    console.log('📤 Enviando dados para criar restaurante:', dadosBackend);
+    
+    return this.request<any>('/api/v1/restaurantes/', {
+      method: 'POST',
+      body: JSON.stringify(dadosBackend),
+    });
+  }
+
+  // Criar nova unidade/filial
+  async createUnidade(restauranteMatrizId: number, unidade: any): Promise<ApiResponse<any>> {
+    // Validar dados obrigatórios da unidade
+    if (!unidade.endereco || !unidade.bairro || !unidade.cidade || !unidade.estado) {
+      return {
+        error: true,
+        message: 'Endereço, bairro, cidade e estado são obrigatórios para unidade'
+      };
+    }
+
+    const dadosUnidade = {
+      endereco: unidade.endereco,
+      bairro: unidade.bairro,
+      cidade: unidade.cidade,
+      estado: unidade.estado,
+      telefone: unidade.telefone || null
+    };
+
+    console.log('📤 Enviando dados para criar unidade:', dadosUnidade);
+    
+    return this.request<any>(`/api/v1/restaurantes/${restauranteMatrizId}/unidades`, {
+      method: 'POST',
+      body: JSON.stringify(dadosUnidade),
+    });
+  }
+
+  // Atualizar restaurante existente
+  async updateRestaurante(id: number, restaurante: any): Promise<ApiResponse<any>> {
+    // Enviar apenas campos que foram alterados (patch)
+    const dadosUpdate: any = {};
+    
+    if (restaurante.nome !== undefined) dadosUpdate.nome = restaurante.nome;
+    if (restaurante.cnpj !== undefined) dadosUpdate.cnpj = restaurante.cnpj;
+    if (restaurante.tipo !== undefined) dadosUpdate.tipo = restaurante.tipo;
+    if (restaurante.tem_delivery !== undefined) dadosUpdate.tem_delivery = restaurante.tem_delivery;
+    if (restaurante.endereco !== undefined) dadosUpdate.endereco = restaurante.endereco;
+    if (restaurante.bairro !== undefined) dadosUpdate.bairro = restaurante.bairro;
+    if (restaurante.cidade !== undefined) dadosUpdate.cidade = restaurante.cidade;
+    if (restaurante.estado !== undefined) dadosUpdate.estado = restaurante.estado;
+    if (restaurante.telefone !== undefined) dadosUpdate.telefone = restaurante.telefone;
+    if (restaurante.ativo !== undefined) dadosUpdate.ativo = restaurante.ativo;
+
+    console.log('📤 Enviando dados para atualizar restaurante:', dadosUpdate);
+    
+    return this.request<any>(`/api/v1/restaurantes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dadosUpdate),
+    });
+  }
+
+  // Excluir restaurante
+  async deleteRestaurante(id: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/api/v1/restaurantes/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Listar restaurantes simples (para dropdowns)
+  async getRestaurantesSimples(incluirFiliais: boolean = false): Promise<ApiResponse<any[]>> {
+    const params = new URLSearchParams();
+    if (incluirFiliais) params.append('incluir_filiais', 'true');
+    
+    const url = `/api/v1/restaurantes/${params.toString() ? '?' + params.toString() : ''}`;
+    return this.request<any[]>(url);
+  }
+
+  // Método legacy mantido para compatibilidade (aponta para grid)
+  async getRestaurantes(): Promise<ApiResponse<any[]>> {
+    console.log('⚠️ Método getRestaurantes() é legacy. Use getRestaurantesGrid()');
+    return this.getRestaurantesGrid();
   }
 
   // ================================

@@ -61,12 +61,92 @@ interface Insumo {
   quantidade?: number;
 }
 
-// Interface para restaurantes
+// Interface para restaurantes com sistema de unidades/filiais
 interface Restaurante {
   id: number;
   nome: string;
+  cnpj?: string;
+  tipo: string;
+  tem_delivery: boolean;
   endereco?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
   telefone?: string;
+  ativo: boolean;
+  eh_matriz: boolean;
+  restaurante_pai_id?: number;
+  quantidade_unidades: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Interface para grid de restaurantes (otimizada para exibição)
+interface RestauranteGrid {
+  id: number;
+  nome: string;
+  cidade?: string;
+  estado?: string;
+  tipo: string;
+  tem_delivery: boolean;
+  eh_matriz: boolean;
+  quantidade_unidades: number;
+  ativo: boolean;
+  unidades?: RestauranteGrid[];
+}
+
+// Interface para criação de restaurante matriz
+interface RestauranteCreate {
+  nome: string;
+  cnpj: string;
+  tipo: string;
+  tem_delivery: boolean;
+  endereco?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  telefone?: string;
+  ativo?: boolean;
+}
+
+// Interface para criação de unidade/filial
+interface UnidadeCreate {
+  endereco: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  telefone?: string;
+}
+
+// Interface para tipos de estabelecimento
+interface TipoEstabelecimento {
+  value: string;
+  label: string;
+  icon?: string;
+}
+
+// Interface para estatísticas do restaurante
+interface RestauranteEstatisticas {
+  restaurante_id: number;
+  nome: string;
+  quantidade_unidades: number;
+  total_receitas: number;
+  ultimos_insumos: any[];
+  ultimas_receitas: any[];
+}
+
+// Interface para formulário de restaurante (união de create/update)
+interface RestauranteForm {
+  nome: string;
+  cnpj?: string;
+  tipo: string;
+  tem_delivery: boolean;
+  endereco?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  telefone?: string;
+  ativo: boolean;
 }
 
 // Interface para receitas com preços calculados pelo backend
@@ -1020,14 +1100,63 @@ const FoodCostSystem: React.FC = () => {
     () => localStorage.getItem('activeTab') || 'dashboard'
   );
   const [insumos, setInsumos] = useState<Insumo[]>([]);
-  const [restaurantes, setRestaurantes] = useState<Restaurante[]>([]);
   const [receitas, setReceitas] = useState<Receita[]>([]);
+  const [restaurantes, setRestaurantes] = useState<RestauranteGrid[]>([]);
+  const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
+  const [tiposEstabelecimento, setTiposEstabelecimento] = useState<string[]>([]);
   const [selectedRestaurante, setSelectedRestaurante] = useState<Restaurante | null>(null);
+  const [showRestauranteForm, setShowRestauranteForm] = useState<boolean>(false);
+  const [showUnidadeForm, setShowUnidadeForm] = useState<boolean>(false);
+  const [editingRestaurante, setEditingRestaurante] = useState<Restaurante | null>(null);
+  const [restauranteParaUnidade, setRestauranteParaUnidade] = useState<Restaurante | null>(null);
+  const [formRestaurante, setFormRestaurante] = useState<RestauranteForm>({
+    nome: '',
+    cnpj: '',
+    tipo: 'restaurante',
+    tem_delivery: false,
+    endereco: '',
+    bairro: '',
+    cidade: '',
+    estado: '',
+    telefone: '',
+    ativo: true
+  });
+  const [formUnidade, setFormUnidade] = useState<UnidadeCreate>({
+    endereco: '',
+    bairro: '',
+    cidade: '',
+    estado: '',
+    telefone: ''
+  });
+  const [estatisticasRestaurante, setEstatisticasRestaurante] = useState<RestauranteEstatisticas | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [showInsumoForm, setShowInsumoForm] = useState<boolean>(false);
   // Estados para popup de classificação IA
   const [showClassificacaoPopup, setShowClassificacaoPopup] = useState<boolean>(false);
   const [insumoRecemCriado, setInsumoRecemCriado] = useState<{id: number, nome: string} | null>(null);
+  
+  // Constantes para tipos de estabelecimento com ícones
+  const TIPOS_ESTABELECIMENTO: TipoEstabelecimento[] = [
+    { value: 'restaurante', label: 'Restaurante', icon: 'utensils' },
+    { value: 'bar', label: 'Bar', icon: 'wine' },
+    { value: 'pub', label: 'Pub', icon: 'beer' },
+    { value: 'quiosque', label: 'Quiosque', icon: 'store' },
+    { value: 'lanchonete', label: 'Lanchonete', icon: 'sandwich' },
+    { value: 'cafeteria', label: 'Cafeteria', icon: 'coffee' },
+    { value: 'pizzaria', label: 'Pizzaria', icon: 'pizza' },
+    { value: 'hamburgueria', label: 'Hamburgueria', icon: 'burger' },
+    { value: 'churrascaria', label: 'Churrascaria', icon: 'meat' },
+    { value: 'bistro', label: 'Bistrô', icon: 'chef-hat' },
+    { value: 'fast_food', label: 'Fast Food', icon: 'zap' },
+    { value: 'food_truck', label: 'Food Truck', icon: 'truck' }
+  ];
+  
+  // Estados brasileiros para dropdown
+  const ESTADOS_BRASIL = [
+    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+    'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+    'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+  ];
   const [showReceitaForm, setShowReceitaForm] = useState<boolean>(false);
   const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null);
   const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
@@ -1267,6 +1396,8 @@ const fetchInsumos = async () => {
           await fetchReceitas();
           await carregarFornecedoresDisponiveis();
           await carregarEstados();
+          await carregarRestaurantes();
+          await carregarTiposEstabelecimento();
         } else {
           console.error('❌ Falha na conexão com a API');
           
@@ -1285,6 +1416,13 @@ const fetchInsumos = async () => {
 
     initializeApp();
   }, []); // IMPORTANTE: Array vazio para executar apenas uma vez
+
+  // Carregar estatísticas quando um restaurante é selecionado na aba restaurantes
+  useEffect(() => {
+    if (selectedRestaurante && activeTab === 'restaurantes') {
+      carregarEstatisticasRestaurante(selectedRestaurante.id);
+    }
+  }, [selectedRestaurante, activeTab]);
 
   // ✨ NOVO: Recarregar dados ao trocar de aba - ADICIONAR AQUI
   useEffect(() => {
@@ -2945,6 +3083,333 @@ const fetchInsumos = async () => {
       } catch (error) {
         console.error('Erro ao carregar fornecedor:', error);
       }
+    };
+
+    // =========================================================================
+    // FUNÇÕES DE CARREGAMENTO DE RESTAURANTES
+    // =========================================================================
+
+    const carregarRestaurantes = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('http://localhost:8000/api/v1/restaurantes/com-unidades');
+        const data = await response.json();
+        setRestaurantes(data || []);
+      } catch (error) {
+        console.error('Erro ao carregar restaurantes:', error);
+        // Fallback para método grid se com-unidades falhar
+        try {
+          const fallbackResponse = await fetch('http://localhost:8000/api/v1/restaurantes/grid');
+          const fallbackData = await fallbackResponse.json();
+          setRestaurantes(fallbackData || []);
+        } catch (fallbackError) {
+          console.error('Erro no fallback de restaurantes:', fallbackError);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const carregarTiposEstabelecimento = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/v1/restaurantes/tipos');
+        const data = await response.json();
+        setTiposEstabelecimento(data || []);
+      } catch (error) {
+        console.error('Erro ao carregar tipos de estabelecimento:', error);
+        // Fallback para tipos locais
+        setTiposEstabelecimento(TIPOS_ESTABELECIMENTO.map(t => t.value));
+      }
+    };
+
+    const carregarEstatisticasRestaurante = async (restauranteId: number) => {
+      try {
+        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restauranteId}/estatisticas`);
+        const data = await response.json();
+        setEstatisticasRestaurante(data);
+      } catch (error) {
+        console.error('Erro ao carregar estatísticas do restaurante:', error);
+        setEstatisticasRestaurante(null);
+      }
+    };
+
+    // =========================================================================
+    // FUNÇÕES DE MANIPULAÇÃO DE RESTAURANTES
+    // =========================================================================
+
+    const handleCriarRestaurante = async () => {
+      if (!formRestaurante.nome.trim() || !formRestaurante.cnpj.trim()) {
+        setPopup({
+          type: 'error',
+          title: 'Dados obrigatórios',
+          message: 'Nome e CNPJ são obrigatórios para restaurante matriz',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await fetch('http://localhost:8000/api/v1/restaurantes/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formRestaurante),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Erro ao criar restaurante');
+        }
+
+        // Sucesso
+        setPopup({
+          type: 'success',
+          title: 'Restaurante criado',
+          message: `${formRestaurante.nome} foi criado com sucesso!`,
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+
+        // Limpar formulário e fechar modal
+        setFormRestaurante({
+          nome: '',
+          cnpj: '',
+          tipo: 'restaurante',
+          tem_delivery: false,
+          endereco: '',
+          bairro: '',
+          cidade: '',
+          estado: '',
+          telefone: '',
+          ativo: true
+        });
+        setShowRestauranteForm(false);
+        
+        // Recarregar lista
+        await carregarRestaurantes();
+      } catch (error) {
+        console.error('Erro ao criar restaurante:', error);
+        setPopup({
+          type: 'error',
+          title: 'Erro ao criar restaurante',
+          message: error.message || 'Erro interno do sistema',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handleCriarUnidade = async () => {
+      if (!restauranteParaUnidade || !formUnidade.endereco.trim() || 
+          !formUnidade.bairro.trim() || !formUnidade.cidade.trim() || 
+          !formUnidade.estado.trim()) {
+        setPopup({
+          type: 'error',
+          title: 'Dados obrigatórios',
+          message: 'Endereço, bairro, cidade e estado são obrigatórios',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restauranteParaUnidade.id}/unidades`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formUnidade),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Erro ao criar unidade');
+        }
+
+        // Sucesso
+        setPopup({
+          type: 'success',
+          title: 'Unidade criada',
+          message: `Nova unidade de ${restauranteParaUnidade.nome} criada com sucesso!`,
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+
+        // Limpar formulário e fechar modal
+        setFormUnidade({
+          endereco: '',
+          bairro: '',
+          cidade: '',
+          estado: '',
+          telefone: ''
+        });
+        setShowUnidadeForm(false);
+        setRestauranteParaUnidade(null);
+        
+        // Recarregar lista
+        await carregarRestaurantes();
+      } catch (error) {
+        console.error('Erro ao criar unidade:', error);
+        setPopup({
+          type: 'error',
+          title: 'Erro ao criar unidade',
+          message: error.message || 'Erro interno do sistema',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handleEditarRestaurante = async (restaurante: Restaurante) => {
+      setEditingRestaurante(restaurante);
+      setFormRestaurante({
+        nome: restaurante.nome,
+        cnpj: restaurante.cnpj || '',
+        tipo: restaurante.tipo,
+        tem_delivery: restaurante.tem_delivery,
+        endereco: restaurante.endereco || '',
+        bairro: restaurante.bairro || '',
+        cidade: restaurante.cidade || '',
+        estado: restaurante.estado || '',
+        telefone: restaurante.telefone || '',
+        ativo: restaurante.ativo
+      });
+      setShowRestauranteForm(true);
+    };
+
+    const handleSalvarEdicaoRestaurante = async () => {
+      if (!editingRestaurante || !formRestaurante.nome.trim()) {
+        setPopup({
+          type: 'error',
+          title: 'Dados inválidos',
+          message: 'Nome é obrigatório',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${editingRestaurante.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formRestaurante),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Erro ao atualizar restaurante');
+        }
+
+        // Sucesso
+        setPopup({
+          type: 'success',
+          title: 'Restaurante atualizado',
+          message: `${formRestaurante.nome} foi atualizado com sucesso!`,
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+
+        // Limpar edição e fechar
+        setEditingRestaurante(null);
+        setShowRestauranteForm(false);
+        
+        // Recarregar lista
+        await carregarRestaurantes();
+      } catch (error) {
+        console.error('Erro ao atualizar restaurante:', error);
+        setPopup({
+          type: 'error',
+          title: 'Erro ao atualizar',
+          message: error.message || 'Erro interno do sistema',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handleExcluirRestaurante = async (restaurante: Restaurante) => {
+      const confirmacao = window.confirm(
+        `Tem certeza que deseja excluir ${restaurante.nome}?\n\n` +
+        (restaurante.eh_matriz && restaurante.quantidade_unidades > 1 
+          ? `⚠️ ATENÇÃO: Este restaurante possui ${restaurante.quantidade_unidades} unidades. Todas serão excluídas!`
+          : 'Esta ação não pode ser desfeita.')
+      );
+
+      if (!confirmacao) return;
+
+      try {
+        setIsLoading(true);
+        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restaurante.id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Erro ao excluir restaurante');
+        }
+
+        // Sucesso
+        setPopup({
+          type: 'success',
+          title: 'Restaurante excluído',
+          message: `${restaurante.nome} foi excluído com sucesso!`,
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+        
+        // Recarregar lista
+        await carregarRestaurantes();
+      } catch (error) {
+        console.error('Erro ao excluir restaurante:', error);
+        setPopup({
+          type: 'error',
+          title: 'Erro ao excluir',
+          message: error.message || 'Erro interno do sistema',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handleToggleExpandirRestaurante = (restauranteId: number) => {
+      setRestaurantesExpandidos(prev => {
+        const novo = new Set(prev);
+        if (novo.has(restauranteId)) {
+          novo.delete(restauranteId);
+        } else {
+          novo.add(restauranteId);
+        }
+        return novo;
+      });
+    };
+
+    const handleAbrirFormUnidade = (restaurante: Restaurante) => {
+      setRestauranteParaUnidade(restaurante);
+      setFormUnidade({
+        endereco: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        telefone: ''
+      });
+      setShowUnidadeForm(true);
     };
 
     // =========================================================================

@@ -142,35 +142,95 @@ class ReceitaInsumoResponse(BaseModel):
 
 class RestauranteBase(BaseModel):
     """Schema base para restaurante"""
-    nome: str = Field(..., min_length=1, max_length=255, description="Nome do restaurante")
-    endereco: Optional[str] = Field(None, description="Endereço do restaurante")
-    telefone: Optional[str] = Field(None, description="Telefone do restaurante")
+    nome: str = Field(..., min_length=1, max_length=200, description="Nome do restaurante/rede")
+    cnpj: Optional[str] = Field(None, description="CNPJ do estabelecimento")
+    tipo: str = Field("restaurante", description="Tipo: restaurante, bar, quiosque, lanchonete, etc.")
+    tem_delivery: bool = Field(False, description="Se oferece serviço de delivery")
+    endereco: Optional[str] = Field(None, description="Endereço (rua, número)")
+    bairro: Optional[str] = Field(None, description="Bairro")
+    cidade: Optional[str] = Field(None, description="Cidade")
+    estado: Optional[str] = Field(None, max_length=2, description="Estado (sigla: SP, RJ, etc.)")
+    telefone: Optional[str] = Field(None, description="Telefone de contato")
     ativo: bool = Field(True, description="Se o restaurante está ativo")
 
 class RestauranteCreate(RestauranteBase):
-    """Schema para criação de restaurante"""
+    """Schema para criação de restaurante matriz"""
+    cnpj: str = Field(..., description="CNPJ obrigatório para restaurante matriz")
+    
     class Config:
         json_schema_extra = {
             "example": {
-                "nome": "Restaurante IOGAR",
-                "endereco": "Rua das Flores, 123 - Centro",
+                "nome": "Pizzaria IOGAR",
+                "cnpj": "12.345.678/0001-90",
+                "tipo": "restaurante",
+                "tem_delivery": True,
+                "endereco": "Rua das Flores, 123",
+                "bairro": "Centro",
+                "cidade": "São Paulo",
+                "estado": "SP",
                 "telefone": "(11) 99999-9999",
                 "ativo": True
             }
         }
 
+class UnidadeCreate(BaseModel):
+    """Schema para criação de unidade/filial"""
+    endereco: str = Field(..., description="Endereço da unidade")
+    bairro: str = Field(..., description="Bairro da unidade")
+    cidade: str = Field(..., description="Cidade da unidade")
+    estado: str = Field(..., max_length=2, description="Estado da unidade")
+    telefone: Optional[str] = Field(None, description="Telefone da unidade")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "endereco": "Av. Paulista, 456",
+                "bairro": "Bela Vista",
+                "cidade": "São Paulo",
+                "estado": "SP",
+                "telefone": "(11) 88888-8888"
+            }
+        }
+
 class RestauranteUpdate(BaseModel):
     """Schema para atualização de restaurante"""
-    nome: Optional[str] = Field(None, min_length=1, max_length=255)
-    endereco: Optional[str] = None
-    telefone: Optional[str] = None
-    ativo: Optional[bool] = None
+    nome: Optional[str] = Field(None, min_length=1, max_length=200)
+    cnpj: Optional[str] = Field(None, description="CNPJ do estabelecimento")
+    tipo: Optional[str] = Field(None, description="Tipo do estabelecimento")
+    tem_delivery: Optional[bool] = Field(None, description="Se oferece delivery")
+    endereco: Optional[str] = Field(None, description="Endereço")
+    bairro: Optional[str] = Field(None, description="Bairro")
+    cidade: Optional[str] = Field(None, description="Cidade")
+    estado: Optional[str] = Field(None, max_length=2, description="Estado")
+    telefone: Optional[str] = Field(None, description="Telefone")
+    ativo: Optional[bool] = Field(None, description="Status ativo")
 
 class RestauranteResponse(RestauranteBase):
     """Schema de resposta para restaurante"""
     id: int = Field(..., description="ID único do restaurante")
+    eh_matriz: bool = Field(..., description="Se é a unidade matriz")
+    restaurante_pai_id: Optional[int] = Field(None, description="ID da matriz (para filiais)")
+    quantidade_unidades: int = Field(..., description="Quantidade total de unidades")
     created_at: Optional[datetime] = Field(None, description="Data de criação")
     updated_at: Optional[datetime] = Field(None, description="Data da última atualização")
+
+    class Config:
+        from_attributes = True
+
+class RestauranteGrid(BaseModel):
+    """Schema otimizado para exibição em grid"""
+    id: int = Field(..., description="ID único")
+    nome: str = Field(..., description="Nome do restaurante")
+    cidade: Optional[str] = Field(None, description="Cidade")
+    estado: Optional[str] = Field(None, description="Estado")
+    tipo: str = Field(..., description="Tipo do estabelecimento")
+    tem_delivery: bool = Field(..., description="Se tem delivery")
+    eh_matriz: bool = Field(..., description="Se é matriz")
+    quantidade_unidades: int = Field(..., description="Total de unidades")
+    ativo: bool = Field(..., description="Status ativo")
+    
+    # Campos para filiais (quando expandido)
+    unidades: Optional[List['RestauranteGrid']] = Field(None, description="Lista de filiais")
 
     class Config:
         from_attributes = True
@@ -179,10 +239,15 @@ class RestauranteSimplificado(BaseModel):
     """Schema simplificado de restaurante para respostas"""
     id: int
     nome: str
+    tipo: str
+    cidade: Optional[str]
     ativo: bool
 
     class Config:
         from_attributes = True
+
+# Forward reference para permitir lista recursiva
+RestauranteGrid.model_rebuild()
 
 # ===================================================================================================
 # SCHEMAS para receitas base

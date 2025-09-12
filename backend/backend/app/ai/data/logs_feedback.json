@@ -1,6 +1,6 @@
 {
   "versao": "2.0.0",
-  "created_at": "2025-09-12T11:40:02.573969",
+  "created_at": "2025-09-12T12:18:42.676250",
   "descricao": "Logs de feedback do sistema de IA integrado",
   "logs": [
     {
@@ -351,6 +351,178 @@
       "taxonomia_correta": {
         "categoria": "Massas",
         "subcategoria": "Farinha",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T11:56:35.162563",
+      "nome_produto": "Mostarda",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Temperos",
+        "subcategoria": "Molhos",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T12:03:19.873877",
+      "nome_produto": "Pão brioche",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Massas",
+        "subcategoria": "Farinha",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T12:03:58.031830",
+      "nome_produto": "Pão brioche",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Massas",
+        "subcategoria": "Farinha",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T12:04:19.228396",
+      "nome_produto": "Maionese comum",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Temperos",
+        "subcategoria": "Molhos",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T12:04:56.788096",
+      "nome_produto": "Pão brioche",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Massas",
+        "subcategoria": "Macarrão",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T12:05:12.817284",
+      "nome_produto": "Maionese comum",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Temperos",
+        "subcategoria": "Molhos",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T12:05:52.567982",
+      "nome_produto": "Maionese comum",
+      "acao": "corrigir",
+      "classificacao_errada": {},
+      "taxonomia_correta": {
+        "categoria": "Preparados",
+        "subcategoria": "Feijão",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T12:06:22.065355",
+      "nome_produto": "Pão brioche",
+      "acao": "corrigir",
+      "classificacao_errada": {},
+      "taxonomia_correta": {
+        "categoria": "Preparados",
+        "subcategoria": "Tutu",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T12:08:37.619631",
+      "nome_produto": "Maionese comum",
+      "acao": "corrigir",
+      "classificacao_errada": {},
+      "taxonomia_correta": {
+        "categoria": "Preparados",
+        "subcategoria": "Feijão",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T12:18:42.676250",
+      "nome_produto": "Maionese comum",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Vegetais",
+        "subcategoria": "Algas",
         "especificacao": null,
         "variante": null
       },

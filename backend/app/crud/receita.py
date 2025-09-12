@@ -101,20 +101,131 @@ def calcular_custo_insumo(insumo: Insumo, quantidade_necessaria: float, unidade_
 # ===================================================================================================
 
 def create_restaurante(db: Session, restaurante: RestauranteCreate) -> Restaurante:
-    """Cria um novo restaurante"""
-    db_restaurante = Restaurante(**restaurante.model_dump())
+    """Cria um novo restaurante matriz"""
+    # Validar CNPJ único
+    if restaurante.cnpj:
+        existing = db.query(Restaurante).filter(Restaurante.cnpj == restaurante.cnpj).first()
+        if existing:
+            raise ValueError(f"CNPJ {restaurante.cnpj} já está cadastrado")
+    
+    # Criar restaurante matriz
+    db_restaurante = Restaurante(
+        **restaurante.model_dump(),
+        eh_matriz=True,
+        restaurante_pai_id=None
+    )
     db.add(db_restaurante)
     db.commit()
     db.refresh(db_restaurante)
     return db_restaurante
 
+def create_unidade(db: Session, restaurante_matriz_id: int, unidade: UnidadeCreate) -> Restaurante:
+    """Cria uma nova unidade/filial para um restaurante matriz"""
+    # Verificar se matriz existe
+    matriz = get_restaurante_by_id(db, restaurante_matriz_id)
+    if not matriz:
+        raise ValueError("Restaurante matriz não encontrado")
+    
+    if not matriz.eh_matriz:
+        raise ValueError("Só é possível criar unidades para restaurantes matriz")
+    
+    # Criar filial com mesmo nome da matriz
+    db_unidade = Restaurante(
+        nome=matriz.nome,
+        cnpj=None,  # Filiais não tem CNPJ próprio
+        tipo=matriz.tipo,
+        tem_delivery=matriz.tem_delivery,
+        endereco=unidade.endereco,
+        bairro=unidade.bairro,
+        cidade=unidade.cidade,
+        estado=unidade.estado,
+        telefone=unidade.telefone,
+        ativo=True,
+        eh_matriz=False,
+        restaurante_pai_id=restaurante_matriz_id
+    )
+    
+    db.add(db_unidade)
+    db.commit()
+    db.refresh(db_unidade)
+    return db_unidade
+
 def get_restaurante_by_id(db: Session, restaurante_id: int) -> Optional[Restaurante]:
     """Busca restaurante por ID"""
     return db.query(Restaurante).filter(Restaurante.id == restaurante_id).first()
 
+def get_restaurantes_grid(db: Session) -> List[Restaurante]:
+    """Lista apenas restaurantes matriz para exibição em grid"""
+    return db.query(Restaurante).filter(
+        Restaurante.eh_matriz == True
+    ).order_by(Restaurante.nome).all()
+
+def get_restaurantes_com_unidades(db: Session) -> List[dict]:
+    """Lista restaurantes com suas unidades para grid expandida"""
+    matrizes = db.query(Restaurante).filter(
+        Restaurante.eh_matriz == True
+    ).order_by(Restaurante.nome).all()
+    
+    resultado = []
+    for matriz in matrizes:
+        # Buscar unidades da matriz
+        unidades = db.query(Restaurante).filter(
+            Restaurante.restaurante_pai_id == matriz.id
+        ).order_by(Restaurante.cidade, Restaurante.bairro).all()
+        
+        # Dados da matriz
+        matriz_data = {
+            "id": matriz.id,
+            "nome": matriz.nome,
+            "cidade": matriz.cidade,
+            "estado": matriz.estado,
+            "tipo": matriz.tipo,
+            "tem_delivery": matriz.tem_delivery,
+            "eh_matriz": True,
+            "quantidade_unidades": 1 + len(unidades),
+            "ativo": matriz.ativo,
+            "unidades": []
+        }
+        
+        # Adicionar unidades/filiais
+        for unidade in unidades:
+            unidade_data = {
+                "id": unidade.id,
+                "nome": unidade.nome,
+                "cidade": unidade.cidade,
+                "estado": unidade.estado,
+                "tipo": unidade.tipo,
+                "tem_delivery": unidade.tem_delivery,
+                "eh_matriz": False,
+                "quantidade_unidades": 1,
+                "ativo": unidade.ativo
+            }
+            matriz_data["unidades"].append(unidade_data)
+        
+        resultado.append(matriz_data)
+    
+    return resultado
+
 def get_restaurantes(db: Session, skip: int = 0, limit: int = 100) -> List[Restaurante]:
-    """Lista restaurantes com paginação"""
+    """Lista todos os restaurantes (matrizes e filiais) com paginação"""
     return db.query(Restaurante).offset(skip).limit(limit).all()
+
+def get_tipos_restaurante() -> List[str]:
+    """Retorna lista dos tipos de estabelecimento disponíveis"""
+    return [
+        "restaurante",
+        "bar", 
+        "pub",
+        "quiosque",
+        "lanchonete",
+        "cafeteria",
+        "pizzaria",
+        "hamburgueria",
+        "churrascaria",
+        "bistrô",
+        "fast_food",
+        "food_truck"
+    ]
 
 def update_restaurante(db: Session, restaurante_id: int, restaurante_update: RestauranteUpdate) -> Optional[Restaurante]:
     """Atualiza um restaurante"""
@@ -122,6 +233,16 @@ def update_restaurante(db: Session, restaurante_id: int, restaurante_update: Res
     if not db_restaurante:
         return None
     
+    # Validar CNPJ único se está sendo alterado
+    if restaurante_update.cnpj and restaurante_update.cnpj != db_restaurante.cnpj:
+        existing = db.query(Restaurante).filter(
+            Restaurante.cnpj == restaurante_update.cnpj,
+            Restaurante.id != restaurante_id
+        ).first()
+        if existing:
+            raise ValueError(f"CNPJ {restaurante_update.cnpj} já está cadastrado")
+    
+    # Aplicar atualizações
     for field, value in restaurante_update.model_dump(exclude_unset=True).items():
         setattr(db_restaurante, field, value)
     
@@ -130,14 +251,67 @@ def update_restaurante(db: Session, restaurante_id: int, restaurante_update: Res
     return db_restaurante
 
 def delete_restaurante(db: Session, restaurante_id: int) -> bool:
-    """Deleta um restaurante"""
+    """Deleta um restaurante (e suas unidades se for matriz)"""
     db_restaurante = get_restaurante_by_id(db, restaurante_id)
     if not db_restaurante:
         return False
     
+    # Se for matriz, verificar se tem receitas em qualquer unidade
+    if db_restaurante.eh_matriz:
+        # Buscar todas as unidades
+        unidades_ids = [db_restaurante.id]  # Incluir a própria matriz
+        unidades = db.query(Restaurante).filter(
+            Restaurante.restaurante_pai_id == db_restaurante.id
+        ).all()
+        unidades_ids.extend([u.id for u in unidades])
+        
+        # Verificar se alguma unidade tem receitas
+        from ..models.receita import Receita
+        receitas_count = db.query(Receita).filter(
+            Receita.restaurante_id.in_(unidades_ids)
+        ).count()
+        
+        if receitas_count > 0:
+            raise ValueError("Não é possível excluir: existem receitas vinculadas")
+    
+    # Deletar (cascade irá remover unidades automaticamente)
     db.delete(db_restaurante)
     db.commit()
     return True
+
+def get_restaurante_estatisticas(db: Session, restaurante_id: int) -> dict:
+    """Retorna estatísticas de um restaurante específico"""
+    restaurante = get_restaurante_by_id(db, restaurante_id)
+    if not restaurante:
+        return {}
+    
+    # Se for matriz, incluir estatísticas de todas as unidades
+    if restaurante.eh_matriz:
+        unidades_ids = [restaurante.id]
+        unidades = db.query(Restaurante).filter(
+            Restaurante.restaurante_pai_id == restaurante.id
+        ).all()
+        unidades_ids.extend([u.id for u in unidades])
+    else:
+        unidades_ids = [restaurante.id]
+    
+    # Contar receitas por unidade
+    from ..models.receita import Receita
+    from ..models.insumo import Insumo
+    
+    total_receitas = db.query(Receita).filter(
+        Receita.restaurante_id.in_(unidades_ids)
+    ).count()
+    
+    # Para implementação futura: últimos insumos cadastrados
+    return {
+        "restaurante_id": restaurante_id,
+        "nome": restaurante.nome,
+        "quantidade_unidades": len(unidades_ids),
+        "total_receitas": total_receitas,
+        "ultimos_insumos": [],  # Implementar futuramente
+        "ultimas_receitas": []  # Implementar futuramente
+    }
 
 # ===================================================================================================
 # CRUD Receitas
