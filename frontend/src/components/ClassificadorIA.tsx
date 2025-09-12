@@ -132,32 +132,19 @@ const InsumosSemClassificacao: React.FC = () => {
 
   // Callback quando feedback é enviado no popup (classificação manual)
   const handleFeedbackEnviado = async () => {
-    console.log('Processando classificação manual...');
+  console.log('Processando classificação manual...');
+  
+  try {
+    // Recarregar a lista para que o insumo saia da tabela
+    await carregarInsumosSemClassificacao();
     
-    try {
-      // Recarregar a lista para que o insumo saia da tabela
-      await carregarInsumosSemClassificacao();
-      
-      // Mostrar popup de sucesso
-      if (typeof (window as any).showSuccessPopup === 'function') {
-        (window as any).showSuccessPopup(
-          'Classificação Concluída', 
-          'Insumo classificado manualmente com sucesso!'
-        );
-      }
-    } catch (error) {
-      console.error('Erro ao processar classificação:', error);
-      
-      if (typeof (window as any).showErrorPopup === 'function') {
-        (window as any).showErrorPopup(
-          'Erro na Classificação', 
-          'Falha ao processar classificação manual'
-        );
-      }
-    } finally {
-      fecharPopupClassificacao();
-    }
-  };
+    // REMOVER popup de sucesso daqui - será mostrado no PopupClassificacaoIA
+    console.log('Lista de insumos recarregada após classificação');
+    
+  } catch (error) {
+    console.error('Erro no feedback:', error);
+  }
+};
 
   if (carregandoInsumos) {
     return (

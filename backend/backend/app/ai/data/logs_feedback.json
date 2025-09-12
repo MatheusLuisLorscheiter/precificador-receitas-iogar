@@ -1,6 +1,6 @@
 {
   "versao": "2.0.0",
-  "created_at": "2025-09-12T10:51:58.323022",
+  "created_at": "2025-09-12T11:40:02.573969",
   "descricao": "Logs de feedback do sistema de IA integrado",
   "logs": [
     {
@@ -218,6 +218,139 @@
       "taxonomia_correta": {
         "categoria": "Frutas",
         "subcategoria": "Araticum",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T11:10:19.879753",
+      "nome_produto": "Mostarda Dijon",
+      "acao": "corrigir",
+      "classificacao_errada": {},
+      "taxonomia_correta": {
+        "categoria": "Temperos",
+        "subcategoria": "Molhos",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T11:17:14.857855",
+      "nome_produto": "Molho de Limão Fenicio",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Peixes",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Peixes > A definir",
+        "codigo_taxonomia": null,
+        "taxonomia_id": null
+      },
+      "taxonomia_correta": {
+        "categoria": "Temperos",
+        "subcategoria": "Molhos",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T11:20:10.262953",
+      "nome_produto": "Carne seca desfiada",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Carnes",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Carnes > A definir",
+        "codigo_taxonomia": null,
+        "taxonomia_id": null
+      },
+      "taxonomia_correta": {
+        "categoria": "Carnes",
+        "subcategoria": "Bovina",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T11:26:12.219658",
+      "nome_produto": "Pão de forma",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Massas",
+        "subcategoria": "Farinha",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T11:28:41.350868",
+      "nome_produto": "Pão de forma integral",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Laticinios",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Laticinios > A definir",
+        "codigo_taxonomia": null,
+        "taxonomia_id": null
+      },
+      "taxonomia_correta": {
+        "categoria": "Massas",
+        "subcategoria": "Farinha",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T11:34:42.548217",
+      "nome_produto": "Farinha de trigo",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Massas",
+        "subcategoria": "Farinha",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-09-12T11:40:02.572967",
+      "nome_produto": "Pão brioche",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Massas",
+        "subcategoria": "Farinha",
         "especificacao": null,
         "variante": null
       },

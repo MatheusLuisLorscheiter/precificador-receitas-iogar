@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { Brain, Check, X, Edit, AlertTriangle, Loader2 } from 'lucide-react';
 
+
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -307,37 +308,90 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
         if (associarResponse.ok) {
           console.log('🔧 [DEBUG] Associação bem-sucedida!');
           
-          // Chamar callback de sucesso PRIMEIRO
+          // 1. Recarregar lista de insumos (remover da tabela)
           console.log('🔧 [DEBUG] Chamando onFeedbackEnviado...');
           onFeedbackEnviado();
           console.log('🔧 [DEBUG] onFeedbackEnviado executado');
           
-          // Mostrar popup de sucesso PRIMEIRO
-          console.log('🔧 [DEBUG] Verificando showSuccessPopup...');
-          console.log('🔧 [DEBUG] Tipo de showSuccessPopup:', typeof showSuccessPopup);
+          // 2. Fechar popup principal imediatamente
+          console.log('🔧 [DEBUG] Fechando popup principal...');
+          onClose();
+          console.log('🔧 [DEBUG] Popup principal fechado');
           
-          console.log('🔧 [DEBUG] Chamando showSuccessPopup...');
-          if (typeof showSuccessPopup === 'function') {
-            showSuccessPopup(
-              'Classificação Realizada',
-              `${nomeInsumo} foi classificado manualmente com sucesso.`
-            );
-            console.log('🔧 [DEBUG] showSuccessPopup executado');
-          } else {
-            console.log('❌ [DEBUG] showSuccessPopup não é uma função!');
-          }
-
-          // Fechar popup com delay para permitir que popup de sucesso apareça primeiro
-          console.log('🔧 [DEBUG] Agendando fechamento do popup...');
+          // 3. Mostrar popup de sucesso COM DELAY para garantir visibilidade
           setTimeout(() => {
-            console.log('🔧 [DEBUG] Chamando onClose...');
-            onClose();
-            console.log('🔧 [DEBUG] onClose executado');
-          }, 500); // Delay de 500ms para popup de sucesso aparecer
+            console.log('🔧 [DEBUG] Mostrando popup de sucesso...');
+            try {
+              showSuccessPopup(
+                'Classificação Realizada!',
+                `${nomeInsumo} foi classificado manualmente com sucesso.`
+              );
+              console.log('✅ [DEBUG] Popup de sucesso exibido com sucesso');
+            } catch (error) {
+              console.log('❌ [DEBUG] Erro no popup, usando alert:', error);
+              alert(`✅ Sucesso!\n\n${nomeInsumo} foi classificado manualmente.`);
+            }
+          }, 100); // 100ms delay para o popup principal fechar primeiro
           
-          // 3. Feedback da IA temporariamente desabilitado (sistema principal funcionando)
-          console.log('ℹ️ [DEBUG] Feedback da IA temporariamente desabilitado - classificação manual concluída com sucesso');
-          console.log('ℹ️ [DEBUG] Sistema principal 100% funcional: associação taxonomia-insumo realizada');
+          // 3. Enviar feedback para sistema de IA (correção do erro 422)
+        console.log('🔧 [DEBUG] Iniciando feedback da IA...');
+        
+        try {
+          const payload = {
+            nome_produto: nomeInsumo,
+            acao: "corrigir",
+            classificacao_sugerida: classificacao?.taxonomia_sugerida || {
+              categoria: "Sem classificação",
+              subcategoria: "A definir",
+              especificacao: null,
+              variante: null,
+              nome_completo: "Sem classificação > A definir"
+            },
+            taxonomia_correta: {
+              categoria: categoriaSelecionada,
+              subcategoria: subcategoriaSelecionada,
+              especificacao: especificacao || null,
+              variante: variante || null
+            },
+            confianca_usuario: 1.0,
+            observacoes: "Classificação manual via interface"
+          };
+
+          console.log('🔧 [DEBUG] Payload do feedback:', payload);
+
+          const feedbackResponse = await fetch('http://localhost:8000/api/v1/ia/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          console.log('🔧 [DEBUG] Status da resposta do feedback:', feedbackResponse.status);
+
+          if (feedbackResponse.ok) {
+            const feedbackData = await feedbackResponse.json();
+            console.log('✅ [DEBUG] Feedback da IA enviado com sucesso:', feedbackData);
+          } else {
+            // Log do erro mas não falha o processo principal
+            const errorText = await feedbackResponse.text();
+            console.log('⚠️ [DEBUG] Erro HTTP no feedback (não afeta classificação):', {
+              status: feedbackResponse.status,
+              statusText: feedbackResponse.statusText,
+              body: errorText
+            });
+            
+            try {
+              const errorJson = JSON.parse(errorText);
+              console.log('🔍 [DEBUG] Erro completo do backend:', errorJson);
+            } catch (e) {
+              console.log('🔍 [DEBUG] Erro não é JSON válido');
+            }
+          }
+        } catch (feedbackError) {
+          // Log do erro mas não falha o processo principal
+          console.log('⚠️ [DEBUG] Erro na requisição de feedback (não afeta classificação):', feedbackError);
+        }
+
+        console.log('🔧 [DEBUG] Finalizando - setando enviandoFeedback para false');
          } else {
           console.log('❌ [DEBUG] Erro na associação:', associarResponse.status);
           throw new Error('Falha ao associar taxonomia ao insumo');
