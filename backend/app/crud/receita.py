@@ -13,7 +13,7 @@ from sqlalchemy import and_, or_
 from app.models.receita import Receita, Restaurante, ReceitaInsumo
 from app.models.insumo import Insumo
 from app.schemas.receita import (
-    ReceitaCreate, ReceitaUpdate, ReceitaInsumoCreate, ReceitaInsumoUpdate,
+    ReceitaCreate, ReceitaUpdate, UnidadeCreate, ReceitaInsumoCreate, ReceitaInsumoUpdate,
     RestauranteCreate, RestauranteUpdate
 )
 

@@ -24,7 +24,7 @@ import {
   Users, ChefHat, Utensils, Plus, Search, Edit2, Trash2, Save,
   X, Check, AlertCircle, BarChart3, Settings, Zap, FileText,
   Upload, Activity, Brain, Monitor, Shield, Database, LinkIcon,
-  Target, Eye
+  Target, Eye, ChevronDown, ChevronRight
 } from 'lucide-react';
 
 // Importar componente da IA
@@ -1129,7 +1129,7 @@ const FoodCostSystem: React.FC = () => {
     telefone: ''
   });
   const [estatisticasRestaurante, setEstatisticasRestaurante] = useState<RestauranteEstatisticas | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showInsumoForm, setShowInsumoForm] = useState<boolean>(false);
   // Estados para popup de classificação IA
   const [showClassificacaoPopup, setShowClassificacaoPopup] = useState<boolean>(false);
@@ -1318,14 +1318,14 @@ const fetchInsumos = async () => {
   } catch (error) {
     console.error('Erro geral ao buscar insumos:', error);
   } finally {
-    setLoading(false);
+    //setLoading(false);
   }
 };
   
   // Busca todos os restaurantes do backend
   const fetchRestaurantes = async () => {
     try {
-      setLoading(true);
+      //setLoading(true);
       const response = await apiService.getRestaurantes();
       if (response.data) {
         setRestaurantes(response.data);
@@ -1342,14 +1342,14 @@ const fetchInsumos = async () => {
         { id: 1, nome: "Restaurante Demo", endereco: "Endereço Demo" }
       ]);
     } finally {
-      setLoading(false);
+      //setLoading(false);
     }
   };
 
   // Busca todas as receitas do backend
   const fetchReceitas = async () => {
     try {
-      setLoading(true);
+      //setLoading(true);
       const response = await apiService.getReceitas();
       if (response.data) {
         setReceitas(response.data);
@@ -1359,14 +1359,14 @@ const fetchInsumos = async () => {
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
     } finally {
-      setLoading(false);
+      //setLoading(false);
     }
   };
 
   // Busca receitas de um restaurante específico
   const fetchReceitasByRestaurante = async (restauranteId: number) => {
     try {
-      setLoading(true);
+      //setLoading(true);
       const response = await apiService.getReceitas();
       if (response.data) {
         // Filtrar receitas pelo restaurante
@@ -1380,7 +1380,7 @@ const fetchInsumos = async () => {
     } catch (error) {
       console.error('Erro ao buscar receitas do restaurante:', error);
     } finally {
-      setLoading(false);
+      //setLoading(false);
     }
   };
 
@@ -2707,76 +2707,882 @@ const fetchInsumos = async () => {
   // COMPONENTE GESTÃO DE RESTAURANTES
   // ============================================================================
   const Restaurantes = () => {
+    // ============================================================================
+    // ESTADOS PARA CONTROLE DE EXPANSÃO E FORMULÁRIOS
+    // ============================================================================
+    
+    const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
+    const [showRestauranteForm, setShowFormRestaurante] = useState<boolean>(false);
+    const [showUnidadeForm, setShowFormUnidade] = useState<boolean>(false);
+    const [restauranteParaUnidade, setRestauranteParaUnidade] = useState<RestauranteGrid | null>(null);
+    const [editingRestaurante, setModoEdicao] = useState<boolean>(false);
+    const [restauranteEditando, setRestauranteEditando] = useState<RestauranteGrid | null>(null);
+
+    // ============================================================================
+    // FUNÇÕES AUXILIARES PARA MANIPULAÇÃO DE EXPANSÃO
+    // ============================================================================
+    
+    const toggleExpansao = (restauranteId: number) => {
+      const novosExpandidos = new Set(restaurantesExpandidos);
+      if (novosExpandidos.has(restauranteId)) {
+        novosExpandidos.delete(restauranteId);
+      } else {
+        novosExpandidos.add(restauranteId);
+      }
+      setRestaurantesExpandidos(novosExpandidos);
+    };
+
+    // ============================================================================
+    // FUNÇÕES PARA ABRIR FORMULÁRIOS
+    // ============================================================================
+    
+    const abrirFormRestaurante = () => {
+      setModoEdicao(false);
+      setRestauranteEditando(null);
+      setFormRestaurante({
+        nome: '',
+        cnpj: '',
+        tipo: 'restaurante',
+        tem_delivery: false,
+        endereco: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        telefone: '',
+        ativo: true
+      });
+      setShowFormRestaurante(true);
+    };
+
+    const abrirFormUnidade = (restaurante: RestauranteGrid) => {
+      setRestauranteParaUnidade(restaurante);
+      setFormUnidade({
+        endereco: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        telefone: ''
+      });
+      setShowFormUnidade(true);
+    };
+
+    const abrirEdicaoRestaurante = (restaurante: RestauranteGrid) => {
+      setModoEdicao(true);
+      setRestauranteEditando(restaurante);
+      setFormRestaurante({
+        nome: restaurante.nome,
+        cnpj: '',
+        tipo: restaurante.tipo,
+        tem_delivery: restaurante.tem_delivery,
+        endereco: '',
+        bairro: '',
+        cidade: restaurante.cidade || '',
+        estado: restaurante.estado || '',
+        telefone: '',
+        ativo: restaurante.ativo
+      });
+      setShowFormRestaurante(true);
+    };
+
     return (
       <div className="space-y-6">
-        {/* Header da seção */}
+        {/* ============================================================================ */}
+        {/* HEADER DA SEÇÃO COM BOTÃO CRIAR RESTAURANTE */}
+        {/* ============================================================================ */}
+        
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Gestão de Restaurantes</h2>
-            <p className="text-gray-600">Configure as unidades da sua rede</p>
+            <p className="text-gray-600">Configure as unidades da sua rede de restaurantes</p>
           </div>
-          <button className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all">
+          <button 
+            onClick={abrirFormRestaurante}
+            className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all"
+          >
             <Plus className="w-5 h-5" />
             Novo Restaurante
           </button>
         </div>
 
-        {/* Grid de restaurantes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {restaurantes.map((restaurante) => (
-            <div 
-              key={restaurante.id} 
-              className={`bg-white p-6 rounded-xl shadow-sm border-2 transition-all cursor-pointer ${
-                selectedRestaurante?.id === restaurante.id 
-                  ? 'border-green-500 bg-green-50' 
-                  : 'border-gray-100 hover:border-green-200'
-              }`}
-              onClick={() => {
-                setSelectedRestaurante(restaurante);
-                fetchReceitasByRestaurante(restaurante.id);
-              }}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <Users className="w-6 h-6 text-green-600" />
-                </div>
-                {selectedRestaurante?.id === restaurante.id && (
-                  <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs">
-                    Ativo
-                  </div>
-                )}
+        {/* ============================================================================ */}
+        {/* LAYOUT GRID 70% + ESTATÍSTICAS 30% */}
+        {/* ============================================================================ */}
+        
+        <div className="grid grid-cols-12 gap-6">
+          {/* ============================================================================ */}
+          {/* COLUNA PRINCIPAL - GRID DE RESTAURANTES (70%) */}
+          {/* ============================================================================ */}
+          
+          <div className="col-span-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              {/* Header da tabela */}
+              <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">Restaurantes da Rede</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {restaurantes.length} restaurante{restaurantes.length !== 1 ? 's' : ''} cadastrado{restaurantes.length !== 1 ? 's' : ''}
+                </p>
               </div>
-              
-              <h3 className="font-semibold text-gray-900 mb-2">{restaurante.nome}</h3>
-              <p className="text-sm text-gray-600 mb-3">{restaurante.endereco || 'Endereço não informado'}</p>
-              
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Status: Ativo</span>
-                </div>
-                {restaurante.telefone && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span>{restaurante.telefone}</span>
+
+              {/* Tabela responsiva */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  {/* Cabeçalho da tabela */}
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm w-8"></th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Nome</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Cidade</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Estado</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Delivery</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Tipo</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Qtd Unidades</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Ações</th>
+                    </tr>
+                  </thead>
+
+                  {/* Corpo da tabela */}
+                  <tbody className="divide-y divide-gray-100">
+                    {restaurantes.map((restaurante) => (
+                      <React.Fragment key={restaurante.id}>
+                        {/* ============================================================================ */}
+                        {/* LINHA PRINCIPAL DO RESTAURANTE */}
+                        {/* ============================================================================ */}
+                        
+                        <tr 
+                          className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                            selectedRestaurante?.id === restaurante.id ? 'bg-green-50' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedRestaurante(restaurante);
+                            carregarEstatisticasRestaurante(restaurante.id);
+                          }}
+                        >
+                          {/* Botão de expansão */}
+                          <td className="py-4 px-4">
+                            {restaurante.quantidade_unidades > 1 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpansao(restaurante.id);
+                                }}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                              >
+                                {restaurantesExpandidos.has(restaurante.id) ? (
+                                  <ChevronDown className="w-4 h-4" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
+                          </td>
+
+                          {/* Nome do restaurante */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-green-50 p-2 rounded-lg">
+                                <Users className="w-4 h-4 text-green-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{restaurante.nome}</p>
+                                <p className="text-xs text-gray-500">
+                                  {restaurante.eh_matriz ? 'Matriz' : 'Filial'}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Cidade */}
+                          <td className="py-4 px-4">
+                            <span className="text-gray-700">
+                              {restaurante.cidade || 'Não informado'}
+                            </span>
+                          </td>
+
+                          {/* Estado */}
+                          <td className="py-4 px-4">
+                            <span className="text-gray-700 font-mono text-sm">
+                              {restaurante.estado || '--'}
+                            </span>
+                          </td>
+
+                          {/* Delivery */}
+                          <td className="py-4 px-4">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                              restaurante.tem_delivery 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {restaurante.tem_delivery ? 'Sim' : 'Não'}
+                            </span>
+                          </td>
+
+                          {/* Tipo */}
+                          <td className="py-4 px-4">
+                            <span className="text-gray-700 capitalize">
+                              {restaurante.tipo?.replace('_', ' ') || ''}
+                            </span>
+                          </td>
+
+                          {/* Quantidade de unidades */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900">
+                                {restaurante.quantidade_unidades}
+                              </span>
+                              {restaurante.eh_matriz && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    abrirFormUnidade(restaurante);
+                                  }}
+                                  className="text-green-600 hover:text-green-700 transition-colors"
+                                  title="Adicionar nova unidade"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-4 px-4">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                              restaurante.ativo 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {restaurante.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+
+                          {/* Ações */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  abrirEdicaoRestaurante(restaurante);
+                                }}
+                                className="text-blue-600 hover:text-blue-700 transition-colors"
+                                title="Editar restaurante"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Tem certeza que deseja excluir o restaurante "${restaurante.nome}"?`)) {
+                                    handleExcluirRestaurante(restaurante.id);
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-700 transition-colors"
+                                title="Excluir restaurante"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* ============================================================================ */}
+                        {/* LINHAS EXPANDIDAS - UNIDADES/FILIAIS */}
+                        {/* ============================================================================ */}
+                        
+                        {restaurantesExpandidos.has(restaurante.id) && restaurante.unidades && (
+                          restaurante.unidades.map((unidade) => (
+                            <tr key={unidade.id} className="bg-gray-50">
+                              <td className="py-3 px-4 pl-12"></td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                  <span className="text-gray-600">{unidade.nome}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">
+                                {unidade.cidade || 'Não informado'}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600 font-mono">
+                                {unidade.estado || '--'}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  unidade.tem_delivery 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {unidade.tem_delivery ? 'Sim' : 'Não'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-gray-600">Filial</td>
+                              <td className="py-3 px-4 text-sm text-gray-600">--</td>
+                              <td className="py-3 px-4">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  unidade.ativo 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {unidade.ativo ? 'Ativo' : 'Inativo'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      abrirEdicaoRestaurante(unidade);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-700 transition-colors"
+                                    title="Editar unidade"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </button>
+                                  
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm(`Tem certeza que deseja excluir a unidade "${unidade.nome}"?`)) {
+                                        handleExcluirRestaurante(unidade.id);
+                                      }
+                                    }}
+                                    className="text-red-600 hover:text-red-700 transition-colors"
+                                    title="Excluir unidade"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Estado vazio */}
+                {restaurantes.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="bg-gray-50 p-6 rounded-lg inline-block mb-4">
+                      <Users className="w-12 h-12 text-gray-400 mx-auto" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum restaurante cadastrado</h3>
+                    <p className="text-gray-500 mb-4">Comece criando o primeiro restaurante da sua rede</p>
+                    <button 
+                      onClick={abrirFormRestaurante}
+                      className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Criar Primeiro Restaurante
+                    </button>
                   </div>
                 )}
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Card para adicionar novo restaurante */}
-        <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-green-300 transition-colors cursor-pointer">
-          <div className="bg-gray-100 p-4 rounded-full w-fit mx-auto mb-4">
-            <Plus className="w-8 h-8 text-gray-400" />
           </div>
-          <h3 className="font-medium text-gray-900 mb-2">Adicionar Novo Restaurante</h3>
-          <p className="text-gray-500 text-sm">Clique para cadastrar uma nova unidade</p>
+
+          {/* ============================================================================ */}
+          {/* COLUNA LATERAL - ESTATÍSTICAS (30%) */}
+          {/* ============================================================================ */}
+          
+          <div className="col-span-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Estatísticas</h3>
+              
+              {selectedRestaurante ? (
+                <div className="space-y-4">
+                  {/* Restaurante selecionado */}
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-green-900 mb-2">
+                      {selectedRestaurante.nome}
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-green-700">Tipo:</span>
+                        <span className="text-green-900 font-medium capitalize">
+                          {selectedRestaurante.tipo.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-green-700">Unidades:</span>
+                        <span className="text-green-900 font-medium">
+                          {selectedRestaurante.quantidade_unidades}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-green-700">Delivery:</span>
+                        <span className="text-green-900 font-medium">
+                          {selectedRestaurante.tem_delivery ? 'Sim' : 'Não'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Estatísticas carregadas */}
+                  {estatisticasRestaurante && (
+                    <div className="space-y-3">
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-blue-700 text-sm">Total Receitas</span>
+                          <span className="text-blue-900 font-bold">
+                            {estatisticasRestaurante.total_receitas}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="bg-yellow-50 p-3 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-yellow-700 text-sm">Últimos Insumos</span>
+                          <span className="text-yellow-900 font-bold">
+                            {estatisticasRestaurante.ultimos_insumos?.length || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Loading de estatísticas */}
+                  {loading && (
+                    <div className="text-center py-4">
+                      <div className="animate-spin w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full mx-auto"></div>
+                      <p className="text-sm text-gray-500 mt-2">Carregando estatísticas...</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                    <BarChart3 className="w-8 h-8 text-gray-400 mx-auto" />
+                  </div>
+                  <p className="text-gray-500 text-sm">
+                    Selecione um restaurante para ver as estatísticas
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
   };
+
+// ============================================================================
+// FORMULÁRIO POPUP - CRIAR/EDITAR RESTAURANTE
+// ============================================================================
+
+{showRestauranteForm && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      {/* Header do popup */}
+      <div className="bg-gradient-to-r from-green-500 to-pink-500 text-white p-6 rounded-t-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">
+              {editingRestaurante ? 'Editar Restaurante' : 'Novo Restaurante'}
+            </h2>
+            <p className="text-green-100 mt-1">
+              {editingRestaurante ? 'Atualize as informações do restaurante' : 'Cadastre um novo restaurante matriz'}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowFormRestaurante(false)}
+            className="text-white hover:text-gray-200 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+
+      {/* Corpo do formulário */}
+      <div className="p-6 space-y-6">
+        {/* Nome do restaurante */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Nome do Restaurante *
+          </label>
+          <input
+            type="text"
+            value={formRestaurante.nome}
+            onChange={(e) => setFormRestaurante(prev => ({ ...prev, nome: e.target.value }))}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder="Digite o nome do restaurante"
+            required
+          />
+        </div>
+
+        {/* CNPJ - apenas para restaurante novo */}
+        {!editingRestaurante && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              CNPJ *
+            </label>
+            <input
+              type="text"
+              value={formRestaurante.cnpj}
+              onChange={(e) => {
+                // Aplicar máscara básica de CNPJ
+                let valor = e.target.value.replace(/\D/g, '');
+                if (valor.length <= 14) {
+                  valor = valor.replace(/^(\d{2})(\d)/, '$1.$2');
+                  valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+                  valor = valor.replace(/\.(\d{3})(\d)/, '.$1/$2');
+                  valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
+                }
+                setFormRestaurante(prev => ({ ...prev, cnpj: valor }));
+              }}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="00.000.000/0000-00"
+              maxLength={18}
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Obrigatório para restaurante matriz
+            </p>
+          </div>
+        )}
+
+        {/* Grid de informações básicas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Tipo de estabelecimento */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de Estabelecimento
+            </label>
+            <select
+              value={formRestaurante.tipo}
+              onChange={(e) => setFormRestaurante(prev => ({ ...prev, tipo: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              {TIPOS_ESTABELECIMENTO.map(tipo => (
+                <option key={tipo.value} value={tipo.value}>
+                  {tipo.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Estado */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Estado
+            </label>
+            <select
+              value={formRestaurante.estado}
+              onChange={(e) => setFormRestaurante(prev => ({ ...prev, estado: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              <option value="">Selecione o estado</option>
+              {ESTADOS_BRASIL.map(estado => (
+                <option key={estado} value={estado}>
+                  {estado}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Localização */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Cidade
+            </label>
+            <input
+              type="text"
+              value={formRestaurante.cidade}
+              onChange={(e) => setFormRestaurante(prev => ({ ...prev, cidade: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Digite a cidade"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Bairro
+            </label>
+            <input
+              type="text"
+              value={formRestaurante.bairro}
+              onChange={(e) => setFormRestaurante(prev => ({ ...prev, bairro: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Digite o bairro"
+            />
+          </div>
+        </div>
+
+        {/* Endereço completo */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Endereço Completo
+          </label>
+          <input
+            type="text"
+            value={formRestaurante.endereco}
+            onChange={(e) => setFormRestaurante(prev => ({ ...prev, endereco: e.target.value }))}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder="Rua, número, complemento"
+          />
+        </div>
+
+        {/* Telefone */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Telefone
+          </label>
+          <input
+            type="text"
+            value={formRestaurante.telefone}
+            onChange={(e) => {
+              // Aplicar máscara básica de telefone
+              let valor = e.target.value.replace(/\D/g, '');
+              if (valor.length <= 11) {
+                valor = valor.replace(/^(\d{2})(\d)/, '($1) $2');
+                valor = valor.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
+              }
+              setFormRestaurante(prev => ({ ...prev, telefone: valor }));
+            }}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder="(00) 00000-0000"
+            maxLength={15}
+          />
+        </div>
+
+        {/* Checkboxes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="tem_delivery"
+              checked={formRestaurante.tem_delivery}
+              onChange={(e) => setFormRestaurante(prev => ({ ...prev, tem_delivery: e.target.checked }))}
+              className="w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+            />
+            <label htmlFor="tem_delivery" className="text-sm font-medium text-gray-700">
+              Oferece delivery
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="ativo"
+              checked={formRestaurante.ativo}
+              onChange={(e) => setFormRestaurante(prev => ({ ...prev, ativo: e.target.checked }))}
+              className="w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+            />
+            <label htmlFor="ativo" className="text-sm font-medium text-gray-700">
+              Restaurante ativo
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer com botões */}
+      <div className="bg-gray-50 px-6 py-4 flex gap-3 rounded-b-xl">
+        <button
+          onClick={() => setShowFormRestaurante(false)}
+          className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={editingRestaurante ? () => handleEditarRestaurante(restauranteEditando) : handleCriarRestaurante}
+          disabled={isLoading || !formRestaurante.nome.trim() || (!editingRestaurante && !formRestaurante.cnpj.trim())}
+          className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+              Salvando...
+            </div>
+          ) : (
+            editingRestaurante ? 'Atualizar Restaurante' : 'Criar Restaurante'
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+// ============================================================================
+// FORMULÁRIO POPUP - CRIAR UNIDADE/FILIAL
+// ============================================================================
+
+{showUnidadeForm && restauranteParaUnidade && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      {/* Header do popup */}
+      <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-t-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Nova Unidade</h2>
+            <p className="text-blue-100 mt-1">
+              Criando nova filial de <span className="font-semibold">{restauranteParaUnidade.nome}</span>
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setShowFormUnidade(false);
+              setRestauranteParaUnidade(null);
+            }}
+            className="text-white hover:text-gray-200 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+
+      {/* Corpo do formulário */}
+      <div className="p-6 space-y-6">
+        {/* Informação da matriz */}
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <h3 className="font-medium text-blue-900 mb-2">Informações da Matriz</h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-blue-700">Nome:</span>
+              <span className="text-blue-900 font-medium ml-2">{restauranteParaUnidade.nome}</span>
+            </div>
+            <div>
+              <span className="text-blue-700">Tipo:</span>
+              <span className="text-blue-900 font-medium ml-2 capitalize">
+                {restauranteParaUnidade.tipo.replace('_', ' ')}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Localização da unidade */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Estado *
+            </label>
+            <select
+              value={formUnidade.estado}
+              onChange={(e) => setFormUnidade(prev => ({ ...prev, estado: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            >
+              <option value="">Selecione o estado</option>
+              {ESTADOS_BRASIL.map(estado => (
+                <option key={estado} value={estado}>
+                  {estado}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Cidade *
+            </label>
+            <input
+              type="text"
+              value={formUnidade.cidade}
+              onChange={(e) => setFormUnidade(prev => ({ ...prev, cidade: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Digite a cidade"
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Bairro *
+          </label>
+          <input
+            type="text"
+            value={formUnidade.bairro}
+            onChange={(e) => setFormUnidade(prev => ({ ...prev, bairro: e.target.value }))}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Digite o bairro"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Endereço Completo *
+          </label>
+          <input
+            type="text"
+            value={formUnidade.endereco}
+            onChange={(e) => setFormUnidade(prev => ({ ...prev, endereco: e.target.value }))}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Rua, número, complemento"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Telefone
+          </label>
+          <input
+            type="text"
+            value={formUnidade.telefone}
+            onChange={(e) => {
+              // Aplicar máscara básica de telefone
+              let valor = e.target.value.replace(/\D/g, '');
+              if (valor.length <= 11) {
+                valor = valor.replace(/^(\d{2})(\d)/, '($1) $2');
+                valor = valor.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
+              }
+              setFormUnidade(prev => ({ ...prev, telefone: valor }));
+            }}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="(00) 00000-0000"
+            maxLength={15}
+          />
+        </div>
+
+        {/* Informações herdadas */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="font-medium text-gray-900 mb-2">Configurações Herdadas da Matriz</h4>
+          <div className="space-y-2 text-sm text-gray-600">
+            <div className="flex justify-between">
+              <span>Tipo de estabelecimento:</span>
+              <span className="font-medium capitalize">{restauranteParaUnidade.tipo.replace('_', ' ')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Oferece delivery:</span>
+              <span className="font-medium">{restauranteParaUnidade.tem_delivery ? 'Sim' : 'Não'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer com botões */}
+      <div className="bg-gray-50 px-6 py-4 flex gap-3 rounded-b-xl">
+        <button
+          onClick={() => {
+            setShowFormUnidade(false);
+            setRestauranteParaUnidade(null);
+          }}
+          className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleCriarUnidade}
+          disabled={isLoading || !formUnidade.endereco.trim() || !formUnidade.bairro.trim() || 
+                   !formUnidade.cidade.trim() || !formUnidade.estado.trim()}
+          className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+              Criando...
+            </div>
+          ) : (
+            'Criar Unidade'
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
   // ============================================================================
   // COMPONENTE GESTÃO DE RECEITAS COM CALCULADORA
