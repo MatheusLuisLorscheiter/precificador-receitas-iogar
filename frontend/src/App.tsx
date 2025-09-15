@@ -332,7 +332,7 @@ const showErrorPopup = (title, message) => {
 };
 
 // ============================================================================
-// 🔧 COMPONENTE ISOLADO PARA FORMULÁRIO DE INSUMO
+// COMPONENTE ISOLADO PARA FORMULÁRIO DE INSUMO
 // ============================================================================
 const FormularioInsumoIsolado = React.memo(({ 
   isVisible,
@@ -1068,6 +1068,249 @@ const FormularioInsumoIsolado = React.memo(({
     </div>
   );
 });
+
+// ============================================================================
+// COMPONENTE ISOLADO PARA FORMULÁRIO DE RESTAURANTE
+// ============================================================================
+const FormularioRestauranteIsolado = React.memo(({ 
+  isVisible,
+  editingRestaurante,
+  formRestaurante,
+  setFormRestaurante,
+  cnpjValido,
+  setCnpjValido,
+  aplicarMascaraCNPJ,
+  validarCNPJ,
+  tiposEstabelecimento,
+  onClose,
+  onSave,
+  loading
+}) => {
+  
+  // Função de validação local para evitar re-renders
+  const handleCnpjChange = (e) => {
+    const valorMascarado = aplicarMascaraCNPJ(e.target.value);
+    setFormRestaurante(prev => ({ ...prev, cnpj: valorMascarado }));
+    setCnpjValido(validarCNPJ(valorMascarado));
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Cabeçalho fixo com gradiente */}
+        <div className="bg-gradient-to-r from-green-500 to-pink-500 rounded-t-xl">
+          <div className="flex items-center justify-between p-6">
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                {editingRestaurante ? 'Editar Restaurante' : 'Novo Restaurante'}
+              </h2>
+              <p className="text-green-100 mt-1">
+                {editingRestaurante ? 'Atualize as informações do restaurante' : 'Cadastre um novo restaurante matriz'}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:text-gray-200 transition-colors p-1 rounded-lg hover:bg-white/10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* Corpo do formulário */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+          {/* Nome do restaurante */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nome do Restaurante *
+            </label>
+            <input
+              type="text"
+              value={formRestaurante.nome}
+              onChange={(e) => setFormRestaurante(prev => ({ ...prev, nome: e.target.value }))}
+              className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+              placeholder="Digite o nome do restaurante"
+              required
+            />
+          </div>
+
+          {/* CNPJ - apenas para restaurante novo */}
+          {!editingRestaurante && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                CNPJ *
+              </label>
+              <input
+                type="text"
+                value={formRestaurante.cnpj}
+                onChange={handleCnpjChange}
+                className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                placeholder="00.000.000/0000-00"
+                maxLength={18}
+                required
+              />
+              {!cnpjValido && formRestaurante.cnpj && (
+                <p className="text-red-500 text-sm mt-1">CNPJ inválido</p>
+              )}
+            </div>
+          )}
+
+          {/* Tipo de Estabelecimento */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de Estabelecimento *
+            </label>
+            <select
+              value={formRestaurante.tipo}
+              onChange={(e) => setFormRestaurante(prev => ({ ...prev, tipo: e.target.value }))}
+              className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+              required
+            >
+              {tiposEstabelecimento.map(tipo => (
+                <option key={tipo} value={tipo}>{tipo}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Endereço */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Endereço
+            </label>
+            <input
+              type="text"
+              value={formRestaurante.endereco}
+              onChange={(e) => setFormRestaurante(prev => ({ ...prev, endereco: e.target.value }))}
+              className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+              placeholder="Rua, número, complemento"
+            />
+          </div>
+
+          {/* Bairro, Cidade, Estado */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bairro
+              </label>
+              <input
+                type="text"
+                value={formRestaurante.bairro}
+                onChange={(e) => setFormRestaurante(prev => ({ ...prev, bairro: e.target.value }))}
+                className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                placeholder="Bairro"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cidade
+              </label>
+              <input
+                type="text"
+                value={formRestaurante.cidade}
+                onChange={(e) => setFormRestaurante(prev => ({ ...prev, cidade: e.target.value }))}
+                className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                placeholder="Cidade"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estado
+              </label>
+              <input
+                type="text"
+                value={formRestaurante.estado}
+                onChange={(e) => setFormRestaurante(prev => ({ ...prev, estado: e.target.value }))}
+                className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                placeholder="UF"
+                maxLength={2}
+              />
+            </div>
+          </div>
+
+          {/* Telefone */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Telefone
+            </label>
+            <input
+              type="text"
+              value={formRestaurante.telefone}
+              onChange={(e) => {
+                // Aplicar máscara básica de telefone
+                let valor = e.target.value.replace(/\D/g, '');
+                if (valor.length <= 11) {
+                  valor = valor.replace(/^(\d{2})(\d)/, '($1) $2');
+                  valor = valor.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
+                }
+                setFormRestaurante(prev => ({ ...prev, telefone: valor }));
+              }}
+              className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+              placeholder="(00) 00000-0000"
+              maxLength={15}
+            />
+          </div>
+
+          {/* Checkboxes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 hover:border-green-300 transition-colors">
+              <input
+                type="checkbox"
+                id="tem_delivery"
+                checked={formRestaurante.tem_delivery}
+                onChange={(e) => setFormRestaurante(prev => ({ ...prev, tem_delivery: e.target.checked }))}
+                className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2 checked:bg-green-500 checked:border-green-500"
+                style={{ accentColor: '#10b981' }}
+              />
+              <label htmlFor="tem_delivery" className="text-sm font-medium text-gray-700">
+                Oferece delivery
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 hover:border-green-300 transition-colors">
+              <input
+                type="checkbox"
+                id="ativo"
+                checked={formRestaurante.ativo}
+                onChange={(e) => setFormRestaurante(prev => ({ ...prev, ativo: e.target.checked }))}
+                className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2 checked:bg-green-500 checked:border-green-500"
+                style={{ accentColor: '#10b981' }}
+              />
+              <label htmlFor="ativo" className="text-sm font-medium text-gray-700">
+                Restaurante ativo
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer com botões */}
+        <div className="flex gap-4 p-6 border-t border-gray-200 bg-gray-50">
+          <button
+            onClick={onClose}
+            className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onSave}
+            disabled={loading || !formRestaurante.nome.trim() || (!editingRestaurante && !cnpjValido)}
+            className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {loading ? 'Salvando...' : (editingRestaurante ? 'Atualizar' : 'Salvar Restaurante')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Definir displayName para o React.memo
+FormularioRestauranteIsolado.displayName = 'FormularioRestauranteIsolado';
+
+
 
 // ============================================================================
 // FUNÇÕES ESTÁVEIS PARA FORNECEDOR (FORA DO COMPONENTE INSUMOS)
@@ -3427,253 +3670,26 @@ const fetchInsumos = async () => {
             </div>
           </div>
         </div>
-		      {console.log('DEBUG - Verificando showRestauranteForm:', showRestauranteForm)}
-      {showRestauranteForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          {console.log('🔍 DEBUG - Renderizando formulário restaurante')}
-          {console.log('🔍 loading no JSX:', typeof loading)}
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Header do popup */}
-            <div className="bg-gradient-to-r from-green-500 to-pink-500 text-white p-6 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold">
-                    {editingRestaurante ? 'Editar Restaurante' : 'Novo Restaurante'}
-                  </h2>
-                  <p className="text-green-100 mt-1">
-                    {editingRestaurante ? 'Atualize as informações do restaurante' : 'Cadastre um novo restaurante matriz'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowRestauranteForm(false)}
-                  className="text-white hover:text-gray-200 transition-colors p-1 rounded-lg hover:bg-white/10"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            {/* Corpo do formulário */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-              {/* Nome do restaurante */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome do Restaurante *
-                </label>
-                <input
-                  type="text"
-                  value={formRestaurante.nome}
-                  onChange={(e) => setFormRestaurante(prev => ({ ...prev, nome: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                  placeholder="Digite o nome do restaurante"
-                  required
-                />
-              </div>
-
-              {/* CNPJ - apenas para restaurante novo */}
-              {!editingRestaurante && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CNPJ *
-                  </label>
-                  <input
-                    type="text"
-                    value={formRestaurante.cnpj}
-                    onChange={(e) => {
-                      const valorMascarado = aplicarMascaraCNPJ(e.target.value);
-                      setFormRestaurante(prev => ({ ...prev, cnpj: valorMascarado }));
-                    }}
-                    className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                    placeholder="00.000.000/0000-00"
-                    maxLength={18}
-                    required
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Obrigatório para restaurante matriz
-                  </p>
-                </div>
-              )}
-
-              {/* Grid de informações básicas */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Tipo de estabelecimento */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Estabelecimento
-                  </label>
-                  <select
-                    value={formRestaurante.tipo}
-                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, tipo: e.target.value }))}
-                    className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                  >
-                    {TIPOS_ESTABELECIMENTO.map(tipo => (
-                      <option key={tipo.value} value={tipo.value}>
-                        {tipo.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Estado */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Estado
-                  </label>
-                  <select
-                    value={formRestaurante.estado}
-                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, estado: e.target.value }))}
-                    className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                  >
-                    <option value="">Selecione o estado</option>
-                    {ESTADOS_BRASIL.map(estado => (
-                      <option key={estado} value={estado}>
-                        {estado}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Localização */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cidade
-                  </label>
-                  <input
-                    type="text"
-                    value={formRestaurante.cidade}
-                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, cidade: e.target.value }))}
-                    className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                    placeholder="Digite a cidade"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Bairro
-                  </label>
-                  <input
-                    type="text"
-                    value={formRestaurante.bairro}
-                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, bairro: e.target.value }))}
-                    className="w-full px-4 py-3 bg-white border-2 border-green-300 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    placeholder="Digite o bairro"
-                  />
-                </div>
-              </div>
-
-              {/* Endereço completo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Endereço Completo
-                </label>
-                <input
-                  type="text"
-                  value={formRestaurante.endereco}
-                  onChange={(e) => setFormRestaurante(prev => ({ ...prev, endereco: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                  placeholder="Rua, número, complemento"
-                />
-              </div>
-
-              {/* Telefone */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Telefone
-                </label>
-                <input
-                  type="text"
-                  value={formRestaurante.telefone}
-                  onChange={(e) => {
-                    // Aplicar máscara básica de telefone
-                    let valor = e.target.value.replace(/\D/g, '');
-                    if (valor.length <= 11) {
-                      valor = valor.replace(/^(\d{2})(\d)/, '($1) $2');
-                      valor = valor.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
-                    }
-                    setFormRestaurante(prev => ({ ...prev, telefone: valor }));
-                  }}
-                  className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
-                  placeholder="(00) 00000-0000"
-                  maxLength={15}
-                />
-              </div>
-
-              {/* Checkboxes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 hover:border-green-300 transition-colors">
-                  <input
-                    type="checkbox"
-                    id="tem_delivery"
-                    checked={formRestaurante.tem_delivery}
-                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, tem_delivery: e.target.checked }))}
-                    className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2 checked:bg-green-500 checked:border-green-500"
-                  />
-                  <label htmlFor="tem_delivery" className="text-sm font-medium text-gray-700">
-                    Oferece delivery
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 hover:border-green-300 transition-colors">
-                  <input
-                    type="checkbox"
-                    id="ativo"
-                    checked={formRestaurante.ativo}
-                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, ativo: e.target.checked }))}
-                    className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2"
-                  />
-                  <label htmlFor="ativo" className="text-sm font-medium text-gray-700">
-                    Restaurante ativo
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer com botões */}
-            <div className="bg-gray-50 px-6 py-4 flex gap-3 flex-shrink-0">
-              <button
-                onClick={() => setShowRestauranteForm(false)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition-all font-medium"
-              >
-                Cancelar
-              </button>
-
-              {/* ===== ADICIONAR ESTAS LINHAS AQUI (DEBUG) ===== */}
-              {console.log('🔍 DEBUG - Condições disabled:')}
-              {console.log('🔍 loading:', loading)}
-              {console.log('🔍 formRestaurante.nome.trim():', formRestaurante.nome.trim())}
-              {console.log('🔍 editingRestaurante:', editingRestaurante)}
-              {console.log('🔍 formRestaurante.cnpj.trim():', formRestaurante.cnpj.trim())}
-              {console.log('🔍 Condição disabled final:', loading || !formRestaurante.nome.trim() || (!editingRestaurante && !formRestaurante.cnpj.trim()))}
-              {/* ===== FIM DO DEBUG ===== */}
-
-              <button
-                onClick={() => {
-                  console.log('🔥 BOTÃO CLICADO');
-                  console.log('🔥 editingRestaurante:', editingRestaurante);
-                  if (editingRestaurante) {
-                    handleSalvarEdicaoRestaurante();
-                  } else {
-                    handleCriarRestaurante();
-                  }
-                }}
-                disabled={loading || !formRestaurante.nome.trim() || (!editingRestaurante && !formRestaurante.cnpj.trim())}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg hover:shadow-xl"
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    Salvando...
-                  </div>
-                ) : (
-                  editingRestaurante ? 'Atualizar Restaurante' : 'Criar Restaurante'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )} 
+        <FormularioRestauranteIsolado 
+          isVisible={showRestauranteForm}
+          editingRestaurante={editingRestaurante}
+          formRestaurante={formRestaurante}
+          setFormRestaurante={setFormRestaurante}
+          cnpjValido={cnpjValido}
+          setCnpjValido={setCnpjValido}
+          aplicarMascaraCNPJ={aplicarMascaraCNPJ}
+          validarCNPJ={validarCNPJ}
+          tiposEstabelecimento={tiposEstabelecimento}
+          onClose={() => setShowRestauranteForm(false)}
+          onSave={() => {
+            if (editingRestaurante) {
+              handleSalvarEdicaoRestaurante();
+            } else {
+              handleCriarRestaurante();
+            }
+          }}
+          loading={loading}
+        />
 		
       </div>
     );
