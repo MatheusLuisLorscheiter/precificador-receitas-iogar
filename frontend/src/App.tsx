@@ -1075,23 +1075,98 @@ const FormularioInsumoIsolado = React.memo(({
 const FormularioRestauranteIsolado = React.memo(({ 
   isVisible,
   editingRestaurante,
-  formRestaurante,
-  setFormRestaurante,
-  cnpjValido,
-  setCnpjValido,
-  aplicarMascaraCNPJ,
-  validarCNPJ,
   tiposEstabelecimento,
   onClose,
   onSave,
   loading
 }) => {
   
-  // Função de validação local para evitar re-renders
+  // ============================================================================
+  // ESTADO INTERNO LOCAL (igual FormularioInsumoIsolado)
+  // ============================================================================
+  const [formData, setFormData] = useState({
+    nome: editingRestaurante?.nome || '',
+    cnpj: editingRestaurante?.cnpj || '',
+    tipo: editingRestaurante?.tipo || 'restaurante',
+    tem_delivery: editingRestaurante?.tem_delivery || false,
+    endereco: editingRestaurante?.endereco || '',
+    bairro: editingRestaurante?.bairro || '',
+    cidade: editingRestaurante?.cidade || '',
+    estado: editingRestaurante?.estado || '',
+    telefone: editingRestaurante?.telefone || '',
+    ativo: editingRestaurante?.ativo !== false
+  });
+
+  const [cnpjValido, setCnpjValido] = useState(true);
+
+  // ============================================================================
+  // FUNÇÕES LOCAIS (igual FormularioInsumoIsolado)
+  // ============================================================================
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const aplicarMascaraCNPJ = (cnpj) => {
+    const numero = cnpj.replace(/\D/g, '');
+    if (numero.length <= 14) {
+      return numero.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    }
+    return cnpj;
+  };
+
+  const validarCNPJ = (cnpj) => {
+    const numero = cnpj.replace(/\D/g, '');
+    if (numero.length !== 14) return false;
+    if (/^(\d)\1+$/.test(numero)) return false;
+    
+    let soma = 0;
+    let peso = 2;
+    
+    for (let i = 11; i >= 0; i--) {
+      soma += parseInt(numero.charAt(i)) * peso;
+      peso = peso === 9 ? 2 : peso + 1;
+    }
+    
+    const digito1 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (parseInt(numero.charAt(12)) !== digito1) return false;
+    
+    soma = 0;
+    peso = 2;
+    
+    for (let i = 12; i >= 0; i--) {
+      soma += parseInt(numero.charAt(i)) * peso;
+      peso = peso === 9 ? 2 : peso + 1;
+    }
+    
+    const digito2 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    return parseInt(numero.charAt(13)) === digito2;
+  };
+
   const handleCnpjChange = (e) => {
     const valorMascarado = aplicarMascaraCNPJ(e.target.value);
-    setFormRestaurante(prev => ({ ...prev, cnpj: valorMascarado }));
+    handleChange('cnpj', valorMascarado);
     setCnpjValido(validarCNPJ(valorMascarado));
+  };
+
+  const handleSubmit = () => {
+    // Validar campos obrigatórios
+    if (!formData.nome?.trim()) {
+      if (typeof showErrorPopup === 'function') {
+        showErrorPopup('Campos Obrigatórios', 'Nome do restaurante é obrigatório!');
+      }
+      return;
+    }
+
+    // Para restaurante novo, validar CNPJ
+    if (!editingRestaurante && !cnpjValido) {
+      if (typeof showErrorPopup === 'function') {
+        showErrorPopup('CNPJ Inválido', 'Por favor, informe um CNPJ válido!');
+      }
+      return;
+    }
+
+    // Chamar função de save passando os dados (igual FormularioInsumoIsolado)
+    onSave(formData);
   };
 
   if (!isVisible) return null;
@@ -1128,8 +1203,8 @@ const FormularioRestauranteIsolado = React.memo(({
             </label>
             <input
               type="text"
-              value={formRestaurante.nome}
-              onChange={(e) => setFormRestaurante(prev => ({ ...prev, nome: e.target.value }))}
+              value={formData.nome}
+              onChange={(e) => handleChange('nome', e.target.value)}
               className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
               placeholder="Digite o nome do restaurante"
               required
@@ -1144,14 +1219,14 @@ const FormularioRestauranteIsolado = React.memo(({
               </label>
               <input
                 type="text"
-                value={formRestaurante.cnpj}
+                value={formData.cnpj}
                 onChange={handleCnpjChange}
                 className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                 placeholder="00.000.000/0000-00"
                 maxLength={18}
                 required
               />
-              {!cnpjValido && formRestaurante.cnpj && (
+              {!cnpjValido && formData.cnpj && (
                 <p className="text-red-500 text-sm mt-1">CNPJ inválido</p>
               )}
             </div>
@@ -1163,8 +1238,8 @@ const FormularioRestauranteIsolado = React.memo(({
               Tipo de Estabelecimento *
             </label>
             <select
-              value={formRestaurante.tipo}
-              onChange={(e) => setFormRestaurante(prev => ({ ...prev, tipo: e.target.value }))}
+              value={formData.tipo}
+              onChange={(e) => handleChange('tipo', e.target.value)}
               className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
               required
             >
@@ -1181,8 +1256,8 @@ const FormularioRestauranteIsolado = React.memo(({
             </label>
             <input
               type="text"
-              value={formRestaurante.endereco}
-              onChange={(e) => setFormRestaurante(prev => ({ ...prev, endereco: e.target.value }))}
+              value={formData.endereco}
+              onChange={(e) => handleChange('endereco', e.target.value)}
               className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
               placeholder="Rua, número, complemento"
             />
@@ -1196,8 +1271,8 @@ const FormularioRestauranteIsolado = React.memo(({
               </label>
               <input
                 type="text"
-                value={formRestaurante.bairro}
-                onChange={(e) => setFormRestaurante(prev => ({ ...prev, bairro: e.target.value }))}
+                value={formData.bairro}
+                onChange={(e) => handleChange('bairro', e.target.value)}
                 className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                 placeholder="Bairro"
               />
@@ -1209,8 +1284,8 @@ const FormularioRestauranteIsolado = React.memo(({
               </label>
               <input
                 type="text"
-                value={formRestaurante.cidade}
-                onChange={(e) => setFormRestaurante(prev => ({ ...prev, cidade: e.target.value }))}
+                value={formData.cidade}
+                onChange={(e) => handleChange('cidade', e.target.value)}
                 className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                 placeholder="Cidade"
               />
@@ -1222,8 +1297,8 @@ const FormularioRestauranteIsolado = React.memo(({
               </label>
               <input
                 type="text"
-                value={formRestaurante.estado}
-                onChange={(e) => setFormRestaurante(prev => ({ ...prev, estado: e.target.value }))}
+                value={formData.estado}
+                onChange={(e) => handleChange('estado', e.target.value)}
                 className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
                 placeholder="UF"
                 maxLength={2}
@@ -1238,7 +1313,7 @@ const FormularioRestauranteIsolado = React.memo(({
             </label>
             <input
               type="text"
-              value={formRestaurante.telefone}
+              value={formData.telefone}
               onChange={(e) => {
                 // Aplicar máscara básica de telefone
                 let valor = e.target.value.replace(/\D/g, '');
@@ -1246,7 +1321,7 @@ const FormularioRestauranteIsolado = React.memo(({
                   valor = valor.replace(/^(\d{2})(\d)/, '($1) $2');
                   valor = valor.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
                 }
-                setFormRestaurante(prev => ({ ...prev, telefone: valor }));
+                handleChange('telefone', valor);
               }}
               className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
               placeholder="(00) 00000-0000"
@@ -1260,8 +1335,8 @@ const FormularioRestauranteIsolado = React.memo(({
               <input
                 type="checkbox"
                 id="tem_delivery"
-                checked={formRestaurante.tem_delivery}
-                onChange={(e) => setFormRestaurante(prev => ({ ...prev, tem_delivery: e.target.checked }))}
+                checked={formData.tem_delivery}
+                onChange={(e) => handleChange('tem_delivery', e.target.checked)}
                 className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2 checked:bg-green-500 checked:border-green-500"
                 style={{ accentColor: '#10b981' }}
               />
@@ -1274,8 +1349,8 @@ const FormularioRestauranteIsolado = React.memo(({
               <input
                 type="checkbox"
                 id="ativo"
-                checked={formRestaurante.ativo}
-                onChange={(e) => setFormRestaurante(prev => ({ ...prev, ativo: e.target.checked }))}
+                checked={formData.ativo}
+                onChange={(e) => handleChange('ativo', e.target.checked)}
                 className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2 checked:bg-green-500 checked:border-green-500"
                 style={{ accentColor: '#10b981' }}
               />
@@ -1295,8 +1370,8 @@ const FormularioRestauranteIsolado = React.memo(({
             Cancelar
           </button>
           <button
-            onClick={onSave}
-            disabled={loading || !formRestaurante.nome.trim() || (!editingRestaurante && !cnpjValido)}
+            onClick={handleSubmit}
+            disabled={loading || !formData.nome.trim() || (!editingRestaurante && !cnpjValido)}
             className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? 'Salvando...' : (editingRestaurante ? 'Atualizar' : 'Salvar Restaurante')}
@@ -1306,6 +1381,9 @@ const FormularioRestauranteIsolado = React.memo(({
     </div>
   );
 });
+
+// Definir displayName para o React.memo
+FormularioRestauranteIsolado.displayName = 'FormularioRestauranteIsolado';
 
 // Definir displayName para o React.memo
 FormularioRestauranteIsolado.displayName = 'FormularioRestauranteIsolado';
@@ -3673,12 +3751,6 @@ const fetchInsumos = async () => {
         <FormularioRestauranteIsolado 
           isVisible={showRestauranteForm}
           editingRestaurante={editingRestaurante}
-          formRestaurante={formRestaurante}
-          setFormRestaurante={setFormRestaurante}
-          cnpjValido={cnpjValido}
-          setCnpjValido={setCnpjValido}
-          aplicarMascaraCNPJ={aplicarMascaraCNPJ}
-          validarCNPJ={validarCNPJ}
           tiposEstabelecimento={tiposEstabelecimento}
           onClose={() => setShowRestauranteForm(false)}
           onSave={() => {
