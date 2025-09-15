@@ -2967,6 +2967,7 @@ const fetchInsumos = async () => {
             <p className="text-gray-500">Aguarde enquanto carregamos os dados...</p>
           </div>
         </div>
+        
       );
     }
 
@@ -2981,16 +2982,7 @@ const fetchInsumos = async () => {
       );
     }
 
-    // ============================================================================
-    // ESTADOS PARA CONTROLE DE EXPANSÃO E FORMULÁRIOS
-    // ============================================================================
-    
     const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
-    const [showRestauranteForm, setShowFormRestaurante] = useState<boolean>(false);
-    const [showUnidadeForm, setShowFormUnidade] = useState<boolean>(false);
-    const [restauranteParaUnidade, setRestauranteParaUnidade] = useState<RestauranteGrid | null>(null);
-    const [editingRestaurante, setModoEdicao] = useState<boolean>(false);
-    const [restauranteEditando, setRestauranteEditando] = useState<RestauranteGrid | null>(null);
 
     // ============================================================================
     // FUNÇÕES AUXILIARES PARA MANIPULAÇÃO DE EXPANSÃO
@@ -3011,21 +3003,21 @@ const fetchInsumos = async () => {
     // ============================================================================
     
     const abrirFormRestaurante = () => {
-      setEditingRestaurante(null);
-      setFormRestaurante({
-        nome: '',
-        cnpj: '',
-        tipo: 'restaurante',
-        tem_delivery: false,
-        endereco: '',
-        bairro: '',
-        cidade: '',
-        estado: '',
-        telefone: '',
-        ativo: true
-      });
-      setShowRestauranteForm(true);
-    };
+	  setFormRestaurante({
+		nome: '',
+		cnpj: '',
+		tipo: 'restaurante',
+		tem_delivery: false,
+		endereco: '',
+		bairro: '',
+		cidade: '',
+		estado: '',
+		telefone: '',
+		ativo: true
+	  });
+	  
+	  setShowRestauranteForm(true); // <- USAR A FUNÇÃO GLOBAL, NÃO A LOCAL
+	};
 
     const abrirFormUnidade = (restaurante: RestauranteGrid) => {
       setRestauranteParaUnidade(restaurante);
@@ -3435,250 +3427,260 @@ const fetchInsumos = async () => {
             </div>
           </div>
         </div>
+		      {console.log('DEBUG - Verificando showRestauranteForm:', showRestauranteForm)}
+      {showRestauranteForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          {console.log('🔍 DEBUG - Renderizando formulário restaurante')}
+          {console.log('🔍 loading no JSX:', typeof loading)}
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Header do popup */}
+            <div className="bg-gradient-to-r from-green-500 to-pink-500 text-white p-6 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">
+                    {editingRestaurante ? 'Editar Restaurante' : 'Novo Restaurante'}
+                  </h2>
+                  <p className="text-green-100 mt-1">
+                    {editingRestaurante ? 'Atualize as informações do restaurante' : 'Cadastre um novo restaurante matriz'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowRestauranteForm(false)}
+                  className="text-white hover:text-gray-200 transition-colors p-1 rounded-lg hover:bg-white/10"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Corpo do formulário */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              {/* Nome do restaurante */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome do Restaurante *
+                </label>
+                <input
+                  type="text"
+                  value={formRestaurante.nome}
+                  onChange={(e) => setFormRestaurante(prev => ({ ...prev, nome: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  placeholder="Digite o nome do restaurante"
+                  required
+                />
+              </div>
+
+              {/* CNPJ - apenas para restaurante novo */}
+              {!editingRestaurante && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    CNPJ *
+                  </label>
+                  <input
+                    type="text"
+                    value={formRestaurante.cnpj}
+                    onChange={(e) => {
+                      const valorMascarado = aplicarMascaraCNPJ(e.target.value);
+                      setFormRestaurante(prev => ({ ...prev, cnpj: valorMascarado }));
+                    }}
+                    className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                    placeholder="00.000.000/0000-00"
+                    maxLength={18}
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Obrigatório para restaurante matriz
+                  </p>
+                </div>
+              )}
+
+              {/* Grid de informações básicas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Tipo de estabelecimento */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Estabelecimento
+                  </label>
+                  <select
+                    value={formRestaurante.tipo}
+                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, tipo: e.target.value }))}
+                    className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  >
+                    {TIPOS_ESTABELECIMENTO.map(tipo => (
+                      <option key={tipo.value} value={tipo.value}>
+                        {tipo.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Estado */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Estado
+                  </label>
+                  <select
+                    value={formRestaurante.estado}
+                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, estado: e.target.value }))}
+                    className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  >
+                    <option value="">Selecione o estado</option>
+                    {ESTADOS_BRASIL.map(estado => (
+                      <option key={estado} value={estado}>
+                        {estado}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Localização */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cidade
+                  </label>
+                  <input
+                    type="text"
+                    value={formRestaurante.cidade}
+                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, cidade: e.target.value }))}
+                    className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                    placeholder="Digite a cidade"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bairro
+                  </label>
+                  <input
+                    type="text"
+                    value={formRestaurante.bairro}
+                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, bairro: e.target.value }))}
+                    className="w-full px-4 py-3 bg-white border-2 border-green-300 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Digite o bairro"
+                  />
+                </div>
+              </div>
+
+              {/* Endereço completo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Endereço Completo
+                </label>
+                <input
+                  type="text"
+                  value={formRestaurante.endereco}
+                  onChange={(e) => setFormRestaurante(prev => ({ ...prev, endereco: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  placeholder="Rua, número, complemento"
+                />
+              </div>
+
+              {/* Telefone */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Telefone
+                </label>
+                <input
+                  type="text"
+                  value={formRestaurante.telefone}
+                  onChange={(e) => {
+                    // Aplicar máscara básica de telefone
+                    let valor = e.target.value.replace(/\D/g, '');
+                    if (valor.length <= 11) {
+                      valor = valor.replace(/^(\d{2})(\d)/, '($1) $2');
+                      valor = valor.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
+                    }
+                    setFormRestaurante(prev => ({ ...prev, telefone: valor }));
+                  }}
+                  className="w-full px-4 py-3 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                  placeholder="(00) 00000-0000"
+                  maxLength={15}
+                />
+              </div>
+
+              {/* Checkboxes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 hover:border-green-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="tem_delivery"
+                    checked={formRestaurante.tem_delivery}
+                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, tem_delivery: e.target.checked }))}
+                    className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2 checked:bg-green-500 checked:border-green-500"
+                  />
+                  <label htmlFor="tem_delivery" className="text-sm font-medium text-gray-700">
+                    Oferece delivery
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 hover:border-green-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    id="ativo"
+                    checked={formRestaurante.ativo}
+                    onChange={(e) => setFormRestaurante(prev => ({ ...prev, ativo: e.target.checked }))}
+                    className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2"
+                  />
+                  <label htmlFor="ativo" className="text-sm font-medium text-gray-700">
+                    Restaurante ativo
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer com botões */}
+            <div className="bg-gray-50 px-6 py-4 flex gap-3 flex-shrink-0">
+              <button
+                onClick={() => setShowRestauranteForm(false)}
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition-all font-medium"
+              >
+                Cancelar
+              </button>
+
+              {/* ===== ADICIONAR ESTAS LINHAS AQUI (DEBUG) ===== */}
+              {console.log('🔍 DEBUG - Condições disabled:')}
+              {console.log('🔍 loading:', loading)}
+              {console.log('🔍 formRestaurante.nome.trim():', formRestaurante.nome.trim())}
+              {console.log('🔍 editingRestaurante:', editingRestaurante)}
+              {console.log('🔍 formRestaurante.cnpj.trim():', formRestaurante.cnpj.trim())}
+              {console.log('🔍 Condição disabled final:', loading || !formRestaurante.nome.trim() || (!editingRestaurante && !formRestaurante.cnpj.trim()))}
+              {/* ===== FIM DO DEBUG ===== */}
+
+              <button
+                onClick={() => {
+                  console.log('🔥 BOTÃO CLICADO');
+                  console.log('🔥 editingRestaurante:', editingRestaurante);
+                  if (editingRestaurante) {
+                    handleSalvarEdicaoRestaurante();
+                  } else {
+                    handleCriarRestaurante();
+                  }
+                }}
+                disabled={loading || !formRestaurante.nome.trim() || (!editingRestaurante && !formRestaurante.cnpj.trim())}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium shadow-lg hover:shadow-xl"
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    Salvando...
+                  </div>
+                ) : (
+                  editingRestaurante ? 'Atualizar Restaurante' : 'Criar Restaurante'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )} 
+		
       </div>
     );
   };
 
-// ============================================================================
-// FORMULÁRIO POPUP - CRIAR/EDITAR RESTAURANTE
-// ============================================================================
 
-{showRestauranteForm && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    {console.log('🔍 DEBUG - Renderizando formulário restaurante')}
-    {console.log('🔍 loading no JSX:', typeof loading)}
-    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      {/* Header do popup */}
-      <div className="bg-gradient-to-r from-green-500 to-pink-500 text-white p-6 rounded-t-xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">
-              {editingRestaurante ? 'Editar Restaurante' : 'Novo Restaurante'}
-            </h2>
-            <p className="text-green-100 mt-1">
-              {editingRestaurante ? 'Atualize as informações do restaurante' : 'Cadastre um novo restaurante matriz'}
-            </p>
-          </div>
-          <button
-            onClick={() => setShowFormRestaurante(false)}
-            className="text-white hover:text-gray-200 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-      </div>
 
-      {/* Corpo do formulário */}
-      <div className="p-6 space-y-6">
-        {/* Nome do restaurante */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Nome do Restaurante *
-          </label>
-          <input
-            type="text"
-            value={formRestaurante.nome}
-            onChange={(e) => setFormRestaurante(prev => ({ ...prev, nome: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            placeholder="Digite o nome do restaurante"
-            required
-          />
-        </div>
-
-        {/* CNPJ - apenas para restaurante novo */}
-        {!editingRestaurante && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              CNPJ *
-            </label>
-            <input
-              type="text"
-              value={formRestaurante.cnpj}
-              onChange={(e) => {
-                const valorMascarado = aplicarMascaraCNPJ(e.target.value);
-                setFormRestaurante(prev => ({ ...prev, cnpj: valorMascarado }));
-              }}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="00.000.000/0000-00"
-              maxLength={18}
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Obrigatório para restaurante matriz
-            </p>
-          </div>
-        )}
-
-        {/* Grid de informações básicas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Tipo de estabelecimento */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de Estabelecimento
-            </label>
-            <select
-              value={formRestaurante.tipo}
-              onChange={(e) => setFormRestaurante(prev => ({ ...prev, tipo: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              {TIPOS_ESTABELECIMENTO.map(tipo => (
-                <option key={tipo.value} value={tipo.value}>
-                  {tipo.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Estado */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Estado
-            </label>
-            <select
-              value={formRestaurante.estado}
-              onChange={(e) => setFormRestaurante(prev => ({ ...prev, estado: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              <option value="">Selecione o estado</option>
-              {ESTADOS_BRASIL.map(estado => (
-                <option key={estado} value={estado}>
-                  {estado}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Localização */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cidade
-            </label>
-            <input
-              type="text"
-              value={formRestaurante.cidade}
-              onChange={(e) => setFormRestaurante(prev => ({ ...prev, cidade: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Digite a cidade"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Bairro
-            </label>
-            <input
-              type="text"
-              value={formRestaurante.bairro}
-              onChange={(e) => setFormRestaurante(prev => ({ ...prev, bairro: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Digite o bairro"
-            />
-          </div>
-        </div>
-
-        {/* Endereço completo */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Endereço Completo
-          </label>
-          <input
-            type="text"
-            value={formRestaurante.endereco}
-            onChange={(e) => setFormRestaurante(prev => ({ ...prev, endereco: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            placeholder="Rua, número, complemento"
-          />
-        </div>
-
-        {/* Telefone */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Telefone
-          </label>
-          <input
-            type="text"
-            value={formRestaurante.telefone}
-            onChange={(e) => {
-              // Aplicar máscara básica de telefone
-              let valor = e.target.value.replace(/\D/g, '');
-              if (valor.length <= 11) {
-                valor = valor.replace(/^(\d{2})(\d)/, '($1) $2');
-                valor = valor.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
-              }
-              setFormRestaurante(prev => ({ ...prev, telefone: valor }));
-            }}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            placeholder="(00) 00000-0000"
-            maxLength={15}
-          />
-        </div>
-
-        {/* Checkboxes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="tem_delivery"
-              checked={formRestaurante.tem_delivery}
-              onChange={(e) => setFormRestaurante(prev => ({ ...prev, tem_delivery: e.target.checked }))}
-              className="w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
-            />
-            <label htmlFor="tem_delivery" className="text-sm font-medium text-gray-700">
-              Oferece delivery
-            </label>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="ativo"
-              checked={formRestaurante.ativo}
-              onChange={(e) => setFormRestaurante(prev => ({ ...prev, ativo: e.target.checked }))}
-              className="w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
-            />
-            <label htmlFor="ativo" className="text-sm font-medium text-gray-700">
-              Restaurante ativo
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer com botões */}
-      <div className="bg-gray-50 px-6 py-4 flex gap-3 rounded-b-xl">
-        <button
-          onClick={() => setShowFormRestaurante(false)}
-          className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={() => {
-            console.log('🔥 BOTÃO CLICADO');
-            console.log('🔥 editingRestaurante:', editingRestaurante);
-            if (editingRestaurante) {
-              handleSalvarEdicaoRestaurante();
-            } else {
-              handleCriarRestaurante();
-            }
-          }}
-          disabled={loading || !formRestaurante.nome.trim() || (!editingRestaurante && !formRestaurante.cnpj.trim())}
-          className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {loading ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-              Salvando...
-            </div>
-          ) : (
-            editingRestaurante ? 'Atualizar Restaurante' : 'Criar Restaurante'
-          )}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
 
 // ============================================================================
 // FORMULÁRIO POPUP - CRIAR UNIDADE/FILIAL
@@ -3771,7 +3773,7 @@ const fetchInsumos = async () => {
             type="text"
             value={formUnidade.bairro}
             onChange={(e) => setFormUnidade(prev => ({ ...prev, bairro: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-5 h-5 !text-green-600 !bg-white !border-2 !border-green-300 rounded focus:!ring-green-500 focus:!ring-2"
             placeholder="Digite o bairro"
             required
           />
@@ -4092,7 +4094,7 @@ const fetchInsumos = async () => {
             loading={loading}
             insumos={insumos}
           />
-        )}
+        )} 
       </div>
     );
   };
