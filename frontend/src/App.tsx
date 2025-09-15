@@ -1123,7 +1123,6 @@ const FoodCostSystem: React.FC = () => {
   });
 
   const [cnpjValido, setCnpjValido] = useState(true);
-
   const validarCNPJ = (cnpj: string): boolean => {
     const numero = cnpj.replace(/\D/g, '');
     if (numero.length !== 14) return false;
@@ -1258,7 +1257,13 @@ const FoodCostSystem: React.FC = () => {
     estado: ''
   });
 
+   console.log('🔍 isLoading existe?', typeof setIsLoading !== 'undefined');
+
   const handleCriarRestaurante = async () => {
+        console.log('🔍 DEBUG - handleCriarRestaurante iniciado');
+        console.log('🔍 loading disponível:', typeof loading);
+        console.log('🔍 setLoading disponível:', typeof setLoading);
+
       if (!formRestaurante.nome.trim() || !formRestaurante.cnpj.trim()) {
         setPopup({
           type: 'error',
@@ -1340,7 +1345,7 @@ const FoodCostSystem: React.FC = () => {
       }
 
       try {
-        setIsLoading(true);
+        setLoading(true);
         const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restauranteParaUnidade.id}/unidades`, {
           method: 'POST',
           headers: {
@@ -1386,7 +1391,7 @@ const FoodCostSystem: React.FC = () => {
           onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
         });
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -1399,6 +1404,7 @@ const FoodCostSystem: React.FC = () => {
   useEffect(() => {
     initializePopupFunctions(setShowPopup, setPopupData);
   }, []);
+
   
   // ============================================================================
   // CONFIGURAÇÃO DA API
@@ -1622,6 +1628,14 @@ const fetchInsumos = async () => {
 
   // Carrega os dados quando o componente é montado
   useEffect(() => {
+    console.log('🔍 DEBUG - Procurando referências incorretas a isLoading');
+  
+    // Converter o código para string e procurar isLoading
+    const componenteString = FoodCostSystem.toString();
+    if (componenteString.includes('isLoading')) {
+      console.log('⚠️ ENCONTROU isLoading no código do componente');
+      console.log('🔍 Índices onde aparece:', componenteString.split('isLoading').length - 1);
+    }
     const initializeApp = async () => {
       try {
         const connected = await apiService.testConnection();
@@ -2942,7 +2956,8 @@ const fetchInsumos = async () => {
   // COMPONENTE GESTÃO DE RESTAURANTES
   // ============================================================================
   const Restaurantes = () => {
-
+    console.log('🔍 DEBUG - Componente Restaurantes renderizando');
+    console.log('🔍 loading no Restaurantes:', typeof loading);
     if (loading) {
       return (
         <div className="text-center py-20">
@@ -3430,6 +3445,8 @@ const fetchInsumos = async () => {
 
 {showRestauranteForm && (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    {console.log('🔍 DEBUG - Renderizando formulário restaurante')}
+    {console.log('🔍 loading no JSX:', typeof loading)}
     <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
       {/* Header do popup */}
       <div className="bg-gradient-to-r from-green-500 to-pink-500 text-white p-6 rounded-t-xl">
@@ -3637,11 +3654,19 @@ const fetchInsumos = async () => {
           Cancelar
         </button>
         <button
-          onClick={editingRestaurante ? () => handleEditarRestaurante(restauranteEditando) : handleCriarRestaurante}
-          disabled={isLoading || !formRestaurante.nome.trim() || (!editingRestaurante && !formRestaurante.cnpj.trim())}
+          onClick={() => {
+            console.log('🔥 BOTÃO CLICADO');
+            console.log('🔥 editingRestaurante:', editingRestaurante);
+            if (editingRestaurante) {
+              handleSalvarEdicaoRestaurante();
+            } else {
+              handleCriarRestaurante();
+            }
+          }}
+          disabled={loading || !formRestaurante.nome.trim() || (!editingRestaurante && !formRestaurante.cnpj.trim())}
           className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center gap-2">
               <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
               Salvando...
@@ -4245,7 +4270,7 @@ const fetchInsumos = async () => {
       }
 
       try {
-        setIsLoading(true);
+        setLoading(true);
         const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${editingRestaurante.id}`, {
           method: 'PUT',
           headers: {
@@ -4284,7 +4309,7 @@ const fetchInsumos = async () => {
           onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
         });
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -4299,7 +4324,7 @@ const fetchInsumos = async () => {
       if (!confirmacao) return;
 
       try {
-        setIsLoading(true);
+        setLoading(true);
         const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restaurante.id}`, {
           method: 'DELETE',
         });
@@ -4330,7 +4355,7 @@ const fetchInsumos = async () => {
           onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
         });
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -5661,6 +5686,17 @@ const cancelarExclusao = () => {
   // ============================================================================
   // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
   // ============================================================================
+  try {
+    console.log('🔍 DEBUG - Verificação final antes do render');
+    console.log('🔍 Todas as variáveis de loading:', {
+      loading: typeof loading,
+      setLoading: typeof setLoading,
+      isLoading: typeof window.isLoading  // Verificar se existe globalmente
+    });
+  } catch (e) {
+    console.error('❌ Erro na verificação final:', e.message);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex ml-64">
       {/* Sidebar de navegação */}
