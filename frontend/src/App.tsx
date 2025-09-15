@@ -1121,6 +1121,57 @@ const FoodCostSystem: React.FC = () => {
     telefone: '',
     ativo: true
   });
+
+  const [cnpjValido, setCnpjValido] = useState(true);
+
+  const validarCNPJ = (cnpj: string): boolean => {
+    const numero = cnpj.replace(/\D/g, '');
+    if (numero.length !== 14) return false;
+    if (/^(\d)\1+$/.test(numero)) return false;
+    
+    let soma = 0;
+    let peso = 2;
+    
+    for (let i = 11; i >= 0; i--) {
+      soma += parseInt(numero.charAt(i)) * peso;
+      peso = peso === 9 ? 2 : peso + 1;
+    }
+    
+    const digito1 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (parseInt(numero.charAt(12)) !== digito1) return false;
+    
+    soma = 0;
+    peso = 2;
+    
+    for (let i = 12; i >= 0; i--) {
+      soma += parseInt(numero.charAt(i)) * peso;
+      peso = peso === 9 ? 2 : peso + 1;
+    }
+    
+    const digito2 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    return parseInt(numero.charAt(13)) === digito2;
+  };
+
+  const aplicarMascaraCNPJ = (valor: string): string => {
+    let numero = valor.replace(/\D/g, '');
+    numero = numero.substring(0, 14);
+    
+    if (numero.length >= 2) {
+      numero = numero.replace(/^(\d{2})(\d)/, '$1.$2');
+    }
+    if (numero.length >= 6) {
+      numero = numero.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+    }
+    if (numero.length >= 10) {
+      numero = numero.replace(/\.(\d{3})(\d)/, '.$1/$2');
+    }
+    if (numero.length >= 15) {
+      numero = numero.replace(/(\d{4})(\d)/, '$1-$2');
+    }
+    
+    return numero;
+  };
+
   const [formUnidade, setFormUnidade] = useState<UnidadeCreate>({
     endereco: '',
     bairro: '',
@@ -1206,6 +1257,138 @@ const FoodCostSystem: React.FC = () => {
     cidade: '',
     estado: ''
   });
+
+  const handleCriarRestaurante = async () => {
+      if (!formRestaurante.nome.trim() || !formRestaurante.cnpj.trim()) {
+        setPopup({
+          type: 'error',
+          title: 'Dados obrigatórios',
+          message: 'Nome e CNPJ são obrigatórios para restaurante matriz',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:8000/api/v1/restaurantes/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formRestaurante),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Erro ao criar restaurante');
+        }
+
+        // Sucesso
+        setPopup({
+          type: 'success',
+          title: 'Restaurante criado',
+          message: `${formRestaurante.nome} foi criado com sucesso!`,
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+
+        // Limpar formulário e fechar modal
+        setFormRestaurante({
+          nome: '',
+          cnpj: '',
+          tipo: 'restaurante',
+          tem_delivery: false,
+          endereco: '',
+          bairro: '',
+          cidade: '',
+          estado: '',
+          telefone: '',
+          ativo: true
+        });
+        setShowRestauranteForm(false);
+        
+        // Recarregar lista
+        await carregarRestaurantes();
+      } catch (error) {
+        console.error('Erro ao criar restaurante:', error);
+        setPopup({
+          type: 'error',
+          title: 'Erro ao criar restaurante',
+          message: error.message || 'Erro interno do sistema',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const handleCriarUnidade = async () => {
+      if (!restauranteParaUnidade || !formUnidade.endereco.trim() || 
+          !formUnidade.bairro.trim() || !formUnidade.cidade.trim() || 
+          !formUnidade.estado.trim()) {
+        setPopup({
+          type: 'error',
+          title: 'Dados obrigatórios',
+          message: 'Endereço, bairro, cidade e estado são obrigatórios',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restauranteParaUnidade.id}/unidades`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formUnidade),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Erro ao criar unidade');
+        }
+
+        // Sucesso
+        setPopup({
+          type: 'success',
+          title: 'Unidade criada',
+          message: `Nova unidade de ${restauranteParaUnidade.nome} criada com sucesso!`,
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+
+        // Limpar formulário e fechar modal
+        setFormUnidade({
+          endereco: '',
+          bairro: '',
+          cidade: '',
+          estado: '',
+          telefone: ''
+        });
+        setShowUnidadeForm(false);
+        setRestauranteParaUnidade(null);
+        
+        // Recarregar lista
+        await carregarRestaurantes();
+      } catch (error) {
+        console.error('Erro ao criar unidade:', error);
+        setPopup({
+          type: 'error',
+          title: 'Erro ao criar unidade',
+          message: error.message || 'Erro interno do sistema',
+          isVisible: true,
+          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
   // Salvar aba ativa no localStorage
   useEffect(() => {
@@ -1414,6 +1597,26 @@ const fetchInsumos = async () => {
       setEstatisticasRestaurante(data);
     } catch (error) {
       console.error('Erro ao carregar estatísticas do restaurante:', error);
+    }
+  };
+
+  // ===================================================================================================
+  // FUNÇÃO PARA CARREGAMENTO DE TIPOS DE ESTABELECIMENTO
+  // ===================================================================================================
+
+  const carregarTiposEstabelecimento = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/restaurantes/tipos');
+      if (response.ok) {
+        const data = await response.json();
+        setTiposEstabelecimento(data || []);
+      } else {
+        console.warn('API de tipos não disponível, usando fallback local');
+        setTiposEstabelecimento(TIPOS_ESTABELECIMENTO.map(t => t.value));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar tipos de estabelecimento:', error);
+      setTiposEstabelecimento(TIPOS_ESTABELECIMENTO.map(t => t.value));
     }
   };
 
@@ -2739,6 +2942,30 @@ const fetchInsumos = async () => {
   // COMPONENTE GESTÃO DE RESTAURANTES
   // ============================================================================
   const Restaurantes = () => {
+
+    if (loading) {
+      return (
+        <div className="text-center py-20">
+          <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">Carregando Restaurantes</h3>
+            <p className="text-gray-500">Aguarde enquanto carregamos os dados...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!restaurantes || restaurantes.length === 0) {
+      return (
+        <div className="text-center py-20">
+          <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">Nenhum Restaurante</h3>
+            <p className="text-gray-500">Nenhum restaurante foi encontrado. Cadastre o primeiro!</p>
+          </div>
+        </div>
+      );
+    }
+
     // ============================================================================
     // ESTADOS PARA CONTROLE DE EXPANSÃO E FORMULÁRIOS
     // ============================================================================
@@ -2769,8 +2996,7 @@ const fetchInsumos = async () => {
     // ============================================================================
     
     const abrirFormRestaurante = () => {
-      setModoEdicao(false);
-      setRestauranteEditando(null);
+      setEditingRestaurante(null);
       setFormRestaurante({
         nome: '',
         cnpj: '',
@@ -2783,7 +3009,7 @@ const fetchInsumos = async () => {
         telefone: '',
         ativo: true
       });
-      setShowFormRestaurante(true);
+      setShowRestauranteForm(true);
     };
 
     const abrirFormUnidade = (restaurante: RestauranteGrid) => {
@@ -2875,7 +3101,7 @@ const fetchInsumos = async () => {
 
                   {/* Corpo da tabela */}
                   <tbody className="divide-y divide-gray-100">
-                    {restaurantes.map((restaurante) => (
+                    {(restaurantes || []).map((restaurante) => (
                       <React.Fragment key={restaurante.id}>
                         {/* ============================================================================ */}
                         {/* LINHA PRINCIPAL DO RESTAURANTE */}
@@ -2927,32 +3153,32 @@ const fetchInsumos = async () => {
                           {/* Cidade */}
                           <td className="py-4 px-4">
                             <span className="text-gray-700">
-                              {restaurante.cidade || 'Não informado'}
+                              {restaurante?.cidade || 'N/A'}
                             </span>
                           </td>
 
                           {/* Estado */}
                           <td className="py-4 px-4">
-                            <span className="text-gray-700 font-mono text-sm">
-                              {restaurante.estado || '--'}
+                            <span className="text-gray-600 text-sm">
+                              {restaurante?.estado || 'N/A'}
                             </span>
                           </td>
 
                           {/* Delivery */}
                           <td className="py-4 px-4">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                              restaurante.tem_delivery 
+                              restaurante?.tem_delivery 
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-gray-100 text-gray-600'
                             }`}>
-                              {restaurante.tem_delivery ? 'Sim' : 'Não'}
+                              {restaurante?.tem_delivery ? 'Sim' : 'Não'}
                             </span>
                           </td>
 
                           {/* Tipo */}
                           <td className="py-4 px-4">
                             <span className="text-gray-700 capitalize">
-                              {restaurante.tipo?.replace('_', ' ') || ''}
+                              {restaurante?.tipo ? restaurante.tipo.replace('_', ' ') : 'N/A'}
                             </span>
                           </td>
 
@@ -2960,7 +3186,7 @@ const fetchInsumos = async () => {
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-900">
-                                {restaurante.quantidade_unidades}
+                                {restaurante?.quantidade_unidades || 0}
                               </span>
                               {restaurante.eh_matriz && (
                                 <button
@@ -2980,11 +3206,11 @@ const fetchInsumos = async () => {
                           {/* Status */}
                           <td className="py-4 px-4">
                             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                              restaurante.ativo 
+                              restaurante?.ativo 
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-red-100 text-red-800'
                             }`}>
-                              {restaurante.ativo ? 'Ativo' : 'Inativo'}
+                              {restaurante?.ativo ? 'Ativo' : 'Inativo'}
                             </span>
                           </td>
 
@@ -3252,15 +3478,8 @@ const fetchInsumos = async () => {
               type="text"
               value={formRestaurante.cnpj}
               onChange={(e) => {
-                // Aplicar máscara básica de CNPJ
-                let valor = e.target.value.replace(/\D/g, '');
-                if (valor.length <= 14) {
-                  valor = valor.replace(/^(\d{2})(\d)/, '$1.$2');
-                  valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-                  valor = valor.replace(/\.(\d{3})(\d)/, '.$1/$2');
-                  valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
-                }
-                setFormRestaurante(prev => ({ ...prev, cnpj: valor }));
+                const valorMascarado = aplicarMascaraCNPJ(e.target.value);
+                setFormRestaurante(prev => ({ ...prev, cnpj: valorMascarado }));
               }}
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="00.000.000/0000-00"
@@ -3884,6 +4103,13 @@ const fetchInsumos = async () => {
     const [showPopupFornecedor, setShowPopupFornecedor] = useState(false);
     const [showPopupInsumo, setShowPopupInsumo] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [popup, setPopup] = useState({
+      type: 'success',
+      title: '',
+      message: '',
+      isVisible: false,
+      onClose: () => {}
+    });
 
     // Estados para edição e exclusão de fornecedores
     const [editandoFornecedor, setEditandoFornecedor] = useState<any>(null);
@@ -3930,8 +4156,14 @@ const fetchInsumos = async () => {
     const carregarTiposEstabelecimento = async () => {
       try {
         const response = await fetch('http://localhost:8000/api/v1/restaurantes/tipos');
-        const data = await response.json();
-        setTiposEstabelecimento(data || []);
+        if (response.ok) {
+          const data = await response.json();
+          setTiposEstabelecimento(data || []);
+        } else {
+          // Fallback para tipos locais se API falhar
+          console.warn('API de tipos não disponível, usando fallback local');
+          setTiposEstabelecimento(TIPOS_ESTABELECIMENTO.map(t => t.value));
+        }
       } catch (error) {
         console.error('Erro ao carregar tipos de estabelecimento:', error);
         // Fallback para tipos locais
@@ -3944,137 +4176,44 @@ const fetchInsumos = async () => {
     // FUNÇÕES DE MANIPULAÇÃO DE RESTAURANTES
     // =========================================================================
 
-    const handleCriarRestaurante = async () => {
-      if (!formRestaurante.nome.trim() || !formRestaurante.cnpj.trim()) {
-        setPopup({
-          type: 'error',
-          title: 'Dados obrigatórios',
-          message: 'Nome e CNPJ são obrigatórios para restaurante matriz',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-        return;
+    const validarCNPJ = (cnpj: string): boolean => {
+      // Remove caracteres não numéricos
+      const numero = cnpj.replace(/\D/g, '');
+      
+      // Verifica se tem 14 dígitos
+      if (numero.length !== 14) return false;
+      
+      // Verifica se todos os dígitos são iguais
+      if (/^(\d)\1+$/.test(numero)) return false;
+      
+      // Validação matemática do CNPJ
+      let soma = 0;
+      let peso = 2;
+      
+      // Primeira verificação
+      for (let i = 11; i >= 0; i--) {
+        soma += parseInt(numero.charAt(i)) * peso;
+        peso = peso === 9 ? 2 : peso + 1;
       }
-
-      try {
-        setIsLoading(true);
-        const response = await fetch('http://localhost:8000/api/v1/restaurantes/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formRestaurante),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Erro ao criar restaurante');
-        }
-
-        // Sucesso
-        setPopup({
-          type: 'success',
-          title: 'Restaurante criado',
-          message: `${formRestaurante.nome} foi criado com sucesso!`,
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-
-        // Limpar formulário e fechar modal
-        setFormRestaurante({
-          nome: '',
-          cnpj: '',
-          tipo: 'restaurante',
-          tem_delivery: false,
-          endereco: '',
-          bairro: '',
-          cidade: '',
-          estado: '',
-          telefone: '',
-          ativo: true
-        });
-        setShowRestauranteForm(false);
-        
-        // Recarregar lista
-        await carregarRestaurantes();
-      } catch (error) {
-        console.error('Erro ao criar restaurante:', error);
-        setPopup({
-          type: 'error',
-          title: 'Erro ao criar restaurante',
-          message: error.message || 'Erro interno do sistema',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-      } finally {
-        setIsLoading(false);
+      
+      const digito1 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+      if (parseInt(numero.charAt(12)) !== digito1) return false;
+      
+      // Segunda verificação
+      soma = 0;
+      peso = 2;
+      
+      for (let i = 12; i >= 0; i--) {
+        soma += parseInt(numero.charAt(i)) * peso;
+        peso = peso === 9 ? 2 : peso + 1;
       }
+      
+      const digito2 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+      return parseInt(numero.charAt(13)) === digito2;
     };
-
-    const handleCriarUnidade = async () => {
-      if (!restauranteParaUnidade || !formUnidade.endereco.trim() || 
-          !formUnidade.bairro.trim() || !formUnidade.cidade.trim() || 
-          !formUnidade.estado.trim()) {
-        setPopup({
-          type: 'error',
-          title: 'Dados obrigatórios',
-          message: 'Endereço, bairro, cidade e estado são obrigatórios',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restauranteParaUnidade.id}/unidades`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formUnidade),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Erro ao criar unidade');
-        }
-
-        // Sucesso
-        setPopup({
-          type: 'success',
-          title: 'Unidade criada',
-          message: `Nova unidade de ${restauranteParaUnidade.nome} criada com sucesso!`,
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-
-        // Limpar formulário e fechar modal
-        setFormUnidade({
-          endereco: '',
-          bairro: '',
-          cidade: '',
-          estado: '',
-          telefone: ''
-        });
-        setShowUnidadeForm(false);
-        setRestauranteParaUnidade(null);
-        
-        // Recarregar lista
-        await carregarRestaurantes();
-      } catch (error) {
-        console.error('Erro ao criar unidade:', error);
-        setPopup({
-          type: 'error',
-          title: 'Erro ao criar unidade',
-          message: error.message || 'Erro interno do sistema',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    
+    // const handleCriarRestaurante = async () => {
+    
 
     const handleEditarRestaurante = async (restaurante: Restaurante) => {
       setEditingRestaurante(restaurante);

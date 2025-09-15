@@ -123,13 +123,14 @@ class Restaurante(Base):
     # Relacionamento para unidades/filiais
     # Para matriz: lista todas as filiais
     unidades = relationship("Restaurante", 
-                           back_populates="restaurante_pai",
-                           cascade="all, delete")
-    
+                       foreign_keys=[restaurante_pai_id],
+                       back_populates="restaurante_pai",
+                       cascade="all, delete-orphan")
+
     # Para filial: referência à matriz
     restaurante_pai = relationship("Restaurante", 
-                                  back_populates="unidades",
-                                  remote_side=[id])
+                              back_populates="unidades",
+                              remote_side=[id])
 
     def __repr__(self):
         """Representação em string do objeto para debug"""

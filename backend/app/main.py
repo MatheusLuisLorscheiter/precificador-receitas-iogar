@@ -126,6 +126,22 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+@app.options("/{path:path}")
+async def options_handler(request: Request, path: str):
+    """
+    Handler explícito para requisições OPTIONS (preflight CORS)
+    """
+    return JSONResponse(
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
+
+
 #   ===================================================================================================
 #   Configuração de CORS para permitir acesso do frontend
 #   ===================================================================================================
@@ -134,12 +150,29 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000", 
+        "http://0.0.0.0:3000",
+        "http://192.168.*.*:3000"  # Para redes locais
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+    allow_methods=["*"],  # Permite todos os métodos HTTP
+    allow_headers=["*"],  # Permite todos os headers
     expose_headers=["*"],
+    max_age=86400,  # Cache preflight por 24 horas
 )
+
+@app.get("/test-cors", summary="Testar CORS")
+def test_cors():
+    """
+    Endpoint simples para testar se CORS está funcionando
+    """
+    return {
+        "message": "CORS está funcionando!",
+        "headers_received": "Ok",
+        "status": "success"
+    }
 
 #   ===================================================================================================
 #   Endpoints básicos de status e saúde

@@ -266,7 +266,6 @@ def delete_restaurante(db: Session, restaurante_id: int) -> bool:
         unidades_ids.extend([u.id for u in unidades])
         
         # Verificar se alguma unidade tem receitas
-        from ..models.receita import Receita
         receitas_count = db.query(Receita).filter(
             Receita.restaurante_id.in_(unidades_ids)
         ).count()
@@ -296,8 +295,9 @@ def get_restaurante_estatisticas(db: Session, restaurante_id: int) -> dict:
         unidades_ids = [restaurante.id]
     
     # Contar receitas por unidade
-    from ..models.receita import Receita
-    from ..models.insumo import Insumo
+    total_receitas = db.query(Receita).filter(
+        Receita.restaurante_id.in_(unidades_ids)
+    ).count()
     
     total_receitas = db.query(Receita).filter(
         Receita.restaurante_id.in_(unidades_ids)
