@@ -393,12 +393,24 @@ def listar_restaurantes_simples(
         for restaurante in restaurantes:
             if restaurante.eh_matriz:
                 # Buscar unidades filhas desta matriz
-                unidades = db.query(Restaurante).filter(
-                    Restaurante.restaurante_pai_id == restaurante.id
+                unidades_filhas = db.query(Restaurante).filter(
+                    Restaurante.restaurante_pai_id == restaurante.id,
+                    Restaurante.ativo == True
                 ).all()
-                restaurante.unidades = unidades
+                
+                # Garantir que o atributo existe no objeto
+                if hasattr(restaurante, 'unidades'):
+                    restaurante.unidades = unidades_filhas
+                else:
+                    # Adicionar manualmente se não existir
+                    restaurante.__dict__['unidades'] = unidades_filhas
+                    
+                print(f"DEBUG - Restaurante {restaurante.nome}: {len(unidades_filhas)} unidades")
             else:
-                restaurante.unidades = []
+                if hasattr(restaurante, 'unidades'):
+                    restaurante.unidades = []
+                else:
+                    restaurante.__dict__['unidades'] = []
 
         # Aplicar paginação manual para matrizes
         restaurantes = restaurantes[skip:skip+limit]

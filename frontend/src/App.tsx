@@ -1106,14 +1106,6 @@ const FormularioRestauranteIsolado = React.memo(({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const aplicarMascaraCNPJ = (cnpj) => {
-    const numero = cnpj.replace(/\D/g, '');
-    if (numero.length <= 14) {
-      return numero.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-    }
-    return cnpj;
-  };
-
   const validarCNPJ = (cnpj) => {
     const numero = cnpj.replace(/\D/g, '');
     if (numero.length !== 14) return false;
@@ -1728,33 +1720,6 @@ const FoodCostSystem: React.FC = () => {
   });
 
   const [cnpjValido, setCnpjValido] = useState(true);
-  const validarCNPJ = (cnpj: string): boolean => {
-    const numero = cnpj.replace(/\D/g, '');
-    if (numero.length !== 14) return false;
-    if (/^(\d)\1+$/.test(numero)) return false;
-    
-    let soma = 0;
-    let peso = 2;
-    
-    for (let i = 11; i >= 0; i--) {
-      soma += parseInt(numero.charAt(i)) * peso;
-      peso = peso === 9 ? 2 : peso + 1;
-    }
-    
-    const digito1 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-    if (parseInt(numero.charAt(12)) !== digito1) return false;
-    
-    soma = 0;
-    peso = 2;
-    
-    for (let i = 12; i >= 0; i--) {
-      soma += parseInt(numero.charAt(i)) * peso;
-      peso = peso === 9 ? 2 : peso + 1;
-    }
-    
-    const digito2 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-    return parseInt(numero.charAt(13)) === digito2;
-  };
 
   const aplicarMascaraCNPJ = (valor: string): string => {
     let numero = valor.replace(/\D/g, '');
@@ -1775,7 +1740,7 @@ const FoodCostSystem: React.FC = () => {
     
     return numero;
   };
-
+  // AQUI FICA O VALIDACNPJ
   const [formUnidade, setFormUnidade] = useState<UnidadeCreate>({
     endereco: '',
     bairro: '',
@@ -3508,6 +3473,25 @@ const fetchInsumos = async () => {
   // COMPONENTE GESTÃO DE RESTAURANTES
   // ============================================================================
   const Restaurantes = () => {
+
+    // Estado para popup de confirmação de exclusão de restaurante
+    const [deleteRestauranteConfirm, setDeleteRestauranteConfirm] = useState({
+      isOpen: false,
+      restauranteId: null,
+      restauranteNome: '',
+      temUnidades: false,
+      quantidadeUnidades: 0
+    });
+    const [loadingEdicao, setLoadingEdicao] = useState<boolean>(false);
+    const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
+
+    console.log('🔍 DEBUG Estados:', { //DEBUG TEMPORARIO
+      deleteRestauranteConfirm,
+      setDeleteRestauranteConfirm: typeof setDeleteRestauranteConfirm
+    });
+
+    console.log('🔍 ESTADO ATUAL DO POPUP:', deleteRestauranteConfirm.isOpen);  //DEBUG TEMPORARIO
+
     if (loading) {
       return (
         <div className="text-center py-20">
@@ -3532,9 +3516,6 @@ const fetchInsumos = async () => {
       );
     }
 
-    const [loadingEdicao, setLoadingEdicao] = useState<boolean>(false);
-    const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
-
     // ============================================================================
     // FUNÇÕES AUXILIARES PARA MANIPULAÇÃO DE EXPANSÃO
     // ============================================================================
@@ -3552,6 +3533,18 @@ const fetchInsumos = async () => {
       }
       console.log('🔄 EXPANSÃO - Novo estado:', novosExpandidos);   // APOS RESOLVER, EXCLUA
       setRestaurantesExpandidos(novosExpandidos);
+    };
+
+    const handleToggleExpandirRestaurante = (restauranteId: number) => {
+      setRestaurantesExpandidos(prev => {
+        const novo = new Set(prev);
+        if (novo.has(restauranteId)) {
+          novo.delete(restauranteId);
+        } else {
+          novo.add(restauranteId);
+        }
+        return novo;
+      });
     };
 
     // ============================================================================
@@ -3575,20 +3568,32 @@ const fetchInsumos = async () => {
 	  setShowRestauranteForm(true); // <- USAR A FUNÇÃO GLOBAL, NÃO A LOCAL
 	};
 
-    const abrirFormUnidade = useCallback((restaurante: RestauranteGrid) => {
-      console.log('🔥 DEBUG - abrirFormUnidade chamada para:', restaurante.nome);
-      console.log('🔍 DEBUG - Forçando abertura do formulário');
-      
-      // Primeiro definir os dados da unidade
-      setRestauranteParaUnidade(restaurante);
-      
-      // Usar setTimeout para garantir que o estado seja aplicado após o render
-      setTimeout(() => {
-        setShowUnidadeForm(true);
-        console.log('🔥 DEBUG - showUnidadeForm setado para TRUE via setTimeout');
-      }, 0);
-      
-    }, []);
+  const abrirFormUnidade = useCallback((restaurante: RestauranteGrid) => {
+    console.log('🔥 DEBUG - abrirFormUnidade chamada para:', restaurante.nome);
+    console.log('🔍 DEBUG - Forçando abertura do formulário');
+    
+    // Primeiro definir os dados da unidade
+    setRestauranteParaUnidade(restaurante);
+    
+    // Usar setTimeout para garantir que o estado seja aplicado após o render
+    setTimeout(() => {
+      setShowUnidadeForm(true);
+      console.log('🔥 DEBUG - showUnidadeForm setado para TRUE via setTimeout');
+    }, 0);
+    
+  }, []);
+
+  const handleAbrirFormUnidade = (restaurante: Restaurante) => {
+    setRestauranteParaUnidade(restaurante);
+    setFormUnidade({
+      endereco: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+      telefone: ''
+    });
+    setShowUnidadeForm(true);
+  };
 
   const abrirEdicaoRestaurante = async (restaurante: RestauranteGrid) => {
     console.log('Editando restaurante:', restaurante.nome);
@@ -3634,6 +3639,107 @@ const fetchInsumos = async () => {
     }
   };
 
+  const handleEditarRestaurante = async (restaurante: Restaurante) => {
+  setEditingRestaurante(restaurante);
+    setFormRestaurante({
+      nome: restaurante.nome,
+      cnpj: restaurante.cnpj || '',
+      tipo: restaurante.tipo,
+      tem_delivery: restaurante.tem_delivery,
+      endereco: restaurante.endereco || '',
+      bairro: restaurante.bairro || '',
+      cidade: restaurante.cidade || '',
+      estado: restaurante.estado || '',
+      telefone: restaurante.telefone || '',
+      ativo: restaurante.ativo
+    });
+    setShowRestauranteForm(true);
+  };
+
+  const handleSalvarEdicaoRestaurante = async (dadosRestaurante) => {
+    if (!editingRestaurante || !dadosRestaurante.nome.trim()) {
+      showErrorPopup('Dados inválidos', 'Nome é obrigatório');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${editingRestaurante.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dadosRestaurante),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao atualizar restaurante');
+      }
+
+      showSuccessPopup(
+        'Restaurante atualizado',
+        `${dadosRestaurante.nome} foi atualizado com sucesso!`
+      );
+
+      setEditingRestaurante(null);
+      setShowRestauranteForm(false);
+      
+      await carregarRestaurantes();
+    } catch (error) {
+      console.error('Erro ao atualizar restaurante:', error);
+      showErrorPopup(
+        'Erro ao atualizar',
+        error.message || 'Erro interno do sistema'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExcluirRestaurante = (restaurante: Restaurante) => {
+    setDeleteRestauranteConfirm({
+      isOpen: true,
+      restauranteId: restaurante.id,
+      restauranteNome: restaurante.nome,
+      temUnidades: restaurante.eh_matriz && restaurante.quantidade_unidades > 1,
+      quantidadeUnidades: restaurante.quantidade_unidades
+    });
+  };
+
+  // Função para confirmar e executar a exclusão do restaurante
+  const confirmDeleteRestaurante = async () => {
+    if (!deleteRestauranteConfirm.restauranteId) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${deleteRestauranteConfirm.restauranteId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao excluir restaurante');
+      }
+
+      showSuccessPopup(
+        'Restaurante excluído',
+        `${deleteRestauranteConfirm.restauranteNome} foi excluído com sucesso!`
+      );
+      
+      // Fechar popup e recarregar lista
+      setDeleteRestauranteConfirm({ isOpen: false, restauranteId: null, restauranteNome: '', temUnidades: false, quantidadeUnidades: 0 });
+      await carregarRestaurantes();
+    } catch (error) {
+      console.error('Erro ao excluir restaurante:', error);
+      showErrorPopup(
+        'Erro ao excluir',
+        error.message || 'Erro interno do sistema'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
     return (
       <div className="space-y-6">
         {/* ============================================================================ */}
@@ -3823,9 +3929,15 @@ const fetchInsumos = async () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (confirm(`Tem certeza que deseja excluir o restaurante "${restaurante.nome}"?`)) {
-                                    handleExcluirRestaurante(restaurante.id);
-                                  }
+                                  console.log('🔍 DEBUG Botão clicado:', restaurante.nome);  //debug temporario
+                                  console.log('🔍 DEBUG Antes do setState:', deleteRestauranteConfirm); //debug temporario
+                                  setDeleteRestauranteConfirm({
+                                    isOpen: true,
+                                    restauranteId: restaurante.id,
+                                    restauranteNome: restaurante.nome,
+                                    temUnidades: restaurante.eh_matriz && restaurante.quantidade_unidades > 1,
+                                    quantidadeUnidades: restaurante.quantidade_unidades || 0
+                                  });
                                 }}
                                 className="text-red-600 hover:text-red-700 transition-colors"
                                 title="Excluir restaurante"
@@ -3896,7 +4008,7 @@ const fetchInsumos = async () => {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (confirm(`Tem certeza que deseja excluir a unidade "${unidade.nome}"?`)) {
+                                      if (setDeleteRestauranteConfirm(`Tem certeza que deseja excluir a unidade "${unidade.nome}"?`)) {
                                         handleExcluirRestaurante(unidade.id);
                                       }
                                     }}
@@ -4044,10 +4156,62 @@ const fetchInsumos = async () => {
         onSave={handleCriarUnidade}
         loading={loading}
       />
-
+              {/* POPUP CONFIRMAÇÃO DE EXCLUSÃO DE RESTAURANTE revisar*/}
+        {deleteRestauranteConfirm.isOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70]">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-red-50 p-2 rounded-full">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Confirmar Exclusão</h3>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-600 mb-2">
+                  Tem certeza que deseja excluir o restaurante:
+                </p>
+                <p className="font-semibold text-gray-800">
+                  {deleteRestauranteConfirm.restauranteNome}
+                </p>
+                
+                {deleteRestauranteConfirm.temUnidades ? (
+                  <div className="mt-3 p-3 bg-red-50 border-l-4 border-red-400 rounded">
+                    <p className="text-sm text-red-700 font-medium">
+                      ⚠️ ATENÇÃO: Este restaurante possui {deleteRestauranteConfirm.quantidadeUnidades} unidades.
+                    </p>
+                    <p className="text-sm text-red-600 mt-1">
+                      Todas as unidades serão excluídas permanentemente!
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-red-600 mt-2">
+                    ⚠️ Esta ação não pode ser desfeita.
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setDeleteRestauranteConfirm({ isOpen: false, restauranteId: null, restauranteNome: '', temUnidades: false, quantidadeUnidades: 0 })}
+                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDeleteRestaurante}
+                  disabled={loading}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Excluindo...' : 'Excluir Restaurante'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
-  };
+  }; // FINal DO COMPONENTE RESTAURANTE
 
 
   // ============================================================================
@@ -4365,195 +4529,22 @@ const fetchInsumos = async () => {
     };
 
     // =========================================================================
-    // FUNÇÕES DE CARREGAMENTO DE RESTAURANTES
-    // =========================================================================
-
-    const carregarTiposEstabelecimento = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/api/v1/restaurantes/tipos');
-        if (response.ok) {
-          const data = await response.json();
-          setTiposEstabelecimento(data || []);
-        } else {
-          // Fallback para tipos locais se API falhar
-          console.warn('API de tipos não disponível, usando fallback local');
-          setTiposEstabelecimento(TIPOS_ESTABELECIMENTO.map(t => t.value));
-        }
-      } catch (error) {
-        console.error('Erro ao carregar tipos de estabelecimento:', error);
-        // Fallback para tipos locais
-        setTiposEstabelecimento(TIPOS_ESTABELECIMENTO.map(t => t.value));
-      }
-    };
-
-
-    // =========================================================================
     // FUNÇÕES DE MANIPULAÇÃO DE RESTAURANTES
     // =========================================================================
 
-    const validarCNPJ = (cnpj: string): boolean => {
-      // Remove caracteres não numéricos
-      const numero = cnpj.replace(/\D/g, '');
-      
-      // Verifica se tem 14 dígitos
-      if (numero.length !== 14) return false;
-      
-      // Verifica se todos os dígitos são iguais
-      if (/^(\d)\1+$/.test(numero)) return false;
-      
-      // Validação matemática do CNPJ
-      let soma = 0;
-      let peso = 2;
-      
-      // Primeira verificação
-      for (let i = 11; i >= 0; i--) {
-        soma += parseInt(numero.charAt(i)) * peso;
-        peso = peso === 9 ? 2 : peso + 1;
-      }
-      
-      const digito1 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-      if (parseInt(numero.charAt(12)) !== digito1) return false;
-      
-      // Segunda verificação
-      soma = 0;
-      peso = 2;
-      
-      for (let i = 12; i >= 0; i--) {
-        soma += parseInt(numero.charAt(i)) * peso;
-        peso = peso === 9 ? 2 : peso + 1;
-      }
-      
-      const digito2 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-      return parseInt(numero.charAt(13)) === digito2;
-    };    
+ 
 
-    const handleEditarRestaurante = async (restaurante: Restaurante) => {
-      setEditingRestaurante(restaurante);
-      setFormRestaurante({
-        nome: restaurante.nome,
-        cnpj: restaurante.cnpj || '',
-        tipo: restaurante.tipo,
-        tem_delivery: restaurante.tem_delivery,
-        endereco: restaurante.endereco || '',
-        bairro: restaurante.bairro || '',
-        cidade: restaurante.cidade || '',
-        estado: restaurante.estado || '',
-        telefone: restaurante.telefone || '',
-        ativo: restaurante.ativo
-      });
-      setShowRestauranteForm(true);
-    };
 
-    const handleSalvarEdicaoRestaurante = async (dadosRestaurante) => {
-      if (!editingRestaurante || !dadosRestaurante.nome.trim()) {
-        showErrorPopup('Dados inválidos', 'Nome é obrigatório');
-        return;
-      }
 
-      try {
-        setLoading(true);
-        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${editingRestaurante.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(dadosRestaurante),
-        });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Erro ao atualizar restaurante');
-        }
 
-        showSuccessPopup(
-          'Restaurante atualizado',
-          `${dadosRestaurante.nome} foi atualizado com sucesso!`
-        );
 
-        setEditingRestaurante(null);
-        setShowRestauranteForm(false);
-        
-        await carregarRestaurantes();
-      } catch (error) {
-        console.error('Erro ao atualizar restaurante:', error);
-        showErrorPopup(
-          'Erro ao atualizar',
-          error.message || 'Erro interno do sistema'
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    const handleExcluirRestaurante = async (restaurante: Restaurante) => {
-      const confirmacao = window.confirm(
-        `Tem certeza que deseja excluir ${restaurante.nome}?\n\n` +
-        (restaurante.eh_matriz && restaurante.quantidade_unidades > 1 
-          ? `⚠️ ATENÇÃO: Este restaurante possui ${restaurante.quantidade_unidades} unidades. Todas serão excluídas!`
-          : 'Esta ação não pode ser desfeita.')
-      );
 
-      if (!confirmacao) return;
 
-      try {
-        setLoading(true);
-        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restaurante.id}`, {
-          method: 'DELETE',
-        });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Erro ao excluir restaurante');
-        }
 
-        // Sucesso
-        setPopup({
-          type: 'success',
-          title: 'Restaurante excluído',
-          message: `${restaurante.nome} foi excluído com sucesso!`,
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-        
-        // Recarregar lista
-        await carregarRestaurantes();
-      } catch (error) {
-        console.error('Erro ao excluir restaurante:', error);
-        setPopup({
-          type: 'error',
-          title: 'Erro ao excluir',
-          message: error.message || 'Erro interno do sistema',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    const handleToggleExpandirRestaurante = (restauranteId: number) => {
-      setRestaurantesExpandidos(prev => {
-        const novo = new Set(prev);
-        if (novo.has(restauranteId)) {
-          novo.delete(restauranteId);
-        } else {
-          novo.add(restauranteId);
-        }
-        return novo;
-      });
-    };
-
-    const handleAbrirFormUnidade = (restaurante: Restaurante) => {
-      setRestauranteParaUnidade(restaurante);
-      setFormUnidade({
-        endereco: '',
-        bairro: '',
-        cidade: '',
-        estado: '',
-        telefone: ''
-      });
-      setShowUnidadeForm(true);
-    };
 
     // =========================================================================
     // FUNÇÕES DE EDIÇÃO E EXCLUSÃO DE FORNECEDORES
@@ -6075,9 +6066,10 @@ const cancelarExclusao = () => {
         showSuccessPopup={showSuccessPopup}
         showErrorPopup={showErrorPopup}
       />
+      
     </div>
     );
-  };
+  };  // FINAL DO COMPONENTE PRINCIPAL
 
 // Exportação do componente principal
 export default FoodCostSystem;
