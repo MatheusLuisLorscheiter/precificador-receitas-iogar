@@ -180,6 +180,7 @@ class UnidadeCreate(BaseModel):
     cidade: str = Field(..., description="Cidade da unidade")
     estado: str = Field(..., max_length=2, description="Estado da unidade")
     telefone: Optional[str] = Field(None, description="Telefone da unidade")
+    tem_delivery: Optional[bool] = Field(None, description="Se a unidade oferece delivery")
     
     class Config:
         json_schema_extra = {

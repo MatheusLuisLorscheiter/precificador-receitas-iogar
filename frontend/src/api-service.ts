@@ -417,7 +417,8 @@ class ApiService {
       bairro: unidade.bairro,
       cidade: unidade.cidade,
       estado: unidade.estado,
-      telefone: unidade.telefone || null
+      telefone: unidade.telefone || null,
+      tem_delivery: unidade.tem_delivery
     };
 
     console.log('📤 Enviando dados para criar unidade:', dadosUnidade);

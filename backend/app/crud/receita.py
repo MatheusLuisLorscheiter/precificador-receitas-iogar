@@ -134,7 +134,7 @@ def create_unidade(db: Session, restaurante_matriz_id: int, unidade: UnidadeCrea
         nome=matriz.nome,
         cnpj=None,  # Filiais não tem CNPJ próprio
         tipo=matriz.tipo,
-        tem_delivery=matriz.tem_delivery,
+        tem_delivery=unidade.tem_delivery if hasattr(unidade, 'tem_delivery') and unidade.tem_delivery is not None else matriz.tem_delivery,
         endereco=unidade.endereco,
         bairro=unidade.bairro,
         cidade=unidade.cidade,
@@ -233,17 +233,33 @@ def update_restaurante(db: Session, restaurante_id: int, restaurante_update: Res
     if not db_restaurante:
         return None
     
-    # Validar CNPJ único se está sendo alterado
-    if restaurante_update.cnpj and restaurante_update.cnpj != db_restaurante.cnpj:
-        existing = db.query(Restaurante).filter(
-            Restaurante.cnpj == restaurante_update.cnpj,
-            Restaurante.id != restaurante_id
-        ).first()
-        if existing:
-            raise ValueError(f"CNPJ {restaurante_update.cnpj} já está cadastrado")
+    # Preparar dados para atualização
+    update_data = restaurante_update.model_dump(exclude_unset=True)
+    
+    # ============================================================================
+    # LÓGICA ESPECIAL PARA CNPJ EM FILIAIS
+    # ============================================================================
+    if 'cnpj' in update_data:
+        # Se é filial, CNPJ deve ser NULL, não string vazia
+        if not db_restaurante.eh_matriz:
+            update_data['cnpj'] = None  # Filial não tem CNPJ
+        else:
+            # Para matriz, validar CNPJ único se está sendo alterado
+            cnpj_novo = update_data['cnpj']
+            if cnpj_novo and cnpj_novo.strip() != '':
+                # Verificar se CNPJ não é duplicado
+                existing = db.query(Restaurante).filter(
+                    Restaurante.cnpj == cnpj_novo,
+                    Restaurante.id != restaurante_id
+                ).first()
+                if existing:
+                    raise ValueError(f"CNPJ {cnpj_novo} já está cadastrado")
+            else:
+                # Se CNPJ vazio para matriz, definir como NULL
+                update_data['cnpj'] = None
     
     # Aplicar atualizações
-    for field, value in restaurante_update.model_dump(exclude_unset=True).items():
+    for field, value in update_data.items():
         setattr(db_restaurante, field, value)
     
     db.commit()

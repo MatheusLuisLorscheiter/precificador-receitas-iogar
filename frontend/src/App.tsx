@@ -116,6 +116,7 @@ interface UnidadeCreate {
   cidade: string;
   estado: string;
   telefone?: string;
+  tem_delivery: boolean;
 }
 
 // Interface para tipos de estabelecimento
@@ -1411,7 +1412,8 @@ const FormularioUnidadeIsolado = React.memo<FormularioUnidadeIsoladoProps>(({
     bairro: '',
     cidade: '',
     estado: '',
-    telefone: ''
+    telefone: '',
+    tem_delivery: restauranteMatriz?.tem_delivery || false
   });
 
   // Estados brasileiros para dropdown (mesma lista do componente principal)
@@ -1426,7 +1428,7 @@ const FormularioUnidadeIsolado = React.memo<FormularioUnidadeIsoladoProps>(({
   // ============================================================================
   
   // Função para atualizar campos do formulário
-  const handleInputChange = useCallback((field: keyof UnidadeCreate, value: string) => {
+  const handleInputChange = useCallback((field: keyof UnidadeCreate, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -1440,9 +1442,11 @@ const FormularioUnidadeIsolado = React.memo<FormularioUnidadeIsoladoProps>(({
       bairro: '',
       cidade: '',
       estado: '',
-      telefone: ''
+      telefone: '',
+      tem_delivery: restauranteMatriz?.tem_delivery || false
     });
-  }, []);
+  }, [restauranteMatriz]);
+
 
   // ============================================================================
   // FUNÇÕES DE AÇÃO DO FORMULÁRIO
@@ -1616,6 +1620,34 @@ const FormularioUnidadeIsolado = React.memo<FormularioUnidadeIsoladoProps>(({
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
               placeholder="(11) 99999-9999"
             />
+          </div>
+          {/* Campo de Delivery */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Serviço de Delivery
+            </label>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="tem_delivery_unidade"
+                  checked={formData.tem_delivery === true}
+                  onChange={() => handleInputChange('tem_delivery', true)}
+                  className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                />
+                <span className="text-gray-700">Sim</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="tem_delivery_unidade"
+                  checked={formData.tem_delivery === false}
+                  onChange={() => handleInputChange('tem_delivery', false)}
+                  className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                />
+                <span className="text-gray-700">Não</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -2032,21 +2064,29 @@ const fetchInsumos = async () => {
   const fetchRestaurantes = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getRestaurantes();
+      
+      // Tentar endpoint com-unidades primeiro para ter dados das filiais
+      const response = await apiService.getRestaurantesComUnidades();
       if (response.data) {
+        console.log('📊 Restaurantes com unidades carregados:', response.data.length); // Debug temporário
         setRestaurantes(response.data);
       } else if (response.error) {
-        console.error('Erro ao buscar restaurantes:', response.error);
-        // Usar dados temporários se a API falhar
-        setRestaurantes([
-          { id: 1, nome: "Restaurante Demo", endereco: "Endereço Demo" }
-        ]);
+        console.error('Erro ao buscar restaurantes com unidades:', response.error);
+        
+        // Fallback para endpoint grid se com-unidades falhar
+        const fallbackResponse = await apiService.getRestaurantesGrid();
+        if (fallbackResponse.data) {
+          // Adicionar propriedade unidades vazia para compatibilidade com expansão
+          const restaurantesComUnidades = fallbackResponse.data.map(restaurante => ({
+            ...restaurante,
+            unidades: [] // Necessário para funcionamento do botão de expansão
+          }));
+          setRestaurantes(restaurantesComUnidades);
+        }
       }
     } catch (error) {
       console.error('Erro ao buscar restaurantes:', error);
-      setRestaurantes([
-        { id: 1, nome: "Restaurante Demo", endereco: "Endereço Demo" }
-      ]);
+      setRestaurantes([]);
     } finally {
       setLoading(false);
     }
@@ -2094,19 +2134,31 @@ const fetchInsumos = async () => {
   const carregarRestaurantes = async () => {
     try {
       setLoading(true);
+      
+      // Primeiro tentar com-unidades para dados completos
       const response = await fetch('http://localhost:8000/api/v1/restaurantes/com-unidades');
-      const data = await response.json();
-      setRestaurantes(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar restaurantes:', error);
-      // Fallback para método grid se com-unidades falhar
-      try {
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📊 Dados recebidos com-unidades:', data); // Debug temporário
+        setRestaurantes(data || []);
+      } else {
+        // Fallback para grid se com-unidades não funcionar
+        console.log('⚠️ Fallback para endpoint grid');
         const fallbackResponse = await fetch('http://localhost:8000/api/v1/restaurantes/grid');
         const fallbackData = await fallbackResponse.json();
-        setRestaurantes(fallbackData || []);
-      } catch (fallbackError) {
-        console.error('Erro no fallback de restaurantes:', fallbackError);
+        
+        // Adicionar propriedade unidades vazia para compatibilidade
+        const restaurantesComUnidades = (fallbackData || []).map(restaurante => ({
+          ...restaurante,
+          unidades: [] // Propriedade necessária para expansão
+        }));
+        
+        setRestaurantes(restaurantesComUnidades);
       }
+    } catch (error) {
+      console.error('Erro ao carregar restaurantes:', error);
+      setRestaurantes([]);
     } finally {
       setLoading(false);
     }
@@ -3949,13 +4001,6 @@ const fetchInsumos = async () => {
                         </tr>
 
                         {/* LINHAS EXPANDIDAS - UNIDADES/FILIAIS */}
-                        {console.log('🔍 RENDERIZAÇÃO - Restaurante:', restaurante.nome, {
-                            id: restaurante.id,
-                            expandido: restaurantesExpandidos.has(restaurante.id),
-                            temUnidades: !!restaurante.unidades,
-                            quantidadeUnidades: restaurante.unidades?.length || 0,
-                            unidades: restaurante.unidades
-                          })}
                         {restaurantesExpandidos.has(restaurante.id) && restaurante.unidades && (                          
                           restaurante.unidades.map((unidade, index) => (                            
                             <tr key={`unidade-${restaurante.id}-${index}`} className="bg-gray-50 border-l-4 border-green-200">
