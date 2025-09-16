@@ -1382,6 +1382,288 @@ const FormularioRestauranteIsolado = React.memo(({
   );
 });
 
+// ============================================================================
+// Formulário isolado para criação de unidades/filiais usando React.memo
+// ============================================================================
+interface UnidadeCreate {
+  endereco: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  telefone: string;
+}
+
+interface FormularioUnidadeIsoladoProps {
+  isVisible: boolean;
+  restauranteMatriz: RestauranteGrid | null;
+  onClose: () => void;
+  onSave: (dadosUnidade: UnidadeCreate) => void;
+  loading: boolean;
+}
+
+const FormularioUnidadeIsolado = React.memo<FormularioUnidadeIsoladoProps>(({ 
+  isVisible, 
+  restauranteMatriz, 
+  onClose, 
+  onSave, 
+  loading 
+}) => {
+  console.log('🔧 FormularioUnidadeIsolado renderizado - isVisible:', isVisible);
+  
+  // ============================================================================
+  // ESTADOS DO FORMULÁRIO DE UNIDADE
+  // ============================================================================
+  
+  const [formData, setFormData] = useState<UnidadeCreate>({
+    endereco: '',
+    bairro: '',
+    cidade: '',
+    estado: '',
+    telefone: ''
+  });
+
+  // Estados brasileiros para dropdown (mesma lista do componente principal)
+  const ESTADOS_BRASIL = [
+    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+    'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+    'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+  ];
+
+  // ============================================================================
+  // FUNÇÕES DE MANIPULAÇÃO DO FORMULÁRIO
+  // ============================================================================
+  
+  // Função para atualizar campos do formulário
+  const handleInputChange = useCallback((field: keyof UnidadeCreate, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
+
+  // Função para resetar o formulário
+  const resetForm = useCallback(() => {
+    setFormData({
+      endereco: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+      telefone: ''
+    });
+  }, []);
+
+  // ============================================================================
+  // FUNÇÕES DE AÇÃO DO FORMULÁRIO
+  // ============================================================================
+  
+  // Função para fechar o formulário
+  const handleClose = useCallback(() => {
+    resetForm();
+    onClose();
+  }, [resetForm, onClose]);
+
+  // Função para salvar a unidade
+  const handleSave = useCallback(() => {
+    // Validação dos campos obrigatórios
+    if (!formData.endereco.trim() || !formData.bairro.trim() || 
+        !formData.cidade.trim() || !formData.estado.trim()) {
+      console.log('❌ Validação falhou - campos obrigatórios não preenchidos');
+      return;
+    }
+
+    console.log('📤 Salvando unidade:', formData);
+    onSave(formData);
+  }, [formData, onSave]);
+
+  // ============================================================================
+  // VERIFICAÇÃO DE VISIBILIDADE
+  // ============================================================================
+  
+  if (!isVisible || !restauranteMatriz) {
+    return null;
+  }
+
+  // ============================================================================
+  // RENDER DO FORMULÁRIO
+  // ============================================================================
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        
+        {/* ============================================================================ */}
+        {/* HEADER DO POPUP COM GRADIENTE VERDE E ROSA */}
+        {/* ============================================================================ */}
+        
+        <div className="bg-gradient-to-r from-green-500 to-pink-500 text-white p-6 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Nova Unidade</h2>
+              <p className="text-green-100 mt-1">
+                Criando nova filial de <span className="font-semibold">{restauranteMatriz.nome}</span>
+              </p>
+            </div>
+            <button
+              onClick={handleClose}
+              className="text-white hover:text-gray-200 transition-colors"
+              type="button"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* ============================================================================ */}
+        {/* CORPO DO FORMULÁRIO */}
+        {/* ============================================================================ */}
+        
+        <div className="p-6 space-y-6">
+          
+          {/* Informação da matriz */}
+          <div className="bg-green-50 p-4 rounded-lg">
+            <h3 className="font-medium text-green-900 mb-2">Informações da Matriz</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-green-700">Nome:</span>
+                <span className="text-green-900 font-medium ml-2">{restauranteMatriz.nome}</span>
+              </div>
+              <div>
+                <span className="text-green-700">Tipo:</span>
+                <span className="text-green-900 font-medium ml-2 capitalize">
+                  {restauranteMatriz.tipo.replace('_', ' ')}
+                </span>
+              </div>
+              <div>
+                <span className="text-green-700">Delivery:</span>
+                <span className="text-green-900 font-medium ml-2">
+                  {restauranteMatriz.tem_delivery ? 'Sim' : 'Não'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ============================================================================ */}
+          {/* CAMPOS DO FORMULÁRIO DE LOCALIZAÇÃO */}
+          {/* ============================================================================ */}
+          
+          {/* Endereço completo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Endereço Completo *
+            </label>
+            <input
+              type="text"
+              value={formData.endereco}
+              onChange={(e) => handleInputChange('endereco', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+              placeholder="Rua, Avenida, número e complemento"
+              required
+            />
+          </div>
+
+          {/* Estado e Cidade */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estado *
+              </label>
+              <select
+                value={formData.estado}
+                onChange={(e) => handleInputChange('estado', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                required
+              >
+                <option value="">Selecione o estado</option>
+                {ESTADOS_BRASIL.map(estado => (
+                  <option key={estado} value={estado}>
+                    {estado}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cidade *
+              </label>
+              <input
+                type="text"
+                value={formData.cidade}
+                onChange={(e) => handleInputChange('cidade', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                placeholder="Digite a cidade"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Bairro */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Bairro *
+            </label>
+            <input
+              type="text"
+              value={formData.bairro}
+              onChange={(e) => handleInputChange('bairro', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+              placeholder="Digite o bairro"
+              required
+            />
+          </div>
+
+          {/* Telefone (opcional) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Telefone
+            </label>
+            <input
+              type="tel"
+              value={formData.telefone}
+              onChange={(e) => handleInputChange('telefone', e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+              placeholder="(11) 99999-9999"
+            />
+          </div>
+        </div>
+
+        {/* ============================================================================ */}
+        {/* FOOTER COM BOTÕES DE AÇÃO */}
+        {/* ============================================================================ */}
+        
+        <div className="bg-gray-50 px-6 py-4 flex gap-3 rounded-b-xl">
+          <button
+            onClick={handleClose}
+            disabled={loading}
+            className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+          >
+            Cancelar
+          </button>
+          
+          <button
+            onClick={handleSave}
+            disabled={loading || !formData.endereco.trim() || !formData.bairro.trim() || 
+                     !formData.cidade.trim() || !formData.estado.trim()}
+            className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            type="button"
+          >
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                Criando...
+              </div>
+            ) : (
+              'Criar Unidade'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+
 // Definir displayName para o React.memo
 FormularioRestauranteIsolado.displayName = 'FormularioRestauranteIsolado';
 
@@ -1617,17 +1899,14 @@ const FoodCostSystem: React.FC = () => {
     }
   };
 
-    const handleCriarUnidade = async () => {
-      if (!restauranteParaUnidade || !formUnidade.endereco.trim() || 
-          !formUnidade.bairro.trim() || !formUnidade.cidade.trim() || 
-          !formUnidade.estado.trim()) {
-        setPopup({
-          type: 'error',
-          title: 'Dados obrigatórios',
-          message: 'Endereço, bairro, cidade e estado são obrigatórios',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
+    const handleCriarUnidade = async (dadosUnidade: UnidadeCreate) => {
+      if (!restauranteParaUnidade || !dadosUnidade.endereco.trim() || 
+          !dadosUnidade.bairro.trim() || !dadosUnidade.cidade.trim() || 
+          !dadosUnidade.estado.trim()) {
+        showErrorPopup(
+          'Dados obrigatórios',
+          'Endereço, bairro, cidade e estado são obrigatórios'
+        );
         return;
       }
 
@@ -1638,7 +1917,7 @@ const FoodCostSystem: React.FC = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formUnidade),
+          body: JSON.stringify(dadosUnidade),
         });
 
         if (!response.ok) {
@@ -1647,22 +1926,11 @@ const FoodCostSystem: React.FC = () => {
         }
 
         // Sucesso
-        setPopup({
-          type: 'success',
-          title: 'Unidade criada',
-          message: `Nova unidade de ${restauranteParaUnidade.nome} criada com sucesso!`,
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
+        showSuccessPopup(
+          'Unidade criada',
+          `Nova unidade de ${restauranteParaUnidade.nome} criada com sucesso!`
+        );
 
-        // Limpar formulário e fechar modal
-        setFormUnidade({
-          endereco: '',
-          bairro: '',
-          cidade: '',
-          estado: '',
-          telefone: ''
-        });
         setShowUnidadeForm(false);
         setRestauranteParaUnidade(null);
         
@@ -1670,13 +1938,10 @@ const FoodCostSystem: React.FC = () => {
         await carregarRestaurantes();
       } catch (error) {
         console.error('Erro ao criar unidade:', error);
-        setPopup({
-          type: 'error',
-          title: 'Erro ao criar unidade',
-          message: error.message || 'Erro interno do sistema',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
+        showErrorPopup(
+          'Erro ao criar unidade',
+          error.message || 'Erro interno do sistema'
+        );
       } finally {
         setLoading(false);
       }
@@ -3243,8 +3508,6 @@ const fetchInsumos = async () => {
   // COMPONENTE GESTÃO DE RESTAURANTES
   // ============================================================================
   const Restaurantes = () => {
-    console.log('🔍 DEBUG - Componente Restaurantes renderizando');
-    console.log('🔍 loading no Restaurantes:', typeof loading);
     if (loading) {
       return (
         <div className="text-center py-20">
@@ -3269,6 +3532,7 @@ const fetchInsumos = async () => {
       );
     }
 
+    const [loadingEdicao, setLoadingEdicao] = useState<boolean>(false);
     const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
 
     // ============================================================================
@@ -3276,12 +3540,17 @@ const fetchInsumos = async () => {
     // ============================================================================
     
     const toggleExpansao = (restauranteId: number) => {
+      console.log('🔄 EXPANSÃO - ID:', restauranteId);                      // APOS RESOLVER, EXCLUA
+      console.log('🔄 EXPANSÃO - Estado atual:', restaurantesExpandidos);   // APOS RESOLVER, EXCLUA
       const novosExpandidos = new Set(restaurantesExpandidos);
       if (novosExpandidos.has(restauranteId)) {
         novosExpandidos.delete(restauranteId);
+        console.log('🔄 EXPANSÃO - COLAPSANDO');  // APOS RESOLVER, EXCLUA
       } else {
         novosExpandidos.add(restauranteId);
+        console.log('🔄 EXPANSÃO - EXPANDINDO');  // APOS RESOLVER, EXCLUA
       }
+      console.log('🔄 EXPANSÃO - Novo estado:', novosExpandidos);   // APOS RESOLVER, EXCLUA
       setRestaurantesExpandidos(novosExpandidos);
     };
 
@@ -3306,30 +3575,64 @@ const fetchInsumos = async () => {
 	  setShowRestauranteForm(true); // <- USAR A FUNÇÃO GLOBAL, NÃO A LOCAL
 	};
 
-    const abrirFormUnidade = (restaurante: RestauranteGrid) => {
+    const abrirFormUnidade = useCallback((restaurante: RestauranteGrid) => {
       console.log('🔥 DEBUG - abrirFormUnidade chamada para:', restaurante.nome);
+      console.log('🔍 DEBUG - Forçando abertura do formulário');
+      
+      // Primeiro definir os dados da unidade
       setRestauranteParaUnidade(restaurante);
-      setShowUnidadeForm(true);
-      console.log('🔥 DEBUG - showUnidadeForm setado para TRUE');
-    };
+      
+      // Usar setTimeout para garantir que o estado seja aplicado após o render
+      setTimeout(() => {
+        setShowUnidadeForm(true);
+        console.log('🔥 DEBUG - showUnidadeForm setado para TRUE via setTimeout');
+      }, 0);
+      
+    }, []);
 
-    const abrirEdicaoRestaurante = (restaurante: RestauranteGrid) => {
-      setModoEdicao(true);
-      setRestauranteEditando(restaurante);
-      setFormRestaurante({
-        nome: restaurante.nome,
-        cnpj: '',
-        tipo: restaurante.tipo,
-        tem_delivery: restaurante.tem_delivery,
-        endereco: '',
-        bairro: '',
-        cidade: restaurante.cidade || '',
-        estado: restaurante.estado || '',
-        telefone: '',
-        ativo: restaurante.ativo
+  const abrirEdicaoRestaurante = async (restaurante: RestauranteGrid) => {
+    console.log('Editando restaurante:', restaurante.nome);
+    
+    try {
+      setLoadingEdicao(true);
+      
+      const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restaurante.id}`);
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar dados do restaurante');
+      }
+      
+      const restauranteCompleto = await response.json();
+      
+      setEditingRestaurante({
+        id: restauranteCompleto.id,
+        nome: restauranteCompleto.nome,
+        cnpj: restauranteCompleto.cnpj || '',
+        tipo: restauranteCompleto.tipo,
+        tem_delivery: restauranteCompleto.tem_delivery,
+        endereco: restauranteCompleto.endereco || '',
+        bairro: restauranteCompleto.bairro || '',
+        cidade: restauranteCompleto.cidade || '',
+        estado: restauranteCompleto.estado || '',
+        telefone: restauranteCompleto.telefone || '',
+        ativo: restauranteCompleto.ativo,
+        eh_matriz: restauranteCompleto.eh_matriz,
+        restaurante_pai_id: restauranteCompleto.restaurante_pai_id || null,
+        quantidade_unidades: restauranteCompleto.quantidade_unidades
       });
-      setShowFormRestaurante(true);
-    };
+      
+      setShowRestauranteForm(true);
+      
+    } catch (error) {
+      console.error('Erro ao carregar dados do restaurante:', error);
+      showErrorPopup(
+        'Erro ao carregar dados', 
+        'Não foi possível carregar os dados completos do restaurante'
+      );
+    } finally {
+      setLoadingEdicao(false);
+    }
+  };
 
     return (
       <div className="space-y-6">
@@ -3533,13 +3836,17 @@ const fetchInsumos = async () => {
                           </td>
                         </tr>
 
-                        {/* ============================================================================ */}
                         {/* LINHAS EXPANDIDAS - UNIDADES/FILIAIS */}
-                        {/* ============================================================================ */}
-                        
-                        {restaurantesExpandidos.has(restaurante.id) && restaurante.unidades && (
-                          restaurante.unidades.map((unidade) => (
-                            <tr key={unidade.id} className="bg-gray-50">
+                        {console.log('🔍 RENDERIZAÇÃO - Restaurante:', restaurante.nome, {
+                            id: restaurante.id,
+                            expandido: restaurantesExpandidos.has(restaurante.id),
+                            temUnidades: !!restaurante.unidades,
+                            quantidadeUnidades: restaurante.unidades?.length || 0,
+                            unidades: restaurante.unidades
+                          })}
+                        {restaurantesExpandidos.has(restaurante.id) && restaurante.unidades && (                          
+                          restaurante.unidades.map((unidade, index) => (                            
+                            <tr key={`unidade-${restaurante.id}-${index}`} className="bg-gray-50 border-l-4 border-green-200">
                               <td className="py-3 px-4 pl-12"></td>
                               <td className="py-3 px-4">
                                 <div className="flex items-center gap-2 text-sm">
@@ -3723,193 +4030,25 @@ const fetchInsumos = async () => {
           }}
           loading={loading}
         />
-		
+
+      {/* ============================================================================ */}
+      {/* FORMULÁRIO ISOLADO - CRIAR UNIDADE/FILIAL */}
+      {/* ============================================================================ */}
+      <FormularioUnidadeIsolado 
+        isVisible={showUnidadeForm}
+        restauranteMatriz={restauranteParaUnidade}
+        onClose={() => {
+          setShowUnidadeForm(false);
+          setRestauranteParaUnidade(null);
+        }}
+        onSave={handleCriarUnidade}
+        loading={loading}
+      />
+
       </div>
     );
   };
 
-
-
-
-// ============================================================================
-// FORMULÁRIO POPUP - CRIAR UNIDADE/FILIAL
-// ============================================================================
-
-{showUnidadeForm && restauranteParaUnidade && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-      {/* Header do popup */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-t-xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Nova Unidade</h2>
-            <p className="text-blue-100 mt-1">
-              Criando nova filial de <span className="font-semibold">{restauranteParaUnidade.nome}</span>
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setShowUnidadeForm(false);
-              setRestauranteParaUnidade(null);
-            }}
-            className="text-white hover:text-gray-200 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-      </div>
-
-      {/* Corpo do formulário */}
-      <div className="p-6 space-y-6">
-        {/* Informação da matriz */}
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h3 className="font-medium text-blue-900 mb-2">Informações da Matriz</h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-blue-700">Nome:</span>
-              <span className="text-blue-900 font-medium ml-2">{restauranteParaUnidade.nome}</span>
-            </div>
-            <div>
-              <span className="text-blue-700">Tipo:</span>
-              <span className="text-blue-900 font-medium ml-2 capitalize">
-                {restauranteParaUnidade.tipo.replace('_', ' ')}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Localização da unidade */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Estado *
-            </label>
-            <select
-              value={formUnidade.estado}
-              onChange={(e) => setFormUnidade(prev => ({ ...prev, estado: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            >
-              <option value="">Selecione o estado</option>
-              {ESTADOS_BRASIL.map(estado => (
-                <option key={estado} value={estado}>
-                  {estado}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cidade *
-            </label>
-            <input
-              type="text"
-              value={formUnidade.cidade}
-              onChange={(e) => setFormUnidade(prev => ({ ...prev, cidade: e.target.value }))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Digite a cidade"
-              required
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Bairro *
-          </label>
-          <input
-            type="text"
-            value={formUnidade.bairro}
-            onChange={(e) => setFormUnidade(prev => ({ ...prev, bairro: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Digite o bairro"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Endereço Completo *
-          </label>
-          <input
-            type="text"
-            value={formUnidade.endereco}
-            onChange={(e) => setFormUnidade(prev => ({ ...prev, endereco: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Rua, número, complemento"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Telefone
-          </label>
-          <input
-            type="text"
-            value={formUnidade.telefone}
-            onChange={(e) => {
-              // Aplicar máscara básica de telefone
-              let valor = e.target.value.replace(/\D/g, '');
-              if (valor.length <= 11) {
-                valor = valor.replace(/^(\d{2})(\d)/, '($1) $2');
-                valor = valor.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
-              }
-              setFormUnidade(prev => ({ ...prev, telefone: valor }));
-            }}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="(00) 00000-0000"
-            maxLength={15}
-          />
-        </div>
-
-        {/* Informações herdadas */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="font-medium text-gray-900 mb-2">Configurações Herdadas da Matriz</h4>
-          <div className="space-y-2 text-sm text-gray-600">
-            <div className="flex justify-between">
-              <span>Tipo de estabelecimento:</span>
-              <span className="font-medium capitalize">{restauranteParaUnidade.tipo.replace('_', ' ')}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Oferece delivery:</span>
-              <span className="font-medium">{restauranteParaUnidade.tem_delivery ? 'Sim' : 'Não'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer com botões */}
-      <div className="bg-gray-50 px-6 py-4 flex gap-3 rounded-b-xl">
-        <button
-          onClick={() => {
-            setShowUnidadeForm(false);
-            setRestauranteParaUnidade(null);
-          }}
-          className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          Cancelar
-        </button>
-        <button
-          onClick={handleCriarUnidade}
-          disabled={loading || !formUnidade.endereco.trim() || !formUnidade.bairro.trim() || 
-                   !formUnidade.cidade.trim() || !formUnidade.estado.trim()}
-          className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {loading ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-              Criando...
-            </div>
-          ) : (
-            'Criar Unidade'
-          )}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
 
   // ============================================================================
   // COMPONENTE GESTÃO DE RECEITAS COM CALCULADORA
@@ -4305,15 +4444,9 @@ const fetchInsumos = async () => {
       setShowRestauranteForm(true);
     };
 
-    const handleSalvarEdicaoRestaurante = async () => {
-      if (!editingRestaurante || !formRestaurante.nome.trim()) {
-        setPopup({
-          type: 'error',
-          title: 'Dados inválidos',
-          message: 'Nome é obrigatório',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
+    const handleSalvarEdicaoRestaurante = async (dadosRestaurante) => {
+      if (!editingRestaurante || !dadosRestaurante.nome.trim()) {
+        showErrorPopup('Dados inválidos', 'Nome é obrigatório');
         return;
       }
 
@@ -4324,7 +4457,7 @@ const fetchInsumos = async () => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formRestaurante),
+          body: JSON.stringify(dadosRestaurante),
         });
 
         if (!response.ok) {
@@ -4332,30 +4465,21 @@ const fetchInsumos = async () => {
           throw new Error(errorData.detail || 'Erro ao atualizar restaurante');
         }
 
-        // Sucesso
-        setPopup({
-          type: 'success',
-          title: 'Restaurante atualizado',
-          message: `${formRestaurante.nome} foi atualizado com sucesso!`,
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
+        showSuccessPopup(
+          'Restaurante atualizado',
+          `${dadosRestaurante.nome} foi atualizado com sucesso!`
+        );
 
-        // Limpar edição e fechar
         setEditingRestaurante(null);
         setShowRestauranteForm(false);
         
-        // Recarregar lista
         await carregarRestaurantes();
       } catch (error) {
         console.error('Erro ao atualizar restaurante:', error);
-        setPopup({
-          type: 'error',
-          title: 'Erro ao atualizar',
-          message: error.message || 'Erro interno do sistema',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
+        showErrorPopup(
+          'Erro ao atualizar',
+          error.message || 'Erro interno do sistema'
+        );
       } finally {
         setLoading(false);
       }

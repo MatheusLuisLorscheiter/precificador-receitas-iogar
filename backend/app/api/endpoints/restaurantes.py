@@ -10,6 +10,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from app.models.receita import Restaurante 
 
 # Importações internas do projeto
 from app.api.deps import get_db
@@ -387,6 +388,18 @@ def listar_restaurantes_simples(
     else:
         # Apenas matrizes
         restaurantes = crud_receita.get_restaurantes_grid(db)
+
+        # Carregar unidades para cada matriz
+        for restaurante in restaurantes:
+            if restaurante.eh_matriz:
+                # Buscar unidades filhas desta matriz
+                unidades = db.query(Restaurante).filter(
+                    Restaurante.restaurante_pai_id == restaurante.id
+                ).all()
+                restaurante.unidades = unidades
+            else:
+                restaurante.unidades = []
+
         # Aplicar paginação manual para matrizes
         restaurantes = restaurantes[skip:skip+limit]
     
