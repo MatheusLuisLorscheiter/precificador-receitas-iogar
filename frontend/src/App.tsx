@@ -1385,10 +1385,12 @@ const FormularioRestauranteIsolado = React.memo(({
 // Definir displayName para o React.memo
 FormularioRestauranteIsolado.displayName = 'FormularioRestauranteIsolado';
 
-// Definir displayName para o React.memo
-FormularioRestauranteIsolado.displayName = 'FormularioRestauranteIsolado';
-
-
+// Constante dos estados brasileiros
+const ESTADOS_BRASIL = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO',
+  'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI',
+  'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
 
 // ============================================================================
 // FUNÇÕES ESTÁVEIS PARA FORNECEDOR (FORA DO COMPONENTE INSUMOS)
@@ -1578,78 +1580,42 @@ const FoodCostSystem: React.FC = () => {
     estado: ''
   });
 
-   console.log('🔍 isLoading existe?', typeof setIsLoading !== 'undefined');
+  const handleCriarRestaurante = async (dadosRestaurante) => {
+    if (!dadosRestaurante.nome.trim() || !dadosRestaurante.cnpj.trim()) {
+      showErrorPopup(
+        'Dados Obrigatórios',
+        'Nome e CNPJ são obrigatórios para restaurante matriz'
+      );
+      return;
+    }
 
-  const handleCriarRestaurante = async () => {
-        console.log('🔍 DEBUG - handleCriarRestaurante iniciado');
-        console.log('🔍 loading disponível:', typeof loading);
-        console.log('🔍 setLoading disponível:', typeof setLoading);
-
-      if (!formRestaurante.nome.trim() || !formRestaurante.cnpj.trim()) {
-        setPopup({
-          type: 'error',
-          title: 'Dados obrigatórios',
-          message: 'Nome e CNPJ são obrigatórios para restaurante matriz',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-        return;
+    try {
+      setLoading(true);
+      const response = await apiService.createRestaurante(dadosRestaurante);
+      
+      if (response.error) {
+        throw new Error(response.message || 'Erro ao criar restaurante');
       }
 
-      try {
-        setLoading(true);
-        const response = await fetch('http://localhost:8000/api/v1/restaurantes/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formRestaurante),
-        });
+      showSuccessPopup(
+        'Restaurante Criado',
+        `${dadosRestaurante.nome} foi criado com sucesso!`
+      );
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Erro ao criar restaurante');
-        }
+      // Fechar formulário e recarregar
+      setShowRestauranteForm(false);
+      await carregarRestaurantes();
 
-        // Sucesso
-        setPopup({
-          type: 'success',
-          title: 'Restaurante criado',
-          message: `${formRestaurante.nome} foi criado com sucesso!`,
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-
-        // Limpar formulário e fechar modal
-        setFormRestaurante({
-          nome: '',
-          cnpj: '',
-          tipo: 'restaurante',
-          tem_delivery: false,
-          endereco: '',
-          bairro: '',
-          cidade: '',
-          estado: '',
-          telefone: '',
-          ativo: true
-        });
-        setShowRestauranteForm(false);
-        
-        // Recarregar lista
-        await carregarRestaurantes();
-      } catch (error) {
-        console.error('Erro ao criar restaurante:', error);
-        setPopup({
-          type: 'error',
-          title: 'Erro ao criar restaurante',
-          message: error.message || 'Erro interno do sistema',
-          isVisible: true,
-          onClose: () => setPopup(prev => ({ ...prev, isVisible: false }))
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+    } catch (error) {
+      console.error('Erro ao criar restaurante:', error);
+      showErrorPopup(
+        'Erro ao Criar',
+        error.message || 'Falha ao conectar com o servidor'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
     const handleCriarUnidade = async () => {
       if (!restauranteParaUnidade || !formUnidade.endereco.trim() || 
@@ -3341,15 +3307,10 @@ const fetchInsumos = async () => {
 	};
 
     const abrirFormUnidade = (restaurante: RestauranteGrid) => {
+      console.log('🔥 DEBUG - abrirFormUnidade chamada para:', restaurante.nome);
       setRestauranteParaUnidade(restaurante);
-      setFormUnidade({
-        endereco: '',
-        bairro: '',
-        cidade: '',
-        estado: '',
-        telefone: ''
-      });
-      setShowFormUnidade(true);
+      setShowUnidadeForm(true);
+      console.log('🔥 DEBUG - showUnidadeForm setado para TRUE');
     };
 
     const abrirEdicaoRestaurante = (restaurante: RestauranteGrid) => {
@@ -3753,11 +3714,11 @@ const fetchInsumos = async () => {
           editingRestaurante={editingRestaurante}
           tiposEstabelecimento={tiposEstabelecimento}
           onClose={() => setShowRestauranteForm(false)}
-          onSave={() => {
+          onSave={(dadosRestaurante) => {
             if (editingRestaurante) {
-              handleSalvarEdicaoRestaurante();
+              handleSalvarEdicaoRestaurante(dadosRestaurante);
             } else {
-              handleCriarRestaurante();
+              handleCriarRestaurante(dadosRestaurante); 
             }
           }}
           loading={loading}
@@ -3788,7 +3749,7 @@ const fetchInsumos = async () => {
           </div>
           <button
             onClick={() => {
-              setShowFormUnidade(false);
+              setShowUnidadeForm(false);
               setRestauranteParaUnidade(null);
             }}
             className="text-white hover:text-gray-200 transition-colors"
@@ -3861,7 +3822,7 @@ const fetchInsumos = async () => {
             type="text"
             value={formUnidade.bairro}
             onChange={(e) => setFormUnidade(prev => ({ ...prev, bairro: e.target.value }))}
-            className="w-5 h-5 !text-green-600 !bg-white !border-2 !border-green-300 rounded focus:!ring-green-500 focus:!ring-2"
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Digite o bairro"
             required
           />
@@ -3923,7 +3884,7 @@ const fetchInsumos = async () => {
       <div className="bg-gray-50 px-6 py-4 flex gap-3 rounded-b-xl">
         <button
           onClick={() => {
-            setShowFormUnidade(false);
+            setShowUnidadeForm(false);
             setRestauranteParaUnidade(null);
           }}
           className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
@@ -3932,11 +3893,11 @@ const fetchInsumos = async () => {
         </button>
         <button
           onClick={handleCriarUnidade}
-          disabled={isLoading || !formUnidade.endereco.trim() || !formUnidade.bairro.trim() || 
+          disabled={loading || !formUnidade.endereco.trim() || !formUnidade.bairro.trim() || 
                    !formUnidade.cidade.trim() || !formUnidade.estado.trim()}
           className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center gap-2">
               <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
               Criando...
@@ -4325,10 +4286,7 @@ const fetchInsumos = async () => {
       
       const digito2 = soma % 11 < 2 ? 0 : 11 - (soma % 11);
       return parseInt(numero.charAt(13)) === digito2;
-    };
-    
-    // const handleCriarRestaurante = async () => {
-    
+    };    
 
     const handleEditarRestaurante = async (restaurante: Restaurante) => {
       setEditingRestaurante(restaurante);
