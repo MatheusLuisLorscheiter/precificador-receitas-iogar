@@ -24,6 +24,12 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
 MANIFEST
 
 # PyInstaller
@@ -220,3 +226,31 @@ temp/
 # Arquivos do sistema Windows
 Thumbs.db
 Desktop.ini
+
+# Virtual env
+.venv/
+env/
+venv/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Docker
+*.pid
+*.seed
+*.bak
+*.tar
+*.tar.gz
+*.img
+
+# Configurações locais
+.env
+.env.local
+*.backup
+
+# Logs
+*.log
+logs/
