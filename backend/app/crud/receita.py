@@ -8,7 +8,7 @@
 
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, text
 
 from app.models.receita import Receita, Restaurante, ReceitaInsumo
 from app.models.insumo import Insumo
@@ -451,6 +451,45 @@ def delete_receita(db: Session, receita_id: int) -> bool:
     db.delete(db_receita)
     db.commit()
     return True
+
+def clear_all_receitas(db: Session) -> dict:
+    """
+    Remove todas as receitas do sistema para limpeza completa - VERSÃO SIMPLIFICADA.
+    
+    PROCESSO DE LIMPEZA:
+    1. Remove todos os relacionamentos receita-insumos
+    2. Remove todas as receitas do banco
+    3. Retorna estatísticas da operação
+    
+    ATENÇÃO: Esta operação é irreversível!
+    
+    Returns:
+        dict: Estatísticas da limpeza realizada
+    """
+    try:
+        # Contar registros antes da limpeza
+        total_receitas = db.query(Receita).count()
+        total_receita_insumos = db.query(ReceitaInsumo).count()
+        
+        # Passo 1: Remover todos os relacionamentos receita-insumos
+        db.query(ReceitaInsumo).delete()
+        
+        # Passo 2: Remover todas as receitas
+        db.query(Receita).delete()
+        
+        # Confirmar transação
+        db.commit()
+        
+        return {
+            "receitas_removidas": total_receitas,
+            "relacionamentos_removidos": total_receita_insumos,
+            "status": "sucesso"
+        }
+    
+    except Exception as e:
+        # Reverter transação em caso de erro
+        db.rollback()
+        raise e
 
 # ===================================================================================================
 # CRUD Receita-Insumos (COM AUTOMAÇÃO COMPLETA)

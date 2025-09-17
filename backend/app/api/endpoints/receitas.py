@@ -128,14 +128,6 @@ def update_receita(
         raise HTTPException(status_code=404, detail="Receita não encontrada")
     return receita
 
-@router.delete("/{receita_id}", summary="Deletar receita")
-def delete_receita(receita_id: int, db: Session = Depends(get_db)):
-    """Deleta uma receita"""
-    success = crud_receita.delete_receita(db, receita_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Receita não encontrada")
-    return {"message": "Receita deletada com sucesso"}
-
 # ===================================================================
 # ENDPOINTS RECEITA-INSUMOS (COM AUTOMAÇÃO COMPLETA)
 # ===================================================================
@@ -422,3 +414,53 @@ def obter_resumo_receita(
             "precos_sugeridos": precos_sugeridos.get("precos_sugeridos", {}) if "error" not in precos_sugeridos else {}
         }
     }
+# ===================================================================
+# ENDPOINT DE LIMPEZA COMPLETA - SISTEMA DE RECEITAS
+# ===================================================================
+
+@router.delete("/clear", summary="Limpar todas as receitas")
+def clear_all_receitas(
+    confirm: bool = Query(False, description="Confirmação obrigatória"),
+    db: Session = Depends(get_db)
+):
+    """
+    Remove todas as receitas do sistema para limpeza completa.
+    
+    ATENÇÃO: Esta operação é irreversível!
+    
+    Processo de limpeza:
+    1. Remove todos os vínculos receita-insumos
+    2. Remove todas as receitas do banco
+    3. Reseta sequências de IDs
+    4. Retorna estatísticas da operação
+    
+    Parâmetro 'confirm' deve ser True para executar a limpeza.
+    Exemplo de uso: DELETE /api/v1/receitas/clear?confirm=true
+    """
+    if not confirm:
+        raise HTTPException(
+            status_code=400, 
+            detail="Para confirmar a limpeza, adicione ?confirm=true na URL"
+        )
+    
+    try:
+        estatisticas = crud_receita.clear_all_receitas(db)
+        return {
+            "message": "Limpeza de receitas concluída com sucesso",
+            "estatisticas": estatisticas,
+            "timestamp": "2025-09-17",
+            "operacao": "clear_receitas"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro durante limpeza das receitas: {str(e)}"
+        )
+    
+@router.delete("/{receita_id}", summary="Deletar receita")
+def delete_receita(receita_id: int, db: Session = Depends(get_db)):
+    """Deleta uma receita"""
+    success = crud_receita.delete_receita(db, receita_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Receita não encontrada")
+    return {"message": "Receita deletada com sucesso"}

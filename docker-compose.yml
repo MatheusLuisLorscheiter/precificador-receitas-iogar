@@ -1,0 +1,181 @@
+# ============================================================================
+# DOCKER COMPOSE - FOOD COST SYSTEM
+# ============================================================================
+# Descrição: Orquestração completa do sistema (Backend + Frontend + DB)
+# Serviços: PostgreSQL, Backend FastAPI, Frontend React, Redis (cache)
+# Compatível com: Docker Compose v3.8+
+# Data: 17/09/2025
+# Autor: Will - Empresa: IOGAR
+# ============================================================================
+
+version: '3.8'
+
+# ============================================================================
+# DEFINIÇÃO DOS SERVIÇOS
+# ============================================================================
+
+services:
+  # ==========================================================================
+  # BANCO DE DADOS POSTGRESQL
+  # ==========================================================================
+  database:
+    image: postgres:15-alpine
+    container_name: foodcost-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-foodcost_db}
+      POSTGRES_USER: ${DB_USER:-foodcost_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-foodcost_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      # Volume persistente para dados do PostgreSQL
+      - postgres_data:/var/lib/postgresql/data/pgdata
+      # Script de inicialização (opcional)
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - foodcost-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-foodcost_user} -d ${DB_NAME:-foodcost_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # REDIS PARA CACHE E SESSÕES
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: foodcost-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - foodcost-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ==========================================================================
+  # BACKEND - FASTAPI COM SISTEMA DE IA
+  # ==========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: foodcost-backend
+    restart: unless-stopped
+    environment:
+      # Configurações do banco de dados
+      DATABASE_URL: postgresql://${DB_USER:-foodcost_user}:${DB_PASSWORD:-foodcost_password}@database:5432/${DB_NAME:-foodcost_db}
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-foodcost_db}
+      DB_USER: ${DB_USER:-foodcost_user}
+      DB_PASSWORD: ${DB_PASSWORD:-foodcost_password}
+      
+      # Configurações do Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
+      
+      # Configurações da aplicação
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-true}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      
+      # Configurações do sistema de IA
+      AI_MODEL_PATH: /app/app/ai/models
+      AI_DATA_PATH: /app/app/ai/data
+      SPACY_MODEL: pt_core_news_sm
+      
+      # Configurações CORS
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:80}
+    volumes:
+      # Volume para dados persistentes do sistema de IA
+      - ai_data:/app/app/ai/data
+      - ai_logs:/app/app/ai/logs
+      # Volume para desenvolvimento (opcional - remover em produção)
+      - ./backend:/app:ro
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - foodcost-network
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==========================================================================
+  # FRONTEND - REACT COM NGINX
+  # ==========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: foodcost-frontend
+    restart: unless-stopped
+    environment:
+      # URL da API do backend
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8000}
+      REACT_APP_ENVIRONMENT: ${ENVIRONMENT:-development}
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    networks:
+      - foodcost-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============================================================================
+# DEFINIÇÃO DOS VOLUMES PERSISTENTES
+# ============================================================================
+
+volumes:
+  # Volume para dados do PostgreSQL
+  postgres_data:
+    driver: local
+    name: foodcost_postgres_data
+
+  # Volume para dados do Redis
+  redis_data:
+    driver: local
+    name: foodcost_redis_data
+
+  # Volume para dados do sistema de IA
+  ai_data:
+    driver: local
+    name: foodcost_ai_data
+
+  # Volume para logs do sistema de IA
+  ai_logs:
+    driver: local
+    name: foodcost_ai_logs
+
+# ============================================================================
+# DEFINIÇÃO DA REDE
+# ============================================================================
+
+networks:
+  foodcost-network:
+    driver: bridge
+    name: foodcost_network
