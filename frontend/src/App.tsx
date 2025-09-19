@@ -14,11 +14,10 @@
 // ============================================================================
 // IMPORTS E DEPENDÊNCIAS
 // ============================================================================
-
 import { apiService } from './api-service';
 
 import logoIogar from './image/iogar_logo.png';
-import React, { useState, useEffect, useCallback, use } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
   Users, ChefHat, Utensils, Plus, Search, Edit2, Trash2, Save,
@@ -2890,172 +2889,755 @@ const fetchInsumos = async () => {
 
     // Componente isolado para formulário de receita
   const FormularioReceita = ({ selectedRestaurante, editingReceita, onClose, onSave, loading, insumos }) => {
-    const [formData, setFormData] = useState({
-      nome: editingReceita?.nome || '',
-      descricao: editingReceita?.descricao || '',
-      categoria: editingReceita?.categoria || '',
-      porcoes: editingReceita?.porcoes || 1
-    });
+      // <=== Código novo aqui - ESTADOS PARA BUSCA DE INSUMOS
+      const [buscaInsumo, setBuscaInsumo] = useState('');
 
-    const [receitaInsumos, setReceitaInsumos] = useState(editingReceita?.insumos || []);
+      // ============================================================================
+      // ESTADO DO FORMULÁRIO DE RECEITAS - CAMPOS COMPLETOS
+      // ============================================================================
+      // Descrição: Estado atualizado com todos os campos obrigatórios para receitas
+      // Inclui: código, nome, fator, unidade, quantidade porção, preço compra, processado
+      // Data: 19/09/2025
+      // Autor: Will - Empresa: IOGAR
+      // ============================================================================
 
-    const handleChange = (field, value) => {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    };
+      const [formData, setFormData] = useState({
+        // Campos obrigatórios básicos
+        codigo: editingReceita?.codigo || '',
+        nome: editingReceita?.nome || '',
+        fator: editingReceita?.fator || 1,
+        unidade: editingReceita?.unidade || '',
+        quantidade_porcao: editingReceita?.quantidade_porcao || 1,
+        preco_compra: editingReceita?.preco_compra || 0,
+        
+        // Campo opcional
+        sugestao_valor: editingReceita?.sugestao_valor || '',
+        
+        // Checkbox processado
+        eh_processado: editingReceita?.eh_processado || false,
+        
+        // Restaurante obrigatório (vem da seleção atual)
+        restaurante_id: selectedRestaurante?.id || editingReceita?.restaurante_id || null,
+        
+        // Campos existentes mantidos para compatibilidade
+        categoria: editingReceita?.categoria || '',
+        descricao: editingReceita?.descricao || '',
+        porcoes: editingReceita?.porcoes || 1,
+        tempo_preparo: editingReceita?.tempo_preparo || 30
+      });
 
-    const addInsumoToReceita = () => {
-      setReceitaInsumos([...receitaInsumos, { insumo_id: 0, quantidade: 0 }]);
-    };
+      const [receitaInsumos, setReceitaInsumos] = useState(editingReceita?.insumos || []);
 
-    const removeInsumoFromReceita = (index) => {
-      setReceitaInsumos(receitaInsumos.filter((_, i) => i !== index));
-    };
+      // ============================================================================
+      // LISTA DE UNIDADES DE MEDIDA - MESMO PADRÃO DOS INSUMOS
+      // ============================================================================
+      // Descrição: Dropdown de unidades igual ao sistema de insumos
+      // Mantém consistência entre módulos
+      // ============================================================================
 
-    const updateReceitaInsumo = (index, field, value) => {
-      const updated = [...receitaInsumos];
-      updated[index] = { ...updated[index], [field]: value };
-      setReceitaInsumos(updated);
-    };
+      const unidadesMedida = [
+        { value: 'kg', label: 'Quilograma (kg)' },
+        { value: 'g', label: 'Grama (g)' },
+        { value: 'l', label: 'Litro (l)' },
+        { value: 'ml', label: 'Mililitro (ml)' },
+        { value: 'un', label: 'Unidade (un)' },
+        { value: 'pc', label: 'Peça (pc)' },
+        { value: 'cx', label: 'Caixa (cx)' },
+        { value: 'pct', label: 'Pacote (pct)' },
+        { value: 'm', label: 'Metro (m)' },
+        { value: 'cm', label: 'Centímetro (cm)' }
+      ];
 
-    const handleSubmit = () => {
-      // Mapear campos para o formato do backend
-      const dadosBackend = {
-        codigo: formData.codigo || '',
-        nome: formData.nome,
-        descricao: formData.descricao || '',
-        grupo: formData.categoria || 'Lanches',
-        subgrupo: formData.categoria || 'Lanches',
-        rendimento_porcoes: formData.porcoes || 1,
-        tempo_preparo_minutos: 15,
-        ativo: true,
-        restaurante_id: selectedRestaurante.id,
-        insumos: receitaInsumos
+      // Função simples sem useMemo para evitar erros
+      const getInsumosFiltrados = () => {
+        if (!buscaInsumo.trim()) return [];
+        
+        const termo = buscaInsumo.toLowerCase().trim();
+        return insumos.filter(insumo => 
+          insumo.nome.toLowerCase().includes(termo) ||
+          insumo.grupo?.toLowerCase().includes(termo) ||
+          insumo.codigo?.toLowerCase().includes(termo)
+        ).slice(0, 10);
       };
-      onSave(dadosBackend);
-    };
 
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Nova Receita</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+      const insumosFiltrados = getInsumosFiltrados();
 
-          <div className="space-y-6">
-            {/* Informações básicas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nome da Receita</label>
-                <input
-                  type="text"
-                  value={formData.nome}
-                  onChange={(e) => handleChange('nome', e.target.value)}
-                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
-                  placeholder="Ex: Hambúrguer Artesanal"
-                  autoFocus
-                />
-              </div>
+      // ============================================================================
+      // FUNÇÃO: ADICIONAR INSUMO RAPIDAMENTE PELA BUSCA
+      // ============================================================================
+      const adicionarInsumoRapido = (insumo) => {
+        const jaAdicionado = receitaInsumos.some(ri => ri.insumo_id === insumo.id);
+        
+        if (jaAdicionado) {
+          alert(`${insumo.nome} já foi adicionado à receita.`);
+          return;
+        }
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
-                <input
-                  type="text"
-                  value={formData.categoria}
-                  onChange={(e) => handleChange('categoria', e.target.value)}
-                  className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
-                  placeholder="Ex: Lanches"
-                />
-              </div>
+        const novoInsumo = {
+          insumo_id: insumo.id,
+          quantidade: 1
+        };
+
+        setReceitaInsumos(prev => [...prev, novoInsumo]);
+        setBuscaInsumo('');
+      };
+
+      // ============================================================================
+      // FUNÇÃO: CALCULAR CUSTO DE UM INSUMO ESPECÍFICO
+      // ============================================================================
+      const calcularCustoInsumo = (receitaInsumo) => {
+        const insumo = insumos.find(i => i.id === receitaInsumo.insumo_id);
+        
+        if (!insumo || !insumo.preco_compra_real || !receitaInsumo.quantidade) {
+          return 0;
+        }
+
+        const custoCalculado = (insumo.preco_compra_real / insumo.fator) * receitaInsumo.quantidade;
+        return custoCalculado;
+      };
+
+      // ============================================================================
+      // FUNÇÃO: CALCULAR CUSTO TOTAL DE TODOS OS INSUMOS
+      // ============================================================================
+      const calcularCustoTotalInsumos = () => {
+        return receitaInsumos.reduce((total, receitaInsumo) => {
+          return total + calcularCustoInsumo(receitaInsumo);
+        }, 0);
+      };
+
+      useEffect(() => {
+        const custoTotal = calcularCustoTotalInsumos();
+        handleChange('preco_compra', custoTotal);
+      }, [receitaInsumos]);
+
+      // ============================================================================
+      // VALIDAÇÕES DE CAMPOS OBRIGATÓRIOS
+      // ============================================================================
+      // Descrição: Função para validar todos os campos obrigatórios
+      // Retorna array de erros para exibição ao usuário
+      // ============================================================================
+
+      const validarCamposObrigatorios = () => {
+        const erros = [];
+        
+        if (!formData.codigo?.trim()) {
+          erros.push('Código de produto é obrigatório');
+        }
+        
+        if (!formData.nome?.trim()) {
+          erros.push('Nome da receita é obrigatório');
+        }
+        
+        if (!formData.unidade) {
+          erros.push('Unidade de medida é obrigatória');
+        }
+        
+        if (!formData.quantidade_porcao || formData.quantidade_porcao <= 0) {
+          erros.push('Quantidade de porção deve ser maior que zero');
+        }
+        
+        if (!formData.restaurante_id) {
+          erros.push('Restaurante é obrigatório');
+        }
+        
+        return erros;
+      };
+
+      const handleChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      };
+
+      const addInsumoToReceita = () => {
+        setReceitaInsumos([...receitaInsumos, { insumo_id: 0, quantidade: 0 }]);
+      };
+
+      // <=== Código novo aqui - FUNÇÃO MELHORADA PARA REMOVER INSUMO
+      const removeInsumoFromReceita = (index) => {
+        const insumoRemover = receitaInsumos[index];
+        const custoItem = calcularCustoInsumo(insumoRemover);
+        
+        if (custoItem > 10) {
+          const insumo = insumos.find(i => i.id === insumoRemover.insumo_id);
+          const confirmar = window.confirm(
+            `Tem certeza que deseja remover "${insumo?.nome}"? Este item tem custo de R$ ${custoItem.toFixed(2)}.`
+          );
+          
+          if (!confirmar) return;
+        }
+        
+        setReceitaInsumos(prev => prev.filter((_, i) => i !== index));
+      };
+
+      // <=== Código novo aqui - FUNÇÃO MELHORADA PARA ATUALIZAR INSUMO
+      const updateReceitaInsumo = (index, field, value) => {
+        setReceitaInsumos(prev => {
+          const updated = [...prev];
+          
+          if (field === 'quantidade' && value < 0) {
+            value = 0;
+          }
+          
+          if (field === 'insumo_id' && value === 0) {
+            updated[index] = { ...updated[index], [field]: value, quantidade: 1 };
+          } else {
+            updated[index] = { ...updated[index], [field]: value };
+          }
+          
+          return updated;
+        });
+      };
+
+      const handleSubmit = () => {
+        // Mapear campos para o formato do backend
+        const dadosBackend = {
+          codigo: formData.codigo || '',
+          nome: formData.nome,
+          descricao: formData.descricao || '',
+          grupo: formData.categoria || 'Lanches',
+          subgrupo: formData.categoria || 'Lanches',
+          rendimento_porcoes: formData.porcoes || 1,
+          tempo_preparo_minutos: 15,
+          ativo: true,
+          restaurante_id: selectedRestaurante.id,
+          insumos: receitaInsumos
+        };
+        onSave(dadosBackend);
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            
+            {/* ============================================================================ */}
+            {/* HEADER DO FORMULÁRIO */}
+            {/* ============================================================================ */}
+            
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Nova Receita</h3>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X className="w-6 h-6" />
+              </button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
-              <textarea
-                value={formData.descricao}
-                onChange={(e) => handleChange('descricao', e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
-                rows={3}
-                placeholder="Descreva a receita..."
-              />
-            </div>
+            {/* ============================================================================ */}
+            {/* FORMULÁRIO PRINCIPAL - ESTRUTURA LIMPA */}
+            {/* ============================================================================ */}
+            
+            <div className="space-y-8">
+              
+              {/* ============================================================================ */}
+              {/* SEÇÃO 1: IDENTIFICAÇÃO DA RECEITA */}
+              {/* ============================================================================ */}
+              
+              <div className="space-y-6">
+                {/* Header da seção com ícone */}
+                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">1</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Identificação da Receita</h3>
+                    <p className="text-sm text-gray-500">Informações básicas obrigatórias</p>
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Número de Porções</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.porcoes}
-                onChange={(e) => handleChange('porcoes', parseInt(e.target.value))}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
-              />
-            </div>
+                {/* Grid de campos principais */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Código de Produto */}
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-medium text-gray-900">
+                      <span>Código de Produto</span>
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.codigo}
+                      onChange={(e) => handleChange('codigo', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                      placeholder="REC001"
+                      autoFocus
+                    />
+                  </div>
 
-            {/* Insumos */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <label className="block text-sm font-medium text-gray-700">Insumos</label>
-                <button
-                  type="button"
-                  onClick={addInsumoToReceita}
-                  className="text-green-600 hover:text-green-700 flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  Adicionar Insumo
-                </button>
+                  {/* Nome da Receita */}
+                  <div className="lg:col-span-2 space-y-2">
+                    <label className="flex items-center text-sm font-medium text-gray-900">
+                      <span>Nome da Receita</span>
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.nome}
+                      onChange={(e) => handleChange('nome', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                      placeholder="Hambúrguer Artesanal"
+                    />
+                  </div>
+
+                </div>
               </div>
 
-              <div className="space-y-3">
-                {receitaInsumos.map((receitaInsumo, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              {/* ============================================================================ */}
+              {/* SEÇÃO 2: CONFIGURAÇÕES DE PRODUÇÃO */}
+              {/* ============================================================================ */}
+              
+              <div className="space-y-6">
+                {/* Header da seção */}
+                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">2</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Configurações de Produção</h3>
+                    <p className="text-sm text-gray-500">Definições técnicas e medidas</p>
+                  </div>
+                </div>
+
+                {/* Grid de configurações */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  
+                  {/* Unidade de Medida */}
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-medium text-gray-900">
+                      <span>Unidade</span>
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
                     <select
-                      value={receitaInsumo.insumo_id}
-                      onChange={(e) => updateReceitaInsumo(index, 'insumo_id', parseInt(e.target.value))}
-                      className="flex-1 p-2 border border-gray-200 rounded focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                      value={formData.unidade}
+                      onChange={(e) => handleChange('unidade', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
                     >
-                      <option value={0}>Selecione um insumo</option>
-                      {insumos.map(insumo => (
-                        <option key={insumo.id} value={insumo.id}>{insumo.nome}</option>
+                      <option value="">Selecionar</option>
+                      {unidadesMedida.map((unidade) => (
+                        <option key={unidade.value} value={unidade.value}>
+                          {unidade.label}
+                        </option>
                       ))}
                     </select>
+                  </div>
 
+                  {/* Quantidade de Porção */}
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-medium text-gray-900">
+                      <span>Porções</span>
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.quantidade_porcao}
+                      onChange={(e) => handleChange('quantidade_porcao', parseInt(e.target.value) || 1)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                      placeholder="1"
+                    />
+                  </div>
+
+                  {/* Fator */}
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-medium text-gray-900">
+                      <span>Fator</span>
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
                     <input
                       type="number"
                       step="0.01"
-                      min="0"
-                      value={receitaInsumo.quantidade}
-                      onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
-                      className="w-24 p-2 border border-gray-200 rounded focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
-                      placeholder="Qtd"
+                      min="0.01"
+                      value={formData.fator}
+                      onChange={(e) => handleChange('fator', parseFloat(e.target.value) || 1)}
+                      disabled={formData.eh_processado}
+                      className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                        formData.eh_processado 
+                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+                          : 'bg-white text-gray-900'
+                      }`}
+                      placeholder="1.00"
                     />
-
-                    <button
-                      type="button"
-                      onClick={() => removeInsumoFromReceita(index)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {formData.eh_processado && (
+                      <p className="text-xs text-amber-600 font-medium">Fixo para processados</p>
+                    )}
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
 
-          <div className="flex gap-3 mt-6">
-            <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">
-              Cancelar
-            </button>
-            <button onClick={handleSubmit} disabled={loading} className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50">
-              {loading ? 'Criando...' : 'Criar Receita'}
-            </button>
+                  {/* Categoria */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-900">Categoria</label>
+                    <input
+                      type="text"
+                      value={formData.categoria}
+                      onChange={(e) => handleChange('categoria', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                      placeholder="Lanches"
+                    />
+                  </div>
+
+                </div>
+              </div>
+
+              {/* ============================================================================ */}
+              {/* SEÇÃO 3: PRECIFICAÇÃO */}
+              {/* ============================================================================ */}
+              
+              <div className="space-y-6">
+                {/* Header da seção */}
+                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">3</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Precificação</h3>
+                    <p className="text-sm text-gray-500">Valores e sugestões de preço</p>
+                  </div>
+                </div>
+
+                {/* Grid de preços */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Preço de Compra (Custo) */}
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-medium text-gray-900">
+                      <span>Custo dos Insumos</span>
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.preco_compra}
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed"
+                        placeholder="0,00"
+                        readOnly
+                      />
+                    </div>
+                    <p className="text-xs text-gray-600 flex items-center">
+                      <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                      Calculado automaticamente
+                    </p>
+                  </div>
+
+                  {/* Sugestão de Valor */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-900">Sugestão de Preço de Venda</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.sugestao_valor}
+                        onChange={(e) => handleChange('sugestao_valor', e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-600">Valor opcional para venda</p>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* <=== Código novo aqui - SEÇÃO 4 COMPLETA COM BUSCA E CÁLCULO */}
+              {/* ============================================================================ */}
+              {/* SEÇÃO 4: GESTÃO DE INSUMOS - COMPLETA COM BUSCA */}
+              {/* ============================================================================ */}
+              
+              <div className="space-y-6">
+                {/* Header da seção */}
+                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">4</span>
+                  </div>
+                  <div className="flex-1 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Insumos da Receita</h3>
+                      <p className="text-sm text-gray-500">Adicione os ingredientes e veja o cálculo automático do custo</p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      {/* Exibir custo total calculado */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+                        <p className="text-xs text-blue-600 font-medium">Custo Total</p>
+                        <p className="text-lg font-bold text-blue-900">
+                          R$ {calcularCustoTotalInsumos().toFixed(2)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addInsumoToReceita}
+                        className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Adicionar Insumo
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Campo de busca para insumos */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                  <label className="block text-sm font-medium text-gray-900 mb-3">
+                    Buscar Insumos Disponíveis
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      value={buscaInsumo}
+                      onChange={(e) => setBuscaInsumo(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
+                      placeholder="Digite o nome do insumo para buscar..."
+                    />
+                  </div>
+                  
+                  {/* Lista de insumos filtrados */}
+                  {buscaInsumo && (
+                    <div className="mt-3 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded-lg">
+                      {insumosFiltrados.map((insumo) => (
+                        <button
+                          key={insumo.id}
+                          type="button"
+                          onClick={() => adicionarInsumoRapido(insumo)}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{insumo.nome}</p>
+                            <p className="text-xs text-gray-500">
+                              {insumo.grupo} • {insumo.unidade} • R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                            </p>
+                          </div>
+                          <Plus className="w-4 h-4 text-green-600" />
+                        </button>
+                      ))}
+                      {insumosFiltrados.length === 0 && (
+                        <div className="px-4 py-3 text-center text-gray-500 text-sm">
+                          Nenhum insumo encontrado para "{buscaInsumo}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Lista de insumos adicionados */}
+                <div className="space-y-3">
+                  {receitaInsumos.map((receitaInsumo, index) => {
+                    const insumoSelecionado = insumos.find(i => i.id === receitaInsumo.insumo_id);
+                    const custoItem = calcularCustoInsumo(receitaInsumo);
+                    
+                    return (
+                      <div key={index} className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+                        <div className="flex-1">
+                          <select
+                            value={receitaInsumo.insumo_id}
+                            onChange={(e) => updateReceitaInsumo(index, 'insumo_id', parseInt(e.target.value))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
+                          >
+                            <option value={0}>Selecione um insumo</option>
+                            {insumos.map(insumo => (
+                              <option key={insumo.id} value={insumo.id}>
+                                {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="w-32">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={receitaInsumo.quantidade}
+                            onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
+                            placeholder="Qtd"
+                          />
+                          <p className="text-xs text-gray-500 mt-1 text-center">
+                            {insumoSelecionado?.unidade || 'un'}
+                          </p>
+                        </div>
+
+                        {/* Custo calculado do item */}
+                        <div className="w-24 text-center">
+                          <p className="text-sm font-semibold text-green-600">
+                            R$ {custoItem.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-gray-500">Custo</p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeInsumoFromReceita(index)}
+                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  {receitaInsumos.length === 0 && (
+                    <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
+                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-600 font-medium">Nenhum insumo adicionado ainda</p>
+                      <p className="text-sm text-gray-500 mb-4">Use a busca acima ou clique em "Adicionar Insumo"</p>
+                      <button
+                        type="button"
+                        onClick={addInsumoToReceita}
+                        className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors"
+                      >
+                        Começar Adicionando Insumos
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Resumo dos custos */}
+                {receitaInsumos.length > 0 && (
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Resumo de Custos</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-green-600">
+                          R$ {calcularCustoTotalInsumos().toFixed(2)}
+                        </p>
+                        <p className="text-sm text-gray-600">Custo Total dos Insumos</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-blue-600">
+                          R$ {(calcularCustoTotalInsumos() / formData.quantidade_porcao).toFixed(2)}
+                        </p>
+                        <p className="text-sm text-gray-600">Custo por Porção</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-purple-600">
+                          {receitaInsumos.length}
+                        </p>
+                        <p className="text-sm text-gray-600">Ingredientes</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ============================================================================ */}
+              {/* SEÇÃO 5: CONFIGURAÇÕES AVANÇADAS */}
+              {/* ============================================================================ */}
+              
+              <div className="space-y-6">
+                {/* Header da seção */}
+                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">5</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Configurações Avançadas</h3>
+                    <p className="text-sm text-gray-500">Descrição e opções especiais</p>
+                  </div>
+                </div>
+
+                {/* Descrição */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-900">Descrição da Receita</label>
+                  <textarea
+                    value={formData.descricao}
+                    onChange={(e) => handleChange('descricao', e.target.value)}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 resize-none"
+                    placeholder="Descreva os ingredientes principais, modo de preparo resumido e características especiais da receita..."
+                  />
+                </div>
+
+                {/* Checkbox Receita Processada */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="flex items-center h-6 mt-1">
+                      <input
+                        type="checkbox"
+                        checked={formData.eh_processado}
+                        onChange={(e) => {
+                          handleChange('eh_processado', e.target.checked);
+                          if (e.target.checked) {
+                            handleChange('fator', 1);
+                          }
+                        }}
+                        className="w-5 h-5 text-green-600 bg-white border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2 transition-all duration-200"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-base font-semibold text-gray-900 cursor-pointer">
+                        Receita Processada
+                      </label>
+                      <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+                        Marque esta opção se esta receita será utilizada como ingrediente em outras receitas. 
+                        Receitas processadas aparecem automaticamente na lista de insumos disponíveis e 
+                        têm fator fixo igual a 1.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* ============================================================================ */}
+              {/* INFORMAÇÃO DO RESTAURANTE SELECIONADO */}
+              {/* ============================================================================ */}
+              
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-sm">🏪</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Será criada para:</p>
+                      <p className="text-lg font-bold text-gray-900">
+                        {selectedRestaurante?.nome || 'Nenhum restaurante selecionado'}
+                      </p>
+                    </div>
+                  </div>
+                  {selectedRestaurante && (
+                    <div className="flex items-center space-x-2 text-green-600">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="text-sm font-medium">Conectado</span>
+                    </div>
+                  )}
+                </div>
+                
+                {!selectedRestaurante && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700 font-medium">
+                      ⚠️ Selecione um restaurante antes de criar a receita
+                    </p>
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* ============================================================================ */}
+            {/* BOTÕES DE AÇÃO */}
+            {/* ============================================================================ */}
+            
+            <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
+              <button 
+                onClick={onClose} 
+                className="flex-1 py-3 px-6 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSubmit} 
+                disabled={loading} 
+                className="flex-1 py-3 px-6 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-xl hover:from-green-600 hover:to-pink-600 disabled:opacity-50 transition-all font-medium"
+              >
+                {loading ? 'Criando...' : 'Criar Receita'}
+              </button>
+            </div>
+
           </div>
         </div>
-      </div>
-    );
-  };
+
+      );
+    };
 
   // Componente isolado para busca de insumos
   const SearchInput = React.memo(({ onSearch }) => {
