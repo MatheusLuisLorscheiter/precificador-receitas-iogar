@@ -8,9 +8,11 @@ Autor: Will - Empresa: IOGAR
 ====================================================================
 */
 
-// Configuração base da API
+// ============================================================================
+// CONFIGURAÇÃO BASE DA API COM DETECÇÃO AUTOMÁTICA DE PORTA
+// ============================================================================
 const API_CONFIG = {
-  baseURL: 'http://localhost:8001',
+  baseURL: 'http://localhost:8000', // Será ajustado automaticamente
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -30,6 +32,32 @@ class ApiService {
 
   constructor() {
     this.baseURL = API_CONFIG.baseURL;
+    this.detectarPortaDisponivel(); // Detecta automaticamente a porta
+  }
+
+// Método para detectar porta disponível
+  private async detectarPortaDisponivel(): Promise<void> {
+    const portas = [8000, 8001];
+
+    for (const porta of portas) {
+      try {
+        const testURL = `http://localhost:${porta}/health`;
+        const response = await fetch(testURL, {
+          method: 'GET',
+          signal: AbortSignal.timeout(2000)
+        });
+
+        if (response.ok) {
+          this.baseURL = `http://localhost:${porta}`;
+          console.log(`✅ Backend encontrado na porta ${porta}`);
+          return;
+        }
+      } catch (error) {
+        // Continua tentando próxima porta
+      }
+    }
+
+    console.warn('⚠️ Usando porta padrão 8000');
   }
 
   // Método genérico para fazer requisições

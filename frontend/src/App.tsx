@@ -1135,9 +1135,29 @@ const FormularioRestauranteIsolado = React.memo(({
     return parseInt(numero.charAt(13)) === digito2;
   };
 
+  const aplicarMascaraCNPJ = (valor: string): string => {
+    let numero = valor.replace(/\D/g, '');
+    numero = numero.substring(0, 14);
+    
+    if (numero.length >= 2) {
+      numero = numero.replace(/^(\d{2})(\d)/, '$1.$2');
+    }
+    if (numero.length >= 6) {
+      numero = numero.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+    }
+    if (numero.length >= 10) {
+      numero = numero.replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3/$4');
+    }
+    if (numero.length >= 15) {
+      numero = numero.replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, '$1.$2.$3/$4-$5');
+    }
+    
+    return numero;
+  };
+
   const handleCnpjChange = (e) => {
     const valorMascarado = aplicarMascaraCNPJ(e.target.value);
-    handleChange('cnpj', valorMascarado);
+    handleChange('cnpj', valorMascarado); // ✅ CORRETO: usar handleChange local
     setCnpjValido(validarCNPJ(valorMascarado));
   };
 
@@ -2197,14 +2217,7 @@ const fetchInsumos = async () => {
 
   // Carrega os dados quando o componente é montado
   useEffect(() => {
-    console.log('🔍 DEBUG - Procurando referências incorretas a isLoading');
-  
-    // Converter o código para string e procurar isLoading
-    const componenteString = FoodCostSystem.toString();
-    if (componenteString.includes('isLoading')) {
-      console.log('⚠️ ENCONTROU isLoading no código do componente');
-      console.log('🔍 Índices onde aparece:', componenteString.split('isLoading').length - 1);
-    }
+    console.log('🔍 DEBUG - Inicializando aplicação');
     const initializeApp = async () => {
       try {
         const connected = await apiService.testConnection();
@@ -5894,16 +5907,8 @@ const cancelarExclusao = () => {
   // ============================================================================
   // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
   // ============================================================================
-  try {
-    console.log('🔍 DEBUG - Verificação final antes do render');
-    console.log('🔍 Todas as variáveis de loading:', {
-      loading: typeof loading,
-      setLoading: typeof setLoading,
-      isLoading: typeof window.isLoading  // Verificar se existe globalmente
-    });
-  } catch (e) {
-    console.error('❌ Erro na verificação final:', e.message);
-  }
+  // Log de debug simplificado
+  console.log('🔍 DEBUG - Renderização principal - loading:', loading);
 
   return (
     <div className="min-h-screen bg-gray-50 flex ml-64">

@@ -20,7 +20,7 @@ try:
     try:
         from app.api.endpoints import restaurantes
         HAS_RESTAURANTES = True
-        print("✅ Módulo restaurantes importado com sucesso")
+        print("[OK] Modulo restaurantes importado com sucesso")
     except ImportError as e:
         print(f"⚠️  Módulo restaurantes não encontrado: {e}")
         HAS_RESTAURANTES = False
@@ -37,7 +37,7 @@ try:
     try:
         from app.api.endpoints import taxonomia_aliases
         HAS_TAXONOMIA_ALIASES = True
-        print("✅ Módulo taxonomia_aliases importado com sucesso")
+        print("[OK] Módulo taxonomia_aliases importado com sucesso")
     except ImportError as e:
         print(f"⚠️  Módulo taxonomia_aliases não encontrado: {e}")
         HAS_TAXONOMIA_ALIASES = False
@@ -76,7 +76,7 @@ async def lifespan(app: FastAPI):
     try:
         # Cria todas as tabelas definidas nos modelos
         Base.metadata.create_all(bind=engine)
-        print("✅ Tabelas do banco de dados verificadas/criadas")
+        print("[OK] Tabelas do banco de dados verificadas/criadas")
     except Exception as e:
         print(f"❌ Erro ao conectar com o banco: {e}")
     
@@ -207,11 +207,484 @@ def test_database():
     """
     try:
         from app.database import engine
+        from sqlalchemy import text
+
         with engine.connect() as connection:
-            connection.execute("SELECT 1")
-        return {"database": "connected", "status": "ok"}
+            result = connection.execute(text("SELECT 1"))
+            # Verificar se a query retornou resultado
+            row = result.fetchone()
+            if row and row[0] == 1:
+                return {"database": "connected", "status": "ok"}
+            else:
+                return {"database": "error", "status": "failed", "error": "Query não retornou resultado esperado"}
+
     except Exception as e:
         return {"database": "error", "status": "failed", "error": str(e)}
+
+
+@app.get("/debug-tables", summary="Debug - Verificar tabelas")
+def debug_tables():
+    """
+    Endpoint temporário para verificar quais tabelas existem no banco
+    """
+    try:
+        from app.database import engine
+        from sqlalchemy import text, inspect
+
+        inspector = inspect(engine)
+        tabelas = inspector.get_table_names()
+
+        # Verificar se tabela restaurantes existe
+        tem_restaurantes = 'restaurantes' in tabelas
+
+        # Se existir, verificar colunas
+        colunas_restaurantes = []
+        if tem_restaurantes:
+            colunas_restaurantes = [col['name'] for col in inspector.get_columns('restaurantes')]
+
+        return {
+            "todas_tabelas": sorted(tabelas),
+            "tem_tabela_restaurantes": tem_restaurantes,
+            "colunas_restaurantes": sorted(colunas_restaurantes) if colunas_restaurantes else [],
+            "total_tabelas": len(tabelas),
+            "ambiente": "casa",
+            "status": "ok"
+        }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "failed"
+        }
+
+@app.get("/debug-insumos", summary="Debug - Verificar tabela insumos")
+def debug_insumos():
+    """
+    Endpoint para verificar colunas da tabela insumos
+    """
+    try:
+        from app.database import engine
+        from sqlalchemy import inspect
+
+        inspector = inspect(engine)
+
+        # Verificar se tabela insumos existe
+        tem_insumos = 'insumos' in inspector.get_table_names()
+
+        # Se existir, verificar colunas
+        colunas_insumos = []
+        if tem_insumos:
+            colunas_insumos = [col['name'] for col in inspector.get_columns('insumos')]
+
+        return {
+            "tem_tabela_insumos": tem_insumos,
+            "colunas_insumos": sorted(colunas_insumos) if colunas_insumos else [],
+            "total_colunas": len(colunas_insumos),
+            "status": "ok"
+        }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "failed"
+        }
+
+@app.get("/debug-completo", summary="Debug completo do sistema")
+def debug_completo():
+    """
+    Diagnóstico completo para identificar o problema
+    """
+    try:
+        from app.database import engine
+        from sqlalchemy import text, inspect
+        import sqlalchemy
+
+        resultados = {
+            "sqlalchemy_version": sqlalchemy.__version__,
+            "python_version": "",
+            "conexao_banco": "ok",
+            "teste_query_insumos": "",
+            "teste_query_fornecedores": "",
+            "erro_detalhado": ""
+        }
+
+        # Versão Python
+        import sys
+        resultados["python_version"] = sys.version
+
+        # Teste conexão e query direta
+        with engine.connect() as connection:
+
+            # Teste 1: Query simples na tabela insumos
+            try:
+                result = connection.execute(text("SELECT COUNT(*) FROM insumos"))
+                count = result.fetchone()[0]
+                resultados["teste_query_insumos"] = f"OK - {count} registros"
+            except Exception as e:
+                resultados["teste_query_insumos"] = f"ERRO: {str(e)}"
+
+            # Teste 2: Query com as colunas problemáticas
+            try:
+                result = connection.execute(text(
+                    "SELECT id, nome, fornecedor_insumo_id, eh_fornecedor_anonimo FROM insumos LIMIT 1"
+                ))
+                row = result.fetchone()
+                resultados["teste_query_colunas_novas"] = f"OK - Row: {dict(row) if row else 'Sem dados'}"
+            except Exception as e:
+                resultados["teste_query_colunas_novas"] = f"ERRO: {str(e)}"
+
+            # Teste 3: Query na tabela fornecedores
+            try:
+                result = connection.execute(text("SELECT COUNT(*) FROM fornecedores"))
+                count = result.fetchone()[0]
+                resultados["teste_query_fornecedores"] = f"OK - {count} registros"
+            except Exception as e:
+                resultados["teste_query_fornecedores"] = f"ERRO: {str(e)}"
+
+        # Teste 4: Importar o modelo e ver se há conflito
+        try:
+            from app.models.insumo import Insumo
+            from app.crud.insumo import get_insumos
+            resultados["import_modelo"] = "OK - Modelo importado"
+        except Exception as e:
+            resultados["import_modelo"] = f"ERRO: {str(e)}"
+            resultados["erro_detalhado"] = str(e)
+
+        return resultados
+
+    except Exception as e:
+        return {
+            "erro_geral": str(e),
+            "status": "failed"
+        }
+
+@app.get("/fix-all-tables", summary="Corrigir todas as tabelas")
+def fix_all_tables():
+    """
+    Adiciona todas as colunas faltantes nas tabelas do sistema
+    """
+    try:
+        from app.database import engine
+        from sqlalchemy import text
+
+        resultados = []
+
+        with engine.connect() as connection:
+
+            # ============================================================================
+            # CORRIGIR TABELA FORNECEDORES
+            # ============================================================================
+            comandos_fornecedores = [
+                "ALTER TABLE fornecedores ADD COLUMN IF NOT EXISTS cpf_cnpj VARCHAR(20)",
+                "ALTER TABLE fornecedores ADD COLUMN IF NOT EXISTS ramo VARCHAR(100)",
+                "ALTER TABLE fornecedores ADD COLUMN IF NOT EXISTS cidade VARCHAR(100)",
+                "ALTER TABLE fornecedores ADD COLUMN IF NOT EXISTS estado VARCHAR(2)"
+            ]
+
+            for comando in comandos_fornecedores:
+                try:
+                    connection.execute(text(comando))
+                    resultados.append(f"[OK] FORNECEDORES: {comando}")
+                except Exception as e:
+                    resultados.append(f"❌ FORNECEDORES: {comando} - Erro: {str(e)}")
+
+            # ============================================================================
+            # CORRIGIR TABELA RESTAURANTES
+            # ============================================================================
+            comandos_restaurantes = [
+                "ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS bairro VARCHAR(100)",
+                "ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS cidade VARCHAR(100)",
+                "ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS estado VARCHAR(2)",
+                "ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS tipo VARCHAR(50) DEFAULT 'restaurante'",
+                "ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS tem_delivery BOOLEAN DEFAULT false",
+                "ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS eh_matriz BOOLEAN DEFAULT true",
+                "ALTER TABLE restaurantes ADD COLUMN IF NOT EXISTS restaurante_pai_id INTEGER REFERENCES restaurantes(id)"
+            ]
+
+            # ============================================================================
+            # CORRIGIR TABELA FORNECEDOR_INSUMOS
+            # ============================================================================
+            comandos_fornecedor_insumos = [
+                "ALTER TABLE fornecedor_insumos ADD COLUMN IF NOT EXISTS quantidade DECIMAL(10,3) DEFAULT 1.0",
+                "ALTER TABLE fornecedor_insumos ADD COLUMN IF NOT EXISTS fator DECIMAL(10,3) DEFAULT 1.0"
+            ]
+
+            for comando in comandos_fornecedor_insumos:
+                try:
+                    connection.execute(text(comando))
+                    resultados.append(f"✅ FORNECEDOR_INSUMOS: {comando}")
+                except Exception as e:
+                    resultados.append(f"❌ FORNECEDOR_INSUMOS: {comando} - Erro: {str(e)}")
+
+            for comando in comandos_restaurantes:
+                try:
+                    connection.execute(text(comando))
+                    resultados.append(f"✅ RESTAURANTES: {comando}")
+                except Exception as e:
+                    resultados.append(f"❌ RESTAURANTES: {comando} - Erro: {str(e)}")
+
+            # ============================================================================
+            # CORRIGIR TABELA INSUMOS
+            # ============================================================================
+            comandos_insumos = [
+                "ALTER TABLE insumos ADD COLUMN IF NOT EXISTS fornecedor_insumo_id INTEGER REFERENCES fornecedor_insumos(id)",
+                "ALTER TABLE insumos ADD COLUMN IF NOT EXISTS eh_fornecedor_anonimo BOOLEAN DEFAULT false",
+                "ALTER TABLE insumos ADD COLUMN IF NOT EXISTS taxonomia_id INTEGER",
+                "ALTER TABLE insumos ADD COLUMN IF NOT EXISTS aguardando_classificacao BOOLEAN DEFAULT false"
+            ]
+
+            for comando in comandos_insumos:
+                try:
+                    connection.execute(text(comando))
+                    resultados.append(f"✅ INSUMOS: {comando}")
+                except Exception as e:
+                    resultados.append(f"❌ INSUMOS: {comando} - Erro: {str(e)}")
+
+            # Commit todas as alterações
+            connection.commit()
+
+        return {
+            "status": "completed",
+            "comandos_executados": resultados,
+            "message": "Estrutura de todas as tabelas corrigida",
+            "total_comandos": len(resultados)
+        }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "failed"
+        }
+
+@app.get("/fix-fornecedores-null", summary="Corrigir fornecedores com CPF/CNPJ nulo")
+def fix_fornecedores_null():
+    """
+    Corrige fornecedores com cpf_cnpj NULL
+    """
+    try:
+        from app.database import engine
+        from sqlalchemy import text
+
+        with engine.connect() as connection:
+
+            # Verificar fornecedores com campos NULL
+            result = connection.execute(text("""
+                SELECT id, nome_razao_social, cpf_cnpj, telefone, ramo, cidade, estado
+                FROM fornecedores
+                WHERE cpf_cnpj IS NULL OR cpf_cnpj = ''
+            """))
+
+            fornecedores_problema = result.fetchall()
+
+            if fornecedores_problema:
+                # Corrigir fornecedores com CPF/CNPJ NULL ou vazio
+                for fornecedor in fornecedores_problema:
+                    cpf_temporario = f"0000000000{fornecedor[0]}"  # Usar ID como base
+                    connection.execute(text("""
+                        UPDATE fornecedores
+                        SET cpf_cnpj = :cpf_cnpj
+                        WHERE id = :id
+                    """), {"cpf_cnpj": cpf_temporario, "id": fornecedor[0]})
+
+                connection.commit()
+
+                return {
+                    "status": "success",
+                    "message": f"Corrigidos {len(fornecedores_problema)} fornecedores",
+                    "fornecedores_corrigidos": [
+                        {
+                            "id": f[0],
+                            "nome": f[1],
+                            "cpf_cnpj_antigo": f[2],
+                            "cpf_cnpj_novo": f"0000000000{f[0]}"
+                        }
+                        for f in fornecedores_problema
+                    ]
+                }
+            else:
+                return {
+                    "status": "ok",
+                    "message": "Nenhum fornecedor com problemas encontrado"
+                }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "failed"
+        }
+@app.get("/fix-cpf-valido", summary="Corrigir fornecedor com CPF válido")
+def fix_cpf_valido():
+    """
+    Atualiza o fornecedor com um CPF matematicamente válido
+    """
+    try:
+        from app.database import engine
+        from sqlalchemy import text
+
+        # CPF válido para testes: 11144477735 (dígitos verificadores corretos)
+        cpf_valido = "11144477735"
+
+        with engine.connect() as connection:
+
+            # Atualizar o fornecedor com CPF válido
+            result = connection.execute(text("""
+                UPDATE fornecedores
+                SET cpf_cnpj = :cpf_cnpj
+                WHERE id = 1
+            """), {"cpf_cnpj": cpf_valido})
+
+            connection.commit()
+
+            # Verificar se foi atualizado
+            verificacao = connection.execute(text("""
+                SELECT id, nome_razao_social, cpf_cnpj
+                FROM fornecedores
+                WHERE id = 1
+            """)).fetchone()
+
+            return {
+                "status": "success",
+                "message": "CPF atualizado com sucesso",
+                "fornecedor": {
+                    "id": verificacao[0],
+                    "nome": verificacao[1],
+                    "cpf_cnpj": verificacao[2]
+                }
+            }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "failed"
+        }
+@app.get("/debug-fornecedor-422", summary="Debug erro 422 cadastro fornecedor")
+def debug_fornecedor_422():
+    """
+    Simula um cadastro de fornecedor para identificar o erro 422
+    """
+    try:
+        from app.schemas.fornecedor import FornecedorCreate
+
+        # Dados de teste similares aos enviados pelo frontend
+        dados_teste = {
+            "nome_razao_social": "Teste Fornecedor",
+            "cpf_cnpj": "02304307880",  # Mesmo CPF que deu erro
+            "telefone": "11999999999",
+            "ramo": "Alimenticio",
+            "cidade": "São Paulo",
+            "estado": "SP"
+        }
+
+        # Tentar validar com Pydantic
+        try:
+            fornecedor_schema = FornecedorCreate(**dados_teste)
+            return {
+                "status": "validation_success",
+                "message": "Dados passaram na validação Pydantic",
+                "dados_validados": fornecedor_schema.dict(),
+                "cpf_cnpj_limpo": fornecedor_schema.cpf_cnpj
+            }
+        except Exception as validation_error:
+            return {
+                "status": "validation_error",
+                "message": "Erro na validação Pydantic",
+                "erro": str(validation_error),
+                "tipo_erro": type(validation_error).__name__,
+                "dados_enviados": dados_teste
+            }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "failed"
+        }
+
+@app.get("/debug-modelo-fornecedor", summary="Debug modelo fornecedor SQLAlchemy")
+def debug_modelo_fornecedor():
+    """
+    Verifica como o SQLAlchemy está mapeando a tabela fornecedores
+    """
+    try:
+        from app.models.fornecedor import Fornecedor
+        from sqlalchemy import inspect
+
+        # Verificar colunas do modelo Python
+        colunas_modelo = [col.name for col in Fornecedor.__table__.columns]
+
+        # Verificar colunas reais do banco
+        from app.database import engine
+        inspector = inspect(engine)
+        colunas_banco = [col['name'] for col in inspector.get_columns('fornecedores')]
+
+        return {
+            "status": "debug_completo",
+            "colunas_modelo_python": sorted(colunas_modelo),
+            "colunas_banco_real": sorted(colunas_banco),
+            "discrepancias": {
+                "faltam_no_modelo": [col for col in colunas_banco if col not in colunas_modelo],
+                "faltam_no_banco": [col for col in colunas_modelo if col not in colunas_banco]
+            }
+        }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "failed"
+        }
+@app.get("/fix-remover-coluna-cnpj", summary="Remover coluna cnpj órfã")
+def fix_remover_coluna_cnpj():
+    """
+    Remove a coluna cnpj antiga que está causando conflito
+    """
+    try:
+        from app.database import engine
+        from sqlalchemy import text
+
+        with engine.connect() as connection:
+
+            # Verificar se há restrições na coluna cnpj
+            restricoes = connection.execute(text("""
+                SELECT constraint_name, constraint_type
+                FROM information_schema.table_constraints
+                WHERE table_name = 'fornecedores'
+                AND constraint_name LIKE '%cnpj%'
+            """)).fetchall()
+
+            # Remover restrições relacionadas à coluna cnpj
+            for restricao in restricoes:
+                try:
+                    connection.execute(text(f"""
+                        ALTER TABLE fornecedores
+                        DROP CONSTRAINT IF EXISTS {restricao[0]}
+                    """))
+                except:
+                    pass  # Ignorar se não conseguir remover
+
+            # Remover a coluna cnpj antiga
+            connection.execute(text("""
+                ALTER TABLE fornecedores
+                DROP COLUMN IF EXISTS cnpj
+            """))
+
+            connection.commit()
+
+            # Verificar se foi removida
+            from sqlalchemy import inspect
+            inspector = inspect(engine)
+            colunas_atuais = [col['name'] for col in inspector.get_columns('fornecedores')]
+
+            return {
+                "status": "success",
+                "message": "Coluna cnpj órfã removida com sucesso",
+                "colunas_restantes": sorted(colunas_atuais),
+                "cnpj_removido": "cnpj" not in colunas_atuais
+            }
+
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "failed"
+        }
 
 #   ===================================================================================================
 #   Incluir routers das APIs
@@ -290,7 +763,7 @@ if HAS_RESTAURANTES:
     )
     print("✅ Router restaurantes incluído com sucesso")
 else:
-    print("⚠️ Router restaurantes não incluído (módulo não disponível)")
+    print("[AVISO] Router restaurantes não incluído (módulo não disponível)")
 
 # Router para operações com aliases de taxonomias (Sistema de Mapeamento - Fase 2)
 if HAS_TAXONOMIA_ALIASES:
@@ -306,7 +779,7 @@ if HAS_TAXONOMIA_ALIASES:
     )
     print("✅ Router taxonomia_aliases incluído com sucesso")
 else:
-    print("⚠️  Router taxonomia_aliases não incluído (módulo não disponível)")
+    print("[AVISO]  Router taxonomia_aliases não incluído (módulo não disponível)")
 
 # Router para operações com insumos do catálogo dos fornecedores (condicional)
 if HAS_FORNECEDOR_INSUMOS:
