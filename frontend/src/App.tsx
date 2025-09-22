@@ -1740,6 +1740,10 @@ const setEditandoFornecedorStable = () => {
   console.log('Função placeholder - set editando fornecedor');
   };
 
+// 🔍 DEBUG: Contadores para detectar loops
+let fetchReceitasCallCount = 0;
+let receitasRenderCount = 0;
+
 // ============================================================================
 // COMPONENTE PRINCIPAL DO SISTEMA
 // ============================================================================
@@ -2118,21 +2122,29 @@ const fetchInsumos = async () => {
   };
 
   // Busca todas as receitas do backend
-  const fetchReceitas = async () => {
+  const fetchReceitas = useCallback(async () => {
+    if (!selectedRestaurante) return;
+
     try {
-      //setLoading(true);
+      setLoading(true);
+      
       const response = await apiService.getReceitas();
+      
       if (response.data) {
-        setReceitas(response.data);
-      } else if (response.error) {
-        console.error('Erro ao buscar receitas:', response.error);
+        const receitasFiltradas = response.data.filter((receita: any) => 
+          receita.restaurante_id === selectedRestaurante.id
+        );
+        
+        setReceitas(receitasFiltradas);
+        console.log(`📋 Receitas carregadas para restaurante ${selectedRestaurante.nome}:`, receitasFiltradas.length);
       }
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
+      showErrorPopup('Erro de Conexão', 'Falha na conexão com o servidor ao buscar receitas.');
     } finally {
-      //setLoading(false);
+      setLoading(false);
     }
-  };
+  }, [selectedRestaurante]);
 
   // Busca receitas de um restaurante específico
   const fetchReceitasByRestaurante = async (restauranteId: number) => {
@@ -2273,8 +2285,8 @@ const fetchInsumos = async () => {
             break;
             
           case 'receitas':
-            await fetchReceitas();
-            console.log('✅ Receitas recarregadas');
+            // fetchReceitas será chamado pelo useEffect específico do componente Receitas
+            console.log('✅ Aba receitas ativada - carregamento será feito pelo componente');
             break;
             
           case 'restaurantes':
@@ -2901,20 +2913,15 @@ const fetchInsumos = async () => {
       // ============================================================================
       // ESTADO DO FORMULÁRIO DE RECEITAS - CAMPOS COMPLETOS
       // ============================================================================
-      // Descrição: Estado atualizado com todos os campos obrigatórios para receitas
-      // Inclui: código, nome, fator, unidade, quantidade porção, preço compra, processado
-      // Data: 19/09/2025
-      // Autor: Will - Empresa: IOGAR
-      // ============================================================================
 
       const [formData, setFormData] = useState({
         // Campos obrigatórios básicos
         codigo: editingReceita?.codigo || '',
         nome: editingReceita?.nome || '',
-        fator: editingReceita?.fator || 1,
+        fator: parseFloat(editingReceita?.fator) || 1,
         unidade: editingReceita?.unidade || '',
-        quantidade_porcao: editingReceita?.quantidade_porcao || 1,
-        preco_compra: editingReceita?.preco_compra || 0,
+        quantidade_porcao: parseInt(editingReceita?.quantidade_porcao) || 1,
+        preco_compra: parseFloat(editingReceita?.preco_compra) || 0,
         
         // Campo opcional
         sugestao_valor: editingReceita?.sugestao_valor || '',
@@ -2931,6 +2938,26 @@ const fetchInsumos = async () => {
         porcoes: editingReceita?.porcoes || 1,
         tempo_preparo: editingReceita?.tempo_preparo || 30
       });
+
+      const handleNumberChange = (field, value) => {
+        let numeroValido;
+        
+        switch (field) {
+          case 'fator':
+          case 'preco_compra':
+            // Para campos decimais
+            numeroValido = parseFloat(value) || 0;
+            break;
+          case 'quantidade_porcao':
+            // Para campos inteiros
+            numeroValido = parseInt(value) || 1;
+            break;
+          default:
+            numeroValido = value;
+        }
+        
+        setFormData(prev => ({ ...prev, [field]: numeroValido }));
+      };
 
       const [receitaInsumos, setReceitaInsumos] = useState(editingReceita?.insumos || []);
 
@@ -3227,7 +3254,11 @@ const fetchInsumos = async () => {
                       type="number"
                       min="1"
                       value={formData.quantidade_porcao}
-                      onChange={(e) => handleChange('quantidade_porcao', parseInt(e.target.value) || 1)}
+                      onChange={(e) => {
+                        const valor = parseInt(e.target.value) || 1;
+                        const valorValido = Math.max(1, valor); // Garante mínimo 1
+                        handleChange('quantidade_porcao', valorValido);
+                      }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
                       placeholder="1"
                     />
@@ -3244,7 +3275,11 @@ const fetchInsumos = async () => {
                       step="0.01"
                       min="0.01"
                       value={formData.fator}
-                      onChange={(e) => handleChange('fator', parseFloat(e.target.value) || 1)}
+                      onChange={(e) => {
+                        const valor = parseFloat(e.target.value) || 1;
+                        const valorValido = Math.max(0.01, valor); // Garante mínimo 0.01
+                        handleChange('fator', valorValido);
+                      }}
                       disabled={formData.eh_processado}
                       className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
                         formData.eh_processado 
@@ -3485,7 +3520,7 @@ const fetchInsumos = async () => {
                         type="number"
                         step="0.01"
                         min="0"
-                        value={formData.preco_compra}
+                        value={isNaN(formData.preco_compra) ? 0 : formData.preco_compra}
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed"
                         placeholder="0,00"
                         readOnly
@@ -4861,19 +4896,7 @@ const fetchInsumos = async () => {
   // ============================================================================
   // ===================================================================================================
 
-  const Receitas = () => {
-  // Estados para receitas
-  const [receitas, setReceitas] = useState<any[]>([]);
-  const [selectedReceita, setSelectedReceita] = useState<any>(null);
-  const [showReceitaForm, setShowReceitaForm] = useState(false);
-  const [novaReceita, setNovaReceita] = useState({ nome: '', descricao: '', categoria: '', porcoes: 1 });
-  const [receitaInsumos, setReceitaInsumos] = useState<ReceitaInsumo[]>([]);
-  const [showRelatorioPopup, setShowRelatorioPopup] = useState(false);
-  const [receitaParaRelatorio, setReceitaParaRelatorio] = useState<any>(null);
-
-  // ===================================================================================================
-  // FUNÇÃO PARA CONVERTER RECEITAS PARA O FORMATO DO SUPER GRID
-  // ===================================================================================================
+  // Converter receitas apenas quando necessário
   const converterReceitasParaGrid = (receitasBackend: any[]) => {
     return receitasBackend.map(receita => ({
       id: receita.id,
@@ -4882,27 +4905,72 @@ const fetchInsumos = async () => {
       categoria: receita.categoria || receita.grupo || 'Geral',
       porcoes: receita.porcoes || receita.rendimento_porcoes || receita.quantidade || 1,
       tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
-      cmv_real: receita.preco_compra || receita.cmv_real || receita.custo_total || 0,
-      preco_venda_sugerido: receita.cmv_25_porcento || receita.preco_venda_real || (receita.preco_compra * 4) || 0,
-      margem_percentual: receita.margem_percentual_real || (receita.margem_real ? receita.margem_real * 100 : 25),
+      
+      // Usar valores corretos do backend com cálculo automático
+      cmv_real: receita.preco_compra || receita.cmv_real || 0,
+      preco_venda_sugerido: receita.cmv_25_porcento || (receita.preco_compra ? receita.preco_compra / 0.25 : 0),
+      margem_percentual: 25, // Padrão de 25% até que seja calculado
+      
       status: receita.ativo !== false ? 'ativo' : 'inativo',
       created_at: receita.created_at || new Date().toISOString(),
       updated_at: receita.updated_at || new Date().toISOString(),
       restaurante_id: receita.restaurante_id,
       total_insumos: receita.receita_insumos?.length || 0,
-      // Campos extras para compatibilidade
-      descricao: receita.descricao || '',
-      cmv_20_porcento: receita.cmv_20_porcento,
-      cmv_25_porcento: receita.cmv_25_porcento,
-      cmv_30_porcento: receita.cmv_30_porcento
+      
+      // Campos para compatibilidade com SuperPopupRelatorio
+      cmv_20_porcento: receita.cmv_20_porcento || (receita.preco_compra ? receita.preco_compra / 0.20 : 0),
+      cmv_25_porcento: receita.cmv_25_porcento || (receita.preco_compra ? receita.preco_compra / 0.25 : 0),
+      cmv_30_porcento: receita.cmv_30_porcento || (receita.preco_compra ? receita.preco_compra / 0.30 : 0)
     }));
   };
 
+const Receitas = React.memo(() => {
+  // Estados para receitas  
+  const [selectedReceita, setSelectedReceita] = useState<any>(null);
+  const [showReceitaForm, setShowReceitaForm] = useState(false);
+  const [novaReceita, setNovaReceita] = useState({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+  const [receitaInsumos, setReceitaInsumos] = useState<ReceitaInsumo[]>([]);
+  const [showRelatorioPopup, setShowRelatorioPopup] = useState(false);
+  const [receitaParaRelatorio, setReceitaParaRelatorio] = useState<any>(null);
+
+  // Converter receitas apenas quando necessário
+  const receitasConvertidas = useMemo(() => {
+    if (!receitas || receitas.length === 0) return [];
+    return converterReceitasParaGrid(receitas);
+  }, [receitas]);
+
+  // Função manual para carregar receitas
+  const carregarReceitas = async () => {
+    if (!selectedRestaurante) {
+      alert('Selecione um restaurante primeiro');
+      return;
+    }
+    await fetchReceitas();
+  };
+  
   // ===================================================================================================
   // BUSCAR RECEITAS DO BACKEND - CORRIGIDO PARA USAR ENDPOINT CORRETO
   // ===================================================================================================
   const fetchReceitas = async () => {
-    if (!selectedRestaurante) return;
+    fetchReceitasCallCount++;
+    // 🔍 DEBUG: Rastreamento de chamadas
+    console.log(`🔄 fetchReceitas CHAMADO #${fetchReceitasCallCount}`);
+    
+    if (fetchReceitasCallCount > 5) {
+      console.error('🚨 LOOP INFINITO DETECTADO! fetchReceitas chamado mais de 5 vezes');
+      console.error('🚨 Parando execução para evitar travamento');
+      return;
+    }
+    
+    console.log('🔍 Stack trace:', new Error().stack);
+    console.log('🔍 selectedRestaurante:', selectedRestaurante?.id, selectedRestaurante?.nome);
+    console.log('🔍 activeTab atual:', activeTab);
+    console.log('🔍 Timestamp:', new Date().toISOString());
+    console.log('-----------------------------------');
+    if (!selectedRestaurante) {
+      console.log('❌ fetchReceitas: selectedRestaurante não definido, saindo...');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -4935,13 +5003,6 @@ const fetchInsumos = async () => {
       setLoading(false);
     }
   };
-
-  // Carregar receitas quando um restaurante for selecionado
-  useEffect(() => {
-    if (selectedRestaurante?.id) {
-      fetchReceitas();
-    }
-  }, [selectedRestaurante?.id]);
 
   // ===================================================================================================
   // HANDLERS PARA AÇÕES DO SUPER GRID
@@ -5217,13 +5278,31 @@ const fetchInsumos = async () => {
   // ===================================================================================================
   return (
     <div className="space-y-6">
+      {/* Botão manual para carregar */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900">Receitas do Restaurante</h3>
+            <p className="text-sm text-gray-600">
+              {selectedRestaurante ? `${selectedRestaurante.nome}` : 'Nenhum restaurante selecionado'}
+            </p>
+          </div>
+          <button
+            onClick={carregarReceitas}
+            disabled={!selectedRestaurante}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            Carregar Receitas
+          </button>
+        </div>
+      </div>
       
       {/* ===================================================================================================
           SUPER GRID DE RECEITAS - COMPONENTE PRINCIPAL
           =================================================================================================== */}
       
       <SuperGridReceitas
-        receitas={converterReceitasParaGrid(receitas)}
+        receitas={receitasConvertidas}
         loading={loading}
         onEditReceita={handleEditReceita}
         onDuplicateReceita={handleDuplicateReceita}
@@ -5372,7 +5451,9 @@ const fetchInsumos = async () => {
       /> 
     </div>
   );
-};
+}); // ← AQUI ESTÁ O FECHAMENTO DO React.memo
+
+Receitas.displayName = 'Receitas';
 
   // ============================================================================
   // COMPONENTE GESTÃO DE FORNECEDORES
