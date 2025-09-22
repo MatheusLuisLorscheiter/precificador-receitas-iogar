@@ -2937,15 +2937,9 @@ const fetchInsumos = async () => {
 
       const unidadesMedida = [
         { value: 'kg', label: 'Quilograma (kg)' },
-        { value: 'g', label: 'Grama (g)' },
         { value: 'l', label: 'Litro (l)' },
-        { value: 'ml', label: 'Mililitro (ml)' },
         { value: 'un', label: 'Unidade (un)' },
-        { value: 'pc', label: 'Peça (pc)' },
-        { value: 'cx', label: 'Caixa (cx)' },
-        { value: 'pct', label: 'Pacote (pct)' },
-        { value: 'm', label: 'Metro (m)' },
-        { value: 'cm', label: 'Centímetro (cm)' }
+        { value: 'cx', label: 'Caixa (cx)' }
       ];
 
       // Função simples sem useMemo para evitar erros
@@ -3273,8 +3267,9 @@ const fetchInsumos = async () => {
                 </div>
               </div>
 
+              {/* SEÇÃO 3 COMPLETA COM BUSCA E CÁLCULO */}
               {/* ============================================================================ */}
-              {/* SEÇÃO 3: PRECIFICAÇÃO */}
+              {/* SEÇÃO 3: GESTÃO DE INSUMOS - COMPLETA COM BUSCA */}
               {/* ============================================================================ */}
               
               <div className="space-y-6">
@@ -3282,71 +3277,6 @@ const fetchInsumos = async () => {
                 <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
                   <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
                     <span className="text-white text-sm font-bold">3</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Precificação</h3>
-                    <p className="text-sm text-gray-500">Valores e sugestões de preço</p>
-                  </div>
-                </div>
-
-                {/* Grid de preços */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
-                  {/* Preço de Compra (Custo) */}
-                  <div className="space-y-2">
-                    <label className="flex items-center text-sm font-medium text-gray-900">
-                      <span>Custo dos Insumos</span>
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.preco_compra}
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed"
-                        placeholder="0,00"
-                        readOnly
-                      />
-                    </div>
-                    <p className="text-xs text-gray-600 flex items-center">
-                      <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
-                      Calculado automaticamente
-                    </p>
-                  </div>
-
-                  {/* Sugestão de Valor */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-900">Sugestão de Preço de Venda</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.sugestao_valor}
-                        onChange={(e) => handleChange('sugestao_valor', e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                        placeholder="0,00"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-600">Valor opcional para venda</p>
-                  </div>
-
-                </div>
-              </div>
-
-              {/* <=== Código novo aqui - SEÇÃO 4 COMPLETA COM BUSCA E CÁLCULO */}
-              {/* ============================================================================ */}
-              {/* SEÇÃO 4: GESTÃO DE INSUMOS - COMPLETA COM BUSCA */}
-              {/* ============================================================================ */}
-              
-              <div className="space-y-6">
-                {/* Header da seção */}
-                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">4</span>
                   </div>
                   <div className="flex-1 flex items-center justify-between">
                     <div>
@@ -3424,7 +3354,7 @@ const fetchInsumos = async () => {
                     const custoItem = calcularCustoInsumo(receitaInsumo);
                     
                     return (
-                      <div key={index} className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+                      <div key={index} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
                         <div className="flex-1">
                           <select
                             value={receitaInsumo.insumo_id}
@@ -3517,6 +3447,72 @@ const fetchInsumos = async () => {
                   </div>
                 )}
               </div>
+
+              {/* ============================================================================ */}
+              {/* SEÇÃO 4: PRECIFICAÇÃO */}
+              {/* ============================================================================ */}
+              
+              <div className="space-y-6">
+                {/* Header da seção */}
+                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">4</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Precificação</h3>
+                    <p className="text-sm text-gray-500">Valores e sugestões de preço</p>
+                  </div>
+                </div>
+
+                {/* Grid de preços */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Preço de Compra (Custo) */}
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-medium text-gray-900">
+                      <span>Custo dos Insumos</span>
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.preco_compra}
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed"
+                        placeholder="0,00"
+                        readOnly
+                      />
+                    </div>
+                    <p className="text-xs text-gray-600 flex items-center">
+                      <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                      Calculado automaticamente
+                    </p>
+                  </div>
+
+                  {/* Sugestão de Valor */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-900">Sugestão de Preço de Venda</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.sugestao_valor}
+                        onChange={(e) => handleChange('sugestao_valor', e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-600">Valor opcional para venda</p>
+                  </div>
+
+                </div>
+              </div>
+
+
 
               {/* ============================================================================ */}
               {/* SEÇÃO 5: CONFIGURAÇÕES AVANÇADAS */}
