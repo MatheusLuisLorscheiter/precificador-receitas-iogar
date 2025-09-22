@@ -30,6 +30,12 @@ import {
 import ClassificadorIA from './components/ClassificadorIA.tsx';
 import PopupClassificacaoIA from './components/PopupClassificacaoIA.tsx';
 
+// Import de integração do Super Grid de Receitas
+import SuperGridReceitas from './components/SuperGridReceitas';
+
+// Import de integração do Super Popup de relatório Receitas
+import SuperPopupRelatorio from './components/SuperPopupRelatorio';
+
 // ============================================================================
 // POPUP COM FADE - IMPLEMENTAÇÃO PARA FORMULÁRIO DE CADASTRAR INSUMO
 // ============================================================================
@@ -3375,7 +3381,7 @@ const fetchInsumos = async () => {
                             type="number"
                             step="0.01"
                             min="0"
-                            value={receitaInsumo.quantidade}
+                            value={insumo.quantidade || 0}
                             onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
                             placeholder="Qtd"
@@ -4851,241 +4857,522 @@ const fetchInsumos = async () => {
 
 
   // ============================================================================
-  // COMPONENTE GESTÃO DE RECEITAS COM CALCULADORA
+  // COMPONENTE GESTÃO DE RECEITAS
   // ============================================================================
+  // ===================================================================================================
+
   const Receitas = () => {
-    // Função para criar nova receita
-    const handleCreateReceita = async (receitaData) => {
-      try {
-        setLoading(true);
-        console.log('📤 Enviando dados para criar receita:', receitaData);
-        
-        const response = await apiService.createReceita(receitaData);
+  // Estados para receitas
+  const [receitas, setReceitas] = useState<any[]>([]);
+  const [selectedReceita, setSelectedReceita] = useState<any>(null);
+  const [showReceitaForm, setShowReceitaForm] = useState(false);
+  const [novaReceita, setNovaReceita] = useState({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+  const [receitaInsumos, setReceitaInsumos] = useState<ReceitaInsumo[]>([]);
+  const [showRelatorioPopup, setShowRelatorioPopup] = useState(false);
+  const [receitaParaRelatorio, setReceitaParaRelatorio] = useState<any>(null);
 
-        if (response.data) {
-          await fetchReceitasByRestaurante(selectedRestaurante.id);
-          setShowReceitaForm(false);
-        } else if (response.error) {
-          console.error('Erro ao criar receita:', response.error);
-          
-          // ============================================================================
-          // POPUP DE ERRO PADRONIZADO - ERRO CRIAR RECEITA
-          // ============================================================================
-          showErrorPopup(
-            'Erro ao Criar Receita',
-            response.error || 'Ocorreu um erro inesperado ao criar a receita. Verifique os dados informados e tente novamente.'
-          );
-        }
-      } catch (error) {
-        console.error('Erro ao criar receita:', error);
-        
-        // ============================================================================
-        // POPUP DE ERRO PADRONIZADO - CONEXÃO CRIAR RECEITA
-        // ============================================================================
-        showErrorPopup(
-          'Falha na Conexão',
-          'Não foi possível conectar com o servidor para criar a receita. Verifique sua conexão de internet e tente novamente.'
+  // ===================================================================================================
+  // FUNÇÃO PARA CONVERTER RECEITAS PARA O FORMATO DO SUPER GRID
+  // ===================================================================================================
+  const converterReceitasParaGrid = (receitasBackend: any[]) => {
+    return receitasBackend.map(receita => ({
+      id: receita.id,
+      codigo: receita.codigo || `REC-${receita.id.toString().padStart(3, '0')}`,
+      nome: receita.nome,
+      categoria: receita.categoria || receita.grupo || 'Geral',
+      porcoes: receita.porcoes || receita.rendimento_porcoes || receita.quantidade || 1,
+      tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
+      cmv_real: receita.preco_compra || receita.cmv_real || receita.custo_total || 0,
+      preco_venda_sugerido: receita.cmv_25_porcento || receita.preco_venda_real || (receita.preco_compra * 4) || 0,
+      margem_percentual: receita.margem_percentual_real || (receita.margem_real ? receita.margem_real * 100 : 25),
+      status: receita.ativo !== false ? 'ativo' : 'inativo',
+      created_at: receita.created_at || new Date().toISOString(),
+      updated_at: receita.updated_at || new Date().toISOString(),
+      restaurante_id: receita.restaurante_id,
+      total_insumos: receita.receita_insumos?.length || 0,
+      // Campos extras para compatibilidade
+      descricao: receita.descricao || '',
+      cmv_20_porcento: receita.cmv_20_porcento,
+      cmv_25_porcento: receita.cmv_25_porcento,
+      cmv_30_porcento: receita.cmv_30_porcento
+    }));
+  };
+
+  // ===================================================================================================
+  // BUSCAR RECEITAS DO BACKEND - CORRIGIDO PARA USAR ENDPOINT CORRETO
+  // ===================================================================================================
+  const fetchReceitas = async () => {
+    if (!selectedRestaurante) return;
+
+    try {
+      setLoading(true);
+      
+      // Usar endpoint GET /api/v1/receitas/ com filtro por restaurante_id
+      const response = await apiService.getReceitas();
+      
+      if (response.data) {
+        // Filtrar receitas pelo restaurante selecionado no frontend
+        const receitasFiltradas = response.data.filter((receita: any) => 
+          receita.restaurante_id === selectedRestaurante.id
         );
-      } finally {
-        setLoading(false);
+        
+        setReceitas(receitasFiltradas);
+        console.log(`📋 Receitas carregadas para restaurante ${selectedRestaurante.nome}:`, receitasFiltradas.length);
+      } else if (response.error) {
+        console.error('Erro ao buscar receitas:', response.error);
+        showErrorPopup(
+          'Erro ao Carregar Receitas',
+          'Não foi possível carregar as receitas. Verifique sua conexão.'
+        );
       }
-    };
+    } catch (error) {
+      console.error('Erro ao buscar receitas:', error);
+      showErrorPopup(
+        'Erro de Conexão',
+        'Falha na conexão com o servidor ao buscar receitas.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Função para adicionar insumo à receita
-    const addInsumoToReceita = () => {
-      setReceitaInsumos([...receitaInsumos, { insumo_id: 0, quantidade: 0 }]);
-    };
+  // Carregar receitas quando um restaurante for selecionado
+  useEffect(() => {
+    if (selectedRestaurante?.id) {
+      fetchReceitas();
+    }
+  }, [selectedRestaurante?.id]);
 
-    // Função para remover insumo da receita
-    const removeInsumoFromReceita = (index: number) => {
-      setReceitaInsumos(receitaInsumos.filter((_, i) => i !== index));
-    };
+  // ===================================================================================================
+  // HANDLERS PARA AÇÕES DO SUPER GRID
+  // ===================================================================================================
 
-    // Função para atualizar insumo na receita
-    const updateReceitaInsumo = (index: number, field: keyof ReceitaInsumo, value: any) => {
-      const updated = [...receitaInsumos];
-      updated[index] = { ...updated[index], [field]: value };
-      setReceitaInsumos(updated);
-    };
+  const handleViewReceita = (receita: any) => {
+    console.log('👁️ Visualizar receita:', receita);
+    
+    // Em vez de apenas selecionar, abrir o popup de relatório
+    handleShowRelatorio(receita);
+  };
 
-    if (!selectedRestaurante) {
-      return (
-        <div className="text-center py-20">
-          <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
-            <div className="bg-yellow-50 p-4 rounded-lg mb-6">
-              <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">Selecione um Restaurante</h3>
-            <p className="text-gray-500">
-              Para gerenciar receitas, primeiro selecione um restaurante na barra lateral.
-            </p>
-          </div>
-        </div>
+  const handleEditReceita = (receita: any) => {
+    console.log('✏️ Editar receita:', receita);
+    
+    // Buscar receita original do backend para edição
+    const receitaOriginal = receitas.find(r => r.id === receita.id);
+    
+    setSelectedReceita(receitaOriginal || receita);
+    setNovaReceita({
+      nome: receita.nome,
+      descricao: receita.descricao || '',
+      categoria: receita.categoria,
+      porcoes: receita.porcoes
+    });
+    
+    // Carregar insumos se existirem
+    if (receitaOriginal?.receita_insumos) {
+      setReceitaInsumos(receitaOriginal.receita_insumos.map((ri: any) => ({
+        insumo_id: ri.insumo_id,
+        quantidade: ri.quantidade
+      })));
+    }
+    
+    setShowReceitaForm(true);
+  };
+
+  const handleDuplicateReceita = async (receita: any) => {
+    try {
+      console.log('📋 Duplicar receita:', receita);
+      
+      // Buscar receita completa do backend
+      const receitaCompleta = receitas.find(r => r.id === receita.id);
+      
+      if (!receitaCompleta) {
+        throw new Error('Receita não encontrada para duplicação');
+      }
+      
+      // Criar cópia da receita com nome modificado
+      const receitaDuplicada = {
+        nome: `${receita.nome} (Cópia)`,
+        descricao: receita.descricao || '',
+        categoria: receita.categoria,
+        porcoes: receita.porcoes,
+        restaurante_id: selectedRestaurante.id,
+        insumos: receitaCompleta.receita_insumos || []
+      };
+
+      // Enviar para o backend
+      const response = await apiService.createReceita(receitaDuplicada);
+      
+      if (response.data) {
+        // Recarregar lista de receitas
+        await fetchReceitas();
+        
+        showSuccessPopup(
+          'Receita Duplicada',
+          `A receita "${receita.nome}" foi duplicada com sucesso!`
+        );
+      } else {
+        throw new Error(response.error || 'Erro ao duplicar receita');
+      }
+    } catch (error) {
+      console.error('Erro ao duplicar receita:', error);
+      showErrorPopup(
+        'Erro na Duplicação',
+        'Não foi possível duplicar a receita. Tente novamente.'
       );
     }
+  };
 
+  const handleDeleteReceita = async (receita: any) => {
+    // Confirmação de segurança
+    if (!confirm(`Tem certeza que deseja excluir a receita "${receita.nome}"?\n\nEsta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Excluir receita:', receita);
+      
+      // Tentar usar endpoint de delete se existir
+      try {
+        const response = await fetch(`http://localhost:8000/api/v1/receitas/${receita.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          // Recarregar receitas após exclusão
+          await fetchReceitas();
+          
+          // Limpar receita selecionada se for a mesma
+          if (selectedReceita?.id === receita.id) {
+            setSelectedReceita(null);
+          }
+          
+          showSuccessPopup(
+            'Receita Excluída',
+            `A receita "${receita.nome}" foi excluída com sucesso!`
+          );
+        } else {
+          throw new Error('Erro na resposta do servidor');
+        }
+      } catch (apiError) {
+        // Fallback: remover apenas localmente se API falhar
+        console.warn('API de exclusão não disponível, removendo localmente');
+        
+        const receitasAtualizadas = receitas.filter(r => r.id !== receita.id);
+        setReceitas(receitasAtualizadas);
+        
+        // Limpar receita selecionada se for a mesma
+        if (selectedReceita?.id === receita.id) {
+          setSelectedReceita(null);
+        }
+        
+        showSuccessPopup(
+          'Receita Removida',
+          `A receita "${receita.nome}" foi removida da lista!`
+        );
+      }
+      
+    } catch (error) {
+      console.error('Erro ao excluir receita:', error);
+      showErrorPopup(
+        'Erro na Exclusão',
+        'Não foi possível excluir a receita. Tente novamente.'
+      );
+    }
+  };
+
+  const handleCreateReceita = () => {
+    console.log('➕ Criar nova receita');
+    setSelectedReceita(null);
+    setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+    setReceitaInsumos([]);
+    setShowReceitaForm(true);
+  };
+
+  const handleShowRelatorio = (receita: any) => {
+    console.log('📊 Abrindo relatório detalhado para:', receita.nome);
+    
+    // Buscar receita completa do backend se necessário
+    const receitaCompleta = receitas.find(r => r.id === receita.id) || receita;
+    
+    setReceitaParaRelatorio(receitaCompleta);
+    setShowRelatorioPopup(true);
+  };
+
+  // ===================================================================================================
+  // FUNÇÃO PARA CRIAR/SALVAR RECEITA (MANTIDA DA VERSÃO ORIGINAL)
+  // ===================================================================================================
+  const handleSaveReceita = async (receitaData: any) => {
+    try {
+      setLoading(true);
+      console.log('📤 Enviando dados para criar receita:', receitaData);
+      
+      const response = await apiService.createReceita(receitaData);
+
+      if (response.data) {
+        // Recarregar receitas
+        await fetchReceitas();
+        
+        // Fechar formulário
+        setShowReceitaForm(false);
+        setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+        setReceitaInsumos([]);
+        setSelectedReceita(null);
+        
+        showSuccessPopup(
+          'Receita Criada',
+          `A receita "${receitaData.nome}" foi criada com sucesso!`
+        );
+        
+      } else if (response.error) {
+        console.error('Erro ao criar receita:', response.error);
+        
+        showErrorPopup(
+          'Erro ao Criar Receita',
+          response.error || 'Ocorreu um erro inesperado ao criar a receita. Verifique os dados informados e tente novamente.'
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao criar receita:', error);
+      
+      showErrorPopup(
+        'Falha na Conexão',
+        'Não foi possível conectar com o servidor para criar a receita. Verifique sua conexão de internet e tente novamente.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ===================================================================================================
+  // FUNÇÕES AUXILIARES PARA FORMULÁRIO (MANTIDAS DA VERSÃO ORIGINAL)
+  // ===================================================================================================
+  
+  // Função para adicionar insumo à receita
+  const addInsumoToReceita = () => {
+    setReceitaInsumos([...receitaInsumos, { insumo_id: 0, quantidade: 0 }]);
+  };
+
+  // Função para remover insumo da receita
+  const removeInsumoFromReceita = (index: number) => {
+    setReceitaInsumos(receitaInsumos.filter((_, i) => i !== index));
+  };
+
+  // Função para atualizar insumo na receita
+  const updateReceitaInsumo = (index: number, field: keyof ReceitaInsumo, value: any) => {
+    const updated = [...receitaInsumos];
+    updated[index] = { ...updated[index], [field]: value };
+    setReceitaInsumos(updated);
+  };
+
+  // Handlers para ações do popup de relatório
+  const handleEditFromPopup = (receita: any) => {
+    console.log('✏️ Editar receita do popup:', receita);
+    setShowRelatorioPopup(false);
+    
+    // Usar a mesma lógica do handleEditReceita existente
+    handleEditReceita(receita);
+  };
+
+  const handleDuplicateFromPopup = async (receita: any) => {
+    console.log('📋 Duplicar receita do popup:', receita);
+    setShowRelatorioPopup(false);
+    
+    // Usar a mesma lógica do handleDuplicateReceita existente
+    await handleDuplicateReceita(receita);
+  };
+
+  const handleDeleteFromPopup = async (receita: any) => {
+    console.log('🗑️ Excluir receita do popup:', receita);
+    setShowRelatorioPopup(false);
+    
+    // Usar a mesma lógica do handleDeleteReceita existente
+    await handleDeleteReceita(receita);
+  };
+
+  // ===================================================================================================
+  // VERIFICAÇÃO DE RESTAURANTE SELECIONADO
+  // ===================================================================================================
+  if (!selectedRestaurante) {
     return (
-      <div className="space-y-6">
-        {/* Header da seção */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Receitas - {selectedRestaurante.nome}</h2>
-            <p className="text-gray-600">Crie e gerencie suas receitas com cálculo automático de preços</p>
+      <div className="text-center py-20">
+        <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
+          <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+            <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
           </div>
-          <button
-            onClick={() => setShowReceitaForm(true)}
-            className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            Nova Receita
-          </button>
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">Selecione um Restaurante</h3>
+          <p className="text-gray-500">
+            Para gerenciar receitas, primeiro selecione um restaurante na barra lateral.
+          </p>
         </div>
-
-        {/* Lista de receitas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Coluna esquerda: Lista de receitas */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Suas Receitas</h3>
-            
-            {receitas.length === 0 ? (
-              <div className="bg-white p-8 rounded-xl border border-gray-100 text-center">
-                <ChefHat className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">Nenhuma receita cadastrada ainda</p>
-                <p className="text-sm text-gray-400">Clique em "Nova Receita" para começar</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {receitas.map((receita) => (
-                  <div
-                    key={receita.id}
-                    onClick={() => setSelectedReceita(receita)}
-                    className={`bg-white p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      selectedReceita?.id === receita.id 
-                        ? 'border-green-500 bg-green-50' 
-                        : 'border-gray-100 hover:border-green-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-gray-900">{receita.nome}</h4>
-                      <span className="text-sm text-gray-500">{receita.porcoes} porções</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">{receita.categoria}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
-                        Custo: R$ {receita.preco_compra?.toFixed(2) || '0.00'}
-                      </span>
-                      <Eye className="w-4 h-4 text-gray-400" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Coluna direita: Calculadora de preços */}
-          <div className="bg-white rounded-xl p-6 border border-gray-100">
-            <div className="flex items-center gap-3 mb-6">
-              <Calculator className="w-6 h-6 text-green-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Dados da Receita</h3>
-            </div>
-
-            {selectedReceita ? (
-              <div className="space-y-6">
-                {/* Informações da receita */}
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">{selectedReceita.nome}</h4>
-                  <p className="text-sm text-gray-600 mb-4">{selectedReceita.descricao}</p>
-                  
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500">Porções</p>
-                      <p className="font-medium text-gray-900">{selectedReceita.porcoes}</p>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500">Custo Total</p>
-                      <p className="font-medium text-green-600">R$ {selectedReceita.preco_compra?.toFixed(2) || '0.00'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Preços sugeridos - vindos do backend */}
-                <div>
-                  <h5 className="font-medium text-gray-900 mb-3">Preços Sugeridos</h5>
-                  <p className="text-xs text-gray-500 mb-4">Calculados automaticamente pelo sistema</p>
-                  
-                  <div className="space-y-3">
-                    {/* CMV 20% */}
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-green-800">CMV 20%</span>
-                        <span className="text-lg font-bold text-green-600">
-                          R$ {selectedReceita.cmv_20_porcento?.toFixed(2) || 'N/A'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-green-600">Margem conservadora</p>
-                    </div>
-
-                    {/* CMV 25% */}
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-green-800">CMV 25%</span>
-                        <span className="text-lg font-bold text-green-600">
-                          R$ {selectedReceita.cmv_25_porcento?.toFixed(2) || 'N/A'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-green-600">Margem equilibrada</p>
-                    </div>
-
-                    {/* CMV 30% */}
-                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-purple-800">CMV 30%</span>
-                        <span className="text-lg font-bold text-purple-600">
-                          R$ {selectedReceita.cmv_30_porcento?.toFixed(2) || 'N/A'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-purple-600">Margem agressiva</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ações */}
-                <div className="flex gap-3">
-                  <button className="flex-1 py-2 px-4 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                    Editar Receita
-                  </button>
-                  <button className="flex-1 py-2 px-4 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all">
-                    Ver Detalhes
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">Selecione uma receita para ver a calculadora</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Modal de nova receita */}
-        {showReceitaForm && (
-          <FormularioReceita 
-            selectedRestaurante={selectedRestaurante}
-            editingReceita={null}
-            onClose={() => {
-              setShowReceitaForm(false);
-              setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
-              setReceitaInsumos([]);
-            }}
-            onSave={handleCreateReceita}
-            loading={loading}
-            insumos={insumos}
-          />
-        )} 
       </div>
     );
-  };
+  }
+
+  // ===================================================================================================
+  // RENDERIZAÇÃO PRINCIPAL
+  // ===================================================================================================
+  return (
+    <div className="space-y-6">
+      
+      {/* ===================================================================================================
+          SUPER GRID DE RECEITAS - COMPONENTE PRINCIPAL
+          =================================================================================================== */}
+      
+      <SuperGridReceitas
+        receitas={converterReceitasParaGrid(receitas)}
+        loading={loading}
+        onEditReceita={handleEditReceita}
+        onDuplicateReceita={handleDuplicateReceita}
+        onDeleteReceita={handleDeleteReceita}
+        onViewReceita={handleViewReceita}
+        onCreateReceita={handleCreateReceita}
+      />
+
+      {/* ===================================================================================================
+          PAINEL LATERAL DE DETALHES DA RECEITA (MANTIDO DA VERSÃO ORIGINAL)
+          =================================================================================================== */}
+      
+      {selectedReceita && (
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <Calculator className="w-6 h-6 text-green-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Detalhes da Receita Selecionada</h3>
+            <button
+              onClick={() => setSelectedReceita(null)}
+              className="ml-auto text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Informações básicas */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">{selectedReceita.nome}</h4>
+              <p className="text-sm text-gray-600 mb-4">{selectedReceita.descricao || 'Sem descrição'}</p>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-xs text-gray-500">Categoria</p>
+                  <p className="font-medium text-gray-900">{selectedReceita.categoria}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-xs text-gray-500">Porções</p>
+                  <p className="font-medium text-gray-900">{selectedReceita.porcoes}</p>
+                </div>
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <p className="text-xs text-green-600">Custo Total</p>
+                  <p className="font-medium text-green-700">R$ {selectedReceita.cmv_real?.toFixed(2) || '0,00'}</p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-xs text-blue-600">Insumos</p>
+                  <p className="font-medium text-blue-700">{selectedReceita.total_insumos} itens</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Preços sugeridos */}
+            <div>
+              <h5 className="font-medium text-gray-900 mb-3">Preços Sugeridos</h5>
+              <p className="text-xs text-gray-500 mb-4">Calculados automaticamente pelo sistema</p>
+              
+              <div className="space-y-3">
+                {/* CMV 20% */}
+                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-green-800">CMV 20%</span>
+                    <span className="text-lg font-bold text-green-600">
+                      R$ {selectedReceita.cmv_20_porcento?.toFixed(2) || (selectedReceita.cmv_real * 5).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-600">Margem conservadora</p>
+                </div>
+
+                {/* CMV 25% */}
+                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-green-800">CMV 25%</span>
+                    <span className="text-lg font-bold text-green-600">
+                      R$ {selectedReceita.cmv_25_porcento?.toFixed(2) || (selectedReceita.cmv_real * 4).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-600">Margem equilibrada (recomendado)</p>
+                </div>
+
+                {/* CMV 30% */}
+                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-purple-800">CMV 30%</span>
+                    <span className="text-lg font-bold text-purple-600">
+                      R$ {selectedReceita.cmv_30_porcento?.toFixed(2) || (selectedReceita.cmv_real * 3.33).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-purple-600">Margem agressiva</p>
+                </div>
+              </div>
+
+              {/* Ações rápidas */}
+              <div className="flex gap-3 mt-6">
+                <button 
+                  onClick={() => handleEditReceita(selectedReceita)}
+                  className="flex-1 py-2 px-4 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  Editar
+                </button>
+                <button 
+                  onClick={() => handleDuplicateReceita(selectedReceita)}
+                  className="flex-1 py-2 px-4 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Duplicar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================================================
+          MODAL DE FORMULÁRIO DE RECEITA (MANTIDO DA VERSÃO ORIGINAL)
+          =================================================================================================== */}
+      
+      {showReceitaForm && (
+        <FormularioReceita 
+          selectedRestaurante={selectedRestaurante}
+          editingReceita={selectedReceita}
+          onClose={() => {
+            setShowReceitaForm(false);
+            setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+            setReceitaInsumos([]);
+            setSelectedReceita(null);
+          }}
+          onSave={handleSaveReceita}
+          loading={loading}
+          insumos={insumos}
+        />
+      )}
+
+      {/* Super Popup de Relatório Detalhado */}
+      <SuperPopupRelatorio
+        isVisible={showRelatorioPopup}
+        receita={receitaParaRelatorio}
+        onClose={() => {
+          setShowRelatorioPopup(false);
+          setReceitaParaRelatorio(null);
+        }}
+        onEdit={handleEditFromPopup}
+        onDuplicate={handleDuplicateFromPopup}
+        onDelete={handleDeleteFromPopup}
+      /> 
+    </div>
+  );
+};
 
   // ============================================================================
   // COMPONENTE GESTÃO DE FORNECEDORES
