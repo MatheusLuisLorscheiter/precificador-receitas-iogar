@@ -61,6 +61,21 @@ const SuperPopupRelatorio: React.FC<SuperPopupRelatorioProps> = ({
   onDuplicate,
   onDelete
 }) => {
+
+  // ===================================================================================================
+  // DEBUG LOGS PARA DIAGNÓSTICO - ADICIONAR ESTAS LINHAS NO INÍCIO
+  // ===================================================================================================
+  console.log('🔍 SuperPopupRelatorio - Debug Props:', {
+    isVisible,
+    receita: receita ? {
+      id: receita.id,
+      nome: receita.nome,
+      cmv_real: receita.cmv_real,
+      preco_venda_sugerido: receita.preco_venda_sugerido
+    } : null,
+    hasOnClose: typeof onClose === 'function',
+    hasOnEdit: typeof onEdit === 'function'
+  });
   
   // Estados para controle do popup
   const [activeTab, setActiveTab] = useState<'geral' | 'insumos' | 'custos' | 'analise'>('geral');
@@ -72,6 +87,37 @@ const SuperPopupRelatorio: React.FC<SuperPopupRelatorioProps> = ({
       setActiveTab('geral');
     }
   }, [isVisible, receita]);
+
+  // ===================================================================================================
+  // CONDIÇÃO DE RETORNO ANTECIPADO - VERIFICAR SE DEVE RENDERIZAR
+  // ===================================================================================================
+  
+  // Se não estiver visível, não renderizar nada
+  if (!isVisible) {
+    console.log('⏸️ SuperPopupRelatorio - Popup não está visível, não renderizando');
+    return null;
+  }
+
+  // Se não há receita, mostrar mensagem de erro no popup
+  if (!receita) {
+    console.log('❌ SuperPopupRelatorio - Nenhuma receita fornecida');
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-xl">
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Erro no Relatório</h3>
+          <p className="text-gray-600 mb-4">Nenhuma receita foi selecionada para exibição.</p>
+          <button
+            onClick={onClose}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('🎯 SuperPopupRelatorio - Renderizando popup completo para:', receita.nome);
 
   // ===================================================================================================
   // FUNÇÕES AUXILIARES

@@ -27,27 +27,6 @@ router = APIRouter()
 # ENDPOINTS RECEITAS (FUNCIONALIDADE PRINCIPAL)
 # ===================================================================
 
-@router.post("/", response_model=ReceitaResponse, summary="Criar receita")
-def create_receita(
-    receita: ReceitaCreate,
-    db: Session = Depends(get_db)
-):
-    """
-    Cria uma nova receita.
-    
-    **Processo:**
-    1. Valida dados da receita
-    2. Cria receita no banco
-    3. CMV inicial = 0 (será calculado quando adicionar insumos)
-    
-    **Próximo passo:**
-    Adicionar insumos à receita usando POST /{receita_id}/insumos/
-    """
-    try:
-        return crud_receita.create_receita(db=db, receita=receita)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
 @router.get("/", response_model=List[ReceitaListResponse], summary="Listar receitas")
 def list_receitas(
     skip: int = Query(0, ge=0, description="Pular N registros"),
@@ -63,21 +42,34 @@ def list_receitas(
         restaurante_id=restaurante_id, grupo=grupo, ativo=ativo
     )
     
+    # Debug: Verificar dados das receitas
+    print(f"📊 DEBUG Backend - Processando {len(receitas)} receitas")
+    
     # Calcular CMVs automaticamente para cada receita
     receitas_com_cmv = []
     for receita in receitas:
-        # Calcular preço de compra (custo de produção)
-        preco_compra = receita.cmv_real if receita.cmv_real else 0.0
+        # Usar cmv_real (que está em centavos) convertido para reais
+        preco_compra = receita.cmv_real if receita.cmv_real and receita.cmv_real > 0 else 0.0
         
-        # Calcular CMVs com margens sobre o custo
+        # Debug: Log dos valores da receita
+        print(f"🔍 Receita {receita.nome}: cmv_centavos={receita.cmv}, cmv_real={preco_compra}")
+        
+        # Calcular CMVs com margens sobre o custo de produção
+        # Fórmula: Preço de venda = Custo de produção ÷ (1 - Margem)
+        # Para CMV: Preço = Custo ÷ Margem_decimal
         cmv_20 = None
         cmv_25 = None  
         cmv_30 = None
         
         if preco_compra > 0:
-            cmv_20 = round(preco_compra / 0.20, 2)  # Custo ÷ 0.20 = Custo × 5
-            cmv_25 = round(preco_compra / 0.25, 2)  # Custo ÷ 0.25 = Custo × 4
-            cmv_30 = round(preco_compra / 0.30, 2)  # Custo ÷ 0.30 = Custo × 3.33
+            # Cálculo correto para CMV (Cost of Materials/Goods as % of sales)
+            cmv_20 = round(preco_compra / 0.20, 2)  # Para 20% de CMV
+            cmv_25 = round(preco_compra / 0.25, 2)  # Para 25% de CMV  
+            cmv_30 = round(preco_compra / 0.30, 2)  # Para 30% de CMV
+            
+            print(f"✅ CMVs calculados - 20%: {cmv_20}, 25%: {cmv_25}, 30%: {cmv_30}")
+        else:
+            print(f"⚠️ Receita sem custo definido: {receita.nome}")
         
         receita_response = {
             "id": receita.id,
@@ -86,7 +78,7 @@ def list_receitas(
             "grupo": receita.grupo,
             "subgrupo": receita.subgrupo,
             "restaurante_id": receita.restaurante_id,
-            "preco_compra": preco_compra,
+            "preco_compra": preco_compra,  # Custo de produção em reais
             "cmv_20_porcento": cmv_20,
             "cmv_25_porcento": cmv_25,
             "cmv_30_porcento": cmv_30,
@@ -94,7 +86,89 @@ def list_receitas(
         }
         receitas_com_cmv.append(receita_response)
     
+    print(f"🎯 Backend retornando {len(receitas_com_cmv)} receitas com CMVs calculados")
     return receitas_com_cmv
+
+@router.post("/", response_model=dict, summary="Criar receita")
+def create_receita(
+    receita_data: dict,  # Usar dict em vez de schema para maior flexibilidade
+    db: Session = Depends(get_db)
+):
+    """
+    Cria uma nova receita com tratamento robusto de erros.
+    
+    Aceita dados flexíveis e trata problemas de serialização.
+    """
+    try:
+        print(f"📝 Criando receita com dados: {receita_data}")
+        
+        # Extrair dados obrigatórios com valores padrão
+        nome = receita_data.get('nome', '').strip()
+        restaurante_id = receita_data.get('restaurante_id')
+        
+        # Validações básicas
+        if not nome:
+            raise HTTPException(status_code=400, detail="Nome da receita é obrigatório")
+        
+        if not restaurante_id:
+            raise HTTPException(status_code=400, detail="Restaurante é obrigatório")
+        
+        # Verificar se restaurante existe
+        restaurante = db.query(Restaurante).filter(Restaurante.id == restaurante_id).first()
+        if not restaurante:
+            raise HTTPException(status_code=400, detail="Restaurante não encontrado")
+        
+        # Criar objeto receita
+        nova_receita = Receita(
+            nome=nome,
+            codigo=receita_data.get('codigo', f'REC-{int(time.time())}'),
+            descricao=receita_data.get('descricao', ''),
+            categoria=receita_data.get('categoria', 'Geral'),
+            porcoes=int(receita_data.get('porcoes', 1)),
+            tempo_preparo=int(receita_data.get('tempo_preparo', 30)),
+            restaurante_id=restaurante_id,
+            cmv=0,  # Será calculado quando adicionar insumos
+            preco_venda=0,
+            margem_percentual=2500,  # 25% em formato * 100
+            ativo=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        # Salvar no banco
+        db.add(nova_receita)
+        db.commit()
+        db.refresh(nova_receita)
+        
+        print(f"✅ Receita criada com ID: {nova_receita.id}")
+        
+        # Retornar resposta simples e segura
+        resposta = {
+            "id": nova_receita.id,
+            "nome": nova_receita.nome,
+            "codigo": nova_receita.codigo,
+            "categoria": nova_receita.categoria,
+            "porcoes": nova_receita.porcoes,
+            "tempo_preparo": nova_receita.tempo_preparo,
+            "restaurante_id": nova_receita.restaurante_id,
+            "ativo": nova_receita.ativo,
+            "message": "Receita criada com sucesso"
+        }
+        
+        return resposta
+        
+    except HTTPException:
+        # Re-raise HTTPExceptions (erros de validação)
+        raise
+    except Exception as e:
+        print(f"❌ Erro interno ao criar receita: {e}")
+        print(f"❌ Tipo do erro: {type(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Erro interno ao criar receita: {str(e)}"
+        )
+
 
 @router.get("/search", response_model=List[ReceitaListResponse],
             summary="Buscar receitas")
