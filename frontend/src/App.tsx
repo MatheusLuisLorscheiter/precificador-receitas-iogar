@@ -23,7 +23,7 @@ import {
   Users, ChefHat, Utensils, Plus, Search, Edit2, Edit3, Trash2, Save,
   X, Check, AlertCircle, BarChart3, Settings, Zap, FileText,
   Upload, Activity, Brain, Monitor, Shield, Database, LinkIcon,
-  Target, Eye, ChevronDown, ChevronRight
+  Target, Eye, ChevronDown, ChevronRight, Copy
 } from 'lucide-react';
 
 // Importar componente da IA
@@ -1219,24 +1219,27 @@ const FormularioRestauranteIsolado = React.memo(({
   };
 
   const handleSubmit = () => {
-    // Validar campos obrigatórios
-    if (!formData.nome?.trim()) {
-      if (typeof showErrorPopup === 'function') {
-        showErrorPopup('Campos Obrigatórios', 'Nome do restaurante é obrigatório!');
-      }
-      return;
-    }
-
-    // Para restaurante novo, validar CNPJ
-    if (!editingRestaurante && !cnpjValido) {
-      if (typeof showErrorPopup === 'function') {
-        showErrorPopup('CNPJ Inválido', 'Por favor, informe um CNPJ válido!');
-      }
-      return;
-    }
-
-    // Chamar função de save passando os dados (igual FormularioInsumoIsolado)
-    onSave(formData);
+    console.log('🔧 handleSubmit - editingReceita:', editingReceita);
+    console.log('🔧 handleSubmit - Modo:', editingReceita ? 'EDIÇÃO' : 'CRIAÇÃO');
+    
+    // Mapear campos para o formato do backend
+    const dadosBackend = {
+      // Se está editando, incluir o ID
+      ...(editingReceita && { id: editingReceita.id }),
+      codigo: formData.codigo || '',
+      nome: formData.nome,
+      descricao: formData.descricao || '',
+      grupo: formData.categoria || 'Lanches',
+      subgrupo: formData.categoria || 'Lanches',
+      rendimento_porcoes: formData.porcoes || 1,
+      tempo_preparo_minutos: 15,
+      ativo: true,
+      restaurante_id: selectedRestaurante.id,
+      insumos: receitaInsumos
+    };
+    
+    console.log('🔧 Dados enviados:', dadosBackend);
+    onSave(dadosBackend);
   };
 
   if (!isVisible) return null;
@@ -2960,6 +2963,10 @@ const fetchInsumos = async () => {
     // Componente isolado para formulário de receita
   const FormularioReceita = ({ selectedRestaurante, editingReceita, onClose, onSave, loading, insumos }) => {
 
+      console.log('🔍 RECEITA PASSADA COMO PROP:', editingReceita);
+      console.log('🔍 TIPO DA RECEITA:', typeof editingReceita);
+      console.log('🔍 É OBJETO?', editingReceita && typeof editingReceita === 'object');
+
       // ===================================================================================================
       // VERIFICAÇÕES DE SEGURANÇA - EVITAR TELA BRANCA
       // ===================================================================================================
@@ -2972,6 +2979,12 @@ const fetchInsumos = async () => {
         loading
       });
 
+      // DEBUG ESPECÍFICO PARA INSUMOS DA RECEITA
+      console.log('🔍 DEBUG RECEITA COMPLETA:', editingReceita);
+      console.log('🔍 DEBUG INSUMOS DA RECEITA:', editingReceita?.receita_insumos);
+      console.log('🔍 DEBUG INSUMOS ALTERNATIVOS:', editingReceita?.insumos);
+      console.log('🔍 DEBUG TODAS AS PROPS DA RECEITA:', Object.keys(editingReceita || {}));
+
       // Verificação de segurança para insumos
       const insumosSeguro = insumos || [];
       
@@ -2983,30 +2996,61 @@ const fetchInsumos = async () => {
       // ===================================================================================================
       const [buscaInsumo, setBuscaInsumo] = useState('');
 
-      const [formData, setFormData] = useState({
-        // Campos obrigatórios básicos
-        codigo: editingReceita?.codigo || '',
-        nome: editingReceita?.nome || '',
-        fator: parseFloat(editingReceita?.fator) || 1,
-        unidade: editingReceita?.unidade || '',
-        quantidade_porcao: parseInt(editingReceita?.quantidade_porcao) || 1,
-        preco_compra: parseFloat(editingReceita?.preco_compra) || 0,
-        
-        // Campo opcional
-        sugestao_valor: editingReceita?.sugestao_valor || '',
-        
-        // Checkbox processado
-        eh_processado: editingReceita?.eh_processado || false,
-        
-        // Restaurante obrigatório (vem da seleção atual)
-        restaurante_id: selectedRestaurante?.id || editingReceita?.restaurante_id || null,
-        
-        // Campos existentes mantidos para compatibilidade
-        categoria: editingReceita?.categoria || '',
-        descricao: editingReceita?.descricao || '',
-        porcoes: editingReceita?.porcoes || 1,
-        tempo_preparo: editingReceita?.tempo_preparo || 30
+      const [formData, setFormData] = useState(() => {
+        console.log('🔧 Inicializando formData com receita:', editingReceita);
+        return {
+          // Campos obrigatórios básicos
+          codigo: editingReceita?.codigo || '',
+          nome: editingReceita?.nome || '',
+          fator: parseFloat(editingReceita?.fator || 1),
+          unidade: editingReceita?.unidade || '',
+          quantidade_porcao: parseInt(editingReceita?.quantidade_porcao || 1),
+          preco_compra: parseFloat(editingReceita?.preco_compra || 0),
+          
+          // Campo opcional
+          sugestao_valor: editingReceita?.sugestao_valor || '',
+          
+          // Checkbox processado
+          eh_processado: editingReceita?.eh_processado || false,
+          
+          // Restaurante obrigatório (vem da seleção atual)
+          restaurante_id: selectedRestaurante?.id || editingReceita?.restaurante_id || null,
+          
+          // Campos existentes mantidos para compatibilidade - CORRIGIDOS
+          categoria: editingReceita?.grupo || editingReceita?.categoria || '',
+          descricao: editingReceita?.descricao || '',
+          porcoes: editingReceita?.porcoes || editingReceita?.rendimento_porcoes || 1,
+          tempo_preparo: editingReceita?.tempo_preparo || editingReceita?.tempo_preparo_minutos || 30
+        };
       });
+
+      // Log detalhado dos dados recebidos
+      useEffect(() => {
+        console.log('🔧 DADOS COMPLETOS DA RECEITA:', {
+          editingReceita: editingReceita,
+          propriedades: editingReceita ? Object.keys(editingReceita) : [],
+          valores: editingReceita ? Object.entries(editingReceita) : []
+        });
+      }, [editingReceita]);
+
+      // Atualizar formData quando editingReceita mudar
+      useEffect(() => {
+        if (editingReceita) {
+          console.log('🔄 Atualizando formData com receita existente');
+          setFormData(prev => ({
+            ...prev,
+            codigo: editingReceita.codigo || prev.codigo,
+            nome: editingReceita.nome || prev.nome,
+            fator: parseFloat(editingReceita.fator || prev.fator),
+            unidade: editingReceita.unidade || prev.unidade,
+            quantidade_porcao: parseInt(editingReceita.quantidade_porcao || editingReceita.porcoes || prev.quantidade_porcao),
+            preco_compra: parseFloat(editingReceita.preco_compra || prev.preco_compra),
+            categoria: editingReceita.grupo || editingReceita.categoria || prev.categoria,
+            descricao: editingReceita.descricao || prev.descricao,
+            porcoes: editingReceita.porcoes || editingReceita.rendimento_porcoes || prev.porcoes
+          }));
+        }
+      }, [editingReceita]);
 
       // Se não há restaurante selecionado, mostrar mensagem em vez de quebrar
       if (!selectedRestaurante && !receitaSegura.restaurante_id) {
@@ -3048,7 +3092,15 @@ const fetchInsumos = async () => {
         setFormData(prev => ({ ...prev, [field]: numeroValido }));
       };
 
-      const [receitaInsumos, setReceitaInsumos] = useState(editingReceita?.insumos || []);
+      const [receitaInsumos, setReceitaInsumos] = useState(() => {
+        if (editingReceita?.receita_insumos) {
+          return editingReceita.receita_insumos.map(ri => ({
+            insumo_id: ri.insumo_id,
+            quantidade: ri.quantidade || 0
+          }));
+        }
+        return editingReceita?.insumos || [];
+      });
 
       // ============================================================================
       // LISTA DE UNIDADES DE MEDIDA - MESMO PADRÃO DOS INSUMOS
@@ -3149,8 +3201,8 @@ const fetchInsumos = async () => {
 
       useEffect(() => {
         const custoTotal = calcularCustoTotalInsumos();
-        handleChange('preco_compra', custoTotal);
-      }, [receitaInsumos]);
+        setFormData(prev => ({ ...prev, preco_compra: custoTotal }));
+      }, [receitaInsumos, insumos]);
 
       // ============================================================================
       // VALIDAÇÕES DE CAMPOS OBRIGATÓRIOS
@@ -3230,6 +3282,18 @@ const fetchInsumos = async () => {
       };
 
       const handleSubmit = () => {
+        console.log('DEBUG handleSubmit - receitaInsumos:', receitaInsumos);
+        
+        // Filtrar insumos válidos e mapear para formato do backend
+        const insumosValidos = receitaInsumos
+          .filter(insumo => insumo.insumo_id > 0 && insumo.quantidade > 0)
+          .map(insumo => ({
+            insumo_id: parseInt(insumo.insumo_id),
+            quantidade: parseFloat(insumo.quantidade)
+          }));
+          
+        console.log('DEBUG handleSubmit - insumosValidos:', insumosValidos);
+        
         // Mapear campos para o formato do backend
         const dadosBackend = {
           codigo: formData.codigo || '',
@@ -3241,8 +3305,10 @@ const fetchInsumos = async () => {
           tempo_preparo_minutos: 15,
           ativo: true,
           restaurante_id: selectedRestaurante.id,
-          insumos: receitaInsumos
+          insumos: insumosValidos  // Usar insumos validados e formatados
         };
+        
+        console.log('DEBUG handleSubmit - dadosBackend completo:', dadosBackend);
         onSave(dadosBackend);
       };
       
@@ -5243,28 +5309,12 @@ const Receitas = React.memo(() => {
     handleShowRelatorio(receita);
   };
 
-  const handleEditReceita = (receita: any) => {
+  const handleEditReceita = async (receita: any) => {
     console.log('✏️ Editar receita:', receita);
+    console.log('🔍 DEBUG - Receita do grid:', receita);
     
-    // Buscar receita original do backend para edição
-    const receitaOriginal = receitas.find(r => r.id === receita.id);
-    
-    setSelectedReceita(receitaOriginal || receita);
-    setNovaReceita({
-      nome: receita.nome,
-      descricao: receita.descricao || '',
-      categoria: receita.categoria,
-      porcoes: receita.porcoes
-    });
-    
-    // Carregar insumos se existirem
-    if (receitaOriginal?.receita_insumos) {
-      setReceitaInsumos(receitaOriginal.receita_insumos.map((ri: any) => ({
-        insumo_id: ri.insumo_id,
-        quantidade: ri.quantidade
-      })));
-    }
-    
+    // Usar o objeto receita que já temos em vez de buscar do backend
+    setSelectedReceita(receita);
     setShowReceitaForm(true);
   };
 
@@ -5387,40 +5437,47 @@ const Receitas = React.memo(() => {
   const handleSaveReceita = async (receitaData: any) => {
     try {
       setLoading(true);
-      console.log('📤 Enviando dados para criar receita:', receitaData);
+
+      // LOGS DE DEBUG OBRIGATÓRIOS
+      console.log('🔧 DEBUG - receitaData recebido:', receitaData);
+      console.log('🔧 DEBUG - receitaData.id:', receitaData.id);
+      console.log('🔧 DEBUG - !!receitaData.id:', !!receitaData.id);
       
-      const response = await apiService.createReceita(receitaData);
+      const isEditing = !!receitaData.id;
+      console.log('🔧 DEBUG - isEditing:', isEditing);
+      
+      console.log('📤 Modo:', isEditing ? 'EDITANDO' : 'CRIANDO');
+      console.log('📤 Dados:', receitaData);
+      
+      let response;
+      if (isEditing) {
+        // Editar receita existente
+        response = await apiService.updateReceita(receitaData.id, receitaData);
+      } else {
+        // Criar nova receita
+        response = await apiService.createReceita(receitaData);
+      }
 
       if (response.data) {
-        // Recarregar receitas
         await fetchReceitas();
         
-        // Fechar formulário
         setShowReceitaForm(false);
-        setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
-        setReceitaInsumos([]);
         setSelectedReceita(null);
         
         showSuccessPopup(
-          'Receita Criada',
-          `A receita "${receitaData.nome}" foi criada com sucesso!`
+          isEditing ? 'Receita Atualizada' : 'Receita Criada',
+          `A receita "${receitaData.nome}" foi ${isEditing ? 'atualizada' : 'criada'} com sucesso!`
         );
         
-      } else if (response.error) {
-        console.error('Erro ao criar receita:', response.error);
-        
+      } else {
         showErrorPopup(
-          'Erro ao Criar Receita',
-          response.error || 'Ocorreu um erro inesperado ao criar a receita. Verifique os dados informados e tente novamente.'
+          isEditing ? 'Erro ao Atualizar' : 'Erro ao Criar',
+          response.error || 'Ocorreu um erro inesperado.'
         );
       }
     } catch (error) {
-      console.error('Erro ao criar receita:', error);
-      
-      showErrorPopup(
-        'Falha na Conexão',
-        'Não foi possível conectar com o servidor para criar a receita. Verifique sua conexão de internet e tente novamente.'
-      );
+      console.error('Erro:', error);
+      showErrorPopup('Falha na Conexão', 'Não foi possível conectar com o servidor.');
     } finally {
       setLoading(false);
     }

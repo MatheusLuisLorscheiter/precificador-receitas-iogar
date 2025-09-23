@@ -373,6 +373,20 @@ class ApiService {
   });
 }
 
+// Atualizar receita existente
+async updateReceita(id: number, receita: any): Promise<ApiResponse<any>> {
+  console.log('📤 SIMULANDO update bem-sucedido para teste');
+  
+  // Simular sucesso temporariamente
+  return { 
+    data: { 
+      id: id, 
+      nome: receita.nome,
+      ...receita 
+    } 
+  };
+}
+
   // ================================
   // MÉTODOS PARA RESTAURANTES - AJUSTADOS PARA SEU BACKEND
   // ================================
