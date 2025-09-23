@@ -20,7 +20,7 @@ import logoIogar from './image/iogar_logo.png';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
-  Users, ChefHat, Utensils, Plus, Search, Edit2, Trash2, Save,
+  Users, ChefHat, Utensils, Plus, Search, Edit2, Edit3, Trash2, Save,
   X, Check, AlertCircle, BarChart3, Settings, Zap, FileText,
   Upload, Activity, Brain, Monitor, Shield, Database, LinkIcon,
   Target, Eye, ChevronDown, ChevronRight
@@ -410,6 +410,7 @@ const FormularioInsumoIsolado = React.memo(({
 
   // 🔧 FUNÇÃO OTIMIZADA para atualizar campos
   const updateField = useCallback((field, value) => {
+    console.log(`🔄 Atualizando campo ${field}:`, value);
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
@@ -624,455 +625,506 @@ const FormularioInsumoIsolado = React.memo(({
 
   if (!isVisible) return null;
 
+  // INICIO RETURN FORMULARIO INSUMO
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 w-full max-w-5xl mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-gray-800">
-            {editingInsumo ? 'Editar Insumo' : 'Cadastrar Novo Insumo'}
-          </h3>
-          <button 
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
-          >
-            ×
-          </button>
-        </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
         
-        {/* SEÇÃO 1: SELEÇÃO DE FORNECEDOR */}
-        <div className="mb-8 p-6 bg-gray-50 rounded-lg border-2 border-gray-200">
-          <h4 className="text-lg font-semibold mb-4 text-gray-700">1. Informações do Fornecedor</h4>
-          
-          {/* Checkbox fornecedor anônimo */}
-          <div className="mb-4">
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={ehFornecedorAnonimo}
-                onChange={(e) => handleFornecedorAnonimoChange(e.target.checked)}
-                className="w-5 h-5 rounded focus:ring-2 focus:ring-green-500"
-                style={{ 
-                  accentColor: '#10b981' // Verde do Tailwind green-500
-                }}
-              />
-              <span className="text-sm font-medium text-gray-700">
-                Marcar Fornecedor como anônimo
-              </span>
-            </label>
-          </div>
-
-          {/* Select de fornecedor */}
-          {!ehFornecedorAnonimo && (
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Selecionar Fornecedor <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={fornecedorSelecionadoForm?.id || ''}
-                  onChange={(e) => handleFornecedorChange(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                >
-                  <option value="">Selecione um fornecedor...</option>
-                  {fornecedoresDisponiveis.map((fornecedor) => (
-                    <option key={fornecedor.id} value={fornecedor.id}>
-                      {fornecedor.nome_razao_social}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* ============================================================================ */}
+        {/* HEADER DO FORMULÁRIO */}
+        {/* ============================================================================ */}
+        
+        <div className="bg-gradient-to-r from-green-500 to-pink-500 px-6 py-4 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                {editingInsumo ? 'Editar Insumo' : 'Cadastrar Novo Insumo'}
+              </h2>
+              <p className="text-white/80 text-sm">
+                {editingInsumo ? 'Modifique os dados do insumo' : 'Cadastre um novo insumo matriz'}
+              </p>
             </div>
-          )}
+            <button 
+              onClick={handleClose} 
+              className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
 
-          {/* Lista de insumos do fornecedor selecionado */}
-          {!ehFornecedorAnonimo && fornecedorSelecionadoForm && (
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Insumos disponíveis do {fornecedorSelecionadoForm.nome_razao_social}
-              </label>
-              
-              {insumosDoFornecedor.length > 0 ? (
-                <select
-                  value={insumoFornecedorSelecionado?.id || ''}
-                  onChange={(e) => handleInsumoFornecedorChange(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                >
-                  <option value="">Selecione um insumo (opcional)...</option>
-                  {insumosDoFornecedor.map((insumo) => (
-                    <option key={insumo.id} value={insumo.id}>
-                      {insumo.codigo} - {insumo.nome} ({insumo.unidade}) - R$ {insumo.preco_unitario.toFixed(2)}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-700">
-                    Este fornecedor ainda não possui insumos cadastrados.
-                  </p>
+        {/* ============================================================================ */}
+        {/* CONTEÚDO DO FORMULÁRIO COM SCROLL CONTROLADO */}
+        {/* ============================================================================ */}
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div className="space-y-8">
+            
+            {/* ============================================================================ */}
+            {/* SEÇÃO 1: INFORMAÇÕES DO FORNECEDOR */}
+            {/* ============================================================================ */}
+            
+            <div className="space-y-6">
+              {/* Header da seção com ícone */}
+              <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">1</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Informações do Fornecedor</h3>
+                  <p className="text-sm text-gray-500">Selecione o fornecedor ou marque como anônimo</p>
+                </div>
+              </div>
+
+              {/* Checkbox fornecedor anônimo */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                <div className="flex items-start space-x-4">
+                  <div className="flex items-center h-6 mt-1">
+                    <input
+                      type="checkbox"
+                      checked={ehFornecedorAnonimo}
+                      onChange={(e) => handleFornecedorAnonimoChange(e.target.checked)}
+                      className="w-5 h-5 text-green-600 bg-white border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2 transition-all duration-200"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-base font-semibold text-gray-900 cursor-pointer">
+                      Marcar Fornecedor como anônimo
+                    </label>
+                    <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+                      Marque esta opção se você não deseja vincular este insumo a um fornecedor específico.
+                      Insumos anônimos não terão comparação de preços com fornecedores cadastrados.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Select de fornecedor */}
+              {!ehFornecedorAnonimo && (
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <label className="flex items-center text-sm font-medium text-gray-900">
+                      <span>Selecionar Fornecedor</span>
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <select
+                      value={fornecedorSelecionadoForm?.id || ''}
+                      onChange={(e) => handleFornecedorChange(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                    >
+                      <option value="">Selecione um fornecedor...</option>
+                      {fornecedoresDisponiveis.map((fornecedor) => (
+                        <option key={fornecedor.id} value={fornecedor.id}>
+                          {fornecedor.nome_razao_social}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Lista de insumos do fornecedor selecionado */}
+              {!ehFornecedorAnonimo && fornecedorSelecionadoForm && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <label className="block text-sm font-medium text-gray-900 mb-3">
+                    Insumos disponíveis do {fornecedorSelecionadoForm.nome_razao_social}
+                  </label>
+                  
+                  {insumosDoFornecedor.length > 0 ? (
+                    <select
+                      value={insumoFornecedorSelecionado?.id || ''}
+                      onChange={(e) => handleInsumoFornecedorChange(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                    >
+                      <option value="">Selecione um insumo (opcional)...</option>
+                      {insumosDoFornecedor.map((insumo) => (
+                        <option key={insumo.id} value={insumo.id}>
+                          {insumo.codigo} - {insumo.nome} ({insumo.unidade}) - R$ {insumo.preco_unitario.toFixed(2)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-700">
+                        Este fornecedor ainda não possui insumos cadastrados.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
-
-        {/* SEÇÃO 2: DADOS DO INSUMO */}
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold mb-4 text-gray-700">2. Dados do Insumo</h4>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Código */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Código <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.codigo}
-                onChange={(e) => updateField('codigo', e.target.value)}
-                disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors ${
-                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
-                }`} // className para mostrar visualmente que está bloqueado
-                placeholder="Ex: INS001"
-              />
-            </div>
-
-            {/* Nome */}
-            <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.nome}
-                onChange={(e) => {
-                  console.log('🔍 Campo Nome onChange chamado com:', e.target.value);
-                  updateField('nome', e.target.value);
-                }}
-                disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors ${
-                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
-                }`}
-                placeholder="Nome do insumo"
-              />
-            </div>
-
-            {/* Grupo */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Grupo
-              </label>
-              <input
-                type="text"
-                value={formData.grupo}
-                onChange={(e) => updateField('grupo', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                placeholder="Ex: Carnes, Laticínios"
-              />
-            </div>
-
-            {/* Subgrupo */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Subgrupo
-              </label>
-              <input
-                type="text"
-                value={formData.subgrupo}
-                onChange={(e) => updateField('subgrupo', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                placeholder="Ex: Bovina, Queijos"
-              />
-            </div>
-
-            {/* Unidade */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Unidade <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.unidade}
-                onChange={(e) => updateField('unidade', e.target.value)}
-                disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
-                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) 
-                    ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
-                }`}
-              >
-                <option value="kg">Kg</option>
-                <option value="g">g</option>
-                <option value="L">L</option>
-                <option value="ml">ml</option>
-                <option value="unidade">Unidade</option>
-                <option value="caixa">Caixa</option>
-                <option value="pacote">Pacote</option>
-              </select>
-            </div>
-
-            {/* Quantidade */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantidade
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={formData.quantidade}
-                onChange={(e) => updateField('quantidade', parseInt(e.target.value) || 0)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                placeholder="0"
-              />
-            </div>
-
-            {/* Fator */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fator
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                value={formData.fator}
-                onChange={(e) => updateField('fator', parseFloat(e.target.value) || 1)}
-                disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                className={`w-full p-3 border-2 rounded-lg focus:outline-none transition-colors ${
-                  (!ehFornecedorAnonimo && insumoFornecedorSelecionado) 
-                    ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed' 
-                    : 'border-gray-300 bg-white focus:border-green-500'
-                }`}
-                placeholder="1.0"
-              />
-            </div>
 
             {/* ============================================================================ */}
-            {/* 🆕 CAMPO PREÇO DE COMPRA TOTAL (VALOR PAGO) */}
+            {/* SEÇÃO 2: DADOS DO INSUMO */}
             {/* ============================================================================ */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Preço de Compra Total (R$) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.preco_compra_total || ''}
-                onChange={(e) => updateField('preco_compra_total', parseFloat(e.target.value) || 0)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                placeholder="0.00"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Valor total pago pela compra do insumo
-              </p>
-            </div>
-
-            {/* 🆕 CAMPO DESCRIÇÃO ADICIONADO */}
-            <div className="lg:col-span-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descrição
-              </label>
-              <textarea
-                value={formData.descricao}
-                onChange={(e) => updateField('descricao', e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white resize-none"
-                rows="3"
-                placeholder="Informações adicionais sobre o insumo..."
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================================================ */}
-        {/* SEÇÃO DE COMPARAÇÃO DE PREÇOS */}
-        {/* ============================================================================ */}
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold mb-4 text-gray-700">3. Comparação de Preços</h4>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Preço por Unidade Calculado */}
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h5 className="font-medium text-green-800">Preço por Unidade (Sistema)</h5>
-                <Calculator className="w-5 h-5 text-green-600" />
-              </div>
-              <div className="text-2xl font-bold text-green-800">
-                R$ {(() => {
-                  if (!formData.preco_compra_total || !formData.quantidade || formData.quantidade <= 0) {
-                    return '0.00';
-                  }
-                  
-                  const precoUnidadeSistema = formData.preco_compra_total / formData.quantidade;
-                  
-                  // Se há fornecedor, usar regra de 3 para converter (mesmo cálculo da comparação)
-                  if (!ehFornecedorAnonimo && insumoFornecedorSelecionado && formData.fator && insumoFornecedorSelecionado.fator) {
-                    // REGRA DE 3: X = (fator_fornecedor × preco_unidade_sistema) / fator_insumo
-                    const precoConvertido = (insumoFornecedorSelecionado.fator * precoUnidadeSistema) / formData.fator;
-                    return precoConvertido.toFixed(2);
-                  }
-                  
-                  // Senão, mostrar preço por unidade normal
-                  return precoUnidadeSistema.toFixed(2);
-                })()}
-              </div>
-              <p className="text-sm text-green-600 mt-1">
-                {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
-                  <>Preço convertido para unidade do fornecedor ({(insumoFornecedorSelecionado.fator || 1) * 1000}ml)</>
-                ) : (
-                  <>R$ {(formData.preco_compra_total || 0).toFixed(2)} ÷ {formData.quantidade || 1} = 
-                  R$ {formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? 
-                    (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}/unidade</>
-                )}
-              </p>
-            </div>
-
-            {/* Status da Comparação com Fornecedor */}
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h5 className="font-medium text-gray-700">Comparação com Fornecedor</h5>
-                <TrendingUp className="w-5 h-5 text-gray-600" />
-              </div>
-              
-            {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
-              <div>
-                <div className="text-2xl font-bold text-gray-800">
-                  R$ {insumoFornecedorSelecionado.preco_unitario?.toFixed(2) || '0.00'}
+            
+            <div className="space-y-6">
+              {/* Header da seção */}
+              <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">2</span>
                 </div>
-                <div className="mt-2">
-                  {(() => {
-                      // ====================================================================
-                      // REGRA DE 3 PARA CONVERSÃO DE UNIDADES
-                      // ====================================================================
-                    const precoSistema = (() => {
-                      if (!formData.preco_compra_total || !formData.quantidade || formData.quantidade <= 0) {
-                        return 0;
-                      }
-                      
-                      const precoUnidadeSistema = formData.preco_compra_total / formData.quantidade;
-                      
-                      // Se há fornecedor, usar regra de 3 para converter
-                      if (insumoFornecedorSelecionado && formData.fator && insumoFornecedorSelecionado.fator) {
-                        // fator_insumo -------- preco_unidade_sistema
-                        // fator_fornecedor --- X
-                        // X = (fator_fornecedor × preco_unidade_sistema) / fator_insumo
-                        const X = (insumoFornecedorSelecionado.fator * precoUnidadeSistema) / formData.fator;
-                        return X;
-                      }
-                      
-                      return precoUnidadeSistema;
-                    })();
-
-                    const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
-                    
-                    if (precoSistema > 0 && precoFornecedor > 0) {
-                      const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
-                      const ehMaisBarato = diferenca < 0;
-                      
-                      return (
-                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                          ehMaisBarato 
-                            ? 'bg-green-100 text-green-800' 
-                            : diferenca > 0
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {ehMaisBarato ? '🔉' : diferenca > 0 ? '📈' : '='} 
-                          {diferenca === 0 ? 'Mesmo preço' : 
-                          `${Math.abs(diferenca).toFixed(1)}% ${ehMaisBarato ? 'mais barato' : 'mais caro'}`}
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="text-sm text-gray-500">
-                        {precoSistema === 0 ? 'Preencha o preço de compra para ver a comparação' : 'Calculando comparação...'}
-                      </div>
-                    );
-                  })()}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Dados do Insumo</h3>
+                  <p className="text-sm text-gray-500">Informações básicas e características do produto</p>
                 </div>
+              </div>
+
+              {/* Grid de campos principais */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
-                {/* Mostrar detalhes da comparação se houver diferença significativa */}
-                {(() => {
-                  // ====================================================================
-                  // USAR O MESMO CÁLCULO CORRETO DA SEÇÃO ANTERIOR (considerando fator)
-                  // ====================================================================
-                  const precoSistema = (() => {
-                    if (!formData.preco_compra_total || !formData.quantidade || formData.quantidade <= 0) {
-                      return 0;
-                    }
-                    
-                    const precoUnidadeSistema = formData.preco_compra_total / formData.quantidade;
-                    
-                    if (insumoFornecedorSelecionado && formData.fator && insumoFornecedorSelecionado.fator) {
-                      // Regra de 3: X = (fator_fornecedor × preco_unidade_sistema) / fator_insumo
-                      const X = (insumoFornecedorSelecionado.fator * precoUnidadeSistema) / formData.fator;
-                      return X;
-                    }
-                    
-                    return precoUnidadeSistema;
-                  })();
-                  
-                  const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
-                  
-                  if (precoSistema > 0 && precoFornecedor > 0) {
-                    const diferenca = Math.abs(((precoSistema - precoFornecedor) / precoFornecedor) * 100);
-                    
-                    if (diferenca > 5) { // Mostrar detalhes se diferença > 5%
-                      return (
-                        <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
-                          <div className="flex justify-between">
-                            <span>Preço do fornecedor:</span>
-                            <span className="font-medium">R$ {precoFornecedor.toFixed(2)}/unidade</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Seu preço calculado:</span>
-                            <span className="font-medium">R$ {precoSistema.toFixed(2)}/unidade</span>
-                          </div>
-                          <div className="border-t border-gray-200 mt-1 pt-1 flex justify-between font-medium">
-                            <span>Diferença:</span>
-                            <span>R$ {Math.abs(precoSistema - precoFornecedor).toFixed(2)}</span>
-                          </div>
-                        </div>
-                      );
-                    }
-                  }
-                  return null;
-                })()}
+                {/* Código */}
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium text-gray-900">
+                    <span>Código</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.codigo}
+                    onChange={(e) => updateField('codigo', e.target.value)}
+                    disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                      (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'
+                    }`}
+                    placeholder="Ex: INS001"
+                  />
+                </div>
+
+                {/* Nome */}
+                <div className="lg:col-span-2 space-y-2">
+                  <label className="flex items-center text-sm font-medium text-gray-900">
+                    <span>Nome</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.nome}
+                    onChange={(e) => {
+                      console.log('🔍 Campo Nome onChange chamado com:', e.target.value);
+                      updateField('nome', e.target.value);
+                    }}
+                    disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                      (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'
+                    }`}
+                    placeholder="Nome do insumo"
+                  />
+                </div>
+
+                {/* Grupo */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-900">Grupo</label>
+                  <input
+                    type="text"
+                    value={formData.grupo}
+                    onChange={(e) => updateField('grupo', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                    placeholder="Ex: Carnes, Laticínios"
+                  />
+                </div>
+
+                {/* Subgrupo */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-900">Subgrupo</label>
+                  <input
+                    type="text"
+                    value={formData.subgrupo}
+                    onChange={(e) => updateField('subgrupo', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                    placeholder="Ex: Bovina, Queijos"
+                  />
+                </div>
+
+                {/* Unidade */}
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium text-gray-900">
+                    <span>Unidade</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <select
+                    value={formData.unidade}
+                    onChange={(e) => updateField('unidade', e.target.value)}
+                    disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                      (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="kg">Kg</option>
+                    <option value="g">g</option>
+                    <option value="L">L</option>
+                    <option value="ml">ml</option>
+                    <option value="unidade">Unidade</option>
+                    <option value="caixa">Caixa</option>
+                    <option value="pacote">Pacote</option>
+                  </select>
+                </div>
+
+                {/* Quantidade */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-900">Quantidade</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.quantidade}
+                    onChange={(e) => updateField('quantidade', parseInt(e.target.value) || 0)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                    placeholder="0"
+                  />
+                </div>
+
+                {/* Fator */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-900">Fator</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={formData.fator}
+                    onChange={(e) => updateField('fator', parseFloat(e.target.value) || 1)}
+                    disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                      (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'
+                    }`}
+                    placeholder="1.0"
+                  />
+                </div>
+
+                {/* Preço de Compra Total */}
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium text-gray-900">
+                    <span>Preço de Compra Total (R$)</span>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.preco_compra_total || ''}
+                      onChange={(e) => updateField('preco_compra_total', parseFloat(e.target.value) || 0)}
+                      className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                      placeholder="0,00"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    Valor total pago pela compra do insumo
+                  </p>
+                </div>
+
+                {/* Descrição */}
+                <div className="lg:col-span-3 space-y-2">
+                  <label className="text-sm font-medium text-gray-900">Descrição</label>
+                  <textarea
+                    value={formData.descricao}
+                    onChange={(e) => updateField('descricao', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 resize-none"
+                    rows="3"
+                    placeholder="Informações adicionais sobre o insumo..."
+                  />
+                </div>
               </div>
-            ) : ehFornecedorAnonimo ? (
-              <div className="text-center text-gray-500">
-                <div className="text-lg mb-2">🔒</div>
-                <div className="text-sm">Fornecedor anônimo</div>
-                <div className="text-xs text-gray-400">Sem comparação de preços</div>
-              </div>
-            ) : (
-              <div className="text-center text-gray-500">
-                <div className="text-lg mb-2">📊</div>
-                <div className="text-sm">Selecione um insumo do fornecedor</div>
-                <div className="text-xs text-gray-400">para comparar preços</div>
-              </div>
-            )}
             </div>
+
+            {/* ============================================================================ */}
+            {/* SEÇÃO 3: COMPARAÇÃO DE PREÇOS */}
+            {/* ============================================================================ */}
+            
+            <div className="space-y-6">
+              {/* Header da seção */}
+              <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">3</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Comparação de Preços</h3>
+                  <p className="text-sm text-gray-500">Análise de custos e comparação com fornecedores</p>
+                </div>
+              </div>
+
+              {/* Grid de comparação */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Preço por Unidade Calculado */}
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">Preço por Unidade (Sistema)</h4>
+                    <Calculator className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-green-600 mb-2">
+                      R$ {(() => {
+                        if (!formData.preco_compra_total || !formData.quantidade || formData.quantidade <= 0) {
+                          return '0.00';
+                        }
+                        
+                        const precoUnidadeSistema = formData.preco_compra_total / formData.quantidade;
+                        
+                        if (!ehFornecedorAnonimo && insumoFornecedorSelecionado && formData.fator && insumoFornecedorSelecionado.fator) {
+                          const precoConvertido = (insumoFornecedorSelecionado.fator * precoUnidadeSistema) / formData.fator;
+                          return precoConvertido.toFixed(2);
+                        }
+                        
+                        return precoUnidadeSistema.toFixed(2);
+                      })()}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
+                        `Preço convertido para unidade do fornecedor (${(insumoFornecedorSelecionado.fator || 1) * 1000}ml)`
+                      ) : (
+                        `R$ ${(formData.preco_compra_total || 0).toFixed(2)} ÷ ${formData.quantidade || 1} = R$ ${formData.preco_compra_total && formData.quantidade && formData.quantidade > 0 ? (formData.preco_compra_total / formData.quantidade).toFixed(2) : '0.00'}/unidade`
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status da Comparação com Fornecedor */}
+                <div className="bg-gradient-to-r from-gray-50 to-blue-50 border border-gray-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">Comparação com Fornecedor</h4>
+                    <TrendingUp className="w-6 h-6 text-gray-600" />
+                  </div>
+                  
+                  {!ehFornecedorAnonimo && insumoFornecedorSelecionado ? (
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-gray-800 mb-2">
+                        R$ {insumoFornecedorSelecionado.preco_unitario?.toFixed(2) || '0.00'}
+                      </div>
+                      <div className="mb-4">
+                        {(() => {
+                          const precoSistema = (() => {
+                            if (!formData.preco_compra_total || !formData.quantidade || formData.quantidade <= 0) {
+                              return 0;
+                            }
+                            
+                            const precoUnidadeSistema = formData.preco_compra_total / formData.quantidade;
+                            
+                            if (insumoFornecedorSelecionado && formData.fator && insumoFornecedorSelecionado.fator) {
+                              const X = (insumoFornecedorSelecionado.fator * precoUnidadeSistema) / formData.fator;
+                              return X;
+                            }
+                            
+                            return precoUnidadeSistema;
+                          })();
+
+                          const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
+                          
+                          if (precoSistema > 0 && precoFornecedor > 0) {
+                            const diferenca = ((precoSistema - precoFornecedor) / precoFornecedor) * 100;
+                            const ehMaisBarato = diferenca < 0;
+                            
+                            return (
+                              <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
+                                ehMaisBarato 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : diferenca > 0
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {ehMaisBarato ? '📉' : diferenca > 0 ? '📈' : '='} 
+                                {diferenca === 0 ? 'Mesmo preço' : 
+                                `${Math.abs(diferenca).toFixed(1)}% ${ehMaisBarato ? 'mais barato' : 'mais caro'}`}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="text-sm text-gray-500">
+                              {precoSistema === 0 ? 'Preencha o preço de compra para ver a comparação' : 'Calculando comparação...'}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      
+                      {/* Detalhes da comparação */}
+                      {(() => {
+                        const precoSistema = (() => {
+                          if (!formData.preco_compra_total || !formData.quantidade || formData.quantidade <= 0) {
+                            return 0;
+                          }
+                          
+                          const precoUnidadeSistema = formData.preco_compra_total / formData.quantidade;
+                          
+                          if (insumoFornecedorSelecionado && formData.fator && insumoFornecedorSelecionado.fator) {
+                            const X = (insumoFornecedorSelecionado.fator * precoUnidadeSistema) / formData.fator;
+                            return X;
+                          }
+                          
+                          return precoUnidadeSistema;
+                        })();
+                        
+                        const precoFornecedor = insumoFornecedorSelecionado.preco_unitario || 0;
+                        
+                        if (precoSistema > 0 && precoFornecedor > 0) {
+                          const diferenca = Math.abs(((precoSistema - precoFornecedor) / precoFornecedor) * 100);
+                          
+                          if (diferenca > 5) {
+                            return (
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs">
+                                <div className="space-y-2">
+                                  <div className="flex justify-between">
+                                    <span>Preço do fornecedor:</span>
+                                    <span className="font-medium">R$ {precoFornecedor.toFixed(2)}/unidade</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Seu preço calculado:</span>
+                                    <span className="font-medium">R$ {precoSistema.toFixed(2)}/unidade</span>
+                                  </div>
+                                  <div className="border-t border-gray-200 pt-2 flex justify-between font-medium">
+                                    <span>Diferença:</span>
+                                    <span>R$ {Math.abs(precoSistema - precoFornecedor).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  ) : ehFornecedorAnonimo ? (
+                    <div className="text-center text-gray-500">
+                      <div className="text-4xl mb-3">🔒</div>
+                      <div className="text-base font-medium mb-1">Fornecedor anônimo</div>
+                      <div className="text-sm text-gray-400">Sem comparação de preços</div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500">
+                      <div className="text-4xl mb-3">📊</div>
+                      <div className="text-base font-medium mb-1">Selecione um insumo do fornecedor</div>
+                      <div className="text-sm text-gray-400">para comparar preços</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        {/* Botões */}
-        <div className="flex justify-end space-x-4">
-          <button
-            onClick={handleClose}
-            className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Salvando...' : (editingInsumo ? 'Atualizar' : 'Salvar Insumo')}
-          </button>
+        {/* ============================================================================ */}
+        {/* BOTÕES FIXOS NO RODAPÉ */}
+        {/* ============================================================================ */}
+        <div className="border-t border-gray-200 p-6 bg-gray-50 rounded-b-xl">
+          <div className="flex gap-3">
+            <button
+              onClick={handleClose}
+              className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 bg-white transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 transition-all"
+            >
+              {loading ? 'Salvando...' : (editingInsumo ? 'Atualizar' : 'Salvar Insumo')}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
+  // FIM RETURN FORMULARIO INSUMO
 });
 
 // ============================================================================
@@ -2913,10 +2965,10 @@ const fetchInsumos = async () => {
       // ===================================================================================================
       
       // Debug dos dados recebidos
-      console.log('🔍 FormularioReceita - Props recebidas:', {
-        selectedRestaurante: selectedRestaurante ? selectedRestaurante.nome : 'null',
-        editingReceita: editingReceita ? editingReceita.nome : 'null',
-        insumos: insumos ? insumos.length : 'null',
+      console.log('🔍 FormularioReceita - Debug:', {
+        selectedRestaurante: selectedRestaurante?.nome || 'null',
+        editingReceita: editingReceita?.nome || 'null', 
+        insumos_count: insumos?.length || 0,
         loading
       });
 
@@ -3030,6 +3082,13 @@ const fetchInsumos = async () => {
       // FUNÇÃO: ADICIONAR INSUMO RAPIDAMENTE PELA BUSCA
       // ============================================================================
       const adicionarInsumoRapido = (insumo) => {
+        // Verificação de segurança
+        if (!insumo || !insumo.id) {
+          console.warn('⚠️ Insumo inválido:', insumo);
+          return;
+        }
+
+        console.log('➕ Adicionando insumo:', insumo.nome);
         const jaAdicionado = receitaInsumos.some(ri => ri.insumo_id === insumo.id);
         
         if (jaAdicionado) {
@@ -3045,6 +3104,25 @@ const fetchInsumos = async () => {
         setReceitaInsumos(prev => [...prev, novoInsumo]);
         setBuscaInsumo('');
       };
+
+      if (!selectedRestaurante && !editingReceita?.restaurante_id) {
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-red-600 mb-4">Restaurante Necessário</h3>
+              <p className="text-gray-600 mb-4">
+                Selecione um restaurante antes de criar/editar receitas.
+              </p>
+              <button
+                onClick={onClose}
+                className="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        );
+      }
 
       // ============================================================================
       // FUNÇÃO: CALCULAR CUSTO DE UM INSUMO ESPECÍFICO
@@ -3167,550 +3245,558 @@ const fetchInsumos = async () => {
         };
         onSave(dadosBackend);
       };
-
+      
+      //INICIO RETURN
       return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             
             {/* ============================================================================ */}
             {/* HEADER DO FORMULÁRIO */}
             {/* ============================================================================ */}
             
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Nova Receita</h3>
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <X className="w-6 h-6" />
-              </button>
+            <div className="bg-gradient-to-r from-green-500 to-pink-500 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Nova Receita</h2>
+                  <p className="text-white/80 text-sm">Cadastre uma nova receita matriz</p>
+                </div>
+                <button 
+                  onClick={onClose} 
+                  className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
             </div>
 
             {/* ============================================================================ */}
-            {/* FORMULÁRIO PRINCIPAL - ESTRUTURA LIMPA */}
+            {/* CONTEÚDO DO FORMULÁRIO COM SCROLL CONTROLADO */}
             {/* ============================================================================ */}
-            
-            <div className="space-y-8">
-              
-              {/* ============================================================================ */}
-              {/* SEÇÃO 1: IDENTIFICAÇÃO DA RECEITA */}
-              {/* ============================================================================ */}
-              
-              <div className="space-y-6">
-                {/* Header da seção com ícone */}
-                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">1</span>
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
+              <div className="space-y-8">
+                
+                {/* ============================================================================ */}
+                {/* SEÇÃO 1: IDENTIFICAÇÃO DA RECEITA */}
+                {/* ============================================================================ */}
+                
+                <div className="space-y-6">
+                  {/* Header da seção com ícone */}
+                  <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">1</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Identificação da Receita</h3>
+                      <p className="text-sm text-gray-500">Informações básicas obrigatórias</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Identificação da Receita</h3>
-                    <p className="text-sm text-gray-500">Informações básicas obrigatórias</p>
+
+                  {/* Grid de campos principais */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    {/* Código de Produto */}
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm font-medium text-gray-900">
+                        <span>Código de Produto</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.codigo}
+                        onChange={(e) => handleChange('codigo', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                        placeholder="REC001"
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* Nome da Receita */}
+                    <div className="lg:col-span-2 space-y-2">
+                      <label className="flex items-center text-sm font-medium text-gray-900">
+                        <span>Nome da Receita</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.nome}
+                        onChange={(e) => handleChange('nome', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                        placeholder="Hambúrguer Artesanal"
+                      />
+                    </div>
+
                   </div>
                 </div>
 
-                {/* Grid de campos principais */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  
-                  {/* Código de Produto */}
-                  <div className="space-y-2">
-                    <label className="flex items-center text-sm font-medium text-gray-900">
-                      <span>Código de Produto</span>
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.codigo}
-                      onChange={(e) => handleChange('codigo', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                      placeholder="REC001"
-                      autoFocus
-                    />
+                {/* ============================================================================ */}
+                {/* SEÇÃO 2: CONFIGURAÇÕES DE PRODUÇÃO */}
+                {/* ============================================================================ */}
+                
+                <div className="space-y-6">
+                  {/* Header da seção */}
+                  <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">2</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Configurações de Produção</h3>
+                      <p className="text-sm text-gray-500">Definições técnicas e medidas</p>
+                    </div>
                   </div>
 
-                  {/* Nome da Receita */}
-                  <div className="lg:col-span-2 space-y-2">
-                    <label className="flex items-center text-sm font-medium text-gray-900">
-                      <span>Nome da Receita</span>
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.nome}
-                      onChange={(e) => handleChange('nome', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                      placeholder="Hambúrguer Artesanal"
-                    />
-                  </div>
+                  {/* Grid de configurações */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    
+                    {/* Unidade de Medida */}
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm font-medium text-gray-900">
+                        <span>Unidade</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <select
+                        value={formData.unidade}
+                        onChange={(e) => handleChange('unidade', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                      >
+                        <option value="">Selecionar</option>
+                        {unidadesMedida.map((unidade) => (
+                          <option key={unidade.value} value={unidade.value}>
+                            {unidade.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
+                    {/* Quantidade de Porção */}
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm font-medium text-gray-900">
+                        <span>Porções</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.quantidade_porcao}
+                        onChange={(e) => {
+                          const valor = parseInt(e.target.value) || 1;
+                          const valorValido = Math.max(1, valor); // Garante mínimo 1
+                          handleChange('quantidade_porcao', valorValido);
+                        }}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                        placeholder="1"
+                      />
+                    </div>
+
+                    {/* Fator */}
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm font-medium text-gray-900">
+                        <span>Fator</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={formData.fator}
+                        onChange={(e) => {
+                          const valor = parseFloat(e.target.value) || 1;
+                          const valorValido = Math.max(0.01, valor); // Garante mínimo 0.01
+                          handleChange('fator', valorValido);
+                        }}
+                        disabled={formData.eh_processado}
+                        className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                          formData.eh_processado 
+                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+                            : 'bg-white text-gray-900'
+                        }`}
+                        placeholder="1.00"
+                      />
+                      {formData.eh_processado && (
+                        <p className="text-xs text-amber-600 font-medium">Fixo para processados</p>
+                      )}
+                    </div>
+
+                    {/* Categoria */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-900">Categoria</label>
+                      <input
+                        type="text"
+                        value={formData.categoria || ''}
+                        onChange={(e) => handleChange('categoria', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                        placeholder="Lanches"
+                      />
+                    </div>
+
+                  </div>
                 </div>
-              </div>
 
-              {/* ============================================================================ */}
-              {/* SEÇÃO 2: CONFIGURAÇÕES DE PRODUÇÃO */}
-              {/* ============================================================================ */}
-              
-              <div className="space-y-6">
-                {/* Header da seção */}
-                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">2</span>
+                {/* SEÇÃO 3 COMPLETA COM BUSCA E CÁLCULO */}
+                {/* ============================================================================ */}
+                {/* SEÇÃO 3: GESTÃO DE INSUMOS - COMPLETA COM BUSCA */}
+                {/* ============================================================================ */}
+                
+                <div className="space-y-6">
+                  {/* Header da seção */}
+                  <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">3</span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Insumos da Receita</h3>
+                        <p className="text-sm text-gray-500">Adicione os ingredientes e veja o cálculo automático do custo</p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        {/* Exibir custo total calculado */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+                          <p className="text-xs text-blue-600 font-medium">Custo Total</p>
+                          <p className="text-lg font-bold text-blue-900">
+                            R$ {calcularCustoTotalInsumos().toFixed(2)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={addInsumoToReceita}
+                          className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Adicionar Insumo
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Configurações de Produção</h3>
-                    <p className="text-sm text-gray-500">Definições técnicas e medidas</p>
-                  </div>
-                </div>
 
-                {/* Grid de configurações */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  
-                  {/* Unidade de Medida */}
-                  <div className="space-y-2">
-                    <label className="flex items-center text-sm font-medium text-gray-900">
-                      <span>Unidade</span>
-                      <span className="text-red-500 ml-1">*</span>
+                  {/* Campo de busca para insumos */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                    <label className="block text-sm font-medium text-gray-900 mb-3">
+                      Buscar Insumos Disponíveis
                     </label>
-                    <select
-                      value={formData.unidade}
-                      onChange={(e) => handleChange('unidade', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                    >
-                      <option value="">Selecionar</option>
-                      {unidadesMedida.map((unidade) => (
-                        <option key={unidade.value} value={unidade.value}>
-                          {unidade.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Quantidade de Porção */}
-                  <div className="space-y-2">
-                    <label className="flex items-center text-sm font-medium text-gray-900">
-                      <span>Porções</span>
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.quantidade_porcao}
-                      onChange={(e) => {
-                        const valor = parseInt(e.target.value) || 1;
-                        const valorValido = Math.max(1, valor); // Garante mínimo 1
-                        handleChange('quantidade_porcao', valorValido);
-                      }}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                      placeholder="1"
-                    />
-                  </div>
-
-                  {/* Fator */}
-                  <div className="space-y-2">
-                    <label className="flex items-center text-sm font-medium text-gray-900">
-                      <span>Fator</span>
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={formData.fator}
-                      onChange={(e) => {
-                        const valor = parseFloat(e.target.value) || 1;
-                        const valorValido = Math.max(0.01, valor); // Garante mínimo 0.01
-                        handleChange('fator', valorValido);
-                      }}
-                      disabled={formData.eh_processado}
-                      className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
-                        formData.eh_processado 
-                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
-                          : 'bg-white text-gray-900'
-                      }`}
-                      placeholder="1.00"
-                    />
-                    {formData.eh_processado && (
-                      <p className="text-xs text-amber-600 font-medium">Fixo para processados</p>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        value={buscaInsumo}
+                        onChange={(e) => setBuscaInsumo(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
+                        placeholder="Digite o nome do insumo para buscar..."
+                      />
+                    </div>
+                    
+                    {/* Lista de insumos filtrados */}
+                    {buscaInsumo && (
+                      <div className="mt-3 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded-lg">
+                        {insumosFiltrados.map((insumo) => (
+                          <button
+                            key={insumo.id}
+                            type="button"
+                            onClick={() => adicionarInsumoRapido(insumo)}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{insumo.nome}</p>
+                              <p className="text-xs text-gray-500">
+                                {insumo.grupo} • {insumo.unidade} • R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                              </p>
+                            </div>
+                            <Plus className="w-4 h-4 text-green-600" />
+                          </button>
+                        ))}
+                        {insumosFiltrados.length === 0 && (
+                          <div className="px-4 py-3 text-center text-gray-500 text-sm">
+                            Nenhum insumo encontrado para "{buscaInsumo}"
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 
-                  {/* Categoria */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-900">Categoria</label>
-                    <input
-                      type="text"
-                      value={formData.categoria}
-                      onChange={(e) => handleChange('categoria', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                      placeholder="Lanches"
-                    />
-                  </div>
+                  {/* Lista de insumos adicionados */}
+                  <div className="space-y-3">
+                    {receitaInsumos.map((receitaInsumo, index) => {
+                      const insumoSelecionado = insumos.find(i => i.id === receitaInsumo.insumo_id);
+                      const custoItem = calcularCustoInsumo(receitaInsumo);
+                      
+                      return (
+                        <div key={index} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+                          <div className="flex-1">
+                            <select
+                              value={receitaInsumo.insumo_id || 0}
+                              onChange={(e) => updateReceitaInsumo(index, 'insumo_id', parseInt(e.target.value))}
+                              className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                            >
+                              <option value={0}>Selecione um insumo...</option>
+                              {(insumos || []).map((insumo) => (
+                                <option key={insumo.id} value={insumo.id}>
+                                  {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
-                </div>
-              </div>
-
-              {/* SEÇÃO 3 COMPLETA COM BUSCA E CÁLCULO */}
-              {/* ============================================================================ */}
-              {/* SEÇÃO 3: GESTÃO DE INSUMOS - COMPLETA COM BUSCA */}
-              {/* ============================================================================ */}
-              
-              <div className="space-y-6">
-                {/* Header da seção */}
-                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">3</span>
-                  </div>
-                  <div className="flex-1 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Insumos da Receita</h3>
-                      <p className="text-sm text-gray-500">Adicione os ingredientes e veja o cálculo automático do custo</p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      {/* Exibir custo total calculado */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
-                        <p className="text-xs text-blue-600 font-medium">Custo Total</p>
-                        <p className="text-lg font-bold text-blue-900">
-                          R$ {calcularCustoTotalInsumos().toFixed(2)}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={addInsumoToReceita}
-                        className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Adicionar Insumo
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Campo de busca para insumos */}
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <label className="block text-sm font-medium text-gray-900 mb-3">
-                    Buscar Insumos Disponíveis
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="text"
-                      value={buscaInsumo}
-                      onChange={(e) => setBuscaInsumo(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
-                      placeholder="Digite o nome do insumo para buscar..."
-                    />
-                  </div>
-                  
-                  {/* Lista de insumos filtrados */}
-                  {buscaInsumo && (
-                    <div className="mt-3 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded-lg">
-                      {insumosFiltrados.map((insumo) => (
-                        <button
-                          key={insumo.id}
-                          type="button"
-                          onClick={() => adicionarInsumoRapido(insumo)}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center justify-between"
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{insumo.nome}</p>
-                            <p className="text-xs text-gray-500">
-                              {insumo.grupo} • {insumo.unidade} • R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                          <div className="w-32">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={receitaInsumo.quantidade || 0}
+                              onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
+                              placeholder="Qtd"
+                            />
+                            <p className="text-xs text-gray-500 mt-1 text-center">
+                              {insumoSelecionado?.unidade || 'un'}
                             </p>
                           </div>
-                          <Plus className="w-4 h-4 text-green-600" />
-                        </button>
-                      ))}
-                      {insumosFiltrados.length === 0 && (
-                        <div className="px-4 py-3 text-center text-gray-500 text-sm">
-                          Nenhum insumo encontrado para "{buscaInsumo}"
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
 
-                {/* Lista de insumos adicionados */}
-                <div className="space-y-3">
-                  {receitaInsumos.map((receitaInsumo, index) => {
-                    const insumoSelecionado = insumos.find(i => i.id === receitaInsumo.insumo_id);
-                    const custoItem = calcularCustoInsumo(receitaInsumo);
-                    
-                    return (
-                      <div key={index} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
-                        <div className="flex-1">
-                          <select
-                            value={receitaInsumo.insumo_id}
-                            onChange={(e) => updateReceitaInsumo(index, 'insumo_id', parseInt(e.target.value))}
-                            className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                          {/* Custo calculado do item */}
+                          <div className="w-24 text-center">
+                            <p className="text-sm font-semibold text-green-600">
+                              R$ {custoItem.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-gray-500">Custo</p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => removeInsumoFromReceita(index)}
+                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
                           >
-                            <option value={0}>Selecione um insumo...</option>
-                            {(insumos || []).map((insumo) => (
-                              <option key={insumo.id} value={insumo.id}>
-                                {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
-                              </option>
-                            ))}
-                          </select>
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
+                      );
+                    })}
 
-                        <div className="w-32">
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={receitaInsumo.quantidade || 0}
-                            onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
-                            placeholder="Qtd"
-                          />
-                          <p className="text-xs text-gray-500 mt-1 text-center">
-                            {insumoSelecionado?.unidade || 'un'}
-                          </p>
-                        </div>
-
-                        {/* Custo calculado do item */}
-                        <div className="w-24 text-center">
-                          <p className="text-sm font-semibold text-green-600">
-                            R$ {custoItem.toFixed(2)}
-                          </p>
-                          <p className="text-xs text-gray-500">Custo</p>
-                        </div>
-
+                    {receitaInsumos.length === 0 && (
+                      <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
+                        <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                        <p className="text-gray-600 font-medium">Nenhum insumo adicionado ainda</p>
+                        <p className="text-sm text-gray-500 mb-4">Use a busca acima ou clique em "Adicionar Insumo"</p>
                         <button
                           type="button"
-                          onClick={() => removeInsumoFromReceita(index)}
-                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                          onClick={addInsumoToReceita}
+                          className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          Começar Adicionando Insumos
                         </button>
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
 
-                  {receitaInsumos.length === 0 && (
-                    <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
-                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600 font-medium">Nenhum insumo adicionado ainda</p>
-                      <p className="text-sm text-gray-500 mb-4">Use a busca acima ou clique em "Adicionar Insumo"</p>
-                      <button
-                        type="button"
-                        onClick={addInsumoToReceita}
-                        className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors"
-                      >
-                        Começar Adicionando Insumos
-                      </button>
+                  {/* Resumo dos custos */}
+                  {receitaInsumos.length > 0 && (
+                    <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Resumo de Custos</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-green-600">
+                            R$ {calcularCustoTotalInsumos().toFixed(2)}
+                          </p>
+                          <p className="text-sm text-gray-600">Custo Total dos Insumos</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-blue-600">
+                            R$ {(calcularCustoTotalInsumos() / formData.quantidade_porcao).toFixed(2)}
+                          </p>
+                          <p className="text-sm text-gray-600">Custo por Porção</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-purple-600">
+                            {receitaInsumos.length}
+                          </p>
+                          <p className="text-sm text-gray-600">Ingredientes</p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Resumo dos custos */}
-                {receitaInsumos.length > 0 && (
-                  <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Resumo de Custos</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-green-600">
-                          R$ {calcularCustoTotalInsumos().toFixed(2)}
-                        </p>
-                        <p className="text-sm text-gray-600">Custo Total dos Insumos</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-blue-600">
-                          R$ {(calcularCustoTotalInsumos() / formData.quantidade_porcao).toFixed(2)}
-                        </p>
-                        <p className="text-sm text-gray-600">Custo por Porção</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-2xl font-bold text-purple-600">
-                          {receitaInsumos.length}
-                        </p>
-                        <p className="text-sm text-gray-600">Ingredientes</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* ============================================================================ */}
-              {/* SEÇÃO 4: PRECIFICAÇÃO */}
-              {/* ============================================================================ */}
-              
-              <div className="space-y-6">
-                {/* Header da seção */}
-                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">4</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Precificação</h3>
-                    <p className="text-sm text-gray-500">Valores e sugestões de preço</p>
-                  </div>
-                </div>
-
-                {/* Grid de preços */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
-                  {/* Preço de Compra (Custo) */}
-                  <div className="space-y-2">
-                    <label className="flex items-center text-sm font-medium text-gray-900">
-                      <span>Custo dos Insumos</span>
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={isNaN(formData.preco_compra) ? 0 : formData.preco_compra}
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed"
-                        placeholder="0,00"
-                        readOnly
-                      />
-                    </div>
-                    <p className="text-xs text-gray-600 flex items-center">
-                      <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
-                      Calculado automaticamente
-                    </p>
-                  </div>
-
-                  {/* Sugestão de Valor */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-900">Sugestão de Preço de Venda</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.sugestao_valor}
-                        onChange={(e) => handleChange('sugestao_valor', e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                        placeholder="0,00"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-600">Valor opcional para venda</p>
-                  </div>
-
-                </div>
-              </div>
-
-
-
-              {/* ============================================================================ */}
-              {/* SEÇÃO 5: CONFIGURAÇÕES AVANÇADAS */}
-              {/* ============================================================================ */}
-              
-              <div className="space-y-6">
-                {/* Header da seção */}
-                <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">5</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Configurações Avançadas</h3>
-                    <p className="text-sm text-gray-500">Descrição e opções especiais</p>
-                  </div>
-                </div>
-
-                {/* Descrição */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-900">Descrição da Receita</label>
-                  <textarea
-                    value={formData.descricao}
-                    onChange={(e) => handleChange('descricao', e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 resize-none"
-                    placeholder="Descreva os ingredientes principais, modo de preparo resumido e características especiais da receita..."
-                  />
-                </div>
-
-                {/* Checkbox Receita Processada */}
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="flex items-center h-6 mt-1">
-                      <input
-                        type="checkbox"
-                        checked={formData.eh_processado}
-                        onChange={(e) => {
-                          handleChange('eh_processado', e.target.checked);
-                          if (e.target.checked) {
-                            handleChange('fator', 1);
-                          }
-                        }}
-                        className="w-5 h-5 text-green-600 bg-white border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2 transition-all duration-200"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-base font-semibold text-gray-900 cursor-pointer">
-                        Receita Processada
-                      </label>
-                      <p className="text-sm text-gray-700 mt-2 leading-relaxed">
-                        Marque esta opção se esta receita será utilizada como ingrediente em outras receitas. 
-                        Receitas processadas aparecem automaticamente na lista de insumos disponíveis e 
-                        têm fator fixo igual a 1.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* ============================================================================ */}
-              {/* INFORMAÇÃO DO RESTAURANTE SELECIONADO */}
-              {/* ============================================================================ */}
-              
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-sm">🏪</span>
+                {/* ============================================================================ */}
+                {/* SEÇÃO 4: PRECIFICAÇÃO */}
+                {/* ============================================================================ */}
+                
+                <div className="space-y-6">
+                  {/* Header da seção */}
+                  <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">4</span>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Será criada para:</p>
-                      <p className="text-lg font-bold text-gray-900">
-                        {selectedRestaurante?.nome || 'Nenhum restaurante selecionado'}
-                      </p>
+                      <h3 className="text-lg font-semibold text-gray-900">Precificação</h3>
+                      <p className="text-sm text-gray-500">Valores e sugestões de preço</p>
                     </div>
                   </div>
-                  {selectedRestaurante && (
-                    <div className="flex items-center space-x-2 text-green-600">
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <span className="text-sm font-medium">Conectado</span>
+
+                  {/* Grid de preços */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    {/* Preço de Compra (Custo) */}
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm font-medium text-gray-900">
+                        <span>Custo dos Insumos</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={isNaN(formData.preco_compra) ? 0 : formData.preco_compra}
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed"
+                          placeholder="0,00"
+                          readOnly
+                        />
+                      </div>
+                      <p className="text-xs text-gray-600 flex items-center">
+                        <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                        Calculado automaticamente
+                      </p>
+                    </div>
+
+                    {/* Sugestão de Valor */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-900">Sugestão de Preço de Venda</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.sugestao_valor}
+                          onChange={(e) => handleChange('sugestao_valor', e.target.value)}
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-600">Valor opcional para venda</p>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* ============================================================================ */}
+                {/* SEÇÃO 5: CONFIGURAÇÕES AVANÇADAS */}
+                {/* ============================================================================ */}
+                
+                <div className="space-y-6">
+                  {/* Header da seção */}
+                  <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">5</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Configurações Avançadas</h3>
+                      <p className="text-sm text-gray-500">Descrição e opções especiais</p>
+                    </div>
+                  </div>
+
+                  {/* Descrição */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-900">Descrição da Receita</label>
+                    <textarea
+                      value={formData.descricao}
+                      onChange={(e) => handleChange('descricao', e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900 resize-none"
+                      placeholder="Descreva os ingredientes principais, modo de preparo resumido e características especiais da receita..."
+                    />
+                  </div>
+
+                  {/* Checkbox Receita Processada */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex items-center h-6 mt-1">
+                        <input
+                          type="checkbox"
+                          checked={formData.eh_processado}
+                          onChange={(e) => {
+                            handleChange('eh_processado', e.target.checked);
+                            if (e.target.checked) {
+                              handleChange('fator', 1);
+                            }
+                          }}
+                          className="w-5 h-5 text-green-600 bg-white border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2 transition-all duration-200"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-base font-semibold text-gray-900 cursor-pointer">
+                          Receita Processada
+                        </label>
+                        <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+                          Marque esta opção se esta receita será utilizada como ingrediente em outras receitas. 
+                          Receitas processadas aparecem automaticamente na lista de insumos disponíveis e 
+                          têm fator fixo igual a 1.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* ============================================================================ */}
+                {/* INFORMAÇÃO DO RESTAURANTE SELECIONADO */}
+                {/* ============================================================================ */}
+                
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                        <span className="text-white text-sm">🏪</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Será criada para:</p>
+                        <p className="text-lg font-bold text-gray-900">
+                          {selectedRestaurante?.nome || 'Nenhum restaurante selecionado'}
+                        </p>
+                      </div>
+                    </div>
+                    {selectedRestaurante && (
+                      <div className="flex items-center space-x-2 text-green-600">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span className="text-sm font-medium">Conectado</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {!selectedRestaurante && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-700 font-medium">
+                        ⚠️ Selecione um restaurante antes de criar a receita
+                      </p>
                     </div>
                   )}
                 </div>
-                
-                {!selectedRestaurante && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-700 font-medium">
-                      ⚠️ Selecione um restaurante antes de criar a receita
-                    </p>
-                  </div>
-                )}
+
               </div>
-
             </div>
 
             {/* ============================================================================ */}
-            {/* BOTÕES DE AÇÃO */}
+            {/* BOTÕES FIXOS NO RODAPÉ */}
             {/* ============================================================================ */}
-            
-            <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
-              <button 
-                onClick={onClose} 
-                className="flex-1 py-3 px-6 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors font-medium"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleSubmit} 
-                disabled={loading} 
-                className="flex-1 py-3 px-6 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-xl hover:from-green-600 hover:to-pink-600 disabled:opacity-50 transition-all font-medium"
-              >
-                {loading ? 'Criando...' : 'Criar Receita'}
-              </button>
+            <div className="border-t border-gray-200 p-6 bg-gray-50 rounded-b-xl">
+              <div className="flex gap-3">
+                <button 
+                  onClick={onClose} 
+                  className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 bg-white transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleSubmit} 
+                  disabled={loading} 
+                  className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 transition-all"
+                >
+                  {loading ? 'Criando...' : 'Criar Receita'}
+                </button>
+              </div>
             </div>
-
           </div>
         </div>
-
       );
+      //FIM RETURN
     };
 
   // Componente isolado para busca de insumos
@@ -3767,10 +3853,11 @@ const fetchInsumos = async () => {
     }, [setSearchTerm]);
 
     // Filtro dos insumos baseado na busca
-    const insumosFiltrados = insumos.filter(insumo =>
-      insumo.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      insumo.grupo?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const insumosFiltrados = insumosSeguro.filter(insumoItem => 
+      insumoItem && 
+      insumoItem.nome && 
+      insumoItem.nome.toLowerCase().includes(buscaInsumo.toLowerCase())
+    ).slice(0, 10);
 
     // Função atualizada para salvar insumo com nova lógica de fornecedor
     const handleSaveInsumo = async (dadosInsumo) => {
@@ -4967,22 +5054,9 @@ const fetchInsumos = async () => {
         console.log(`✅ Custo calculado pelos insumos: R$ ${custoProducao.toFixed(2)}`);
       }
       
-      // === FALLBACK: Se ainda for zero, usar valores de exemplo para demonstração ===
       if (custoProducao === 0) {
-        // Para demonstração, vamos usar um custo base de exemplo
-        const custosExemplo = {
-          7: 18.50, // Espaguete à Bolonhesa
-          6: 12.80, // X-Bacon (se existir)
-          5: 8.90,  // Outros pratos
-          4: 15.30,
-          3: 22.10,
-          2: 9.75,
-          1: 13.40
-        };
-        
-        custoProducao = custosExemplo[receita.id] || 15.00; // Valor padrão
-        
-        console.log(`🎯 Usando custo de exemplo para receita ${receita.id} (${receita.nome}): R$ ${custoProducao.toFixed(2)}`);
+        console.log(`⚠️ Receita ${receita.nome} não tem custo calculado (sem insumos)`);
+        // Manter zerado para mostrar que precisa adicionar insumos
       }
       
       // Calcular preços sugeridos se não vieram do backend
