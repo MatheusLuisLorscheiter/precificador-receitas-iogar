@@ -7,13 +7,15 @@
 #   ===================================================================================================
 
 import time
+
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-
+from sqlalchemy import text
 from app.api.deps import get_db
 from app.models.receita import Receita
+from app.models.receita import ReceitaInsumo
 
 from app.schemas.receita import (
     # Schemas de receitas
@@ -40,146 +42,198 @@ def list_receitas(
     ativo: Optional[bool] = Query(None, description="Filtrar por status ativo"),
     db: Session = Depends(get_db)
 ):
-    """Lista receitas com filtros opcionais e CMVs calculados automaticamente"""
+    """Lista receitas com CMVs calculados automaticamente baseado nos insumos"""
+    
+    # Buscar receitas básicas
     receitas = crud_receita.get_receitas(
         db, skip=skip, limit=limit, 
         restaurante_id=restaurante_id, grupo=grupo, ativo=ativo
     )
     
-    # Debug: Verificar dados das receitas
     print(f"📊 DEBUG Backend - Processando {len(receitas)} receitas")
     
     # Calcular CMVs automaticamente para cada receita
     receitas_com_cmv = []
     for receita in receitas:
-        # Usar cmv_real (que está em centavos) convertido para reais
-        preco_compra = receita.cmv_real if receita.cmv_real and receita.cmv_real > 0 else 0.0
         
-        # Debug: Log dos valores da receita
-        print(f"🔍 Receita {receita.nome}: cmv_centavos={receita.cmv}, cmv_real={preco_compra}")
+        # CALCULAR CUSTO REAL BASEADO NOS INSUMOS
+        custo_real = calcular_custo_receita(db, receita.id)
         
-        # Calcular CMVs com margens sobre o custo de produção
-        # Fórmula: Preço de venda = Custo de produção ÷ (1 - Margem)
-        # Para CMV: Preço = Custo ÷ Margem_decimal
-        cmv_20 = None
-        cmv_25 = None  
-        cmv_30 = None
+        # ATUALIZAR o campo preco_compra da receita se necessário
+        if custo_real > 0 and receita.preco_compra != int(custo_real * 100):
+            receita.preco_compra = int(custo_real * 100)  # Salvar em centavos
+            db.commit()
         
-        if preco_compra > 0:
-            # Cálculo correto para CMV (Cost of Materials/Goods as % of sales)
-            cmv_20 = round(preco_compra / 0.20, 2)  # Para 20% de CMV
-            cmv_25 = round(preco_compra / 0.25, 2)  # Para 25% de CMV  
-            cmv_30 = round(preco_compra / 0.30, 2)  # Para 30% de CMV
-            
-            print(f"✅ CMVs calculados - 20%: {cmv_20}, 25%: {cmv_25}, 30%: {cmv_30}")
-        else:
-            print(f"⚠️ Receita sem custo definido: {receita.nome}")
+        # Usar custo calculado ou campo salvo
+        preco_compra = custo_real if custo_real > 0 else (receita.preco_compra / 100 if receita.preco_compra else 0)
         
-        receita_response = {
-            "id": receita.id,
-            "codigo": receita.codigo,
-            "nome": receita.nome,
-            "grupo": receita.grupo,
-            "subgrupo": receita.subgrupo,
-            "restaurante_id": receita.restaurante_id,
-            "preco_compra": preco_compra,  # Custo de produção em reais
-            "cmv_20_porcento": cmv_20,
-            "cmv_25_porcento": cmv_25,
-            "cmv_30_porcento": cmv_30,
-            "ativo": receita.ativo
-        }
-        receitas_com_cmv.append(receita_response)
+        print(f"🔍 Receita {receita.nome}: custo_calculado={custo_real}, cmv_salvo={receita.preco_compra}")
+        
+        # Calcular CMVs com diferentes margens
+        cmv_20 = preco_compra / 0.20 if preco_compra > 0 else 0  # 20% de CMV
+        cmv_25 = preco_compra / 0.25 if preco_compra > 0 else 0  # 25% de CMV  
+        cmv_30 = preco_compra / 0.30 if preco_compra > 0 else 0  # 30% de CMV
+        
+        # Adicionar à resposta
+        receitas_com_cmv.append({
+            'id': receita.id,
+            'nome': receita.nome,
+            'codigo': receita.codigo,
+            'grupo': receita.grupo,
+            'subgrupo': receita.subgrupo,
+            'preco_compra': preco_compra,
+            'cmv_real': preco_compra,  # Custo real
+            'cmv_20_porcento': cmv_20,
+            'cmv_25_porcento': cmv_25,
+            'cmv_30_porcento': cmv_30,
+            'restaurante_id': receita.restaurante_id,
+            'ativo': receita.ativo,
+            'created_at': receita.created_at,
+            'updated_at': receita.updated_at
+        })
     
-    print(f"🎯 Backend retornando {len(receitas_com_cmv)} receitas com CMVs calculados")
     return receitas_com_cmv
 
-@router.post("/", response_model=dict, summary="Criar receita")
-def create_receita(
+# ===================================================================================================
+# FUNÇÃO AUXILIAR PARA CALCULAR CUSTO DA RECEITA
+# ===================================================================================================
+
+def calcular_custo_receita(db: Session, receita_id: int) -> float:
+    """
+    Calcula o custo total de uma receita baseado nos seus insumos
+    """
+    try:
+        # Buscar insumos da receita
+        query = """
+        SELECT 
+            ri.quantidade_necessaria,
+            i.preco_compra,
+            i.nome
+        FROM receita_insumos ri
+        JOIN insumos i ON ri.insumo_id = i.id  
+        WHERE ri.receita_id = :receita_id
+        """
+        
+        result = db.execute(text(query), {'receita_id': receita_id})
+        insumos_receita = result.fetchall()
+        
+        if not insumos_receita:
+            print(f"⚠️ Receita ID {receita_id} não tem insumos cadastrados")
+            return 0.0
+        
+        custo_total = 0.0
+        
+        for insumo in insumos_receita:
+            quantidade = float(insumo.quantidade_necessaria)
+            # Preço em centavos, converter para reais
+            preco_unitario = float(insumo.preco_compra) / 100 if insumo.preco_compra else 0
+            custo_insumo = quantidade * preco_unitario
+            
+            custo_total += custo_insumo
+            
+            print(f"  - {insumo.nome}: {quantidade} x R${preco_unitario:.2f} = R${custo_insumo:.2f}")
+        
+        print(f"✅ Custo total da receita ID {receita_id}: R${custo_total:.2f}")
+        return custo_total
+        
+    except Exception as e:
+        print(f"❌ Erro ao calcular custo da receita {receita_id}: {e}")
+        return 0.0
+
+@router.post("/", summary="Criar receita")
+def create_receita_endpoint(
     receita_data: dict,
     db: Session = Depends(get_db)
 ):
-    """Cria uma nova receita usando apenas campos válidos do modelo."""
+    """Cria uma nova receita com insumos"""
     try:
-        print(f"📝 Criando receita com dados: {receita_data}")
+        print(f"📥 Dados recebidos para nova receita: {receita_data}")
         
-        # Extrair dados obrigatórios
-        nome = receita_data.get('nome', '').strip()
-        restaurante_id = receita_data.get('restaurante_id')
+        # Campos obrigatórios básicos
+        campos_obrigatorios = {
+            'codigo': receita_data.get('codigo', '').strip(),
+            'nome': receita_data.get('nome', '').strip(),
+            'restaurante_id': int(receita_data.get('restaurante_id', 0)),
+            'ativo': bool(receita_data.get('ativo', True))
+        }
         
-        # Validações básicas
-        if not nome:
+        # Validação básica
+        if not campos_obrigatorios['nome']:
             raise HTTPException(status_code=400, detail="Nome da receita é obrigatório")
-        
-        if not restaurante_id:
+        if not campos_obrigatorios['restaurante_id']:
             raise HTTPException(status_code=400, detail="Restaurante é obrigatório")
+            
+        # Criar a receita base
+        nova_receita = Receita(**campos_obrigatorios)
         
-        # Criar objeto receita APENAS com campos que existem no modelo
-        # Removido: categoria, porcoes, tempo_preparo, preco_venda, margem_percentual
-        # Baseado no erro, usar apenas campos básicos conhecidos
-        nova_receita = Receita(
-            nome=nome,
-            codigo=receita_data.get('codigo', f'REC-{int(time.time())}'),
-            # REMOVIDO: categoria - campo não existe
-            # REMOVIDO: descricao - pode não existir
-            # REMOVIDO: porcoes - pode não existir  
-            # REMOVIDO: tempo_preparo - pode não existir
-            restaurante_id=restaurante_id,
-            cmv=0,  # Campo que sabemos que existe
-            ativo=True,  # Campo que sabemos que existe
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        
-        # Tentar adicionar campos opcionais se existirem no modelo
-        # Isso evita erro se o campo não existir
+        # Campos opcionais seguros
         campos_opcionais = {
             'descricao': receita_data.get('descricao', ''),
             'grupo': receita_data.get('grupo', 'Geral'),
             'subgrupo': receita_data.get('subgrupo', 'Geral'),
-            'porcoes': int(receita_data.get('porcoes', 1)),
-            'tempo_preparo': int(receita_data.get('tempo_preparo', 30)),
-            'rendimento': int(receita_data.get('rendimento', 1)),
-            'unidade': receita_data.get('unidade', 'porção')
+            'rendimento_porcoes': receita_data.get('rendimento_porcoes', 1),
+            'tempo_preparo_minutos': receita_data.get('tempo_preparo_minutos', 15),
+            'unidade': receita_data.get('unidade', 'porção'),
+            'quantidade': receita_data.get('quantidade', 1),
+            'fator': receita_data.get('fator', 1.0),
+            'preco_compra': 0  # Será calculado automaticamente
         }
         
         # Adicionar campos opcionais apenas se existirem no modelo
         for campo, valor in campos_opcionais.items():
             if hasattr(nova_receita, campo):
                 setattr(nova_receita, campo, valor)
-                print(f"✅ Campo {campo} adicionado: {valor}")
-            else:
-                print(f"⚠️ Campo {campo} não existe no modelo - ignorado")
         
-        # Salvar no banco
+        # Salvar receita no banco
         db.add(nova_receita)
         db.commit()
         db.refresh(nova_receita)
         
         print(f"✅ Receita criada com ID: {nova_receita.id}")
         
-        # Processar insumos se fornecidos
+        # PROCESSAR INSUMOS (CÓDIGO CORRIGIDO)
         insumos_data = receita_data.get('insumos', [])
         if insumos_data:
             print(f"📦 Processando {len(insumos_data)} insumos...")
             try:
+                # IMPORTAR o modelo ReceitaInsumo (se não estiver importado)
+                from app.models.receita import ReceitaInsumo
+                
                 for insumo_data in insumos_data:
                     insumo_id = insumo_data.get('insumo_id')
                     quantidade = insumo_data.get('quantidade', 0)
                     
                     if insumo_id and quantidade > 0:
-                        # Aqui você pode adicionar lógica para vincular insumos
-                        print(f"  - Insumo {insumo_id}: {quantidade}")
+                        print(f"  - Salvando Insumo {insumo_id}: {quantidade}")
                         
+                        # CRIAR o relacionamento receita-insumo com CAMPO CORRETO
+                        receita_insumo = ReceitaInsumo(
+                            receita_id=nova_receita.id,
+                            insumo_id=int(insumo_id),
+                            quantidade_necessaria=float(quantidade),
+                            unidade_medida='unidade'
+                        )
+                        
+                        # SALVAR no banco
+                        db.add(receita_insumo)
+                        
+                # COMMIT das alterações
+                db.commit()
+                print(f"✅ {len(insumos_data)} insumos salvos com sucesso!")
+                
             except Exception as e:
-                print(f"⚠️ Erro ao processar insumos: {e}")
+                print(f"❌ Erro ao salvar insumos: {e}")
+                db.rollback()
+                raise HTTPException(status_code=500, detail=f"Erro ao salvar insumos: {str(e)}")
         
-        # Retornar resposta simples
+        # Retornar resposta
         return {
             "id": nova_receita.id,
             "nome": nova_receita.nome,
             "codigo": nova_receita.codigo,
             "restaurante_id": nova_receita.restaurante_id,
             "ativo": nova_receita.ativo,
+            "total_insumos": len(insumos_data),
             "message": "Receita criada com sucesso"
         }
         
@@ -187,12 +241,8 @@ def create_receita(
         raise
     except Exception as e:
         print(f"❌ Erro interno ao criar receita: {e}")
-        print(f"❌ Tipo do erro: {type(e)}")
         db.rollback()
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Erro interno ao criar receita: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Erro interno ao criar receita: {str(e)}")
 
 
 @router.get("/search", response_model=List[ReceitaListResponse],

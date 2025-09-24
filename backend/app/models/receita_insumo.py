@@ -16,7 +16,7 @@ class ReceitaInsumo(Base):
     """
     Model que representa o relacionamento entre receitas e insumos
     """
-    __tablename__ = "receita_insumo"
+    __tablename__ = "receita_insumos"
 
 #   ===================================================================================================
 #   Campos principais

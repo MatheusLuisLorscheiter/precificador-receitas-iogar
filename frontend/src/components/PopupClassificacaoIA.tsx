@@ -426,219 +426,259 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-green-600" />
-            <h3 className="text-lg font-semibold">Classificação IA</h3>
-          </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Conteúdo */}
-        <div className="p-4 space-y-4">
-          <div>
-            <label className="text-sm font-medium text-gray-600">Produto:</label>
-            <p className="font-medium">{nomeInsumo}</p>
-          </div>
-
-          {carregandoClassificacao ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-green-600" />
-              <span className="ml-2">Analisando produto...</span>
-            </div>
-          ) : classificacao ? (
-            <div className="space-y-4">
-              {/* Resultado da classificação */}
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  {classificacao.status === 'sucesso' ? (
-                    <Check className="w-4 h-4 text-green-600" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                  )}
-                  <span className="text-sm font-medium">
-                    Confiança: {(classificacao.confianca * 100).toFixed(1)}%
-                  </span>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col">
+          
+          {/* ============================================================================ */}
+          {/* HEADER DO FORMULÁRIO */}
+          {/* ============================================================================ */}
+          
+          <div className="bg-gradient-to-r from-green-500 to-pink-500 px-6 py-4 rounded-t-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Brain className="w-5 h-5 text-white" />
+                <div>
+                  <h2 className="text-xl font-bold text-white">Classificação IA</h2>
+                  <p className="text-white/80 text-sm">Sistema inteligente de categorização</p>
                 </div>
+              </div>
+              <button 
+                onClick={onClose} 
+                className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
 
-                {classificacao.taxonomia_sugerida ? (
-                  <div className="text-sm space-y-1">
-                    <p><strong>Categoria:</strong> {classificacao.taxonomia_sugerida.categoria}</p>
-                    <p><strong>Subcategoria:</strong> {classificacao.taxonomia_sugerida.subcategoria}</p>
-                    <p><strong>Especificação:</strong> {classificacao.taxonomia_sugerida.especificacao || 
-                      <span className="text-gray-500 italic">a definir</span>}</p>
-                    <p><strong>Variante:</strong> {classificacao.taxonomia_sugerida.variante || 
-                      <span className="text-gray-500 italic">a definir</span>}</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-600">{classificacao.mensagem}</p>
-                )}
+          {/* ============================================================================ */}
+          {/* CONTEÚDO DO FORMULÁRIO COM SCROLL CONTROLADO */}
+          {/* ============================================================================ */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="space-y-6">
+              
+              {/* Informação do produto */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <label className="text-sm font-medium text-gray-600">Produto:</label>
+                <p className="font-medium text-gray-900 mt-1">{nomeInsumo}</p>
               </div>
 
-              {/* Botões de ação */}
-              {!mostrarCorrecao && classificacao.taxonomia_sugerida && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAceitarClassificacao}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
-                  >
-                    <Check className="w-4 h-4" />
-                    Classificação Correta
-                  </button>
-                  <button
-                    onClick={() => setMostrarCorrecao(true)}
-                    className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 flex items-center justify-center gap-2"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Precisa Correção
-                  </button>
+              {/* Loading da classificação */}
+              {carregandoClassificacao ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-green-600 mx-auto mb-3" />
+                    <span className="text-gray-600">Analisando produto...</span>
+                  </div>
                 </div>
-              )}
-
-              {!mostrarCorrecao && !classificacao.taxonomia_sugerida && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setMostrarCorrecao(true)}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Classificar Manualmente
-                  </button>
+              ) : classificacao ? (
+                <div className="space-y-6">
                   
-                  <button
-                    onClick={async () => {
-                      try {
-                        // Marcar insumo como aguardando classificação no backend
-                        const response = await fetch(`/api/v1/insumos/${insumoId}/marcar-aguardando-classificacao`, {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' }
-                        });
-                        
-                        if (response.ok) {
-                          if (typeof showSuccessPopup === 'function') {
-                            showSuccessPopup(
-                              'Insumo Cadastrado!',
-                              `${nomeInsumo} foi cadastrado e ficará em "Aguardando Classificação" para posterior organização.`
-                            );
-                          }
-                        } else {
-                          if (typeof showErrorPopup === 'function') {
-                            showErrorPopup(
-                              'Erro',
-                              'Não foi possível marcar o insumo como aguardando classificação.'
-                            );
-                          }
-                        }
-                      } catch (error) {
-                        console.error('Erro ao marcar insumo:', error);
-                        if (typeof showErrorPopup === 'function') {
-                          showErrorPopup(
-                            'Erro de Conexão',
-                            'Falha ao conectar com o servidor.'
-                          );
-                        }
-                      }
-                      onClose();
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2"
-                  >
-                    <X className="w-4 h-4" />
-                    Ignorar
-                  </button>
-                </div>
-              )}
-
-              {/* Formulário de correção */}
-              {mostrarCorrecao && (
-                <div className="border-t pt-4 space-y-3">
-                  <h4 className="font-medium">Correção Manual</h4>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Categoria *</label>
-                    <select
-                      value={categoriaSelecionada}
-                      onChange={(e) => setCategoriaSelecionada(e.target.value)}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    >
-                      <option value="">Selecione uma categoria</option>
-                      {categorias.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Subcategoria *</label>
-                    <select
-                      value={subcategoriaSelecionada}
-                      onChange={(e) => setSubcategoriaSelecionada(e.target.value)}
-                      disabled={!categoriaSelecionada}
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    >
-                      <option value="">Selecione uma subcategoria</option>
-                      {subcategorias.map(sub => (
-                        <option key={sub} value={sub}>{sub}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Especificação</label>
-                    <input
-                      type="text"
-                      value={especificacao}
-                      onChange={(e) => setEspecificacao(e.target.value)}
-                      placeholder="Ex.: Orgânico, congelado, fresco"
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Variante</label>
-                    <input
-                      type="text"
-                      value={variante}
-                      onChange={(e) => setVariante(e.target.value)}
-                      placeholder="Ex.: Marca, Origem, qualidade"
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    />
-                  </div>
-
-                  {/* Botões do formulário de correção */}
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={handleSalvarCorrecao}
-                      disabled={enviandoFeedback || !categoriaSelecionada || !subcategoriaSelecionada}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
-                    >
-                      {enviandoFeedback ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                  {/* Resultado da classificação */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      {classificacao.status === 'sucesso' ? (
+                        <Check className="w-5 h-5 text-green-600" />
                       ) : (
-                        <Check className="w-4 h-4" />
+                        <AlertTriangle className="w-5 h-5 text-yellow-600" />
                       )}
-                      Salvar Correção
-                    </button>
-                    
-                    <button
-                      onClick={() => setMostrarCorrecao(false)}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    >
-                      Cancelar
-                    </button>
+                      <span className="text-sm font-medium">
+                        Confiança: {(classificacao.confianca * 100).toFixed(1)}%
+                      </span>
+                    </div>
+
+                    {classificacao.taxonomia_sugerida ? (
+                      <div className="space-y-2 text-sm">
+                        <div className="grid grid-cols-1 gap-2">
+                          <div><strong className="text-gray-700">Categoria:</strong> <span className="text-gray-900">{classificacao.taxonomia_sugerida.categoria}</span></div>
+                          <div><strong className="text-gray-700">Subcategoria:</strong> <span className="text-gray-900">{classificacao.taxonomia_sugerida.subcategoria}</span></div>
+                          <div><strong className="text-gray-700">Especificação:</strong> <span className="text-gray-900">{classificacao.taxonomia_sugerida.especificacao || <span className="text-gray-500 italic">a definir</span>}</span></div>
+                          <div><strong className="text-gray-700">Variante:</strong> <span className="text-gray-900">{classificacao.taxonomia_sugerida.variante || <span className="text-gray-500 italic">a definir</span>}</span></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-600">{classificacao.mensagem}</p>
+                    )}
                   </div>
+
+                  {/* Botões de ação */}
+                  {!mostrarCorrecao && classificacao.taxonomia_sugerida && (
+                    <div className="grid grid-cols-1 gap-3">
+                      <button
+                        onClick={handleAceitarClassificacao}
+                        className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Check className="w-4 h-4" />
+                        Classificação Correta
+                      </button>
+                      <button
+                        onClick={() => setMostrarCorrecao(true)}
+                        className="w-full py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Precisa Correção
+                      </button>
+                    </div>
+                  )}
+
+                  {!mostrarCorrecao && !classificacao.taxonomia_sugerida && (
+                    <div className="grid grid-cols-1 gap-3">
+                      <button
+                        onClick={() => setMostrarCorrecao(true)}
+                        className="w-full py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Classificar Manualmente
+                      </button>
+                      
+                      <button
+                        onClick={async () => {
+                          try {
+                            // Marcar insumo como aguardando classificação no backend
+                            const response = await fetch(`/api/v1/insumos/${insumoId}/marcar-aguardando-classificacao`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' }
+                            });
+                            
+                            if (response.ok) {
+                              if (typeof showSuccessPopup === 'function') {
+                                showSuccessPopup(
+                                  'Insumo Cadastrado!',
+                                  `${nomeInsumo} foi cadastrado e ficará em "Aguardando Classificação" para posterior organização.`
+                                );
+                              }
+                            } else {
+                              if (typeof showErrorPopup === 'function') {
+                                showErrorPopup(
+                                  'Erro',
+                                  'Não foi possível marcar o insumo como aguardando classificação.'
+                                );
+                              }
+                            }
+                          } catch (error) {
+                            console.error('Erro ao marcar insumo:', error);
+                            if (typeof showErrorPopup === 'function') {
+                              showErrorPopup(
+                                'Erro de Conexão',
+                                'Falha ao conectar com o servidor.'
+                              );
+                            }
+                          }
+                          onClose();
+                        }}
+                        className="w-full py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                        Ignorar
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Formulário de correção manual */}
+                  {mostrarCorrecao && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Correção Manual</h4>
+                      
+                      <div className="space-y-4">
+                        {/* Categoria */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Categoria <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={categoriaSelecionada}
+                            onChange={(e) => setCategoriaSelecionada(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
+                          >
+                            <option value="">Selecione uma categoria</option>
+                            {categorias.map((cat) => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Subcategoria */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Subcategoria <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={subcategoriaSelecionada}
+                            onChange={(e) => setSubcategoriaSelecionada(e.target.value)}
+                            disabled={!categoriaSelecionada}
+                            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${
+                              !categoriaSelecionada ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'
+                            }`}
+                          >
+                            <option value="">Selecione uma subcategoria</option>
+                            {subcategorias.map((sub) => (
+                              <option key={sub} value={sub}>{sub}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Especificação */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Especificação</label>
+                          <input
+                            type="text"
+                            value={especificacao}
+                            onChange={(e) => setEspecificacao(e.target.value)}
+                            placeholder="Ex: Orgânico, congelado, fresco"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
+                          />
+                        </div>
+
+                        {/* Variante */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Variante</label>
+                          <input
+                            type="text"
+                            value={variante}
+                            onChange={(e) => setVariante(e.target.value)}
+                            placeholder="Ex: Marca, Origem, qualidade"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
-              )}
+              ) : null}
             </div>
-          ) : null}
+          </div>
+
+          {/* ============================================================================ */}
+          {/* BOTÕES FIXOS NO RODAPÉ (APENAS QUANDO MOSTRAR CORREÇÃO) */}
+          {/* ============================================================================ */}
+          {mostrarCorrecao && (
+            <div className="border-t border-gray-200 p-6 bg-gray-50 rounded-b-xl">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setMostrarCorrecao(false)}
+                  className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 bg-white transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSalvarCorrecao}
+                  disabled={enviandoFeedback || !categoriaSelecionada || !subcategoriaSelecionada}
+                  className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {enviandoFeedback ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Salvar Correção
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
 };
 
 export default PopupClassificacaoIA

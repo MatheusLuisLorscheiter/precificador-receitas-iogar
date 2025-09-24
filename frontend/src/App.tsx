@@ -2178,23 +2178,37 @@ const fetchInsumos = async () => {
 
   // Busca todas as receitas do backend
   const fetchReceitas = useCallback(async () => {
-    if (!selectedRestaurante) return;
+    // Verificação de segurança para evitar chamadas desnecessárias
+    if (!selectedRestaurante || !selectedRestaurante.id) {
+      console.log('Nenhum restaurante selecionado, limpando receitas');
+      setReceitas([]);
+      return;
+    }
 
     try {
       setLoading(true);
+      console.log(`Buscando receitas do restaurante: ${selectedRestaurante.nome} (ID: ${selectedRestaurante.id})`);
       
+      // Busca todas as receitas do backend
       const response = await apiService.getReceitas();
       
       if (response.data) {
+        // Filtrar receitas pelo restaurante selecionado no frontend
         const receitasFiltradas = response.data.filter((receita: any) => 
           receita.restaurante_id === selectedRestaurante.id
         );
         
         setReceitas(receitasFiltradas);
-        console.log(`📋 Receitas carregadas para restaurante ${selectedRestaurante.nome}:`, receitasFiltradas.length);
+        console.log(`Receitas carregadas para restaurante ${selectedRestaurante.nome}:`, receitasFiltradas.length);
+        
+      } else {
+        console.error('Erro ao buscar receitas:', response.error);
+        setReceitas([]);
+        showErrorPopup('Erro de Conexão', 'Falha na conexão com o servidor ao buscar receitas.');
       }
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
+      setReceitas([]);
       showErrorPopup('Erro de Conexão', 'Falha na conexão com o servidor ao buscar receitas.');
     } finally {
       setLoading(false);
@@ -3179,15 +3193,32 @@ const fetchInsumos = async () => {
       // ============================================================================
       // FUNÇÃO: CALCULAR CUSTO DE UM INSUMO ESPECÍFICO
       // ============================================================================
-      const calcularCustoInsumo = (receitaInsumo) => {
-        const insumo = insumos.find(i => i.id === receitaInsumo.insumo_id);
-        
-        if (!insumo || !insumo.preco_compra_real || !receitaInsumo.quantidade) {
+      const calcularCustoInsumo = (receitaInsumo: any) => {
+        if (!receitaInsumo || !receitaInsumo.insumo_id || receitaInsumo.insumo_id === 0) {
           return 0;
         }
-
-        const custoCalculado = (insumo.preco_compra_real / insumo.fator) * receitaInsumo.quantidade;
-        return custoCalculado;
+        
+        const insumoData = insumos.find(i => i.id === receitaInsumo.insumo_id);
+        if (!insumoData) {
+          console.log(`Insumo ${receitaInsumo.insumo_id} não encontrado`);
+          return 0;
+        }
+        
+        const quantidade = parseFloat(receitaInsumo.quantidade || 0);
+        if (quantidade <= 0) return 0;
+        
+        // USAR O CAMPO CORRETO DO PREÇO
+        const precoUnitario = parseFloat(insumoData.preco_compra_real || insumoData.preco_compra || 0);
+        const custoTotal = quantidade * precoUnitario;
+        
+        // DEBUG PARA VERIFICAR CÁLCULOS
+        console.log(`Calculando ${insumoData.nome}:`, {
+          quantidade,
+          precoUnitario,
+          custoTotal: custoTotal.toFixed(2)
+        });
+        
+        return custoTotal;
       };
 
       // ============================================================================
@@ -3264,6 +3295,8 @@ const fetchInsumos = async () => {
 
       // <=== Código novo aqui - FUNÇÃO MELHORADA PARA ATUALIZAR INSUMO
       const updateReceitaInsumo = (index, field, value) => {
+        console.log('🔄 updateReceitaInsumo chamado:', { index, field, value });
+        
         setReceitaInsumos(prev => {
           const updated = [...prev];
           
@@ -3277,38 +3310,93 @@ const fetchInsumos = async () => {
             updated[index] = { ...updated[index], [field]: value };
           }
           
+          console.log('📊 Estado atualizado:', updated);
           return updated;
         });
       };
 
       const handleSubmit = () => {
-        console.log('DEBUG handleSubmit - receitaInsumos:', receitaInsumos);
+        console.log('🔍 === DEBUG COMPLETO handleSubmit ===');
         
-        // Filtrar insumos válidos e mapear para formato do backend
-        const insumosValidos = receitaInsumos
-          .filter(insumo => insumo.insumo_id > 0 && insumo.quantidade > 0)
-          .map(insumo => ({
+        // Validação de dados obrigatórios
+        if (!formData.nome || !formData.nome.trim()) {
+          alert('Nome da receita é obrigatório!');
+          return;
+        }
+        
+        if (!selectedRestaurante || !selectedRestaurante.id) {
+          alert('Restaurante não selecionado!');
+          return;
+        }
+        
+        // Debug do estado atual dos insumos
+        console.log('📊 Estado receitaInsumos BRUTO:', receitaInsumos);
+        
+        // Filtrar e validar insumos válidos
+        const insumosValidos = receitaInsumos.filter(insumo => {
+          const valido = insumo.insumo_id && 
+                        insumo.insumo_id > 0 && 
+                        insumo.quantidade && 
+                        insumo.quantidade > 0;
+          
+          console.log(`🔍 Validando insumo:`, {
+            insumo_id: insumo.insumo_id,
+            quantidade: insumo.quantidade,
+            valido
+          });
+          
+          return valido;
+        });
+        
+        console.log('✅ Insumos VÁLIDOS após filtro:', insumosValidos);
+        
+        // Alertar se não há insumos válidos
+        if (insumosValidos.length === 0) {
+          const confirmar = confirm('Esta receita não possui insumos. Deseja continuar mesmo assim?');
+          if (!confirmar) {
+            return;
+          }
+        }
+
+        // Mapear campos para o formato EXATO esperado pelo backend
+        const dadosBackend = {
+          // Campos obrigatórios básicos
+          codigo: String(formData.codigo || '').trim(),
+          nome: String(formData.nome || '').trim(),
+          descricao: String(formData.descricao || '').trim(),
+          
+          // Campos de categoria (ajustar conforme backend)
+          grupo: String(formData.categoria || 'Lanches').trim(),
+          subgrupo: String(formData.categoria || 'Lanches').trim(),
+          
+          // Campos numéricos com valores padrão seguros
+          rendimento_porcoes: parseInt(formData.porcoes) || 1,
+          tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 15,
+          
+          // Status e restaurante
+          ativo: true,
+          restaurante_id: parseInt(selectedRestaurante.id),
+          
+          // CAMPO CRÍTICO: array de insumos
+          insumos: insumosValidos.map(insumo => ({
             insumo_id: parseInt(insumo.insumo_id),
             quantidade: parseFloat(insumo.quantidade)
-          }));
-          
-        console.log('DEBUG handleSubmit - insumosValidos:', insumosValidos);
-        
-        // Mapear campos para o formato do backend
-        const dadosBackend = {
-          codigo: formData.codigo || '',
-          nome: formData.nome,
-          descricao: formData.descricao || '',
-          grupo: formData.categoria || 'Lanches',
-          subgrupo: formData.categoria || 'Lanches',
-          rendimento_porcoes: formData.porcoes || 1,
-          tempo_preparo_minutos: 15,
-          ativo: true,
-          restaurante_id: selectedRestaurante.id,
-          insumos: insumosValidos  // Usar insumos validados e formatados
+          }))
         };
+
+        console.log('📤 === DADOS FINAIS PARA BACKEND ===');
+        console.log('📦 Estrutura completa:', JSON.stringify(dadosBackend, null, 2));
+        console.log('🔍 Campo insumos especificamente:', dadosBackend.insumos);
+        console.log('📊 Quantidade de insumos:', dadosBackend.insumos.length);
         
-        console.log('DEBUG handleSubmit - dadosBackend completo:', dadosBackend);
+        // Verificação final antes de enviar
+        if (typeof onSave !== 'function') {
+          console.error('❌ ERRO: onSave não é uma função!');
+          alert('Erro interno: função de salvamento não encontrada!');
+          return;
+        }
+        
+        console.log('✅ Chamando onSave...');
         onSave(dadosBackend);
       };
       
@@ -3899,6 +3987,9 @@ const fetchInsumos = async () => {
   // COMPONENTE GESTÃO DE INSUMOS
   // ============================================================================
   const Insumos = () => {
+
+    const [buscaInsumo, setBuscaInsumo] = useState('');
+
     const [searchTerm, setSearchTerm] = useState<string>('');
 
     // Estado para modal de confirmação de exclusão
@@ -3919,7 +4010,7 @@ const fetchInsumos = async () => {
     }, [setSearchTerm]);
 
     // Filtro dos insumos baseado na busca
-    const insumosFiltrados = insumosSeguro.filter(insumoItem => 
+    const insumosFiltrados = insumos.filter(insumoItem => 
       insumoItem && 
       insumoItem.nome && 
       insumoItem.nome.toLowerCase().includes(buscaInsumo.toLowerCase())
@@ -5095,12 +5186,12 @@ const fetchInsumos = async () => {
       console.log('📊 Dados da receita do backend:', {
         id: receita.id,
         nome: receita.nome,
-        preco_compra: receita.preco_compra,
-        cmv_real: receita.cmv_real,
+        preco_compra: receita.preco_compra,      
+        cmv_real: receita.preco_compra,       
         cmv_20_porcento: receita.cmv_20_porcento,
         cmv_25_porcento: receita.cmv_25_porcento,
         cmv_30_porcento: receita.cmv_30_porcento,
-        receita_insumos: receita.receita_insumos?.length || 0
+        receita_insumos: 1
       });
 
       // === FALLBACK: Calcular CMV baseado nos insumos se disponível ===
@@ -5199,6 +5290,7 @@ const Receitas = React.memo(() => {
   const [receitaInsumos, setReceitaInsumos] = useState<ReceitaInsumo[]>([]);
   const [showRelatorioPopup, setShowRelatorioPopup] = useState(false);
   const [receitaParaRelatorio, setReceitaParaRelatorio] = useState<any>(null);
+  const [isLoadingReceitas, setIsLoadingReceitas] = useState(false);
 
   // Converter receitas apenas quando necessário
   const receitasConvertidas = useMemo(() => {
@@ -5218,43 +5310,39 @@ const Receitas = React.memo(() => {
   // ===================================================================================================
   // BUSCAR RECEITAS DO BACKEND - CORRIGIDO PARA USAR ENDPOINT CORRETO
   // ===================================================================================================
-  const fetchReceitas = async () => {
-    fetchReceitasCallCount++;
-    // 🔍 DEBUG: Rastreamento de chamadas
-    console.log(`🔄 fetchReceitas CHAMADO #${fetchReceitasCallCount}`);
-    
-    if (fetchReceitasCallCount > 5) {
-      console.error('🚨 LOOP INFINITO DETECTADO! fetchReceitas chamado mais de 5 vezes');
-      console.error('🚨 Parando execução para evitar travamento');
+  const fetchReceitas2 = useCallback(async () => {
+    // Evitar chamadas simultâneas
+    if (isLoadingReceitas) {
+      console.log('fetchReceitas2 já está executando, cancelando nova chamada');
       return;
     }
-    
-    console.log('🔍 Stack trace:', new Error().stack);
-    console.log('🔍 selectedRestaurante:', selectedRestaurante?.id, selectedRestaurante?.nome);
-    console.log('🔍 activeTab atual:', activeTab);
-    console.log('🔍 Timestamp:', new Date().toISOString());
-    console.log('-----------------------------------');
-    if (!selectedRestaurante) {
-      console.log('❌ fetchReceitas: selectedRestaurante não definido, saindo...');
+
+    // Verificação de segurança para restaurante
+    if (!selectedRestaurante || !selectedRestaurante.id) {
+      console.log('fetchReceitas2: selectedRestaurante não definido, saindo...');
+      setReceitas([]);
       return;
     }
 
     try {
-      setLoading(true);
+      setIsLoadingReceitas(true);
+      console.log(`fetchReceitas2 CHAMADO #1 para restaurante: ${selectedRestaurante.id}, ${selectedRestaurante.nome}`);
       
       // Usar endpoint GET /api/v1/receitas/ com filtro por restaurante_id
       const response = await apiService.getReceitas();
       
       if (response.data) {
         // Filtrar receitas pelo restaurante selecionado no frontend
-        const receitasFiltradas = response.data.filter((receita: any) => 
+        const receitasFiltradas = response.data.filter((receita: any) =>
           receita.restaurante_id === selectedRestaurante.id
         );
         
         setReceitas(receitasFiltradas);
-        console.log(`📋 Receitas carregadas para restaurante ${selectedRestaurante.nome}:`, receitasFiltradas.length);
+        console.log(`Receitas carregadas para restaurante ${selectedRestaurante.nome}:`, receitasFiltradas.length);
+        
       } else if (response.error) {
         console.error('Erro ao buscar receitas:', response.error);
+        setReceitas([]);
         showErrorPopup(
           'Erro ao Carregar Receitas',
           'Não foi possível carregar as receitas. Verifique sua conexão.'
@@ -5262,14 +5350,15 @@ const Receitas = React.memo(() => {
       }
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
+      setReceitas([]);
       showErrorPopup(
         'Erro de Conexão',
         'Falha na conexão com o servidor ao buscar receitas.'
       );
     } finally {
-      setLoading(false);
+      setIsLoadingReceitas(false);
     }
-  };
+  }, [selectedRestaurante, isLoadingReceitas]);
 
   // ===================================================================================================
   // HANDLERS PARA AÇÕES DO SUPER GRID
@@ -5437,47 +5526,50 @@ const Receitas = React.memo(() => {
   const handleSaveReceita = async (receitaData: any) => {
     try {
       setLoading(true);
-
-      // LOGS DE DEBUG OBRIGATÓRIOS
-      console.log('🔧 DEBUG - receitaData recebido:', receitaData);
-      console.log('🔧 DEBUG - receitaData.id:', receitaData.id);
-      console.log('🔧 DEBUG - !!receitaData.id:', !!receitaData.id);
+      console.log('Enviando dados para criar receita:', receitaData);
       
-      const isEditing = !!receitaData.id;
-      console.log('🔧 DEBUG - isEditing:', isEditing);
-      
-      console.log('📤 Modo:', isEditing ? 'EDITANDO' : 'CRIANDO');
-      console.log('📤 Dados:', receitaData);
-      
-      let response;
-      if (isEditing) {
-        // Editar receita existente
-        response = await apiService.updateReceita(receitaData.id, receitaData);
-      } else {
-        // Criar nova receita
-        response = await apiService.createReceita(receitaData);
-      }
+      const response = await apiService.createReceita(receitaData);
 
       if (response.data) {
-        await fetchReceitas();
+        console.log('Receita criada com sucesso:', response.data);
         
+        // Fechar formulário ANTES de recarregar
         setShowReceitaForm(false);
+        setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
+        setReceitaInsumos([]);
         setSelectedReceita(null);
         
+        // Mostrar sucesso
         showSuccessPopup(
-          isEditing ? 'Receita Atualizada' : 'Receita Criada',
-          `A receita "${receitaData.nome}" foi ${isEditing ? 'atualizada' : 'criada'} com sucesso!`
+          'Receita Criada',
+          `A receita "${receitaData.nome}" foi criada com sucesso!`
         );
         
-      } else {
+        // Recarregar receitas com delay para evitar conflitos
+        setTimeout(async () => {
+          try {
+            await fetchReceitas2();
+            console.log('Lista de receitas recarregada com sucesso');
+          } catch (fetchError) {
+            console.error('Erro ao recarregar receitas, mas receita foi salva:', fetchError);
+          }
+        }, 500);
+        
+      } else if (response.error) {
+        console.error('Erro ao criar receita:', response.error);
+        
         showErrorPopup(
-          isEditing ? 'Erro ao Atualizar' : 'Erro ao Criar',
-          response.error || 'Ocorreu um erro inesperado.'
+          'Erro ao Criar Receita',
+          response.error || 'Ocorreu um erro inesperado ao criar a receita. Verifique os dados informados e tente novamente.'
         );
       }
     } catch (error) {
-      console.error('Erro:', error);
-      showErrorPopup('Falha na Conexão', 'Não foi possível conectar com o servidor.');
+      console.error('Erro ao criar receita:', error);
+      
+      showErrorPopup(
+        'Falha na Conexão',
+        'Não foi possível conectar com o servidor para criar a receita. Verifique sua conexão de internet e tente novamente.'
+      );
     } finally {
       setLoading(false);
     }
@@ -5489,7 +5581,13 @@ const Receitas = React.memo(() => {
   
   // Função para adicionar insumo à receita
   const addInsumoToReceita = () => {
-    setReceitaInsumos([...receitaInsumos, { insumo_id: 0, quantidade: 0 }]);
+    console.log('➕ Adicionando novo insumo à receita');
+    
+    setReceitaInsumos(prev => {
+      const novo = [...prev, { insumo_id: 0, quantidade: 1 }];
+      console.log('📊 Novo estado após adicionar:', novo);
+      return novo;
+    });
   };
 
   // Função para remover insumo da receita
@@ -6411,6 +6509,7 @@ const cancelarExclusao = () => {
       }
     };
 
+    // INICIO 
     return (
       <div className="p-6">
         {/* Cabeçalho da seção */}
@@ -6605,168 +6704,290 @@ const cancelarExclusao = () => {
 
         {/* 🆕 POPUP CADASTRO DE FORNECEDOR - ADICIONAR AQUI */}
         {showPopupFornecedor && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-800">{editandoFornecedor ? 'Editar Fornecedor' : 'Cadastrar Novo Fornecedor'}</h3>
-                <button 
-                  onClick={() => setShowPopupFornecedor(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
               
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nome/Razão Social <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={novoFornecedor.nome_razao_social}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, nome_razao_social: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Nome ou Razão Social da empresa"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    CPF ou CNPJ <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editandoFornecedor ? formatarDocumento(novoFornecedor.cpf_cnpj) : novoFornecedor.cpf_cnpj}
-                    onChange={editandoFornecedor ? undefined : (e) => {
-                      // Formatação automática para CPF ou CNPJ
-                      let valor = e.target.value.replace(/\D/g, '');
-                      
-                      if (valor.length <= 11) {
-                        // Formatação CPF: XXX.XXX.XXX-XX
-                        valor = valor.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-                        valor = valor.replace(/^(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
-                        valor = valor.replace(/^(\d{3})(\d{3})/, '$1.$2');
-                      } else if (valor.length <= 14) {
-                        // Formatação CNPJ: XX.XXX.XXX/XXXX-XX
-                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})/, '$1.$2.$3/$4');
-                        valor = valor.replace(/^(\d{2})(\d{3})(\d{3})/, '$1.$2.$3');
-                        valor = valor.replace(/^(\d{2})(\d{3})/, '$1.$2');
-                      }
-                      
-                      setNovoFornecedor({...novoFornecedor, cpf_cnpj: valor});
-                    }}
-                    disabled={editandoFornecedor}
-                    className={`w-full p-3 border-2 rounded-lg transition-colors ${
-                      editandoFornecedor 
-                        ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed' 
-                        : 'border-gray-300 bg-white focus:border-green-500 focus:outline-none'
-                    }`}
-                    placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                    maxLength="18"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Telefone
-                  </label>
-                  <input
-                    type="text"
-                    value={novoFornecedor.telefone}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, telefone: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ramo
-                  </label>
-                  <input
-                    type="text"
-                    value={novoFornecedor.ramo}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, ramo: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Ex: Distribuidor de Alimentos"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cidade
-                  </label>
-                  <input
-                    type="text"
-                    value={novoFornecedor.cidade}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, cidade: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Nome da cidade"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Estado (UF)
-                  </label>
-                  <select
-                    value={novoFornecedor.estado}
-                    onChange={(e) => setNovoFornecedor({...novoFornecedor, estado: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+              {/* ============================================================================ */}
+              {/* HEADER DO FORMULÁRIO */}
+              {/* ============================================================================ */}
+              
+              <div className="bg-gradient-to-r from-green-500 to-pink-500 px-6 py-4 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">
+                      {editandoFornecedor ? 'Editar Fornecedor' : 'Cadastrar Novo Fornecedor'}
+                    </h2>
+                    <p className="text-white/80 text-sm">
+                      {editandoFornecedor ? 'Modifique os dados do fornecedor' : 'Cadastre um novo fornecedor no sistema'}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      console.log('🔴 CANCELANDO - antes:', editandoFornecedor);
+                      setEditandoFornecedor(null);
+                      setNovoFornecedor({
+                        nome_razao_social: '',
+                        cpf_cnpj: '',
+                        telefone: '',
+                        ramo: '',
+                        cidade: '',
+                        estado: ''
+                      });
+                      setShowPopupFornecedor(false);
+                      console.log('🔴 CANCELANDO - depois de setEditandoFornecedor(null)');
+                    }} 
+                    className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
                   >
-                    <option value="">Selecione...</option>
-                    <option value="AC">AC - Acre</option>
-                    <option value="AL">AL - Alagoas</option>
-                    <option value="AM">AM - Amazonas</option>
-                    <option value="BA">BA - Bahia</option>
-                    <option value="CE">CE - Ceará</option>
-                    <option value="DF">DF - Distrito Federal</option>
-                    <option value="GO">GO - Goiás</option>
-                    <option value="MG">MG - Minas Gerais</option>
-                    <option value="RJ">RJ - Rio de Janeiro</option>
-                    <option value="RS">RS - Rio Grande do Sul</option>
-                    <option value="SC">SC - Santa Catarina</option>
-                    <option value="SP">SP - São Paulo</option>
-                    {/* Adicione outros estados conforme necessário */}
-                  </select>
+                    <X className="w-6 h-6" />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-4 mt-8">
-                <button
-                  onClick={() => {
-                    console.log('🔴 CANCELANDO - antes:', editandoFornecedor);
-                    setEditandoFornecedor(null);
-                    setNovoFornecedor({
-                      nome_razao_social: '',
-                      cpf_cnpj: '',
-                      telefone: '',
-                      ramo: '',
-                      cidade: '',
-                      estado: ''
-                    });
-                    setShowPopupFornecedor(false);
-                    console.log('🔴 CANCELANDO - depois de setEditandoFornecedor(null)');
-                  }}
-                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={async () => {
-                    if (editandoFornecedor) {
-                      await handleAtualizarFornecedor();
-                    } else {
-                      await handleCriarFornecedor();
-                    }
-                  }}
-                  disabled={isLoading}
-                  className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
-                >
-                  {isLoading ? 'Salvando...' : (editandoFornecedor ? 'Atualizar Fornecedor' : 'Cadastrar Fornecedor')}
-                </button>
+              {/* ============================================================================ */}
+              {/* CONTEÚDO DO FORMULÁRIO COM SCROLL CONTROLADO */}
+              {/* ============================================================================ */}
+              <div className="flex-1 overflow-y-auto px-6 pb-6">
+                <div className="space-y-8">
+                  
+                  {/* ============================================================================ */}
+                  {/* SEÇÃO 1: DADOS PRINCIPAIS */}
+                  {/* ============================================================================ */}
+                  
+                  <div className="space-y-6">
+                    {/* Header da seção com ícone */}
+                    <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                      <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white text-sm font-bold">1</span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Dados Principais</h3>
+                        <p className="text-sm text-gray-500">Informações básicas e obrigatórias do fornecedor</p>
+                      </div>
+                    </div>
+
+                    {/* Grid de campos principais */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      
+                      {/* Nome/Razão Social */}
+                      <div className="space-y-2">
+                        <label className="flex items-center text-sm font-medium text-gray-900">
+                          <span>Nome/Razão Social</span>
+                          <span className="text-red-500 ml-1">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={novoFornecedor.nome_razao_social}
+                          onChange={(e) => setNovoFornecedor({...novoFornecedor, nome_razao_social: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                          placeholder="Nome ou Razão Social da empresa"
+                        />
+                      </div>
+                      
+                      {/* CPF ou CNPJ */}
+                      <div className="space-y-2">
+                        <label className="flex items-center text-sm font-medium text-gray-900">
+                          <span>CPF ou CNPJ</span>
+                          <span className="text-red-500 ml-1">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editandoFornecedor ? formatarDocumento(novoFornecedor.cpf_cnpj) : novoFornecedor.cpf_cnpj}
+                          onChange={editandoFornecedor ? undefined : (e) => {
+                            // Formatação automática para CPF ou CNPJ
+                            let valor = e.target.value.replace(/\D/g, '');
+                            
+                            if (valor.length <= 11) {
+                              // Formatação CPF: XXX.XXX.XXX-XX
+                              valor = valor.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                              valor = valor.replace(/^(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
+                              valor = valor.replace(/^(\d{3})(\d{3})/, '$1.$2');
+                            } else if (valor.length <= 14) {
+                              // Formatação CNPJ: XX.XXX.XXX/XXXX-XX
+                              valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+                              valor = valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})/, '$1.$2.$3/$4');
+                              valor = valor.replace(/^(\d{2})(\d{3})(\d{3})/, '$1.$2.$3');
+                              valor = valor.replace(/^(\d{2})(\d{3})/, '$1.$2');
+                            }
+                            
+                            setNovoFornecedor({...novoFornecedor, cpf_cnpj: valor});
+                          }}
+                          disabled={editandoFornecedor}
+                          className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                            editandoFornecedor 
+                              ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+                              : 'bg-white text-gray-900'
+                          }`}
+                          placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                          maxLength="18"
+                        />
+                        {editandoFornecedor && (
+                          <p className="text-xs text-amber-600 font-medium">CPF/CNPJ não pode ser alterado</p>
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* ============================================================================ */}
+                  {/* SEÇÃO 2: DADOS DE CONTATO */}
+                  {/* ============================================================================ */}
+                  
+                  <div className="space-y-6">
+                    {/* Header da seção */}
+                    <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                      <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white text-sm font-bold">2</span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Dados de Contato</h3>
+                        <p className="text-sm text-gray-500">Informações para comunicação</p>
+                      </div>
+                    </div>
+
+                    {/* Grid de contato */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      
+                      {/* Telefone */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">Telefone</label>
+                        <input
+                          type="text"
+                          value={novoFornecedor.telefone}
+                          onChange={(e) => setNovoFornecedor({...novoFornecedor, telefone: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+
+                      {/* Ramo */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">Ramo</label>
+                        <input
+                          type="text"
+                          value={novoFornecedor.ramo}
+                          onChange={(e) => setNovoFornecedor({...novoFornecedor, ramo: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                          placeholder="Ex: Distribuidor de Alimentos"
+                        />
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* ============================================================================ */}
+                  {/* SEÇÃO 3: LOCALIZAÇÃO */}
+                  {/* ============================================================================ */}
+                  
+                  <div className="space-y-6">
+                    {/* Header da seção */}
+                    <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                      <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-pink-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white text-sm font-bold">3</span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Localização</h3>
+                        <p className="text-sm text-gray-500">Endereço e dados geográficos</p>
+                      </div>
+                    </div>
+
+                    {/* Grid de localização */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      
+                      {/* Cidade */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">Cidade</label>
+                        <input
+                          type="text"
+                          value={novoFornecedor.cidade}
+                          onChange={(e) => setNovoFornecedor({...novoFornecedor, cidade: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                          placeholder="Nome da cidade"
+                        />
+                      </div>
+
+                      {/* Estado */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-gray-900">Estado (UF)</label>
+                        <select
+                          value={novoFornecedor.estado}
+                          onChange={(e) => setNovoFornecedor({...novoFornecedor, estado: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                        >
+                          <option value="">Selecione...</option>
+                          <option value="AC">AC - Acre</option>
+                          <option value="AL">AL - Alagoas</option>
+                          <option value="AP">AP - Amapá</option>
+                          <option value="AM">AM - Amazonas</option>
+                          <option value="BA">BA - Bahia</option>
+                          <option value="CE">CE - Ceará</option>
+                          <option value="DF">DF - Distrito Federal</option>
+                          <option value="ES">ES - Espírito Santo</option>
+                          <option value="GO">GO - Goiás</option>
+                          <option value="MA">MA - Maranhão</option>
+                          <option value="MT">MT - Mato Grosso</option>
+                          <option value="MS">MS - Mato Grosso do Sul</option>
+                          <option value="MG">MG - Minas Gerais</option>
+                          <option value="PA">PA - Pará</option>
+                          <option value="PB">PB - Paraíba</option>
+                          <option value="PR">PR - Paraná</option>
+                          <option value="PE">PE - Pernambuco</option>
+                          <option value="PI">PI - Piauí</option>
+                          <option value="RJ">RJ - Rio de Janeiro</option>
+                          <option value="RN">RN - Rio Grande do Norte</option>
+                          <option value="RS">RS - Rio Grande do Sul</option>
+                          <option value="RO">RO - Rondônia</option>
+                          <option value="RR">RR - Roraima</option>
+                          <option value="SC">SC - Santa Catarina</option>
+                          <option value="SP">SP - São Paulo</option>
+                          <option value="SE">SE - Sergipe</option>
+                          <option value="TO">TO - Tocantins</option>
+                        </select>
+                      </div>
+
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* ============================================================================ */}
+              {/* BOTÕES FIXOS NO RODAPÉ */}
+              {/* ============================================================================ */}
+              <div className="border-t border-gray-200 p-6 bg-gray-50 rounded-b-xl">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      console.log('🔴 CANCELANDO - antes:', editandoFornecedor);
+                      setEditandoFornecedor(null);
+                      setNovoFornecedor({
+                        nome_razao_social: '',
+                        cpf_cnpj: '',
+                        telefone: '',
+                        ramo: '',
+                        cidade: '',
+                        estado: ''
+                      });
+                      setShowPopupFornecedor(false);
+                      console.log('🔴 CANCELANDO - depois de setEditandoFornecedor(null)');
+                    }}
+                    className="flex-1 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 bg-white transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (editandoFornecedor) {
+                        await handleAtualizarFornecedor();
+                      } else {
+                        await handleCriarFornecedor();
+                      }
+                    }}
+                    disabled={isLoading}
+                    className="flex-1 py-3 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 disabled:opacity-50 transition-all"
+                  >
+                    {isLoading ? 'Salvando...' : (editandoFornecedor ? 'Atualizar Fornecedor' : 'Cadastrar Fornecedor')}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
