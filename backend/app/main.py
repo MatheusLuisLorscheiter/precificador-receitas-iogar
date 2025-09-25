@@ -145,22 +145,32 @@ async def options_handler(request: Request, path: str):
 #   ===================================================================================================
 #   Configuração de CORS para permitir acesso do frontend
 #   ===================================================================================================
-
+#   Configuração do backend para produção
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# Configurar CORS para produção
+if os.getenv("ENVIRONMENT") == "production":
+    allowed_origins = [
+        "https://food-cost-frontend.onrender.com",  # Frontend no Render
+        os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else []
+    ]
+    # Flatten the list
+    allowed_origins = [origin for sublist in ([item] if isinstance(item, str) else item for item in allowed_origins) for origin in sublist if origin]
+else:
+    # Desenvolvimento local
+    allowed_origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000", 
         "http://0.0.0.0:3000",
-        "http://192.168.*.*:3000"  # Para redes locais
-    ],
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Permite todos os métodos HTTP
-    allow_headers=["*"],  # Permite todos os headers
-    expose_headers=["*"],
-    max_age=86400,  # Cache preflight por 24 horas
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 @app.get("/test-cors", summary="Testar CORS")
