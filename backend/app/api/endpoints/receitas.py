@@ -14,8 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.api.deps import get_db
-from app.models.receita import Receita
-from app.models.receita import ReceitaInsumo
+from app.models.receita import Receita, ReceitaInsumo
+from app.models.insumo import Insumo
 
 from app.schemas.receita import (
     # Schemas de receitas
@@ -33,7 +33,7 @@ router = APIRouter()
 # ENDPOINTS RECEITAS (FUNCIONALIDADE PRINCIPAL)
 # ===================================================================
 
-@router.get("/", response_model=List[ReceitaListResponse], summary="Listar receitas")
+@router.get("/", summary="Listar receitas")
 def list_receitas(
     skip: int = Query(0, ge=0, description="Pular N registros"),
     limit: int = Query(100, ge=1, le=1000, description="Limite de registros"),
@@ -49,8 +49,6 @@ def list_receitas(
         db, skip=skip, limit=limit, 
         restaurante_id=restaurante_id, grupo=grupo, ativo=ativo
     )
-    
-    print(f"📊 DEBUG Backend - Processando {len(receitas)} receitas")
     
     # Calcular CMVs automaticamente para cada receita
     receitas_com_cmv = []
@@ -74,7 +72,44 @@ def list_receitas(
         cmv_25 = preco_compra / 0.25 if preco_compra > 0 else 0  # 25% de CMV  
         cmv_30 = preco_compra / 0.30 if preco_compra > 0 else 0  # 30% de CMV
         
-        # Adicionar à resposta
+        # ========== BUSCAR INSUMOS DA RECEITA ==========
+        receita_insumos_data = []
+        try:
+            # Buscar insumos relacionados a esta receita
+            from app.models.receita import ReceitaInsumo
+            from app.models.insumo import Insumo
+            
+            insumos_query = db.query(ReceitaInsumo).filter(
+                ReceitaInsumo.receita_id == receita.id
+            ).all()
+            
+            print(f"🔍 Receita {receita.nome}: encontrados {len(insumos_query)} insumos no BD")
+            
+            # Processar cada insumo
+            for ri in insumos_query:
+                # Buscar dados completos do insumo
+                insumo = db.query(Insumo).filter(Insumo.id == ri.insumo_id).first()
+                
+                if insumo:
+                    insumo_data = {
+                        'insumo_id': ri.insumo_id,
+                        'quantidade_necessaria': ri.quantidade_necessaria,
+                        'unidade_medida': ri.unidade_medida or 'un',
+                        'custo_calculado': getattr(ri, 'custo_calculado', 0),
+                        'insumo': {
+                            'id': insumo.id,
+                            'nome': insumo.nome,
+                            'unidade': insumo.unidade,
+                            'preco_compra_real': insumo.preco_compra_real
+                        }
+                    }
+                    receita_insumos_data.append(insumo_data)
+                    print(f"  📦 Insumo: {insumo.nome} - Qtd: {ri.quantidade_necessaria}")
+                
+        except Exception as e:
+            print(f"❌ Erro ao buscar insumos da receita {receita.id}: {e}")
+
+        # Adicionar à resposta COM OS INSUMOS
         receitas_com_cmv.append({
             'id': receita.id,
             'nome': receita.nome,
@@ -82,16 +117,20 @@ def list_receitas(
             'grupo': receita.grupo,
             'subgrupo': receita.subgrupo,
             'preco_compra': preco_compra,
-            'cmv_real': preco_compra,  # Custo real
+            'cmv_real': preco_compra,
             'cmv_20_porcento': cmv_20,
             'cmv_25_porcento': cmv_25,
             'cmv_30_porcento': cmv_30,
             'restaurante_id': receita.restaurante_id,
             'ativo': receita.ativo,
             'created_at': receita.created_at,
-            'updated_at': receita.updated_at
+            'updated_at': receita.updated_at,
+            'tempo_preparo_minutos': getattr(receita, 'tempo_preparo_minutos', 30),
+            'rendimento_porcoes': getattr(receita, 'rendimento_porcoes', 1),
+            # ========== CAMPO CRÍTICO - AQUI ESTÃO OS INSUMOS! ==========
+            'receita_insumos': receita_insumos_data
         })
-    
+       
     return receitas_com_cmv
 
 # ===================================================================================================
