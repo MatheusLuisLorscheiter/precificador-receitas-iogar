@@ -3318,6 +3318,16 @@ const fetchInsumos = async () => {
       const handleSubmit = () => {
         console.log('🔍 === DEBUG COMPLETO handleSubmit ===');
         
+        // ============================================================================
+        // NOVA SEÇÃO: DEBUG DE MODO DE EDIÇÃO
+        // ============================================================================
+        console.log('🔧 DEBUG MODO:', {
+          editingReceita: editingReceita,
+          temId: editingReceita && editingReceita.id,
+          idValor: editingReceita?.id,
+          modoDetectado: editingReceita && editingReceita.id ? 'EDIÇÃO' : 'CRIAÇÃO'
+        });
+        
         // Validação de dados obrigatórios
         if (!formData.nome || !formData.nome.trim()) {
           alert('Nome da receita é obrigatório!');
@@ -3360,6 +3370,11 @@ const fetchInsumos = async () => {
 
         // Mapear campos para o formato EXATO esperado pelo backend
         const dadosBackend = {
+          // ============================================================================
+          // CORREÇÃO CRÍTICA: Incluir o ID se está editando
+          // ============================================================================
+          ...(editingReceita && editingReceita.id && { id: editingReceita.id }),
+          
           // Campos obrigatórios básicos
           codigo: String(formData.codigo || '').trim(),
           nome: String(formData.nome || '').trim(),
@@ -3388,6 +3403,15 @@ const fetchInsumos = async () => {
         console.log('📦 Estrutura completa:', JSON.stringify(dadosBackend, null, 2));
         console.log('🔍 Campo insumos especificamente:', dadosBackend.insumos);
         console.log('📊 Quantidade de insumos:', dadosBackend.insumos.length);
+        
+        // ============================================================================
+        // NOVO LOG: Confirmar se ID está sendo incluído
+        // ============================================================================
+        if (dadosBackend.id) {
+          console.log('✅ MODO EDIÇÃO - ID incluído:', dadosBackend.id);
+        } else {
+          console.log('➕ MODO CRIAÇÃO - sem ID');
+        }
         
         // Verificação final antes de enviar
         if (typeof onSave !== 'function') {
@@ -5526,12 +5550,39 @@ const Receitas = React.memo(() => {
   const handleSaveReceita = async (receitaData: any) => {
     try {
       setLoading(true);
-      console.log('Enviando dados para criar receita:', receitaData);
       
-      const response = await apiService.createReceita(receitaData);
+      // Verificar se está editando ou criando
+      const isEdicao = selectedReceita && selectedReceita.id;
+      
+      console.log('🔧 handleSaveReceita - Modo:', isEdicao ? 'EDIÇÃO' : 'CRIAÇÃO');
+      console.log('🔧 selectedReceita:', selectedReceita);
+      console.log('🔧 Dados recebidos:', receitaData);
+      
+      let response;
+      
+      if (isEdicao) {
+        // ============================================================================
+        // SOLUÇÃO TEMPORÁRIA: Usar createReceita com ID para simular update
+        // ============================================================================
+        console.log(`🔄 [TEMPORÁRIO] Atualizando receita ID: ${selectedReceita.id} via POST`);
+        
+        // Incluir o ID na receita para que o backend detecte que é uma atualização
+        const dadosComId = {
+          ...receitaData,
+          id: selectedReceita.id
+        };
+        
+        response = await apiService.createReceita(dadosComId);
+      } else {
+        // ============================================================================
+        // MODO CRIAÇÃO: Usar createReceita normalmente
+        // ============================================================================
+        console.log('➕ Criando nova receita');
+        response = await apiService.createReceita(receitaData);
+      }
 
       if (response.data) {
-        console.log('Receita criada com sucesso:', response.data);
+        console.log(`${isEdicao ? 'Receita atualizada' : 'Receita criada'} com sucesso:`, response.data);
         
         // Fechar formulário ANTES de recarregar
         setShowReceitaForm(false);
@@ -5539,36 +5590,37 @@ const Receitas = React.memo(() => {
         setReceitaInsumos([]);
         setSelectedReceita(null);
         
-        // Mostrar sucesso
+        // Mostrar sucesso com mensagem apropriada
         showSuccessPopup(
-          'Receita Criada',
-          `A receita "${receitaData.nome}" foi criada com sucesso!`
+          isEdicao ? 'Receita Atualizada' : 'Receita Criada',
+          `A receita "${receitaData.nome}" foi ${isEdicao ? 'atualizada' : 'criada'} com sucesso!`
         );
         
-        // Recarregar receitas com delay para evitar conflitos
+        // Recarregar receitas com delay
         setTimeout(async () => {
           try {
             await fetchReceitas2();
             console.log('Lista de receitas recarregada com sucesso');
           } catch (fetchError) {
-            console.error('Erro ao recarregar receitas, mas receita foi salva:', fetchError);
+            console.error(`Erro ao recarregar receitas:`, fetchError);
           }
         }, 500);
         
       } else if (response.error) {
-        console.error('Erro ao criar receita:', response.error);
+        console.error(`Erro ao ${isEdicao ? 'atualizar' : 'criar'} receita:`, response.error);
         
         showErrorPopup(
-          'Erro ao Criar Receita',
-          response.error || 'Ocorreu um erro inesperado ao criar a receita. Verifique os dados informados e tente novamente.'
+          isEdicao ? 'Erro ao Atualizar Receita' : 'Erro ao Criar Receita',
+          response.error || `Ocorreu um erro inesperado ao ${isEdicao ? 'atualizar' : 'criar'} a receita.`
         );
       }
     } catch (error) {
-      console.error('Erro ao criar receita:', error);
+      const isEdicao = selectedReceita && selectedReceita.id;
+      console.error(`Erro ao ${isEdicao ? 'atualizar' : 'criar'} receita:`, error);
       
       showErrorPopup(
         'Falha na Conexão',
-        'Não foi possível conectar com o servidor para criar a receita. Verifique sua conexão de internet e tente novamente.'
+        `Não foi possível conectar com o servidor para ${isEdicao ? 'atualizar' : 'criar'} a receita.`
       );
     } finally {
       setLoading(false);

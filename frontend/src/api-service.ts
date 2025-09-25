@@ -12,7 +12,7 @@ Autor: Will - Empresa: IOGAR
 // CONFIGURAÇÃO BASE DA API COM DETECÇÃO AUTOMÁTICA DE PORTA
 // ============================================================================
 const API_CONFIG = {
-  baseURL: 'https://food-cost-backend.onrender.com',
+ baseURL: 'https://food-cost-backend.onrender.com',
   /* RODA LOCALMENTE
   baseURL: 'http://localhost:8000', // Será ajustado automaticamente */
   timeout: 10000,
@@ -352,20 +352,23 @@ class ApiService {
 
   // Criar nova receita
   async createReceita(receita: any): Promise<ApiResponse<any>> {
-  // Mapear campos para o formato esperado pelo backend
-  const dadosBackend = {
-    codigo: receita.codigo || '',
-    nome: receita.nome,
-    descricao: receita.descricao || '',
-    categoria: receita.categoria || 'Geral',
-    grupo: receita.categoria || 'Geral',
-    subgrupo: receita.categoria || 'Geral', 
-    unidade: 'porção',    
-    rendimento: receita.porcoes || receita.rendimento || 1,
-    tempo_preparo: receita.tempo_preparo || 30,
-    restaurante_id: receita.restaurante_id || 1,
-    insumos: receita.insumos || []
-  };
+    // Mapear campos para o formato esperado pelo backend
+    const dadosBackend = {
+      // CORREÇÃO: Incluir o ID se fornecido (para edição via POST)
+      ...(receita.id && { id: receita.id }),
+      
+      codigo: receita.codigo || '',
+      nome: receita.nome,
+      descricao: receita.descricao || '',
+      categoria: receita.categoria || 'Geral',
+      grupo: receita.categoria || 'Geral',
+      subgrupo: receita.categoria || 'Geral', 
+      unidade: 'porção',    
+      rendimento: receita.porcoes || receita.rendimento || 1,
+      tempo_preparo: receita.tempo_preparo || 30,
+      restaurante_id: receita.restaurante_id || 1,
+      insumos: receita.insumos || []
+    };
 
   console.log('📤 Enviando dados para criar receita:', dadosBackend);
   
@@ -375,18 +378,73 @@ class ApiService {
   });
 }
 
-// Atualizar receita existente
+// Atualizar receita existente - MAPEAMENTO CORRETO PARA SCHEMA ReceitaUpdate
 async updateReceita(id: number, receita: any): Promise<ApiResponse<any>> {
-  console.log('📤 SIMULANDO update bem-sucedido para teste');
+  console.log('🔄 === updateReceita IMPLEMENTAÇÃO COMPLETA ===');
+  console.log('📥 ID da receita:', id);
+  console.log('📥 Dados recebidos:', receita);
   
-  // Simular sucesso temporariamente
-  return { 
-    data: { 
-      id: id, 
-      nome: receita.nome,
-      ...receita 
-    } 
-  };
+  // ============================================================================
+  // MAPEAR CAMPOS PARA O FORMATO ESPERADO PELO SCHEMA ReceitaUpdate
+  // ============================================================================
+  const dadosUpdate: any = {};
+  
+  // Campos básicos diretos (nomes idênticos no schema)
+  if (receita.codigo !== undefined) dadosUpdate.codigo = receita.codigo;
+  if (receita.nome !== undefined) dadosUpdate.nome = receita.nome;
+  if (receita.descricao !== undefined) dadosUpdate.descricao = receita.descricao;
+  if (receita.unidade !== undefined) dadosUpdate.unidade = receita.unidade;
+  if (receita.quantidade !== undefined) dadosUpdate.quantidade = receita.quantidade;
+  if (receita.fator !== undefined) dadosUpdate.fator = receita.fator;
+  if (receita.ativo !== undefined) dadosUpdate.ativo = receita.ativo;
+  
+  // Campos que precisam de mapeamento
+  if (receita.categoria !== undefined) {
+    dadosUpdate.grupo = receita.categoria;
+    dadosUpdate.subgrupo = receita.categoria;
+  }
+  if (receita.grupo !== undefined) dadosUpdate.grupo = receita.grupo;
+  if (receita.subgrupo !== undefined) dadosUpdate.subgrupo = receita.subgrupo;
+  
+  // Campos de tempo e rendimento
+  if (receita.porcoes !== undefined) dadosUpdate.rendimento_porcoes = receita.porcoes;
+  if (receita.rendimento_porcoes !== undefined) dadosUpdate.rendimento_porcoes = receita.rendimento_porcoes;
+  if (receita.tempo_preparo !== undefined) dadosUpdate.tempo_preparo_minutos = receita.tempo_preparo;
+  if (receita.tempo_preparo_minutos !== undefined) dadosUpdate.tempo_preparo_minutos = receita.tempo_preparo_minutos;
+
+  console.log('📤 Dados mapeados para ReceitaUpdate:', dadosUpdate);
+  
+  try {
+    // Fazer requisição PUT usando apenas os campos de update (sem insumos)
+    const response = await this.request<any>(`/api/v1/receitas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(dadosUpdate),
+    });
+    
+    if (response.data) {
+      console.log('✅ updateReceita - Sucesso:', response.data);
+      
+      // ============================================================================
+      // ATUALIZAR INSUMOS SEPARADAMENTE (se fornecidos)
+      // ============================================================================
+      if (receita.insumos && receita.insumos.length > 0) {
+        console.log('🔧 Atualizando insumos da receita...');
+        // TODO: Implementar atualização de insumos via endpoints específicos
+        // Por enquanto, apenas log para debug
+        console.log('📋 Insumos para atualizar:', receita.insumos);
+      }
+      
+    } else if (response.error) {
+      console.error('❌ updateReceita - Erro:', response.error);
+    }
+    
+    return response;
+  } catch (error) {
+    console.error('💥 updateReceita - Exceção:', error);
+    return {
+      error: error instanceof Error ? error.message : 'Erro desconhecido ao atualizar receita'
+    };
+  }
 }
 
   // ================================

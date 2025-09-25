@@ -179,65 +179,77 @@ def calcular_custo_receita(db: Session, receita_id: int) -> float:
         print(f"❌ Erro ao calcular custo da receita {receita_id}: {e}")
         return 0.0
 
-@router.post("/", summary="Criar receita")
+@router.post("/", summary="Criar ou atualizar receita")
 def create_receita_endpoint(
     receita_data: dict,
     db: Session = Depends(get_db)
 ):
-    """Cria uma nova receita com insumos"""
+    """Cria uma nova receita com insumos OU atualiza uma existente se ID fornecido"""
     try:
-        print(f"📥 Dados recebidos para nova receita: {receita_data}")
+        # IMPORTAR MODELO NECESSÁRIO NO INÍCIO
+        from app.models.receita import ReceitaInsumo
+
+        print(f"📥 Dados recebidos para receita: {receita_data}")
         
-        # Campos obrigatórios básicos
-        campos_obrigatorios = {
-            'codigo': receita_data.get('codigo', '').strip(),
-            'nome': receita_data.get('nome', '').strip(),
-            'restaurante_id': int(receita_data.get('restaurante_id', 0)),
-            'ativo': bool(receita_data.get('ativo', True))
-        }
+        # ============================================================================
+        # VERIFICAR SE É CRIAÇÃO OU EDIÇÃO
+        # ============================================================================
+        receita_id = receita_data.get('id')
+        is_edicao = receita_id is not None
         
-        # Validação básica
-        if not campos_obrigatorios['nome']:
-            raise HTTPException(status_code=400, detail="Nome da receita é obrigatório")
-        if not campos_obrigatorios['restaurante_id']:
-            raise HTTPException(status_code=400, detail="Restaurante é obrigatório")
+        if is_edicao:
+            print(f"✏️ MODO EDIÇÃO - Atualizando receita ID: {receita_id}")
             
-        # Criar a receita base
-        nova_receita = Receita(**campos_obrigatorios)
-        
-        # Campos opcionais seguros
-        campos_opcionais = {
-            'descricao': receita_data.get('descricao', ''),
-            'grupo': receita_data.get('grupo', 'Geral'),
-            'subgrupo': receita_data.get('subgrupo', 'Geral'),
-            'rendimento_porcoes': receita_data.get('rendimento_porcoes', 1),
-            'tempo_preparo_minutos': receita_data.get('tempo_preparo_minutos', 15),
-            'unidade': receita_data.get('unidade', 'porção'),
-            'quantidade': receita_data.get('quantidade', 1),
-            'fator': receita_data.get('fator', 1.0),
-            'preco_compra': 0  # Será calculado automaticamente
-        }
-        
-        # Adicionar campos opcionais apenas se existirem no modelo
-        for campo, valor in campos_opcionais.items():
-            if hasattr(nova_receita, campo):
-                setattr(nova_receita, campo, valor)
-        
-        # Salvar receita no banco
-        db.add(nova_receita)
-        db.commit()
-        db.refresh(nova_receita)
-        
-        print(f"✅ Receita criada com ID: {nova_receita.id}")
-        
-        # PROCESSAR INSUMOS (CÓDIGO CORRIGIDO)
-        insumos_data = receita_data.get('insumos', [])
-        if insumos_data:
-            print(f"📦 Processando {len(insumos_data)} insumos...")
-            try:
-                # IMPORTAR o modelo ReceitaInsumo (se não estiver importado)
-                from app.models.receita import ReceitaInsumo
+            # Buscar receita existente
+            receita_existente = db.query(Receita).filter(Receita.id == receita_id).first()
+            if not receita_existente:
+                raise HTTPException(status_code=404, detail="Receita não encontrada para atualização")
+            
+            # ============================================================================
+            # ATUALIZAR RECEITA EXISTENTE
+            # ============================================================================
+            
+            # Atualizar apenas campos fornecidos
+            if receita_data.get('nome'):
+                receita_existente.nome = receita_data['nome'].strip()
+            if receita_data.get('codigo'):
+                receita_existente.codigo = receita_data['codigo'].strip()
+            if receita_data.get('descricao') is not None:
+                receita_existente.descricao = receita_data['descricao']
+            if receita_data.get('grupo'):
+                receita_existente.grupo = receita_data['grupo']
+            if receita_data.get('subgrupo'):
+                receita_existente.subgrupo = receita_data['subgrupo']
+            if receita_data.get('rendimento_porcoes'):
+                receita_existente.rendimento_porcoes = receita_data['rendimento_porcoes']
+            if receita_data.get('tempo_preparo_minutos'):
+                receita_existente.tempo_preparo_minutos = receita_data['tempo_preparo_minutos']
+            if receita_data.get('unidade'):
+                receita_existente.unidade = receita_data['unidade']
+            if receita_data.get('quantidade'):
+                receita_existente.quantidade = receita_data['quantidade']
+            if receita_data.get('fator'):
+                receita_existente.fator = receita_data['fator']
+            if 'ativo' in receita_data:
+                receita_existente.ativo = bool(receita_data['ativo'])
+            
+            # Salvar alterações
+            db.commit()
+            db.refresh(receita_existente)
+            
+            print(f"✅ Receita ID {receita_id} atualizada com sucesso!")
+            
+            # ============================================================================
+            # PROCESSAR INSUMOS DA RECEITA (se fornecidos)
+            # ============================================================================
+            insumos_data = receita_data.get('insumos', [])
+            if insumos_data:
+                print(f"🔄 Atualizando {len(insumos_data)} insumos...")
                 
+                # Remover insumos existentes da receita
+                db.query(ReceitaInsumo).filter(ReceitaInsumo.receita_id == receita_id).delete()
+                
+                # Adicionar novos insumos
                 for insumo_data in insumos_data:
                     insumo_id = insumo_data.get('insumo_id')
                     quantidade = insumo_data.get('quantidade', 0)
@@ -245,43 +257,126 @@ def create_receita_endpoint(
                     if insumo_id and quantidade > 0:
                         print(f"  - Salvando Insumo {insumo_id}: {quantidade}")
                         
-                        # CRIAR o relacionamento receita-insumo com CAMPO CORRETO
                         receita_insumo = ReceitaInsumo(
-                            receita_id=nova_receita.id,
+                            receita_id=receita_id,
                             insumo_id=int(insumo_id),
                             quantidade_necessaria=float(quantidade),
                             unidade_medida='unidade'
                         )
-                        
-                        # SALVAR no banco
                         db.add(receita_insumo)
-                        
-                # COMMIT das alterações
-                db.commit()
-                print(f"✅ {len(insumos_data)} insumos salvos com sucesso!")
                 
-            except Exception as e:
-                print(f"❌ Erro ao salvar insumos: {e}")
-                db.rollback()
-                raise HTTPException(status_code=500, detail=f"Erro ao salvar insumos: {str(e)}")
-        
-        # Retornar resposta
-        return {
-            "id": nova_receita.id,
-            "nome": nova_receita.nome,
-            "codigo": nova_receita.codigo,
-            "restaurante_id": nova_receita.restaurante_id,
-            "ativo": nova_receita.ativo,
-            "total_insumos": len(insumos_data),
-            "message": "Receita criada com sucesso"
-        }
-        
+                # Commit das alterações de insumos
+                db.commit()
+                print(f"✅ Insumos da receita atualizados!")
+            
+            # Retornar receita atualizada
+            return {
+                "id": receita_existente.id,
+                "nome": receita_existente.nome,
+                "codigo": receita_existente.codigo,
+                "restaurante_id": receita_existente.restaurante_id,
+                "ativo": receita_existente.ativo,
+                "total_insumos": len(insumos_data),
+                "message": "Receita atualizada com sucesso"
+            }
+            
+        else:
+            print("➕ MODO CRIAÇÃO - Nova receita")
+            
+            # ============================================================================
+            # CRIAR NOVA RECEITA (código original)
+            # ============================================================================
+            
+            # Campos obrigatórios básicos
+            campos_obrigatorios = {
+                'codigo': receita_data.get('codigo', '').strip(),
+                'nome': receita_data.get('nome', '').strip(),
+                'restaurante_id': int(receita_data.get('restaurante_id', 0)),
+                'ativo': bool(receita_data.get('ativo', True))
+            }
+            
+            # Validação básica
+            if not campos_obrigatorios['nome']:
+                raise HTTPException(status_code=400, detail="Nome da receita é obrigatório")
+            if not campos_obrigatorios['restaurante_id']:
+                raise HTTPException(status_code=400, detail="Restaurante é obrigatório")
+                
+            # Criar a receita base
+            nova_receita = Receita(**campos_obrigatorios)
+            
+            # Campos opcionais seguros
+            campos_opcionais = {
+                'descricao': receita_data.get('descricao', ''),
+                'grupo': receita_data.get('grupo', 'Geral'),
+                'subgrupo': receita_data.get('subgrupo', 'Geral'),
+                'rendimento_porcoes': receita_data.get('rendimento_porcoes', 1),
+                'tempo_preparo_minutos': receita_data.get('tempo_preparo_minutos', 15),
+                'unidade': receita_data.get('unidade', 'porção'),
+                'quantidade': receita_data.get('quantidade', 1),
+                'fator': receita_data.get('fator', 1.0),
+                'preco_compra': 0  # Será calculado automaticamente
+            }
+            
+            # Adicionar campos opcionais apenas se existirem no modelo
+            for campo, valor in campos_opcionais.items():
+                if hasattr(nova_receita, campo):
+                    setattr(nova_receita, campo, valor)
+            
+            # Salvar receita no banco
+            db.add(nova_receita)
+            db.commit()
+            db.refresh(nova_receita)
+            
+            print(f"✅ Receita criada com ID: {nova_receita.id}")
+            
+            # PROCESSAR INSUMOS (código original)
+            insumos_data = receita_data.get('insumos', [])
+            if insumos_data:
+                print(f"📦 Processando {len(insumos_data)} insumos...")
+                try:
+                    from app.models.receita import ReceitaInsumo
+                    
+                    for insumo_data in insumos_data:
+                        insumo_id = insumo_data.get('insumo_id')
+                        quantidade = insumo_data.get('quantidade', 0)
+                        
+                        if insumo_id and quantidade > 0:
+                            print(f"  - Salvando Insumo {insumo_id}: {quantidade}")
+                            
+                            receita_insumo = ReceitaInsumo(
+                                receita_id=nova_receita.id,
+                                insumo_id=int(insumo_id),
+                                quantidade_necessaria=float(quantidade),
+                                unidade_medida='unidade'
+                            )
+                            db.add(receita_insumo)
+                            
+                    # COMMIT das alterações
+                    db.commit()
+                    print(f"✅ {len(insumos_data)} insumos salvos com sucesso!")
+                    
+                except Exception as e:
+                    print(f"❌ Erro ao salvar insumos: {e}")
+                    db.rollback()
+                    raise HTTPException(status_code=500, detail=f"Erro ao salvar insumos: {str(e)}")
+            
+            # Retornar resposta
+            return {
+                "id": nova_receita.id,
+                "nome": nova_receita.nome,
+                "codigo": nova_receita.codigo,
+                "restaurante_id": nova_receita.restaurante_id,
+                "ativo": nova_receita.ativo,
+                "total_insumos": len(insumos_data),
+                "message": "Receita criada com sucesso"
+            }
+            
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Erro interno ao criar receita: {e}")
+        print(f"❌ Erro interno ao processar receita: {e}")
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro interno ao criar receita: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno ao processar receita: {str(e)}")
 
 
 @router.get("/search", response_model=List[ReceitaListResponse],
