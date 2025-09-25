@@ -17,9 +17,9 @@ python-multipart==0.0.6
 # ============================================================================
 # BANCO DE DADOS E ORM
 # ============================================================================
-# ATENCAO: psycopg2-binary==2.9.7 para compatibilidade com Python 3.13 e Render
+# ATENCAO: psycopg[binary]==3.1.19 para compatibilidade com Python 3.13 e Rendergit 
 SQLAlchemy==2.0.43
-psycopg2-binary==2.9.7
+psycopg[binary]==3.1.19
 alembic==1.13.3
 
 # ============================================================================
