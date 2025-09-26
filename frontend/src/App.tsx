@@ -23,7 +23,7 @@ import {
   Users, ChefHat, Utensils, Plus, Search, Edit2, Edit3, Trash2, Save,
   X, Check, AlertCircle, BarChart3, Settings, Zap, FileText,
   Upload, Activity, Brain, Monitor, Shield, Database, LinkIcon,
-  Target, Eye, ChevronDown, ChevronRight, Copy
+  Target, Eye, ChevronDown, ChevronRight, Copy, AlertTriangle
 } from 'lucide-react';
 
 // Importar componente da IA
@@ -3093,6 +3093,14 @@ const fetchInsumos = async () => {
         };
       });
 
+      //  ESTADO NOVO PARA MODAL DE CONFIRMAÇÃO CUSTOMIZADO
+      const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+      const [confirmDialogData, setConfirmDialogData] = useState({
+        title: '',
+        message: '',
+        onConfirm: () => {}
+      });
+
       // Log detalhado dos dados recebidos
       useEffect(() => {
         console.log('🔧 DADOS COMPLETOS DA RECEITA:', {
@@ -3398,7 +3406,62 @@ const fetchInsumos = async () => {
         });
       };
 
-      const handleSubmit = () => {
+      const proceedWithSave = (insumosValidosParam) => {
+        // Mapear campos para o formato EXATO esperado pelo backend
+        const dadosBackend = {
+          // Incluir o ID se está editando
+          ...(editingReceita && editingReceita.id && { id: editingReceita.id }),
+          
+          // Campos obrigatórios básicos
+          codigo: String(formData.codigo || '').trim(),
+          nome: String(formData.nome || '').trim(),
+          descricao: String(formData.descricao || '').trim(),
+          
+          // Campos de categoria (ajustar conforme backend)
+          grupo: String(formData.categoria || 'Lanches').trim(),
+          subgrupo: String(formData.categoria || 'Lanches').trim(),
+          
+          // Campos numéricos com valores padrão seguros
+          rendimento_porcoes: parseInt(formData.porcoes) || 1,
+          tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 15,
+          
+          // Status e restaurante
+          ativo: true,
+          restaurante_id: parseInt(selectedRestaurante.id),
+          
+          // CAMPO CRÍTICO: usar parâmetro recebido ao invés da variável inexistente
+          insumos: insumosValidosParam.map(insumo => ({
+            insumo_id: parseInt(insumo.insumo_id),
+            quantidade: parseFloat(insumo.quantidade)
+          }))
+        };
+
+        console.log('📤 === DADOS FINAIS PARA BACKEND ===');
+        console.log('📦 Estrutura completa:', JSON.stringify(dadosBackend, null, 2));
+        console.log('🔍 Campo insumos especificamente:', dadosBackend.insumos);
+        console.log('📊 Quantidade de insumos:', dadosBackend.insumos.length);
+        
+        // Confirmar se ID está sendo incluído
+        if (dadosBackend.id) {
+          console.log('✅ MODO EDIÇÃO - ID incluído:', dadosBackend.id);
+        } else {
+          console.log('➕ MODO CRIAÇÃO - sem ID');
+        }
+        
+        // Verificação final antes de enviar
+        if (typeof onSave !== 'function') {
+          console.error('❌ ERRO: onSave não é uma função!');
+          alert('Erro interno: função de salvamento não encontrada!');
+          return;
+        }
+
+        console.log('✅ Chamando onSave...');
+        
+        // Chamar função de salvamento
+        onSave(dadosBackend);
+      };
+
+      const handleSubmit = () => {       //  INICIO HANDLESUBMIT FORMULARIORECEITA
         console.log('🔍 === DEBUG COMPLETO handleSubmit ===');
         
         // ============================================================================
@@ -3443,68 +3506,54 @@ const fetchInsumos = async () => {
         
         console.log('✅ Insumos VÁLIDOS após filtro:', insumosValidos);
         
-        // Alertar se não há insumos válidos
+       // Verificar insumos e mostrar modal customizado se necessário
         if (insumosValidos.length === 0) {
-          const confirmar = confirm('Esta receita não possui insumos. Deseja continuar mesmo assim?');
-          if (!confirmar) {
-            return;
-          }
-        }
-
-        // Mapear campos para o formato EXATO esperado pelo backend
-        const dadosBackend = {
-          // ============================================================================
-          // CORREÇÃO CRÍTICA: Incluir o ID se está editando
-          // ============================================================================
-          ...(editingReceita && editingReceita.id && { id: editingReceita.id }),
+          // Detectar o problema específico
+          const temInsumosComQuantidadeZero = receitaInsumos.some(insumo => 
+            insumo.insumo_id > 0 && (!insumo.quantidade || insumo.quantidade <= 0)
+          );
           
-          // Campos obrigatórios básicos
-          codigo: String(formData.codigo || '').trim(),
-          nome: String(formData.nome || '').trim(),
-          descricao: String(formData.descricao || '').trim(),
+          const titulo = temInsumosComQuantidadeZero 
+            ? 'Insumos sem Quantidade' 
+            : 'Receita sem Insumos';
+            
+          const mensagem = temInsumosComQuantidadeZero
+            ? 'Alguns insumos estão sem quantidade definida. Deseja continuar mesmo assim?'
+            : 'Esta receita não possui insumos. Deseja continuar mesmo assim?';
           
-          // Campos de categoria (ajustar conforme backend)
-          grupo: String(formData.categoria || 'Lanches').trim(),
-          subgrupo: String(formData.categoria || 'Lanches').trim(),
-          
-          // Campos numéricos com valores padrão seguros
-          rendimento_porcoes: parseInt(formData.porcoes) || 1,
-          tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 15,
-          
-          // Status e restaurante
-          ativo: true,
-          restaurante_id: parseInt(selectedRestaurante.id),
-          
-          // CAMPO CRÍTICO: array de insumos
-          insumos: insumosValidos.map(insumo => ({
-            insumo_id: parseInt(insumo.insumo_id),
-            quantidade: parseFloat(insumo.quantidade)
-          }))
-        };
-
-        console.log('📤 === DADOS FINAIS PARA BACKEND ===');
-        console.log('📦 Estrutura completa:', JSON.stringify(dadosBackend, null, 2));
-        console.log('🔍 Campo insumos especificamente:', dadosBackend.insumos);
-        console.log('📊 Quantidade de insumos:', dadosBackend.insumos.length);
-        
-        // ============================================================================
-        // NOVO LOG: Confirmar se ID está sendo incluído
-        // ============================================================================
-        if (dadosBackend.id) {
-          console.log('✅ MODO EDIÇÃO - ID incluído:', dadosBackend.id);
-        } else {
-          console.log('➕ MODO CRIAÇÃO - sem ID');
-        }
-        
-        // Verificação final antes de enviar
-        if (typeof onSave !== 'function') {
-          console.error('❌ ERRO: onSave não é uma função!');
-          alert('Erro interno: função de salvamento não encontrada!');
+          // Mostrar modal customizado
+          setConfirmDialogData({
+            title: titulo,
+            message: mensagem,
+            onConfirm: () => {
+              setShowConfirmDialog(false);
+              
+              // CÓDIGO DE SALVAMENTO INLINE (copiar do final da função)
+              const dadosBackend = {
+                ...(editingReceita && editingReceita.id && { id: editingReceita.id }),
+                codigo: String(formData.codigo || '').trim(),
+                nome: String(formData.nome || '').trim(),
+                descricao: String(formData.descricao || '').trim(),
+                grupo: String(formData.categoria || 'Lanches').trim(),
+                subgrupo: String(formData.categoria || 'Lanches').trim(),
+                rendimento_porcoes: parseInt(formData.porcoes) || 1,
+                tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 15,
+                ativo: true,
+                restaurante_id: parseInt(selectedRestaurante.id),
+                insumos: insumosValidos.map(insumo => ({
+                  insumo_id: parseInt(insumo.insumo_id),
+                  quantidade: parseFloat(insumo.quantidade)
+                }))
+              };
+              onSave(dadosBackend);
+            }
+          });
+          setShowConfirmDialog(true);
           return;
         }
         
-        console.log('✅ Chamando onSave...');
-        onSave(dadosBackend);
+        // Se chegou aqui, pode salvar normalmente
+        proceedWithSave(insumosValidos);
       };
       
       //INICIO RETURN
@@ -4055,6 +4104,41 @@ const fetchInsumos = async () => {
               </div>
             </div>
           </div>
+
+          {showConfirmDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-yellow-100 p-2 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-yellow-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {confirmDialogData.title}
+                </h3>
+              </div>
+              
+              <p className="text-gray-600 mb-6">
+                {confirmDialogData.message}
+              </p>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConfirmDialog(false)}
+                  className="flex-1 py-2 px-4 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDialogData.onConfirm}
+                  className="flex-1 py-2 px-4 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         </div>
       );
       //FIM RETURN
@@ -5706,7 +5790,11 @@ const Receitas = React.memo(() => {
         
         // Tentar forçar a exibição do popup
         if (typeof showSuccessPopup === 'function') {
-          showSuccessPopup(titulo, mensagem);
+          setSuccessDialogData({
+            title: titulo,
+            message: mensagem
+          });
+          setShowSuccessDialog(true);
           console.log('✅ showSuccessPopup chamado');
           
           // Aguardar um pouco e verificar se o popup apareceu
