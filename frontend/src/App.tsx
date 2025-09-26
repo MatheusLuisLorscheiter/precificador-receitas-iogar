@@ -3107,13 +3107,69 @@ const fetchInsumos = async () => {
       };
 
       const [receitaInsumos, setReceitaInsumos] = useState(() => {
-        if (editingReceita?.receita_insumos) {
-          return editingReceita.receita_insumos.map(ri => ({
-            insumo_id: ri.insumo_id,
-            quantidade: ri.quantidade || 0
+        console.log('🔧 Inicializando receitaInsumos - Debug completo:', {
+          editingReceita,
+          receita_insumos: editingReceita?.receita_insumos,
+          insumos_alternativos: editingReceita?.insumos
+        });
+
+        // Verificar se está em modo edição e tem insumos
+        if (editingReceita?.receita_insumos && Array.isArray(editingReceita.receita_insumos)) {
+          console.log('📦 Carregando insumos da receita existente:', editingReceita.receita_insumos);
+          
+          return editingReceita.receita_insumos.map((ri, index) => {
+            // Mapear diferentes possíveis campos do backend
+            const quantidade = ri.quantidade_necessaria || ri.quantidade || 1;
+            const insumoId = ri.insumo_id || ri.id;
+            
+            console.log(`  - Insumo ${index + 1}: ID=${insumoId}, Quantidade=${quantidade}`, ri);
+            
+            return {
+              insumo_id: parseInt(insumoId),
+              quantidade: parseFloat(quantidade) || 1
+            };
+          });
+        }
+
+        // Atualizar receitaInsumos quando editingReceita mudar
+        useEffect(() => {
+          console.log('🔄 useEffect - editingReceita mudou:', editingReceita);
+          
+          if (editingReceita?.receita_insumos && Array.isArray(editingReceita.receita_insumos)) {
+            console.log('🔄 Atualizando receitaInsumos com dados da receita editada');
+            
+            const insumosAtualizados = editingReceita.receita_insumos.map((ri, index) => {
+              const quantidade = ri.quantidade_necessaria || ri.quantidade || 1;
+              const insumoId = ri.insumo_id || ri.id;
+              
+              console.log(`  - Atualizando Insumo ${index + 1}: ID=${insumoId}, Quantidade=${quantidade}`);
+              
+              return {
+                insumo_id: parseInt(insumoId),
+                quantidade: parseFloat(quantidade) || 1
+              };
+            });
+            
+            setReceitaInsumos(insumosAtualizados);
+          } else if (editingReceita && !editingReceita.receita_insumos) {
+            // Se está editando mas não tem insumos, garantir lista vazia
+            console.log('🔄 Receita em edição sem insumos - limpando lista');
+            setReceitaInsumos([]);
+          }
+        }, [editingReceita]);
+        
+        // Fallback para outros formatos de dados
+        if (editingReceita?.insumos && Array.isArray(editingReceita.insumos)) {
+          console.log('📦 Carregando insumos do campo alternativo');
+          return editingReceita.insumos.map(insumo => ({
+            insumo_id: parseInt(insumo.insumo_id || insumo.id),
+            quantidade: parseFloat(insumo.quantidade || 1)
           }));
         }
-        return editingReceita?.insumos || [];
+        
+        // Modo criação - lista vazia
+        console.log('➕ Modo criação - lista de insumos vazia');
+        return [];
       });
 
       // ============================================================================
@@ -3360,13 +3416,6 @@ const fetchInsumos = async () => {
         
         console.log('✅ Insumos VÁLIDOS após filtro:', insumosValidos);
         
-        // Alertar se não há insumos válidos
-        if (insumosValidos.length === 0) {
-          const confirmar = confirm('Esta receita não possui insumos. Deseja continuar mesmo assim?');
-          if (!confirmar) {
-            return;
-          }
-        }
 
         // Mapear campos para o formato EXATO esperado pelo backend
         const dadosBackend = {
@@ -3423,6 +3472,7 @@ const fetchInsumos = async () => {
         console.log('✅ Chamando onSave...');
         onSave(dadosBackend);
       };
+
       
       //INICIO RETURN
       return (
@@ -5548,74 +5598,52 @@ const Receitas = React.memo(() => {
   // FUNÇÃO PARA CRIAR/SALVAR RECEITA (MANTIDA DA VERSÃO ORIGINAL)
   // ===================================================================================================
   const handleSaveReceita = async (receitaData: any) => {
+  // Declarar isEdicao uma única vez no início da função
+  const isEdicao = Boolean(selectedReceita && selectedReceita.id);
+  
     try {
       setLoading(true);
-      
-      // Verificar se está editando ou criando
-      const isEdicao = selectedReceita && selectedReceita.id;
-      
-      console.log('🔧 handleSaveReceita - Modo:', isEdicao ? 'EDIÇÃO' : 'CRIAÇÃO');
-      console.log('🔧 selectedReceita:', selectedReceita);
-      console.log('🔧 Dados recebidos:', receitaData);
       
       let response;
       
       if (isEdicao) {
-        // ============================================================================
-        // SOLUÇÃO TEMPORÁRIA: Usar createReceita com ID para simular update
-        // ============================================================================
-        console.log(`🔄 [TEMPORÁRIO] Atualizando receita ID: ${selectedReceita.id} via POST`);
-        
-        // Incluir o ID na receita para que o backend detecte que é uma atualização
         const dadosComId = {
           ...receitaData,
           id: selectedReceita.id
         };
-        
         response = await apiService.createReceita(dadosComId);
       } else {
-        // ============================================================================
-        // MODO CRIAÇÃO: Usar createReceita normalmente
-        // ============================================================================
-        console.log('➕ Criando nova receita');
         response = await apiService.createReceita(receitaData);
       }
 
       if (response.data) {
-        console.log(`${isEdicao ? 'Receita atualizada' : 'Receita criada'} com sucesso:`, response.data);
-        
-        // Fechar formulário ANTES de recarregar
         setShowReceitaForm(false);
         setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
         setReceitaInsumos([]);
         setSelectedReceita(null);
         
-        // Mostrar sucesso com mensagem apropriada
+        const nomeReceita = receitaData.nome || response.data.nome || 'Receita';
         showSuccessPopup(
           isEdicao ? 'Receita Atualizada' : 'Receita Criada',
-          `A receita "${receitaData.nome}" foi ${isEdicao ? 'atualizada' : 'criada'} com sucesso!`
+          `A receita "${nomeReceita}" foi ${isEdicao ? 'atualizada' : 'criada'} com sucesso!`
         );
         
-        // Recarregar receitas com delay
         setTimeout(async () => {
           try {
             await fetchReceitas2();
-            console.log('Lista de receitas recarregada com sucesso');
           } catch (fetchError) {
-            console.error(`Erro ao recarregar receitas:`, fetchError);
+            console.error('Erro ao recarregar receitas:', fetchError);
           }
         }, 500);
         
       } else if (response.error) {
-        console.error(`Erro ao ${isEdicao ? 'atualizar' : 'criar'} receita:`, response.error);
-        
         showErrorPopup(
           isEdicao ? 'Erro ao Atualizar Receita' : 'Erro ao Criar Receita',
           response.error || `Ocorreu um erro inesperado ao ${isEdicao ? 'atualizar' : 'criar'} a receita.`
         );
       }
     } catch (error) {
-      const isEdicao = selectedReceita && selectedReceita.id;
+      // Agora isEdicao já está no escopo correto
       console.error(`Erro ao ${isEdicao ? 'atualizar' : 'criar'} receita:`, error);
       
       showErrorPopup(
