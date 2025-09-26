@@ -182,6 +182,7 @@ interface ReceitaInsumo {
 // ============================================================================
 
 const FadePopup: React.FC<PopupProps> = ({ type, title, message, isVisible, onClose }) => {
+  console.log('🎭 FadePopup renderizado:', { type, title, message, isVisible });
   const [isAnimating, setIsAnimating] = useState(false);
 
   // Função handleClose estável
@@ -313,15 +314,65 @@ const initializePopupFunctions = (setShowPopup, setPopupData) => {
   };
 };
 
+// ===================================================================================================
+// DEBUG FINAL: FUNÇÃO showSuccessPopup
+// Problema: Função é chamada mas popup não aparece
+// Solução: Verificar se as funções globais estão disponíveis
+// ===================================================================================================
+
 const showSuccessPopup = (title, message) => {
+  console.log('🎯 [DEBUG] showSuccessPopup chamado:', { title, message });
+  console.log('🔧 [DEBUG] globalSetPopupData:', globalSetPopupData);
+  console.log('🔧 [DEBUG] globalShowPopup:', globalShowPopup);
+  console.log('🔧 [DEBUG] Tipos:', {
+    globalSetPopupData: typeof globalSetPopupData,
+    globalShowPopup: typeof globalShowPopup
+  });
+  
   if (globalSetPopupData && globalShowPopup) {
-    globalSetPopupData({
-      type: 'success',
-      title,
-      message
+    console.log('✅ [DEBUG] Funções globais disponíveis, configurando...');
+    
+    try {
+      globalSetPopupData({
+        type: 'success',
+        title,
+        message
+      });
+      console.log('📋 [DEBUG] Dados configurados com sucesso');
+      
+      globalShowPopup(true);
+      console.log('🚀 [DEBUG] globalShowPopup(true) chamado');
+      
+      // Verificar se o estado mudou
+      setTimeout(() => {
+        console.log('🔍 [DEBUG] Verificando popup no DOM...');
+        const popup = document.querySelector('[class*="fixed"][class*="top-4"]');
+        console.log('📱 [DEBUG] Popup encontrado:', !!popup);
+        if (popup) {
+          console.log('🎨 [DEBUG] Estilos do popup:', {
+            display: popup.style.display,
+            visibility: popup.style.visibility,
+            opacity: popup.style.opacity,
+            zIndex: popup.style.zIndex
+          });
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('❌ [DEBUG] Erro ao configurar popup:', error);
+      alert(`✅ ${title}\n\n${message}`);
+    }
+  } else {
+    console.error('❌ [DEBUG] Funções globais NÃO disponíveis!');
+    console.log('🔧 [DEBUG] Detalhes:', {
+      globalSetPopupData_exists: !!globalSetPopupData,
+      globalShowPopup_exists: !!globalShowPopup,
+      globalSetPopupData_value: globalSetPopupData,
+      globalShowPopup_value: globalShowPopup
     });
-    globalShowPopup(true);
-    console.log('✅ Popup de sucesso exibido:', title);
+    
+    // Fallback garantido
+    alert(`✅ ${title}\n\n${message}`);
   }
 };
 
@@ -1914,6 +1965,10 @@ const FoodCostSystem: React.FC = () => {
     title: '',
     message: ''
   });
+  useEffect(() => {
+    console.log('🎯 Estado showPopup mudou:', showPopup);
+    console.log('📋 Dados do popup:', popupData);
+  }, [showPopup, popupData]);
   
   // Estados para formulário de receita
   const [novaReceita, setNovaReceita] = useState({
@@ -3110,11 +3165,39 @@ const fetchInsumos = async () => {
         if (editingReceita?.receita_insumos) {
           return editingReceita.receita_insumos.map(ri => ({
             insumo_id: ri.insumo_id,
-            quantidade: ri.quantidade || 0
+            // CORREÇÃO: Tentar múltiplos campos possíveis do backend
+            quantidade: ri.quantidade_necessaria || ri.quantidade || 1
           }));
         }
         return editingReceita?.insumos || [];
       });
+
+      useEffect(() => {
+        if (editingReceita?.receita_insumos && editingReceita.receita_insumos.length > 0) {
+          console.log('🔄 Atualizando receitaInsumos com dados da receita em edição');
+          
+          const insumosComQuantidade = editingReceita.receita_insumos.map(ri => {
+            const quantidade = ri.quantidade_necessaria || ri.quantidade || 1;
+            
+            console.log('📊 Insumo carregado:', {
+              insumo_id: ri.insumo_id,
+              quantidade_necessaria: ri.quantidade_necessaria,
+              quantidade: ri.quantidade,
+              quantidade_final: quantidade
+            });
+            
+            return {
+              insumo_id: ri.insumo_id,
+              quantidade: quantidade
+            };
+          });
+          
+          setReceitaInsumos(insumosComQuantidade);
+        } else if (!editingReceita) {
+          // Limpar insumos quando não está editando
+          setReceitaInsumos([]);
+        }
+      }, [editingReceita]);
 
       // ============================================================================
       // LISTA DE UNIDADES DE MEDIDA - MESMO PADRÃO DOS INSUMOS
@@ -5551,13 +5634,20 @@ const Receitas = React.memo(() => {
     try {
       setLoading(true);
       
-      // Verificar se está editando ou criando
+      // DEBUGGING: Verificar detecção do modo edição
       const isEdicao = Boolean(selectedReceita && selectedReceita.id);
+      console.log('🔧 DEBUG - Detecção do modo:', {
+        selectedReceita: selectedReceita,
+        selectedReceita_id: selectedReceita?.id,
+        isEdicao: isEdicao,
+        tipo_isEdicao: typeof isEdicao
+      });
       
       let response;
       
       if (isEdicao) {
-        // Modo edição - usar createReceita com ID para simular update
+        // Modo edição
+        console.log('📝 MODO EDIÇÃO detectado');
         const dadosComId = {
           ...receitaData,
           id: selectedReceita.id
@@ -5565,42 +5655,101 @@ const Receitas = React.memo(() => {
         
         response = await apiService.createReceita(dadosComId);
       } else {
-        // Modo criação - usar createReceita normalmente
+        // Modo criação
+        console.log('➕ MODO CRIAÇÃO detectado');
         response = await apiService.createReceita(receitaData);
       }
 
+      // DEBUGGING: Verificar resposta da API
+      console.log('📥 DEBUG - Resposta da API:', {
+        response: response,
+        response_data: response?.data,
+        response_error: response?.error,
+        tem_data: !!response?.data,
+        tem_error: !!response?.error
+      });
+
       if (response.data) {
+        console.log('✅ Entrando no bloco de sucesso');
+        
         // Fechar formulário
         setShowReceitaForm(false);
         setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
         setReceitaInsumos([]);
         setSelectedReceita(null);
         
-        // Exibir mensagem de sucesso apropriada
+        // DEBUGGING: Verificar dados para o popup
         const nomeReceita = receitaData.nome || response.data.nome || 'Receita';
-        showSuccessPopup(
-          isEdicao ? 'Receita Atualizada' : 'Receita Criada',
-          `A receita "${nomeReceita}" foi ${isEdicao ? 'atualizada' : 'criada'} com sucesso!`
-        );
+        const titulo = isEdicao ? 'Receita Atualizada' : 'Receita Criada';
+        const mensagem = `A receita "${nomeReceita}" foi ${isEdicao ? 'atualizada' : 'criada'} com sucesso!`;
+        
+        console.log('🎯 DEBUG - Preparando popup:', {
+          isEdicao: isEdicao,
+          nomeReceita: nomeReceita,
+          titulo: titulo,
+          mensagem: mensagem
+        });
+        
+        // DEBUGGING: Verificar se showSuccessPopup existe
+        console.log('🔧 DEBUG - Função showSuccessPopup:', {
+          existe: typeof showSuccessPopup,
+          eh_funcao: typeof showSuccessPopup === 'function'
+        });
+        
+        // Tentar exibir o popup
+        try {
+        console.log('🚀 Chamando showSuccessPopup...');
+        console.log('🔧 Verificando funções globais:', {
+          globalSetPopupData: typeof globalSetPopupData,
+          globalShowPopup: typeof globalShowPopup
+        });
+        
+        // Tentar forçar a exibição do popup
+        if (typeof showSuccessPopup === 'function') {
+          showSuccessPopup(titulo, mensagem);
+          console.log('✅ showSuccessPopup chamado');
+          
+          // Aguardar um pouco e verificar se o popup apareceu
+          setTimeout(() => {
+            const popupElement = document.querySelector('[class*="fixed"][class*="top-4"][class*="right-4"]');
+            console.log('🔍 Popup encontrado no DOM:', !!popupElement);
+            if (popupElement) {
+              console.log('📱 Estilos do popup:', window.getComputedStyle(popupElement));
+            }
+          }, 100);
+          
+        } else {
+          console.error('❌ showSuccessPopup não é uma função');
+          alert(`✅ ${titulo}\n\n${mensagem}`);
+        }
+      } catch (popupError) {
+        console.error('❌ Erro no showSuccessPopup:', popupError);
+        alert(`✅ ${titulo}\n\n${mensagem}`);
+      }
         
         // Recarregar lista de receitas
         setTimeout(async () => {
           try {
             await fetchReceitas2();
+            console.log('📋 Lista recarregada');
           } catch (fetchError) {
             console.error('Erro ao recarregar receitas:', fetchError);
           }
         }, 500);
         
       } else if (response.error) {
+        console.log('❌ Entrando no bloco de erro');
         showErrorPopup(
           isEdicao ? 'Erro ao Atualizar Receita' : 'Erro ao Criar Receita',
           response.error || `Ocorreu um erro inesperado ao ${isEdicao ? 'atualizar' : 'criar'} a receita.`
         );
+      } else {
+        console.log('⚠️ Resposta inesperada - nem data nem error');
+        console.log('📊 Resposta completa:', response);
       }
     } catch (error) {
       const isEdicao = Boolean(selectedReceita && selectedReceita.id);
-      console.error(`Erro ao ${isEdicao ? 'atualizar' : 'criar'} receita:`, error);
+      console.error(`❌ Erro no catch:`, error);
       
       showErrorPopup(
         'Falha na Conexão',
