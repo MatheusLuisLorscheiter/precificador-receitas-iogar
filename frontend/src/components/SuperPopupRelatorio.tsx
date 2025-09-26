@@ -62,6 +62,23 @@ const SuperPopupRelatorio: React.FC<SuperPopupRelatorioProps> = ({
   onDelete
 }) => {
 
+const calcularCustoPorPorcao = () => {
+    if (!receita || receita.porcoes <= 0) return 0;
+    return receita.cmv_real / receita.porcoes;
+  };
+
+  const calcularCMVPorPorcao = (precoVenda) => {
+    if (!receita || receita.porcoes <= 0) return 0;
+    return precoVenda / receita.porcoes;
+  };
+
+  const calcularLucroPorPorcao = (precoVenda) => {
+    if (!receita || receita.porcoes <= 0) return 0;
+    const custoPorPorcao = calcularCustoPorPorcao();
+    const precoPorPorcao = precoVenda / receita.porcoes;
+    return precoPorPorcao - custoPorPorcao;
+  };
+
   // ===================================================================================================
   // DEBUG LOGS PARA DIAGNÓSTICO - ADICIONAR ESTAS LINHAS NO INÍCIO
   // ===================================================================================================
@@ -862,6 +879,38 @@ const SuperPopupRelatorio: React.FC<SuperPopupRelatorioProps> = ({
         {/* ===================================================================================================
             FOOTER COM AÇÕES PRINCIPAIS
             =================================================================================================== */}
+
+        {receita.porcoes > 1 && (
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mt-4">
+            <h4 className="font-semibold text-blue-900 mb-3">Valores por Porção</h4>
+            <div className="grid grid-cols-2 gap-4">
+              
+              <div>
+                <p className="text-sm text-blue-600 mb-1">Custo por Porção</p>
+                <p className="text-lg font-bold text-blue-900">
+                  {formatarPreco(calcularCustoPorPorcao())}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-blue-600 mb-1">CMV 25% por Porção</p>
+                <p className="text-lg font-bold text-blue-900">
+                  {formatarPreco(calcularCMVPorPorcao(receita.cmv_25_porcento || 0))}
+                </p>
+                <p className="text-xs text-blue-600">
+                  Lucro: {formatarPreco(calcularLucroPorPorcao(receita.cmv_25_porcento || 0))}
+                </p>
+              </div>
+
+            </div>
+            
+            <div className="mt-3 text-center">
+              <p className="text-sm text-blue-600">
+                Base: {receita.porcoes} {receita.porcoes === 1 ? 'porção' : 'porções'}
+              </p>
+            </div>
+          </div>
+        )}
         
         <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
           

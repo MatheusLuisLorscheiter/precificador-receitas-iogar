@@ -1282,7 +1282,7 @@ const FormularioRestauranteIsolado = React.memo(({
       descricao: formData.descricao || '',
       grupo: formData.categoria || 'Lanches',
       subgrupo: formData.categoria || 'Lanches',
-      rendimento_porcoes: formData.porcoes || 1,
+      rendimento_porcoes: parseInt(formData.quantidade_porcao) || 1,
       tempo_preparo_minutos: 15,
       ativo: true,
       restaurante_id: selectedRestaurante.id,
@@ -3073,7 +3073,7 @@ const fetchInsumos = async () => {
           nome: editingReceita?.nome || '',
           fator: parseFloat(editingReceita?.fator || 1),
           unidade: editingReceita?.unidade || '',
-          quantidade_porcao: parseInt(editingReceita?.quantidade_porcao || 1),
+          quantidade_porcao: parseInt(editingReceita?.porcoes || editingReceita?.rendimento_porcoes || editingReceita?.quantidade_porcao || 1),
           preco_compra: parseFloat(editingReceita?.preco_compra || 0),
           
           // Campo opcional
@@ -3088,7 +3088,6 @@ const fetchInsumos = async () => {
           // Campos existentes mantidos para compatibilidade - CORRIGIDOS
           categoria: editingReceita?.grupo || editingReceita?.categoria || '',
           descricao: editingReceita?.descricao || '',
-          porcoes: editingReceita?.porcoes || editingReceita?.rendimento_porcoes || 1,
           tempo_preparo: editingReceita?.tempo_preparo || editingReceita?.tempo_preparo_minutos || 30
         };
       });
@@ -3111,23 +3110,22 @@ const fetchInsumos = async () => {
       }, [editingReceita]);
 
       // Atualizar formData quando editingReceita mudar
-      useEffect(() => {
-        if (editingReceita) {
-          console.log('🔄 Atualizando formData com receita existente');
-          setFormData(prev => ({
-            ...prev,
-            codigo: editingReceita.codigo || prev.codigo,
-            nome: editingReceita.nome || prev.nome,
-            fator: parseFloat(editingReceita.fator || prev.fator),
-            unidade: editingReceita.unidade || prev.unidade,
-            quantidade_porcao: parseInt(editingReceita.quantidade_porcao || editingReceita.porcoes || prev.quantidade_porcao),
-            preco_compra: parseFloat(editingReceita.preco_compra || prev.preco_compra),
-            categoria: editingReceita.grupo || editingReceita.categoria || prev.categoria,
-            descricao: editingReceita.descricao || prev.descricao,
-            porcoes: editingReceita.porcoes || editingReceita.rendimento_porcoes || prev.porcoes
-          }));
-        }
-      }, [editingReceita]);
+      // useEffect(() => {
+      //   if (editingReceita) {
+      //     setFormData(prev => ({
+      //       ...prev,
+      //       codigo: editingReceita.codigo || prev.codigo,
+      //       nome: editingReceita.nome || prev.nome,
+      //       fator: parseFloat(editingReceita.fator || prev.fator),
+      //       unidade: editingReceita.unidade || prev.unidade,
+      //       quantidade_porcao: parseInt(editingReceita.porcoes || editingReceita.rendimento_porcoes || editingReceita.quantidade_porcao || prev.quantidade_porcao),
+      //       preco_compra: parseFloat(editingReceita.preco_compra || prev.preco_compra),
+      //       categoria: editingReceita.grupo || editingReceita.categoria || prev.categoria,
+      //       descricao: editingReceita.descricao || prev.descricao,
+      //       porcoes: editingReceita.porcoes || editingReceita.rendimento_porcoes || prev.porcoes,
+      //     }));
+      //   }
+      // }, [editingReceita]);
 
       // Se não há restaurante selecionado, mostrar mensagem em vez de quebrar
       if (!selectedRestaurante && !receitaSegura.restaurante_id) {
@@ -3422,7 +3420,7 @@ const fetchInsumos = async () => {
           subgrupo: String(formData.categoria || 'Lanches').trim(),
           
           // Campos numéricos com valores padrão seguros
-          rendimento_porcoes: parseInt(formData.porcoes) || 1,
+          rendimento_porcoes: parseInt(formData.quantidade_porcao) || parseInt(formData.porcoes) || 1,
           tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 15,
           
           // Status e restaurante
@@ -3462,7 +3460,8 @@ const fetchInsumos = async () => {
       };
 
       const handleSubmit = () => {       //  INICIO HANDLESUBMIT FORMULARIORECEITA
-        console.log('🔍 === DEBUG COMPLETO handleSubmit ===');
+        console.log('DEBUG INICIO - formData completo:', formData);
+        console.log('DEBUG INICIO - quantidade_porcao:', formData.quantidade_porcao);
         
         // ============================================================================
         // NOVA SEÇÃO: DEBUG DE MODO DE EDIÇÃO
@@ -3476,11 +3475,13 @@ const fetchInsumos = async () => {
         
         // Validação de dados obrigatórios
         if (!formData.nome || !formData.nome.trim()) {
+          console.log('PAROU: Nome obrigatório');
           alert('Nome da receita é obrigatório!');
           return;
         }
         
         if (!selectedRestaurante || !selectedRestaurante.id) {
+          console.log('PAROU: Restaurante não selecionado');
           alert('Restaurante não selecionado!');
           return;
         }
@@ -3536,7 +3537,13 @@ const fetchInsumos = async () => {
                 descricao: String(formData.descricao || '').trim(),
                 grupo: String(formData.categoria || 'Lanches').trim(),
                 subgrupo: String(formData.categoria || 'Lanches').trim(),
-                rendimento_porcoes: parseInt(formData.porcoes) || 1,
+                rendimento_porcoes: (() => {
+                  console.log('🔍 SALVAMENTO - formData.quantidade_porcao:', formData.quantidade_porcao);
+                  console.log('🔍 SALVAMENTO - formData completo:', formData);
+                  const valor = parseInt(formData.quantidade_porcao) || 1;
+                  console.log('🔍 SALVAMENTO - valor final enviado:', valor);
+                  return valor;
+                })(),
                 tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 15,
                 ativo: true,
                 restaurante_id: parseInt(selectedRestaurante.id),
@@ -3545,6 +3552,8 @@ const fetchInsumos = async () => {
                   quantidade: parseFloat(insumo.quantidade)
                 }))
               };
+              console.log('🔍 ENVIANDO PARA BACKEND:', dadosBackend);
+              console.log('🔍 rendimento_porcoes enviado:', dadosBackend.rendimento_porcoes);
               onSave(dadosBackend);
             }
           });
@@ -3687,11 +3696,20 @@ const fetchInsumos = async () => {
                       <input
                         type="number"
                         min="1"
-                        value={formData.quantidade_porcao}
+                        value={formData.quantidade_porcao || 1}
                         onChange={(e) => {
+                          console.log('🔍 Input onChange:', e.target.value);
+                          console.log('🔍 formData atual:', formData.quantidade_porcao);
+                          
                           const valor = parseInt(e.target.value) || 1;
-                          const valorValido = Math.max(1, valor); // Garante mínimo 1
-                          handleChange('quantidade_porcao', valorValido);
+                          console.log('🔍 Valor convertido:', valor);
+                          
+                          setFormData(prev => {
+                            console.log('🔍 Estado anterior:', prev.quantidade_porcao);
+                            const novoEstado = { ...prev, quantidade_porcao: valor };
+                            console.log('🔍 Novo estado quantidade_porcao:', novoEstado.quantidade_porcao);
+                            return novoEstado;
+                          });
                         }}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
                         placeholder="1"
@@ -5590,8 +5608,12 @@ const Receitas = React.memo(() => {
   };
 
   const handleEditReceita = async (receita: any) => {
-    console.log('✏️ Editar receita:', receita);
-    console.log('🔍 DEBUG - Receita do grid:', receita);
+    console.log('CARREGANDO RECEITA PARA EDICAO:', receita);
+    console.log('VALORES DE PORCOES:', {
+      porcoes: receita.porcoes,
+      rendimento_porcoes: receita.rendimento_porcoes,
+      quantidade_porcao: receita.quantidade_porcao
+    });
     
     // Usar o objeto receita que já temos em vez de buscar do backend
     setSelectedReceita(receita);
@@ -5790,11 +5812,26 @@ const Receitas = React.memo(() => {
         
         // Tentar forçar a exibição do popup
         if (typeof showSuccessPopup === 'function') {
-          setSuccessDialogData({
-            title: titulo,
-            message: mensagem
-          });
-          setShowSuccessDialog(true);
+          if (globalSetPopupData && globalShowPopup) {
+            globalSetPopupData({
+              type: 'success',
+              title: titulo,
+              message: mensagem
+            });
+            globalShowPopup(true);
+          } else {
+            // Tentar inicializar na hora se não estiver
+            if (typeof setShowPopup !== 'undefined' && typeof setPopupData !== 'undefined') {
+              setPopupData({
+                type: 'success',
+                title: titulo,
+                message: mensagem
+              });
+              setShowPopup(true);
+            } else {
+              alert(`✅ ${titulo}\n\n${mensagem}`);
+            }
+          }
           console.log('✅ showSuccessPopup chamado');
           
           // Aguardar um pouco e verificar se o popup apareceu
