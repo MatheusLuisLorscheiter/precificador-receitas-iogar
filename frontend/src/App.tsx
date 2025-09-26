@@ -3416,6 +3416,13 @@ const fetchInsumos = async () => {
         
         console.log('✅ Insumos VÁLIDOS após filtro:', insumosValidos);
         
+        // Alertar se não há insumos válidos
+        if (insumosValidos.length === 0) {
+          const confirmar = confirm('Esta receita não possui insumos. Deseja continuar mesmo assim?');
+          if (!confirmar) {
+            return;
+          }
+        }
 
         // Mapear campos para o formato EXATO esperado pelo backend
         const dadosBackend = {
