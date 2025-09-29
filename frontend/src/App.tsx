@@ -3066,19 +3066,16 @@ const fetchInsumos = async () => {
       const [buscaInsumo, setBuscaInsumo] = useState('');
 
       const [formData, setFormData] = useState(() => {
-        console.log('🔧 Inicializando formData com receita:', editingReceita);
         return {
           // Campos obrigatórios básicos
           codigo: editingReceita?.codigo || '',
           nome: editingReceita?.nome || '',
+          sugestao_valor: editingReceita?.sugestao_valor || '',
           fator: parseFloat(editingReceita?.fator || 1),
           unidade: editingReceita?.unidade || '',
           quantidade_porcao: parseInt(editingReceita?.porcoes || editingReceita?.rendimento_porcoes || editingReceita?.quantidade_porcao || 1),
           preco_compra: parseFloat(editingReceita?.preco_compra || 0),
-          
-          // Campo opcional
-          sugestao_valor: editingReceita?.sugestao_valor || '',
-          
+       
           // Checkbox processado
           eh_processado: editingReceita?.eh_processado || false,
           
@@ -3414,6 +3411,7 @@ const fetchInsumos = async () => {
           codigo: String(formData.codigo || '').trim(),
           nome: String(formData.nome || '').trim(),
           descricao: String(formData.descricao || '').trim(),
+          sugestao_valor: parseFloat(formData.sugestao_valor) || 0,
           
           // Campos de categoria (ajustar conforme backend)
           grupo: String(formData.categoria || 'Lanches').trim(),
@@ -3460,10 +3458,11 @@ const fetchInsumos = async () => {
         // Chamar função de salvamento
         onSave(dadosBackend);
       };
+      // FIm proceedWithSave
 
       const handleSubmit = () => {       //  INICIO HANDLESUBMIT FORMULARIORECEITA
-        console.log('DEBUG INICIO - formData completo:', formData);
-        console.log('DEBUG INICIO - quantidade_porcao:', formData.quantidade_porcao);
+        console.log('🔍 DEBUG COMPLETO formData:', formData);
+        console.log('⏱️ DEBUG tempo_preparo:', formData.tempo_preparo);
         
         // ============================================================================
         // NOVA SEÇÃO: DEBUG DE MODO DE EDIÇÃO
@@ -3529,14 +3528,15 @@ const fetchInsumos = async () => {
             title: titulo,
             message: mensagem,
             onConfirm: () => {
-              setShowConfirmDialog(false);
-              
+              setShowConfirmDialog(false);              
+
               // CÓDIGO DE SALVAMENTO INLINE (copiar do final da função)
               const dadosBackend = {
                 ...(editingReceita && editingReceita.id && { id: editingReceita.id }),
                 codigo: String(formData.codigo || '').trim(),
                 nome: String(formData.nome || '').trim(),
                 descricao: String(formData.descricao || '').trim(),
+                sugestao_valor: parseFloat(formData.sugestao_valor) || 0,
                 grupo: String(formData.categoria || 'Lanches').trim(),
                 subgrupo: String(formData.categoria || 'Lanches').trim(),
                 rendimento_porcoes: (() => {
@@ -3715,6 +3715,22 @@ const fetchInsumos = async () => {
                         }}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
                         placeholder="1"
+                      />
+                    </div>
+
+                    {/* Tempo de Preparo - NOVO CAMPO */}
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm font-medium text-gray-900">
+                        <span>Tempo (min)</span>
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.tempo_preparo || 30}
+                        onChange={(e) => handleChange('tempo_preparo', parseInt(e.target.value) || 30)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                        placeholder="30"
                       />
                     </div>
 
@@ -5453,6 +5469,7 @@ const fetchInsumos = async () => {
       categoria: receita.categoria || receita.grupo || 'Geral',
       porcoes: porcoes,
       tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
+      sugestao_valor: receita.sugestao_valor || 0,
       
       // CMV real = custo POR PORÇÃO
       cmv_real: custoPorPorcao,

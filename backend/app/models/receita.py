@@ -186,6 +186,7 @@ class Receita(BaseModel):  # ✅ Herda de BaseModel (tem grupo, subgrupo, codigo
     preco_venda = Column(Integer, nullable=True, comment="Preço de venda em centavos")
     cmv = Column(Integer, nullable=True, comment="Custo da mercadoria vendida em centavos")
     margem_percentual = Column(Integer, nullable=True, comment="Margem de lucro em porcentagem * 100")
+    sugestao_valor = Column(Integer, nullable=True, comment="Sugestão manual de preço pelo restaurante em centavos")
 
     # ===================================================================================================
     # Sistema de variações de receitas

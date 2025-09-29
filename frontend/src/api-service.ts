@@ -352,6 +352,8 @@ class ApiService {
 
   // Criar nova receita
   async createReceita(receita: any): Promise<ApiResponse<any>> {
+    console.log('🔍 API-SERVICE recebeu:', receita);
+     console.log('🔍 API-SERVICE sugestao_valor:', receita.sugestao_valor);
     // Mapear campos para o formato esperado pelo backend
     const dadosBackend = {
       // CORREÇÃO: Incluir o ID se fornecido (para edição via POST)
@@ -365,12 +367,14 @@ class ApiService {
       subgrupo: receita.categoria || 'Geral', 
       unidade: 'porção',    
       rendimento: receita.rendimento_porcoes || receita.porcoes || receita.rendimento || 1,
-      tempo_preparo: receita.tempo_preparo || 30,
+      sugestao_valor: receita.sugestao_valor || 0,
+      tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
       restaurante_id: receita.restaurante_id || 1,
       insumos: receita.insumos || []
     };
 
-  console.log('📤 Enviando dados para criar receita:', dadosBackend);
+  console.log('🔍 API-SERVICE dadosBackend montado:', dadosBackend);
+  console.log('🔍 API-SERVICE sugestao_valor no dadosBackend:', dadosBackend.sugestao_valor);
   
   return this.request<any>('/api/v1/receitas/', {
     method: 'POST',

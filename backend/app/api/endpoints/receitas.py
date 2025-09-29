@@ -109,6 +109,7 @@ def list_receitas(
         except Exception as e:
             print(f"❌ Erro ao buscar insumos da receita {receita.id}: {e}")
 
+        print(f"💰 Receita {receita.nome}: sugestao_valor no BD = {receita.sugestao_valor}")
         # Adicionar à resposta COM OS INSUMOS
         receitas_com_cmv.append({
             'id': receita.id,
@@ -127,6 +128,7 @@ def list_receitas(
             'updated_at': receita.updated_at,
             'tempo_preparo_minutos': getattr(receita, 'tempo_preparo_minutos', 30),
             'rendimento_porcoes': getattr(receita, 'rendimento_porcoes', 1),
+            'sugestao_valor': receita.sugestao_valor / 100 if receita.sugestao_valor else 0,
             # ========== CAMPO CRÍTICO - AQUI ESTÃO OS INSUMOS! ==========
             'receita_insumos': receita_insumos_data
         })
@@ -229,8 +231,20 @@ def create_receita_endpoint(
                 receita_existente.rendimento_porcoes = receita_data['rendimento_porcoes']
             elif receita_data.get('rendimento'):
                 receita_existente.rendimento_porcoes = receita_data['rendimento']
+            
+            print(f"⏱️ DEBUG - tempo_preparo recebido: {receita_data.get('tempo_preparo')}")
+            print(f"⏱️ DEBUG - tempo_preparo_minutos recebido: {receita_data.get('tempo_preparo_minutos')}")
+
             if receita_data.get('tempo_preparo_minutos'):
                 receita_existente.tempo_preparo_minutos = receita_data['tempo_preparo_minutos']
+                print(f"⏱️ SALVO no banco: {receita_existente.tempo_preparo_minutos}")
+            elif receita_data.get('tempo_preparo'):
+                receita_existente.tempo_preparo_minutos = receita_data['tempo_preparo']
+                print(f"⏱️ SALVO no banco (via tempo_preparo): {receita_existente.tempo_preparo_minutos}")
+            if receita_data.get('sugestao_valor'):
+                # Converter de reais para centavos se necessário
+                valor = receita_data['sugestao_valor']
+                receita_existente.sugestao_valor = int(float(valor) * 100) if valor < 1000 else int(valor)
             if receita_data.get('unidade'):
                 receita_existente.unidade = receita_data['unidade']
             if receita_data.get('quantidade'):
@@ -317,11 +331,12 @@ def create_receita_endpoint(
                 'grupo': receita_data.get('grupo', 'Geral'),
                 'subgrupo': receita_data.get('subgrupo', 'Geral'),
                 'rendimento_porcoes': receita_data.get('rendimento_porcoes') or receita_data.get('rendimento', 1),
-                'tempo_preparo_minutos': receita_data.get('tempo_preparo_minutos', 15),
+                'tempo_preparo_minutos': receita_data.get('tempo_preparo_minutos') or receita_data.get('tempo_preparo', 15),
                 'unidade': receita_data.get('unidade', 'porção'),
                 'quantidade': receita_data.get('quantidade', 1),
                 'fator': receita_data.get('fator', 1.0),
-                'preco_compra': 0  # Será calculado automaticamente
+                'preco_compra': 0,  # Será calculado automaticamente
+                'sugestao_valor': int(float(receita_data.get('sugestao_valor', 0)) * 100) if receita_data.get('sugestao_valor') else None,
             }
             
             # Adicionar campos opcionais apenas se existirem no modelo
