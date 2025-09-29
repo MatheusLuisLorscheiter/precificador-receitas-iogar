@@ -5426,37 +5426,40 @@ const fetchInsumos = async () => {
         console.log(`⚠️ Receita ${receita.nome} não tem custo calculado (sem insumos)`);
         // Manter zerado para mostrar que precisa adicionar insumos
       }
-      
-      // Calcular preços sugeridos se não vieram do backend
-      let cmv20 = receita.cmv_20_porcento;
-      let cmv25 = receita.cmv_25_porcento;
-      let cmv30 = receita.cmv_30_porcento;
-      
-      // Se não vieram calculados do backend, calcular aqui
-      if (!cmv20 && custoProducao > 0) {
-        cmv20 = parseFloat((custoProducao / 0.20).toFixed(2)); // Custo ÷ 0.20 = Preço para 20% CMV
-      }
-      if (!cmv25 && custoProducao > 0) {
-        cmv25 = parseFloat((custoProducao / 0.25).toFixed(2)); // Custo ÷ 0.25 = Preço para 25% CMV  
-      }
-      if (!cmv30 && custoProducao > 0) {
-        cmv30 = parseFloat((custoProducao / 0.30).toFixed(2)); // Custo ÷ 0.30 = Preço para 30% CMV
-      }
 
-      const receitaConvertida = {
-        id: receita.id,
-        codigo: receita.codigo || `REC-${receita.id.toString().padStart(3, '0')}`,
-        nome: receita.nome,
-        categoria: receita.categoria || receita.grupo || 'Geral',
-        porcoes: receita.porcoes || receita.rendimento_porcoes || receita.quantidade || 1,
-        tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
-        
-        // CMV real = custo de produção
-        cmv_real: custoProducao,
-        
-        // Preço sugerido padrão (25% de margem)
-        preco_venda_sugerido: cmv25 || 0,
-        margem_percentual: 25,
+    // Calcular porções e custo por porção
+    const porcoes = receita.porcoes || receita.rendimento_porcoes || receita.quantidade || 1;
+    const custoPorPorcao = custoProducao / porcoes;
+
+    let cmv20 = receita.cmv_20_porcento;
+    let cmv25 = receita.cmv_25_porcento;
+    let cmv30 = receita.cmv_30_porcento;
+
+    // Calcular CMVs POR PORÇÃO se não vieram do backend
+    if (!cmv20 && custoPorPorcao > 0) {
+      cmv20 = parseFloat((custoPorPorcao / 0.20).toFixed(2));
+    }
+    if (!cmv25 && custoPorPorcao > 0) {
+      cmv25 = parseFloat((custoPorPorcao / 0.25).toFixed(2));
+    }
+    if (!cmv30 && custoPorPorcao > 0) {
+      cmv30 = parseFloat((custoPorPorcao / 0.30).toFixed(2));
+    }
+
+    const receitaConvertida = {
+      id: receita.id,
+      codigo: receita.codigo || `REC-${receita.id.toString().padStart(3, '0')}`,
+      nome: receita.nome,
+      categoria: receita.categoria || receita.grupo || 'Geral',
+      porcoes: porcoes,
+      tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
+      
+      // CMV real = custo POR PORÇÃO
+      cmv_real: custoPorPorcao,
+      
+      // Preço sugerido padrão (25% de margem) POR PORÇÃO
+      preco_venda_sugerido: cmv25 || 0,
+      margem_percentual: 25,
         
         status: receita.ativo !== false ? 'ativo' : 'inativo',
         created_at: receita.created_at || new Date().toISOString(),

@@ -382,11 +382,11 @@ const calcularCustoPorPorcao = () => {
           <div className="p-6 border-b border-gray-100">
             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <Package className="w-5 h-5 text-green-600" />
-              Lista de Insumos ({receita.total_insumos} itens)
+              Lista de Insumos ({receita.receita_insumos?.length || 0} itens)
             </h3>
           </div>
-          
-          {receita.total_insumos === 0 ? (
+        
+          {!receita.receita_insumos || receita.receita_insumos.length === 0 ? (
             <div className="p-8 text-center">
               <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">Nenhum insumo cadastrado nesta receita</p>
@@ -395,48 +395,45 @@ const calcularCustoPorPorcao = () => {
           ) : (
             <div className="p-6">
               <div className="space-y-4">
-                {/* Simulação de insumos - em produção vir dos dados reais */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-900">Tomate</h4>
-                    <span className="text-sm font-medium text-green-600">R$ 2,50</span>
+                {/* Lista REAL de insumos da receita */}
+                {receita.receita_insumos.map((insumo, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-gray-900">
+                        {insumo.insumo?.nome || 'Insumo sem nome'}
+                      </h4>
+                      <span className="text-sm font-medium text-green-600">
+                        {(() => {
+                          // Tentar usar custo_calculado, se não existir, calcular manualmente
+                          const custoInsumo = insumo.custo_calculado || 
+                            (insumo.quantidade_necessaria * (insumo.insumo?.preco_compra_real || 0));
+                          return formatarPreco(custoInsumo);
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>
+                        {(insumo.quantidade_necessaria || 0).toFixed(2)} {insumo.unidade_medida || 'un'}
+                      </span>
+                      <span>
+                        {formatarPreco(insumo.insumo?.preco_compra_real || 0)} / {insumo.insumo?.unidade || 'un'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span>250g</span>
-                    <span>R$ 10,00/kg</span>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-900">Queijo Mussarela</h4>
-                    <span className="text-sm font-medium text-green-600">R$ 3,75</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span>150g</span>
-                    <span>R$ 25,00/kg</span>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-900">Massa de Pizza</h4>
-                    <span className="text-sm font-medium text-green-600">R$ 1,80</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span>200g</span>
-                    <span>R$ 9,00/kg</span>
-                  </div>
-                </div>
-                
+                ))}
+              
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-gray-900">Total da Receita</span>
-                    <span className="font-bold text-green-600 text-lg">{formatarPreco(receita.cmv_real * receita.porcoes)}</span>
+                    <span className="font-bold text-green-600 text-lg">
+                      {formatarPreco(receita.cmv_real * receita.porcoes)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-sm text-gray-600">Custo por porção</span>
-                    <span className="text-sm font-medium text-gray-900">{formatarPreco(receita.cmv_real)}</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatarPreco(receita.cmv_real)}
+                    </span>
                   </div>
                 </div>
               </div>
