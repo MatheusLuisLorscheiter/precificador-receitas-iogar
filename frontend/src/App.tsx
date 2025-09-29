@@ -3454,6 +3454,8 @@ const fetchInsumos = async () => {
         }
 
         console.log('✅ Chamando onSave...');
+        console.log('🔍 OBJETO COMPLETO ENVIADO:', JSON.stringify(dadosBackend, null, 2));
+        console.log('🔍 Campo rendimento_porcoes:', dadosBackend.rendimento_porcoes);
         
         // Chamar função de salvamento
         onSave(dadosBackend);

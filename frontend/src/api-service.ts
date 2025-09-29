@@ -12,9 +12,9 @@ Autor: Will - Empresa: IOGAR
 // CONFIGURAÇÃO BASE DA API COM DETECÇÃO AUTOMÁTICA DE PORTA
 // ============================================================================
 const API_CONFIG = {
- baseURL: 'https://food-cost-backend.onrender.com',
-  /* RODA LOCALMENTE
-  baseURL: 'http://localhost:8000', // Será ajustado automaticamente */
+/*  baseURL: 'https://food-cost-backend.onrender.com',
+  RODA LOCALMENTE*/
+  baseURL: 'http://localhost:8000', // Será ajustado automaticamente 
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -364,7 +364,7 @@ class ApiService {
       grupo: receita.categoria || 'Geral',
       subgrupo: receita.categoria || 'Geral', 
       unidade: 'porção',    
-      rendimento: receita.porcoes || receita.rendimento || 1,
+      rendimento: receita.rendimento_porcoes || receita.porcoes || receita.rendimento || 1,
       tempo_preparo: receita.tempo_preparo || 30,
       restaurante_id: receita.restaurante_id || 1,
       insumos: receita.insumos || []

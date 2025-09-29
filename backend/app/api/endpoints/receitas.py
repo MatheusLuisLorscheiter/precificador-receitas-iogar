@@ -184,6 +184,10 @@ def create_receita_endpoint(
     receita_data: dict,
     db: Session = Depends(get_db)
 ):
+    # Caça ao dados de porções
+    print("=" * 50)
+    print("FUNÇÃO POST CHAMADA!")
+    print("=" * 50)
     """Cria uma nova receita com insumos OU atualiza uma existente se ID fornecido"""
     try:
         # IMPORTAR MODELO NECESSÁRIO NO INÍCIO
@@ -220,8 +224,11 @@ def create_receita_endpoint(
                 receita_existente.grupo = receita_data['grupo']
             if receita_data.get('subgrupo'):
                 receita_existente.subgrupo = receita_data['subgrupo']
+            # Mapear rendimento_porcoes (aceita tanto 'rendimento' quanto 'rendimento_porcoes')
             if receita_data.get('rendimento_porcoes'):
                 receita_existente.rendimento_porcoes = receita_data['rendimento_porcoes']
+            elif receita_data.get('rendimento'):
+                receita_existente.rendimento_porcoes = receita_data['rendimento']
             if receita_data.get('tempo_preparo_minutos'):
                 receita_existente.tempo_preparo_minutos = receita_data['tempo_preparo_minutos']
             if receita_data.get('unidade'):
@@ -309,7 +316,7 @@ def create_receita_endpoint(
                 'descricao': receita_data.get('descricao', ''),
                 'grupo': receita_data.get('grupo', 'Geral'),
                 'subgrupo': receita_data.get('subgrupo', 'Geral'),
-                'rendimento_porcoes': receita_data.get('rendimento_porcoes', 1),
+                'rendimento_porcoes': receita_data.get('rendimento_porcoes') or receita_data.get('rendimento', 1),
                 'tempo_preparo_minutos': receita_data.get('tempo_preparo_minutos', 15),
                 'unidade': receita_data.get('unidade', 'porção'),
                 'quantidade': receita_data.get('quantidade', 1),
@@ -422,6 +429,10 @@ def add_insumo_to_receita(
     receita_insumo: ReceitaInsumoCreate,
     db: Session = Depends(get_db)
 ):
+    # Caça ao dados de porções
+    print("=" * 50)
+    print("FUNÇÃO POST CHAMADA!")
+    print("=" * 50)
     """
     Adiciona insumo à receita com cálculo automático de custos.
     
@@ -497,6 +508,10 @@ def recalcular_cmv_receita(
     receita_id: int,
     db: Session = Depends(get_db)
 ):
+    # Caça ao dados de porções
+    print("=" * 50)
+    print("FUNÇÃO POST CHAMADA!")
+    print("=" * 50)
     """
     Força recálculo do custo de produção de uma receita baseado nos insumos atuais.
     
