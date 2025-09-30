@@ -23,7 +23,7 @@ import {
   Users, ChefHat, Utensils, Plus, Search, Edit2, Edit3, Trash2, Save,
   X, Check, AlertCircle, BarChart3, Settings, Zap, FileText,
   Upload, Activity, Brain, Monitor, Shield, Database, LinkIcon,
-  Target, Eye, ChevronDown, ChevronRight, Copy, AlertTriangle
+  Target, Eye, ChevronDown, ChevronRight, Copy, AlertTriangle, Store,
 } from 'lucide-react';
 
 // Importar componente da IA
@@ -2097,7 +2097,15 @@ const FoodCostSystem: React.FC = () => {
   // ============================================================================
   // CONFIGURAÇÃO DA API
   // ============================================================================
-  const API_BASE = 'http://localhost:8000';
+  // Ambiente local
+  // const API_BASE = 'http://localhost:8000';
+  // Ambiente Render
+  const API_BASE = import.meta.env.VITE_API_URL || 
+                 (window.location.hostname === 'localhost' 
+                   ? 'http://localhost:8000' 
+                   : 'https://food-cost-backend.onrender.com'); 
+
+console.log('🌐 API Base URL:', API_BASE);
   
   // ============================================================================
   // FUNÇÕES DE COMUNICAÇÃO COM O BACKEND
