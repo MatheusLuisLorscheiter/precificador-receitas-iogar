@@ -3054,8 +3054,34 @@ const fetchInsumos = async () => {
       console.log('🔍 DEBUG INSUMOS ALTERNATIVOS:', editingReceita?.insumos);
       console.log('🔍 DEBUG TODAS AS PROPS DA RECEITA:', Object.keys(editingReceita || {}));
 
-      // Verificação de segurança para insumos
-      const insumosSeguro = insumos || [];
+      // ============================================================================
+      // VERIFICAÇÃO DE SEGURANÇA PARA INSUMOS - CORRIGIDO
+      // ============================================================================
+      // Descrição: Garante que todos os insumos sejam exibidos no dropdown,
+      // independente da unidade de medida (kg, L, g, ml, unidade, etc.)
+      // Correção: Remove qualquer filtro que possa estar excluindo unidades
+      // ============================================================================
+
+      const insumosSeguro = Array.isArray(insumos) 
+        ? insumos.filter(insumo => 
+            insumo && 
+            insumo.id && 
+            insumo.nome && 
+            insumo.unidade &&
+            (insumo.preco_compra_real !== undefined || insumo.preco_compra !== undefined)
+          )
+        : [];
+
+      console.log('🔍 Insumos disponíveis para seleção:', {
+        total: insumosSeguro.length,
+        unidades_disponiveis: [...new Set(insumosSeguro.map(i => i.unidade))],
+        amostra: insumosSeguro.slice(0, 3).map(i => ({ 
+          id: i.id, 
+          nome: i.nome, 
+          unidade: i.unidade,
+          preco: i.preco_compra_real 
+        }))
+      });
       
       // Verificação de segurança para receita em edição
       const receitaSegura = editingReceita || {};
@@ -3379,26 +3405,52 @@ const fetchInsumos = async () => {
         setReceitaInsumos(prev => prev.filter((_, i) => i !== index));
       };
 
-      // <=== Código novo aqui - FUNÇÃO MELHORADA PARA ATUALIZAR INSUMO
+      // ============================================================================
+      // FUNÇÃO: ATUALIZAR INSUMO NA RECEITA - COM DEBUG COMPLETO
+      // ============================================================================
       const updateReceitaInsumo = (index, field, value) => {
-        console.log('🔄 updateReceitaInsumo chamado:', { index, field, value });
+        console.log('🔄 updateReceitaInsumo INÍCIO:', { 
+          index, 
+          field, 
+          value,
+          tipo_value: typeof value
+        });
         
         setReceitaInsumos(prev => {
+          console.log('📊 Estado ANTERIOR:', prev);
+          console.log(`📊 Item ANTERIOR [${index}]:`, prev[index]);
+          
           const updated = [...prev];
           
+          // Validação de quantidade negativa
           if (field === 'quantidade' && value < 0) {
+            console.warn('⚠️ Quantidade negativa, ajustando para 0');
             value = 0;
           }
           
-          if (field === 'insumo_id' && value === 0) {
-            updated[index] = { ...updated[index], [field]: value, quantidade: 1 };
-          } else {
-            updated[index] = { ...updated[index], [field]: value };
+          // Atualizar o campo
+          updated[index] = { ...updated[index], [field]: value };
+          
+          console.log(`✅ Item ATUALIZADO [${index}]:`, updated[index]);
+          console.log('✅ Estado COMPLETO atualizado:', updated);
+          
+          // Se mudou o insumo_id, buscar e logar informações
+          if (field === 'insumo_id' && value > 0) {
+            const insumoEncontrado = insumos.find(i => i.id === value);
+            console.log('🔍 Insumo selecionado DETALHES:', {
+              id: value,
+              encontrado: !!insumoEncontrado,
+              nome: insumoEncontrado?.nome,
+              unidade: insumoEncontrado?.unidade,
+              preco_compra_real: insumoEncontrado?.preco_compra_real,
+              todos_campos: insumoEncontrado
+            });
           }
           
-          console.log('📊 Estado atualizado:', updated);
           return updated;
         });
+        
+        console.log('🏁 updateReceitaInsumo FIM');
       };
 
       const proceedWithSave = (insumosValidosParam) => {
@@ -3419,7 +3471,8 @@ const fetchInsumos = async () => {
           
           // Campos numéricos com valores padrão seguros
           rendimento_porcoes: parseInt(formData.quantidade_porcao) || parseInt(formData.porcoes) || 1,
-          tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 15,
+          tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 30,
+          tempo_preparo: parseInt(formData.tempo_preparo) || 30,
           
           // Status e restaurante
           ativo: true,
@@ -3869,15 +3922,73 @@ const fetchInsumos = async () => {
                           <div className="flex-1">
                             <select
                               value={receitaInsumo.insumo_id || 0}
-                              onChange={(e) => updateReceitaInsumo(index, 'insumo_id', parseInt(e.target.value))}
+                              onChange={(e) => {
+                                const valorSelecionado = e.target.value;
+                                console.log('🔍 SELECT onChange:', {
+                                  index,
+                                  valor_raw: valorSelecionado,
+                                  tipo: typeof valorSelecionado
+                                });
+                                
+                                // ============================================================================
+                                // CONVERSÃO INTELIGENTE: Suporta IDs numéricos E strings de fornecedor
+                                // ============================================================================
+                                let insumoId;
+                                
+                                // Se começa com "fornecedor_", extrair o ID original numérico
+                                if (typeof valorSelecionado === 'string' && valorSelecionado.startsWith('fornecedor_')) {
+                                  // Buscar o insumo do fornecedor para pegar o id_original
+                                  const insumoFornecedor = insumos.find(i => i.id === valorSelecionado);
+                                  insumoId = insumoFornecedor?.id_original || parseInt(valorSelecionado.replace('fornecedor_', ''));
+                                  
+                                  console.log('📦 Insumo de FORNECEDOR:', {
+                                    id_completo: valorSelecionado,
+                                    id_original: insumoId,
+                                    dados: insumoFornecedor
+                                  });
+                                } else {
+                                  // Insumo do sistema - conversão normal
+                                  insumoId = parseInt(valorSelecionado);
+                                  
+                                  console.log('📦 Insumo do SISTEMA:', {
+                                    id: insumoId
+                                  });
+                                }
+                                
+                                updateReceitaInsumo(index, 'insumo_id', insumoId);
+                              }}
                               className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                             >
                               <option value={0}>Selecione um insumo...</option>
-                              {(insumos || []).map((insumo) => (
-                                <option key={insumo.id} value={insumo.id}>
-                                  {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
-                                </option>
-                              ))}
+                              {(insumos || [])
+                                .filter(insumo => {
+                                  // ============================================================================
+                                  // FILTRO: Mostrar apenas insumos do SISTEMA (sem fornecedor)
+                                  // ============================================================================
+                                  // Insumos de fornecedor NÃO devem aparecer aqui, pois já estão
+                                  // duplicados na tabela principal de insumos após serem importados
+                                  const ehInsumoSistema = typeof insumo.id === 'number' || 
+                                                          (typeof insumo.id === 'string' && !insumo.id.startsWith('fornecedor_'));
+                                  
+                                  // Debug dos primeiros 3 insumos
+                                  if (insumo.id <= 3 || insumo.id === 'fornecedor_1') {
+                                    console.log(`🔍 Filtro insumo ${insumo.id}:`, {
+                                      nome: insumo.nome,
+                                      unidade: insumo.unidade,
+                                      tipo_id: typeof insumo.id,
+                                      eh_sistema: ehInsumoSistema,
+                                      mostrar: ehInsumoSistema
+                                    });
+                                  }
+                                  
+                                  return ehInsumoSistema;
+                                })
+                                .map((insumo) => (
+                                  <option key={insumo.id} value={insumo.id}>
+                                    {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                                  </option>
+                                ))
+                              }
                             </select>
                           </div>
 

@@ -934,7 +934,7 @@ const calcularCustoPorPorcao = () => {
             CONTEÚDO DAS ABAS
             =================================================================================================== */}
         
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 280px)' }}>
           {activeTab === 'geral' && <TabGeral />}
           {activeTab === 'insumos' && <TabInsumos />}
           {activeTab === 'custos' && <TabCustos />}
