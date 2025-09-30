@@ -5348,7 +5348,7 @@ const fetchInsumos = async () => {
                 </table>
 
                 {/* Estado vazio */}
-                {restaurantes.length === 0 && (
+                {/* {restaurantes.length === 0 && (
                   <div className="text-center py-12">
                     <div className="bg-gray-50 p-6 rounded-lg inline-block mb-4">
                       <Users className="w-12 h-12 text-gray-400 mx-auto" />
@@ -5362,7 +5362,7 @@ const fetchInsumos = async () => {
                       Criar Primeiro Restaurante
                     </button>
                   </div>
-                )}
+                )} */}
               </div>
             </div>
           </div>
