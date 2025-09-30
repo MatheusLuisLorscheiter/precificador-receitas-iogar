@@ -4808,17 +4808,6 @@ const fetchInsumos = async () => {
       );
     }
 
-    if (!restaurantes || restaurantes.length === 0) {
-      return (
-        <div className="text-center py-20">
-          <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">Nenhum Restaurante</h3>
-            <p className="text-gray-500">Nenhum restaurante foi encontrado. Cadastre o primeiro!</p>
-          </div>
-        </div>
-      );
-    }
-
     // ============================================================================
     // FUNÇÕES AUXILIARES PARA MANIPULAÇÃO DE EXPANSÃO
     // ============================================================================
@@ -5102,6 +5091,33 @@ const fetchInsumos = async () => {
 
                   {/* Corpo da tabela */}
                   <tbody className="divide-y divide-gray-100">
+                    {/* ============================================================================ */}
+                    {/* ESTADO VAZIO - NENHUM RESTAURANTE CADASTRADO */}
+                    {/* ============================================================================ */}
+                    {(!restaurantes || restaurantes.length === 0) && (
+                      <tr>
+                        <td colSpan={9} className="py-16">
+                          <div className="text-center">
+                            <div className="bg-gray-50 rounded-xl p-8 max-w-md mx-auto">
+                              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Store className="w-8 h-8 text-green-600" />
+                              </div>
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum restaurante cadastrado</h3>
+                              <p className="text-gray-500 mb-4">
+                                Comece criando o primeiro restaurante da sua rede
+                              </p>
+                              <button 
+                                onClick={abrirFormRestaurante}
+                                className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-2 rounded-lg hover:from-green-600 hover:to-pink-600 transition-all inline-flex items-center gap-2"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Criar Primeiro Restaurante
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     {(restaurantes || []).map((restaurante) => (
                       <React.Fragment key={restaurante.id}>
                         {/* ============================================================================ */}
