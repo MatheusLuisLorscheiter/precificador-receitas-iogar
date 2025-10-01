@@ -109,7 +109,15 @@ def list_receitas(
         except Exception as e:
             print(f"❌ Erro ao buscar insumos da receita {receita.id}: {e}")
 
-        print(f"💰 Receita {receita.nome}: sugestao_valor no BD = {receita.sugestao_valor}")
+        # Contar quantos insumos são processados (receitas usadas como insumo)
+        insumos_processados = 0
+        try:
+            for ri in receita.receita_insumos:
+                if ri.insumo and hasattr(ri.insumo, 'eh_processado') and ri.insumo.eh_processado:
+                    insumos_processados += 1
+        except Exception as e:
+            print(f"⚠️ Erro ao contar insumos processados: {e}")
+            insumos_processados = 0
         # Adicionar à resposta COM OS INSUMOS
         receitas_com_cmv.append({
             'id': receita.id,
@@ -129,6 +137,12 @@ def list_receitas(
             'tempo_preparo_minutos': getattr(receita, 'tempo_preparo_minutos', 30),
             'rendimento_porcoes': getattr(receita, 'rendimento_porcoes', 1),
             'sugestao_valor': receita.sugestao_valor / 100 if receita.sugestao_valor else 0,
+            # Campos adicionais da receita
+            'unidade': getattr(receita, 'unidade', 'un'),
+            'quantidade': getattr(receita, 'quantidade', 1),
+            'fator': getattr(receita, 'fator', 1.0),
+            'total_insumos': len(receita_insumos_data),
+            'insumos_processados': insumos_processados,
             # ========== CAMPO CRÍTICO - AQUI ESTÃO OS INSUMOS! ==========
             'receita_insumos': receita_insumos_data
         })

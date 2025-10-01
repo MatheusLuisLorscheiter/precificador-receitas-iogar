@@ -15,12 +15,12 @@
  * ============================================================================
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Search, Filter, MoreVertical, Edit3, Copy, Trash2, Eye, 
   ChefHat, TrendingUp, DollarSign, Clock, Users, 
   ChevronLeft, ChevronRight, Grid3x3, List, SortAsc, SortDesc,
-  Plus, Download, Upload
+  Plus, Download, Upload, Utensils, Package
 } from 'lucide-react';
 
 // ===================================================================================================
@@ -76,6 +76,8 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
   onCreateReceita
 }) => {
   
+  const [dropdownPosition, setDropdownPosition] = useState<{ top?: number; bottom?: number } | null>(null);
+  
   // Estados para controle do grid
   const [filtros, setFiltros] = useState<FiltroGrid>({
     busca: '',
@@ -85,7 +87,7 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
     direcao: 'asc'
   });
   
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [itensPorPagina] = useState(12);
   const [receitaSelecionada, setReceitaSelecionada] = useState<number | null>(null);
@@ -190,13 +192,31 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
 
   const ReceitaCard = ({ receita }: { receita: Receita }) => (
     <div 
-      className={`bg-white rounded-xl border-2 transition-all duration-200 hover:shadow-lg cursor-pointer ${
+      className={`relative bg-white rounded-xl border-2 transition-all duration-200 hover:shadow-lg cursor-pointer overflow-hidden ${
         receitaSelecionada === receita.id 
           ? 'border-green-500 shadow-lg' 
           : 'border-gray-100 hover:border-green-300'
       }`}
-      onClick={() => setReceitaSelecionada(receita.id === receitaSelecionada ? null : receita.id)}
+      onClick={() => {
+        if (onViewReceita) {
+          onViewReceita(receita);
+        }
+      }}
     >
+      {/* Marca d'água de fundo */}
+      <div 
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        style={{ 
+          opacity: 0.05,
+          zIndex: 0
+        }}
+      >
+        <img 
+          src="/src/image/food_receita.svg" 
+          alt="" 
+          className="w-full h-full object-contain"
+        />
+      </div>
       {/* Header do card */}
       <div className="p-4 border-b border-gray-50">
         <div className="flex items-center justify-between mb-2">
@@ -205,8 +225,22 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
           </span>
           <div className="relative">
             <button
+              ref={(el) => {
+                if (el && showDropdown === receita.id && !dropdownPosition) {
+                  const rect = el.getBoundingClientRect();
+                  const spaceBelow = window.innerHeight - rect.bottom;
+                  const spaceAbove = rect.top;
+                  
+                  if (spaceBelow < 200 && spaceAbove > spaceBelow) {
+                    setDropdownPosition({ bottom: 40 });
+                  } else {
+                    setDropdownPosition({ top: 40 });
+                  }
+                }
+              }}
               onClick={(e) => {
                 e.stopPropagation();
+                setDropdownPosition(null); // Reset position
                 setShowDropdown(showDropdown === receita.id ? null : receita.id);
               }}
               className="p-1 hover:bg-gray-100 rounded"
@@ -215,8 +249,11 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
             </button>
             
             {/* Dropdown de ações */}
-            {showDropdown === receita.id && (
-              <div className="absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 min-w-[150px]">
+            {showDropdown === receita.id && dropdownPosition && (
+              <div 
+                className="absolute right-0 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[150px]"
+                style={dropdownPosition}
+              >
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -279,8 +316,8 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
-              <DollarSign className="w-4 h-4 text-green-500" />
-              <span className="text-xs text-gray-500">CMV</span>
+              <Utensils className="w-4 h-4 text-green-500" />
+              <span className="text-xs text-gray-500">Custo da Porção</span>
             </div>
             <p className="font-semibold text-green-600">{formatarPreco(receita.cmv_real)}</p>
           </div>
@@ -290,19 +327,33 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
               <TrendingUp className="w-4 h-4 text-blue-500" />
               <span className="text-xs text-gray-500">Margem</span>
             </div>
-            <p className="font-semibold text-blue-600">{receita.margem_percentual.toFixed(1)}%</p>
+            <p className="font-semibold text-blue-600">25%</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-50">
-          <div className="flex items-center gap-1">
-            <Users className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-600">{receita.porcoes} porções</span>
+        <div className="space-y-2 pt-2 border-t border-gray-50">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-1">
+              <Users className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-600">{receita.porcoes} porções</span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <span className="text-sm text-gray-600">{receita.tempo_preparo}min</span>
+            </div>
           </div>
           
-          <div className="flex items-center gap-1">
-            <Clock className="w-4 h-4 text-gray-400" />
-            <span className="text-sm text-gray-600">{receita.tempo_preparo}min</span>
+          {/* Nova linha: Contadores de insumos */}
+          <div className="flex items-center justify-center gap-3 text-xs text-gray-500 pt-2">
+            <div className="flex items-center gap-1">
+              <Package className="w-3.5 h-3.5" />
+              <span>{receita.total_insumos} insumos</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <ChefHat className="w-3.5 h-3.5" />
+              <span>{receita.insumos_processados || 0} processados</span>
+            </div>
           </div>
         </div>
 
@@ -324,7 +375,11 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
       className={`hover:bg-gray-50 cursor-pointer transition-colors ${
         receitaSelecionada === receita.id ? 'bg-green-50' : ''
       }`}
-      onClick={() => setReceitaSelecionada(receita.id === receitaSelecionada ? null : receita.id)}
+      onClick={() => {
+        if (onViewReceita) {
+          onViewReceita(receita);
+        }
+      }}
     >
       <td className="px-6 py-4 whitespace-nowrap">
         <div>
@@ -341,13 +396,21 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
         {getStatusBadge(receita.status)}
       </td>
       
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {formatarPreco(receita.cmv_real)}
-      </td>
-      
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {receita.margem_percentual.toFixed(1)}%
-      </td>
+     <td className="px-6 py-4 whitespace-nowrap">
+      <div className="flex items-center gap-2">
+        <Utensils className="w-4 h-4 text-green-500" />
+        <span className="text-sm font-semibold text-green-600">
+          {formatarPreco(receita.cmv_real)}
+        </span>
+      </div>
+    </td>
+
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="flex items-center gap-2">
+        <TrendingUp className="w-4 h-4 text-blue-500" />
+        <span className="text-sm text-gray-900">25%</span>
+      </div>
+    </td>
       
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
         {formatarPreco(receita.preco_venda_sugerido)}
@@ -360,8 +423,22 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="relative">
           <button
+            ref={(el) => {
+              if (el && showDropdown === receita.id && !dropdownPosition) {
+                const rect = el.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                const spaceAbove = rect.top;
+                
+                if (spaceBelow < 200 && spaceAbove > spaceBelow) {
+                  setDropdownPosition({ bottom: 40 });
+                } else {
+                  setDropdownPosition({ top: 40 });
+                }
+              }
+            }}
             onClick={(e) => {
               e.stopPropagation();
+              setDropdownPosition(null); // Reset position
               setShowDropdown(showDropdown === receita.id ? null : receita.id);
             }}
             className="p-1 hover:bg-gray-100 rounded"
@@ -370,8 +447,11 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
           </button>
           
           {/* Dropdown de ações - mesmo do card */}
-          {showDropdown === receita.id && (
-            <div className="absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 min-w-[150px]">
+          {showDropdown === receita.id && dropdownPosition && (
+            <div 
+              className="absolute right-0 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[150px]"
+              style={dropdownPosition}
+            >
               <button
                 onClick={(e) => {
                   e.stopPropagation();

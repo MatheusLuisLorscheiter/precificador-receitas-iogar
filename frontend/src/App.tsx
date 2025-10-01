@@ -18,6 +18,7 @@ import { apiService } from './api-service';
 
 import logoIogar from './image/iogar_logo.png';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import PopupPortalContainer, { showSuccessPopup, showErrorPopup } from './components/PopupPortal';
 import {
   ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
   Users, ChefHat, Utensils, Plus, Search, Edit2, Edit3, Trash2, Save,
@@ -35,19 +36,6 @@ import SuperGridReceitas from './components/SuperGridReceitas';
 
 // Import de integração do Super Popup de relatório Receitas
 import SuperPopupRelatorio from './components/SuperPopupRelatorio';
-
-// ============================================================================
-// POPUP COM FADE - IMPLEMENTAÇÃO PARA FORMULÁRIO DE CADASTRAR INSUMO
-// ============================================================================
-
-// Interface para props do popup
-interface PopupProps {
-  type: 'success' | 'error';
-  title: string;
-  message: string;
-  isVisible: boolean;
-  onClose: () => void;
-}
 
 // ============================================================================
 // INTERFACES E TIPOS DE DADOS
@@ -178,217 +166,6 @@ interface ReceitaInsumo {
 }
 
 // ============================================================================
-// COMPONENTE POPUP COM FADE
-// ============================================================================
-
-const FadePopup: React.FC<PopupProps> = ({ type, title, message, isVisible, onClose }) => {
-  console.log('🎭 FadePopup renderizado:', { type, title, message, isVisible });
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  // Função handleClose estável
-  const handleClose = useCallback(() => {
-    setIsAnimating(false);
-    setTimeout(() => {
-      onClose();
-    }, 300);
-  }, [onClose]);
-
-  useEffect(() => {
-    if (isVisible) {
-      setIsAnimating(true);
-      // Auto-close após 4 segundos
-      const timer = setTimeout(() => {
-        handleClose();
-      }, 4000);
-      return () => clearTimeout(timer);
-    } else {
-      // Se não está visível, garantir que não está animando
-      setIsAnimating(false);
-    }
-  }, [isVisible, handleClose]);
-
-  // Se não está visível E não está animando, não renderiza
-  if (!isVisible && !isAnimating) return null;
-
-  // Definir cores baseadas no tipo
-  const colors = {
-    success: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      icon: 'text-green-500',
-      title: 'text-green-800',
-      message: 'text-green-600'
-    },
-    error: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      icon: 'text-red-500',
-      title: 'text-red-800',
-      message: 'text-red-600'
-    }
-  };
-
-  const colorScheme = colors[type];
-
-  return (
-    <div 
-      className={`
-        fixed top-4 right-4 z-50 transform transition-all duration-300 ease-in-out
-        ${isAnimating && isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
-      `}
-    >
-      <div className={`
-        ${colorScheme.bg} ${colorScheme.border} border rounded-lg shadow-lg p-4 min-w-80 max-w-96
-        backdrop-blur-sm
-      `}>
-        <div className="flex items-start gap-3">
-          {/* Ícone baseado no tipo */}
-          <div className={`${colorScheme.icon} mt-0.5`}>
-            {type === 'success' ? (
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            )}
-          </div>
-
-          {/* Conteúdo do popup */}
-          <div className="flex-1">
-            <h4 className={`font-semibold ${colorScheme.title} mb-1`}>
-              {title}
-            </h4>
-            <p className={`text-sm ${colorScheme.message}`}>
-              {message}
-            </p>
-          </div>
-
-          {/* Botão de fechar */}
-          <button
-            onClick={handleClose}
-            className={`${colorScheme.icon} hover:bg-white hover:bg-opacity-50 rounded p-1 transition-colors`}
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Barra de progresso do auto-close */}
-        <div className="mt-3 bg-white bg-opacity-50 rounded-full h-1">
-          <div 
-            className={`h-full rounded-full transition-all duration-4000 ease-linear ${
-              type === 'success' ? 'bg-green-400' : 'bg-red-400'
-            }`}
-            style={{ 
-              width: isVisible ? '0%' : '100%',
-              transitionDuration: isVisible ? '4000ms' : '0ms'
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Função estável para busca - FORA do componente
-const createSearchHandler = (setSearchTerm) => {
-  return (term) => {
-    setSearchTerm(term);
-  };
-};
-
-// Funções globais para controle do popup
-let globalShowPopup = null;
-let globalSetPopupData = null;
-let globalClosePopup = null;
-
-const initializePopupFunctions = (setShowPopup, setPopupData) => {
-  globalShowPopup = setShowPopup;
-  globalSetPopupData = setPopupData;
-  
-  globalClosePopup = () => {
-    setShowPopup(false);
-  };
-};
-
-// ===================================================================================================
-// DEBUG FINAL: FUNÇÃO showSuccessPopup
-// Problema: Função é chamada mas popup não aparece
-// Solução: Verificar se as funções globais estão disponíveis
-// ===================================================================================================
-
-const showSuccessPopup = (title, message) => {
-  console.log('🎯 [DEBUG] showSuccessPopup chamado:', { title, message });
-  console.log('🔧 [DEBUG] globalSetPopupData:', globalSetPopupData);
-  console.log('🔧 [DEBUG] globalShowPopup:', globalShowPopup);
-  console.log('🔧 [DEBUG] Tipos:', {
-    globalSetPopupData: typeof globalSetPopupData,
-    globalShowPopup: typeof globalShowPopup
-  });
-  
-  if (globalSetPopupData && globalShowPopup) {
-    console.log('✅ [DEBUG] Funções globais disponíveis, configurando...');
-    
-    try {
-      globalSetPopupData({
-        type: 'success',
-        title,
-        message
-      });
-      console.log('📋 [DEBUG] Dados configurados com sucesso');
-      
-      globalShowPopup(true);
-      console.log('🚀 [DEBUG] globalShowPopup(true) chamado');
-      
-      // Verificar se o estado mudou
-      setTimeout(() => {
-        console.log('🔍 [DEBUG] Verificando popup no DOM...');
-        const popup = document.querySelector('[class*="fixed"][class*="top-4"]');
-        console.log('📱 [DEBUG] Popup encontrado:', !!popup);
-        if (popup) {
-          console.log('🎨 [DEBUG] Estilos do popup:', {
-            display: popup.style.display,
-            visibility: popup.style.visibility,
-            opacity: popup.style.opacity,
-            zIndex: popup.style.zIndex
-          });
-        }
-      }, 100);
-      
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao configurar popup:', error);
-      alert(`✅ ${title}\n\n${message}`);
-    }
-  } else {
-    console.error('❌ [DEBUG] Funções globais NÃO disponíveis!');
-    console.log('🔧 [DEBUG] Detalhes:', {
-      globalSetPopupData_exists: !!globalSetPopupData,
-      globalShowPopup_exists: !!globalShowPopup,
-      globalSetPopupData_value: globalSetPopupData,
-      globalShowPopup_value: globalShowPopup
-    });
-    
-    // Fallback garantido
-    alert(`✅ ${title}\n\n${message}`);
-  }
-};
-
-const showErrorPopup = (title, message) => {
-  if (globalSetPopupData && globalShowPopup) {
-    globalSetPopupData({
-      type: 'error',
-      title,
-      message
-    });
-    globalShowPopup(true);
-    console.log('❌ Popup de erro exibido:', title);
-  }
-};
-
-// ============================================================================
 // COMPONENTE ISOLADO PARA FORMULÁRIO DE INSUMO
 // ============================================================================
 const FormularioInsumoIsolado = React.memo(({ 
@@ -419,17 +196,6 @@ const FormularioInsumoIsolado = React.memo(({
   handleAtualizarFornecedor,
   isLoading
 }) => {
-
-  // DEBUG LOGS - VERIFICAR PROPS
-  console.log('🔍 DEBUG FormularioInsumoIsolado - Props recebidas:');
-  console.log('🔍 editandoFornecedor:', editandoFornecedor);
-  console.log('🔍 setEditandoFornecedor:', typeof setEditandoFornecedor);
-  console.log('🔍 novoFornecedor:', novoFornecedor);
-  console.log('🔍 setNovoFornecedor:', typeof setNovoFornecedor);
-  console.log('🔍 handleCriarFornecedor:', typeof handleCriarFornecedor);
-  console.log('🔍 handleAtualizarFornecedor:', typeof handleAtualizarFornecedor);
-  console.log('🔍 isLoading:', isLoading);
-  console.log('🔍 showNovoFornecedorPopup:', showNovoFornecedorPopup);
 
   // Estado local do formulário
   const [formData, setFormData] = useState(() => {
@@ -851,7 +617,6 @@ const FormularioInsumoIsolado = React.memo(({
                     type="text"
                     value={formData.nome}
                     onChange={(e) => {
-                      console.log('🔍 Campo Nome onChange chamado com:', e.target.value);
                       updateField('nome', e.target.value);
                     }}
                     disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
@@ -1957,18 +1722,6 @@ const FoodCostSystem: React.FC = () => {
     grupo: 'Geral', // ✅ Campo obrigatório
     subgrupo: 'Geral' // ✅ Campo obrigatório
   }));
-
-
-  const [showPopup, setShowPopup] = useState(false);
-  const [popupData, setPopupData] = useState({
-    type: 'success' as 'success' | 'error',
-    title: '',
-    message: ''
-  });
-  useEffect(() => {
-    console.log('🎯 Estado showPopup mudou:', showPopup);
-    console.log('📋 Dados do popup:', popupData);
-  }, [showPopup, popupData]);
   
   // Estados para formulário de receita
   const [novaReceita, setNovaReceita] = useState({
@@ -2087,12 +1840,6 @@ const FoodCostSystem: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
   }, [activeTab]);
-
-  // Inicializar funções do popup
-  useEffect(() => {
-    initializePopupFunctions(setShowPopup, setPopupData);
-  }, []);
-
   
   // ============================================================================
   // CONFIGURAÇÃO DA API
@@ -2215,7 +1962,6 @@ const fetchInsumos = async () => {
       // Tentar endpoint com-unidades primeiro para ter dados das filiais
       const response = await apiService.getRestaurantesComUnidades();
       if (response.data) {
-        console.log('📊 Restaurantes com unidades carregados:', response.data.length); // Debug temporário
         setRestaurantes(response.data);
       } else if (response.error) {
         console.error('Erro ao buscar restaurantes com unidades:', response.error);
@@ -2283,11 +2029,20 @@ const fetchInsumos = async () => {
     try {
       setLoading(true);
       const response = await apiService.getReceitas();
+      
       if (response.data) {
         // Filtrar receitas pelo restaurante
         const receitasFiltradas = response.data.filter((receita: any) => 
           receita.restaurante_id === restauranteId || !receita.restaurante_id
         );
+        
+        // DEBUG: Verificar se as receitas têm insumos com unidade
+        if (receitasFiltradas.length > 0) {
+          
+          if (receitasFiltradas[0].receita_insumos && receitasFiltradas[0].receita_insumos.length > 0) {
+          }
+        }
+        
         setReceitas(receitasFiltradas);
       } else if (response.error) {
         console.error('Erro ao buscar receitas do restaurante:', response.error);
@@ -2309,7 +2064,6 @@ const fetchInsumos = async () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Dados recebidos com-unidades:', data); // Debug temporário
         setRestaurantes(data || []);
       } else {
         // Fallback para grid se com-unidades não funcionar
@@ -2366,7 +2120,6 @@ const fetchInsumos = async () => {
 
   // Carrega os dados quando o componente é montado
   useEffect(() => {
-    console.log('🔍 DEBUG - Inicializando aplicação');
     const initializeApp = async () => {
       try {
         const connected = await apiService.testConnection();
@@ -3040,28 +2793,6 @@ const fetchInsumos = async () => {
     // Componente isolado para formulário de receita
   const FormularioReceita = ({ selectedRestaurante, editingReceita, onClose, onSave, loading, insumos }) => {
 
-      console.log('🔍 RECEITA PASSADA COMO PROP:', editingReceita);
-      console.log('🔍 TIPO DA RECEITA:', typeof editingReceita);
-      console.log('🔍 É OBJETO?', editingReceita && typeof editingReceita === 'object');
-
-      // ===================================================================================================
-      // VERIFICAÇÕES DE SEGURANÇA - EVITAR TELA BRANCA
-      // ===================================================================================================
-      
-      // Debug dos dados recebidos
-      console.log('🔍 FormularioReceita - Debug:', {
-        selectedRestaurante: selectedRestaurante?.nome || 'null',
-        editingReceita: editingReceita?.nome || 'null', 
-        insumos_count: insumos?.length || 0,
-        loading
-      });
-
-      // DEBUG ESPECÍFICO PARA INSUMOS DA RECEITA
-      console.log('🔍 DEBUG RECEITA COMPLETA:', editingReceita);
-      console.log('🔍 DEBUG INSUMOS DA RECEITA:', editingReceita?.receita_insumos);
-      console.log('🔍 DEBUG INSUMOS ALTERNATIVOS:', editingReceita?.insumos);
-      console.log('🔍 DEBUG TODAS AS PROPS DA RECEITA:', Object.keys(editingReceita || {}));
-
       // ============================================================================
       // VERIFICAÇÃO DE SEGURANÇA PARA INSUMOS - CORRIGIDO
       // ============================================================================
@@ -3079,17 +2810,6 @@ const fetchInsumos = async () => {
             (insumo.preco_compra_real !== undefined || insumo.preco_compra !== undefined)
           )
         : [];
-
-      console.log('🔍 Insumos disponíveis para seleção:', {
-        total: insumosSeguro.length,
-        unidades_disponiveis: [...new Set(insumosSeguro.map(i => i.unidade))],
-        amostra: insumosSeguro.slice(0, 3).map(i => ({ 
-          id: i.id, 
-          nome: i.nome, 
-          unidade: i.unidade,
-          preco: i.preco_compra_real 
-        }))
-      });
       
       // Verificação de segurança para receita em edição
       const receitaSegura = editingReceita || {};
@@ -3106,17 +2826,18 @@ const fetchInsumos = async () => {
           nome: editingReceita?.nome || '',
           sugestao_valor: editingReceita?.sugestao_valor || '',
           fator: parseFloat(editingReceita?.fator || 1),
+          // Unidade padrão para receitas é 'un' (unidade/porção)
           unidade: editingReceita?.unidade || '',
           quantidade_porcao: parseInt(editingReceita?.porcoes || editingReceita?.rendimento_porcoes || editingReceita?.quantidade_porcao || 1),
           preco_compra: parseFloat(editingReceita?.preco_compra || 0),
-       
+      
           // Checkbox processado
           eh_processado: editingReceita?.eh_processado || false,
           
           // Restaurante obrigatório (vem da seleção atual)
           restaurante_id: selectedRestaurante?.id || editingReceita?.restaurante_id || null,
           
-          // Campos existentes mantidos para compatibilidade - CORRIGIDOS
+          // Campos existentes mantidos para compatibilidade
           categoria: editingReceita?.grupo || editingReceita?.categoria || '',
           descricao: editingReceita?.descricao || '',
           tempo_preparo: editingReceita?.tempo_preparo || editingReceita?.tempo_preparo_minutos || 30
@@ -3198,43 +2919,47 @@ const fetchInsumos = async () => {
         setFormData(prev => ({ ...prev, [field]: numeroValido }));
       };
 
-      const [receitaInsumos, setReceitaInsumos] = useState(() => {
-        if (editingReceita?.receita_insumos) {
-          return editingReceita.receita_insumos.map(ri => ({
-            insumo_id: ri.insumo_id,
-            // CORREÇÃO: Tentar múltiplos campos possíveis do backend
-            quantidade: ri.quantidade_necessaria || ri.quantidade || 1
-          }));
-        }
-        return editingReceita?.insumos || [];
-      });
+      // Estado dos insumos - será populado pelo useEffect
+      const [receitaInsumos, setReceitaInsumos] = useState([]);
 
       useEffect(() => {
+        
         if (editingReceita?.receita_insumos && editingReceita.receita_insumos.length > 0) {
-          console.log('🔄 Atualizando receitaInsumos com dados da receita em edição');
           
           const insumosComQuantidade = editingReceita.receita_insumos.map(ri => {
             const quantidade = ri.quantidade_necessaria || ri.quantidade || 1;
             
-            console.log('📊 Insumo carregado:', {
-              insumo_id: ri.insumo_id,
-              quantidade_necessaria: ri.quantidade_necessaria,
-              quantidade: ri.quantidade,
-              quantidade_final: quantidade
-            });
+            // PRIORIDADE: usar unidade_medida do backend primeiro
+            const unidadeBackend = ri.unidade_medida;
             
+            // Buscar insumo para pegar a unidade como fallback
+            const insumoEncontrado = insumos.find(i => i.id === ri.insumo_id);
+            const unidadeFallback = insumoEncontrado?.unidade || 'un';
+            
+            // Usar unidade do backend se existir, senão usar do insumo
+            const unidadeFinal = unidadeBackend || unidadeFallback;
+           
             return {
               insumo_id: ri.insumo_id,
-              quantidade: quantidade
+              quantidade: quantidade,
+              unidade_medida: unidadeFinal
             };
           });
+          
+          console.log('✅ ========== INSUMOS CARREGADOS FINAL ==========');
+          console.log('📦 Array completo:', insumosComQuantidade);
+          insumosComQuantidade.forEach((insumo, idx) => {
+            console.log(`   [${idx}] insumo_id: ${insumo.insumo_id}, qtd: ${insumo.quantidade}, unidade: ${insumo.unidade_medida}`);
+          });
+          console.log('✅ ==============================================');
           
           setReceitaInsumos(insumosComQuantidade);
         } else if (!editingReceita) {
           // Limpar insumos quando não está editando
+          console.log('🧹 Limpando insumos (sem receita em edição)');
           setReceitaInsumos([]);
         }
-      }, [editingReceita]);
+      }, [editingReceita, insumos]);
 
       // ============================================================================
       // LISTA DE UNIDADES DE MEDIDA - MESMO PADRÃO DOS INSUMOS
@@ -3425,8 +3150,6 @@ const fetchInsumos = async () => {
         });
         
         setReceitaInsumos(prev => {
-          console.log('📊 Estado ANTERIOR:', prev);
-          console.log(`📊 Item ANTERIOR [${index}]:`, prev[index]);
           
           const updated = [...prev];
           
@@ -3476,6 +3199,11 @@ const fetchInsumos = async () => {
           // Campos de categoria (ajustar conforme backend)
           grupo: String(formData.categoria || 'Lanches').trim(),
           subgrupo: String(formData.categoria || 'Lanches').trim(),
+
+          // Adicionar campo unidade
+          unidade: String(formData.unidade || 'un').trim(),
+          quantidade: parseInt(formData.quantidade_porcao) || 1,
+          fator: parseFloat(formData.fator) || 1.0,
           
           // Campos numéricos com valores padrão seguros
           rendimento_porcoes: parseInt(formData.quantidade_porcao) || parseInt(formData.porcoes) || 1,
@@ -3486,17 +3214,25 @@ const fetchInsumos = async () => {
           ativo: true,
           restaurante_id: parseInt(selectedRestaurante.id),
           
-          // CAMPO CRÍTICO: usar parâmetro recebido ao invés da variável inexistente
-          insumos: insumosValidosParam.map(insumo => ({
-            insumo_id: parseInt(insumo.insumo_id),
-            quantidade: parseFloat(insumo.quantidade)
-          }))
+          // CAMPO CRÍTICO: incluir unidade_medida dos insumos
+          insumos: insumosValidosParam.map(insumo => {
+            // Buscar insumo para garantir que temos a unidade
+            const insumoCompleto = insumos.find(i => i.id === insumo.insumo_id);
+            const unidade = insumo.unidade_medida || insumoCompleto?.unidade || 'un';
+            
+            return {
+              insumo_id: parseInt(insumo.insumo_id),
+              quantidade: parseFloat(insumo.quantidade),
+              unidade_medida: unidade
+            };
+          })
         };
 
-        console.log('📤 === DADOS FINAIS PARA BACKEND ===');
-        console.log('📦 Estrutura completa:', JSON.stringify(dadosBackend, null, 2));
-        console.log('🔍 Campo insumos especificamente:', dadosBackend.insumos);
-        console.log('📊 Quantidade de insumos:', dadosBackend.insumos.length);
+         // LOG CRÍTICO - Ver o que VAI SER ENVIADO
+        console.log('========== OBJETO FINAL dadosBackend ==========');
+        console.log('JSON completo:', JSON.stringify(dadosBackend, null, 2));
+        console.log('dadosBackend.unidade:', dadosBackend.unidade);
+        console.log('==============================================');
         
         // Confirmar se ID está sendo incluído
         if (dadosBackend.id) {
@@ -3511,10 +3247,6 @@ const fetchInsumos = async () => {
           alert('Erro interno: função de salvamento não encontrada!');
           return;
         }
-
-        console.log('✅ Chamando onSave...');
-        console.log('🔍 OBJETO COMPLETO ENVIADO:', JSON.stringify(dadosBackend, null, 2));
-        console.log('🔍 Campo rendimento_porcoes:', dadosBackend.rendimento_porcoes);
         
         // Chamar função de salvamento
         onSave(dadosBackend);
@@ -3522,7 +3254,6 @@ const fetchInsumos = async () => {
       // FIm proceedWithSave
 
       const handleSubmit = () => {       //  INICIO HANDLESUBMIT FORMULARIORECEITA
-        console.log('🔍 DEBUG COMPLETO formData:', formData);
         console.log('⏱️ DEBUG tempo_preparo:', formData.tempo_preparo);
         
         // ============================================================================
@@ -3547,10 +3278,7 @@ const fetchInsumos = async () => {
           alert('Restaurante não selecionado!');
           return;
         }
-        
-        // Debug do estado atual dos insumos
-        console.log('📊 Estado receitaInsumos BRUTO:', receitaInsumos);
-        
+                
         // Filtrar e validar insumos válidos
         const insumosValidos = receitaInsumos.filter(insumo => {
           const valido = insumo.insumo_id && 
@@ -3601,29 +3329,28 @@ const fetchInsumos = async () => {
                 grupo: String(formData.categoria || 'Lanches').trim(),
                 subgrupo: String(formData.categoria || 'Lanches').trim(),
                 rendimento_porcoes: (() => {
-                  console.log('🔍 SALVAMENTO - formData.quantidade_porcao:', formData.quantidade_porcao);
-                  console.log('🔍 SALVAMENTO - formData completo:', formData);
                   const valor = parseInt(formData.quantidade_porcao) || 1;
-                  console.log('🔍 SALVAMENTO - valor final enviado:', valor);
                   return valor;
                 })(),
                 tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 15,
                 ativo: true,
                 restaurante_id: parseInt(selectedRestaurante.id),
-                insumos: insumosValidos.map(insumo => ({
-                  insumo_id: parseInt(insumo.insumo_id),
-                  quantidade: parseFloat(insumo.quantidade)
-                }))
+                insumos: insumosValidos.map(insumo => {
+                  // Buscar insumo para garantir que temos a unidade
+                  const insumoCompleto = insumos.find(i => i.id === insumo.insumo_id);
+                  return {
+                    insumo_id: parseInt(insumo.insumo_id),
+                    quantidade: parseFloat(insumo.quantidade),
+                    unidade_medida: insumo.unidade_medida || insumoCompleto?.unidade || 'un'
+                  };
+                })
               };
-              console.log('🔍 ENVIANDO PARA BACKEND:', dadosBackend);
-              console.log('🔍 rendimento_porcoes enviado:', dadosBackend.rendimento_porcoes);
               onSave(dadosBackend);
             }
           });
           setShowConfirmDialog(true);
           return;
         }
-        
         // Se chegou aqui, pode salvar normalmente
         proceedWithSave(insumosValidos);
       };
@@ -3761,16 +3488,11 @@ const fetchInsumos = async () => {
                         min="1"
                         value={formData.quantidade_porcao || 1}
                         onChange={(e) => {
-                          console.log('🔍 Input onChange:', e.target.value);
-                          console.log('🔍 formData atual:', formData.quantidade_porcao);
                           
                           const valor = parseInt(e.target.value) || 1;
-                          console.log('🔍 Valor convertido:', valor);
                           
                           setFormData(prev => {
-                            console.log('🔍 Estado anterior:', prev.quantidade_porcao);
                             const novoEstado = { ...prev, quantidade_porcao: valor };
-                            console.log('🔍 Novo estado quantidade_porcao:', novoEstado.quantidade_porcao);
                             return novoEstado;
                           });
                         }}
@@ -3925,6 +3647,17 @@ const fetchInsumos = async () => {
                       const insumoSelecionado = insumos.find(i => i.id === receitaInsumo.insumo_id);
                       const custoItem = calcularCustoInsumo(receitaInsumo);
                       
+                      // DEBUG COMPLETO - RASTREAMENTO DE UNIDADE
+                      console.log(`🔍 DEBUG INSUMO [${index}] - RENDERIZAÇÃO:`, {
+                        receitaInsumo_completo: receitaInsumo,
+                        insumo_id: receitaInsumo.insumo_id,
+                        quantidade: receitaInsumo.quantidade,
+                        unidade_medida_no_estado: receitaInsumo.unidade_medida,
+                        insumoSelecionado_nome: insumoSelecionado?.nome,
+                        insumoSelecionado_unidade: insumoSelecionado?.unidade,
+                        insumoSelecionado_completo: insumoSelecionado
+                      });
+
                       return (
                         <div key={index} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
                           <div className="flex-1">
@@ -3932,11 +3665,6 @@ const fetchInsumos = async () => {
                               value={receitaInsumo.insumo_id || 0}
                               onChange={(e) => {
                                 const valorSelecionado = e.target.value;
-                                console.log('🔍 SELECT onChange:', {
-                                  index,
-                                  valor_raw: valorSelecionado,
-                                  tipo: typeof valorSelecionado
-                                });
                                 
                                 // ============================================================================
                                 // CONVERSÃO INTELIGENTE: Suporta IDs numéricos E strings de fornecedor
@@ -4011,7 +3739,14 @@ const fetchInsumos = async () => {
                               placeholder="Qtd"
                             />
                             <p className="text-xs text-gray-500 mt-1 text-center">
-                              {insumoSelecionado?.unidade || 'un'}
+                              {(() => {
+                                const unidadeExibida = insumoSelecionado?.unidade || 'un';
+                                console.log(`📍 EXIBINDO UNIDADE [${index}]:`, {
+                                  unidade_exibida: unidadeExibida,
+                                  de_onde_veio: insumoSelecionado?.unidade ? 'insumoSelecionado' : 'fallback'
+                                });
+                                return unidadeExibida;
+                              })()}
                             </p>
                           </div>
 
@@ -4410,8 +4145,6 @@ const fetchInsumos = async () => {
           // Para criação, usar API service existente (será atualizada depois)
           response = await apiService.createInsumo(dadosParaEnvio);
         }
-
-        console.log('📥 Resposta da API:', response);
         
         if (response.data || !response.error) {
           console.log('✅ Sucesso na operação:', response.data);
@@ -4796,13 +4529,6 @@ const fetchInsumos = async () => {
     const [loadingEdicao, setLoadingEdicao] = useState<boolean>(false);
     const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
 
-    console.log('🔍 DEBUG Estados:', { //DEBUG TEMPORARIO
-      deleteRestauranteConfirm,
-      setDeleteRestauranteConfirm: typeof setDeleteRestauranteConfirm
-    });
-
-    console.log('🔍 ESTADO ATUAL DO POPUP:', deleteRestauranteConfirm.isOpen);  //DEBUG TEMPORARIO
-
     if (loading) {
       return (
         <div className="text-center py-20">
@@ -4870,7 +4596,6 @@ const fetchInsumos = async () => {
 
   const abrirFormUnidade = useCallback((restaurante: RestauranteGrid) => {
     console.log('🔥 DEBUG - abrirFormUnidade chamada para:', restaurante.nome);
-    console.log('🔍 DEBUG - Forçando abertura do formulário');
     
     // Primeiro definir os dados da unidade
     setRestauranteParaUnidade(restaurante);
@@ -5256,8 +4981,6 @@ const fetchInsumos = async () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  console.log('🔍 DEBUG Botão clicado:', restaurante.nome);  //debug temporario
-                                  console.log('🔍 DEBUG Antes do setState:', deleteRestauranteConfirm); //debug temporario
                                   setDeleteRestauranteConfirm({
                                     isOpen: true,
                                     restauranteId: restaurante.id,
@@ -5605,6 +5328,14 @@ const fetchInsumos = async () => {
       porcoes: porcoes,
       tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
       sugestao_valor: receita.sugestao_valor || 0,
+
+        // Campos técnicos da receita
+        unidade: receita.unidade || 'un',
+        quantidade: receita.quantidade || 1,
+        fator: receita.fator || 1.0,
+        grupo: receita.grupo,
+        subgrupo: receita.subgrupo,
+        descricao: receita.descricao || '',
       
       // CMV real = custo POR PORÇÃO
       cmv_real: custoPorPorcao,
@@ -5732,7 +5463,6 @@ const Receitas = React.memo(() => {
 
   // Handler para exibir popup de relatório detalhado
   const handleShowRelatorio = (receita: any) => {
-    console.log('📊 Abrindo relatório detalhado para:', receita);
     
     try {
       // Definir receita para o popup
@@ -5765,12 +5495,6 @@ const Receitas = React.memo(() => {
   };
 
   const handleEditReceita = async (receita: any) => {
-    console.log('CARREGANDO RECEITA PARA EDICAO:', receita);
-    console.log('VALORES DE PORCOES:', {
-      porcoes: receita.porcoes,
-      rendimento_porcoes: receita.rendimento_porcoes,
-      quantidade_porcao: receita.quantidade_porcao
-    });
     
     // Usar o objeto receita que já temos em vez de buscar do backend
     setSelectedReceita(receita);
@@ -5779,7 +5503,6 @@ const Receitas = React.memo(() => {
 
   const handleDuplicateReceita = async (receita: any) => {
     try {
-      console.log('📋 Duplicar receita:', receita);
       
       // Buscar receita completa do backend
       const receitaCompleta = receitas.find(r => r.id === receita.id);
@@ -5923,17 +5646,13 @@ const Receitas = React.memo(() => {
         response = await apiService.createReceita(receitaData);
       }
 
-      // DEBUGGING: Verificar resposta da API
-      console.log('📥 DEBUG - Resposta da API:', {
-        response: response,
-        response_data: response?.data,
-        response_error: response?.error,
-        tem_data: !!response?.data,
-        tem_error: !!response?.error
-      });
-
       if (response.data) {
         console.log('✅ Entrando no bloco de sucesso');
+        
+        // Recarregar receitas do restaurante atual
+        console.log('🔄 Recarregando receitas do restaurante:', selectedRestaurante.id);
+        await fetchReceitasByRestaurante(selectedRestaurante.id);
+        console.log('✅ Receitas recarregadas!');
         
         // Fechar formulário
         setShowReceitaForm(false);
@@ -5959,61 +5678,13 @@ const Receitas = React.memo(() => {
           eh_funcao: typeof showSuccessPopup === 'function'
         });
         
-        // Tentar exibir o popup
-        try {
-        console.log('🚀 Chamando showSuccessPopup...');
-        console.log('🔧 Verificando funções globais:', {
-          globalSetPopupData: typeof globalSetPopupData,
-          globalShowPopup: typeof globalShowPopup
-        });
-        
-        // Tentar forçar a exibição do popup
-        if (typeof showSuccessPopup === 'function') {
-          if (globalSetPopupData && globalShowPopup) {
-            globalSetPopupData({
-              type: 'success',
-              title: titulo,
-              message: mensagem
-            });
-            globalShowPopup(true);
-          } else {
-            // Tentar inicializar na hora se não estiver
-            if (typeof setShowPopup !== 'undefined' && typeof setPopupData !== 'undefined') {
-              setPopupData({
-                type: 'success',
-                title: titulo,
-                message: mensagem
-              });
-              setShowPopup(true);
-            } else {
-              alert(`✅ ${titulo}\n\n${mensagem}`);
-            }
-          }
-          console.log('✅ showSuccessPopup chamado');
-          
-          // Aguardar um pouco e verificar se o popup apareceu
-          setTimeout(() => {
-            const popupElement = document.querySelector('[class*="fixed"][class*="top-4"][class*="right-4"]');
-            console.log('🔍 Popup encontrado no DOM:', !!popupElement);
-            if (popupElement) {
-              console.log('📱 Estilos do popup:', window.getComputedStyle(popupElement));
-            }
-          }, 100);
-          
-        } else {
-          console.error('❌ showSuccessPopup não é uma função');
-          alert(`✅ ${titulo}\n\n${mensagem}`);
-        }
-      } catch (popupError) {
-        console.error('❌ Erro no showSuccessPopup:', popupError);
-        alert(`✅ ${titulo}\n\n${mensagem}`);
-      }
+       // Exibir popup de sucesso
+      showSuccessPopup(titulo, mensagem);
         
         // Recarregar lista de receitas
         setTimeout(async () => {
           try {
             await fetchReceitas2();
-            console.log('📋 Lista recarregada');
           } catch (fetchError) {
             console.error('Erro ao recarregar receitas:', fetchError);
           }
@@ -6052,7 +5723,6 @@ const Receitas = React.memo(() => {
     
     setReceitaInsumos(prev => {
       const novo = [...prev, { insumo_id: 0, quantidade: 1 }];
-      console.log('📊 Novo estado após adicionar:', novo);
       return novo;
     });
   };
@@ -6079,7 +5749,6 @@ const Receitas = React.memo(() => {
   };
 
   const handleDuplicateFromPopup = async (receita: any) => {
-    console.log('📋 Duplicar receita do popup:', receita);
     setShowRelatorioPopup(false);
     
     // Usar a mesma lógica do handleDuplicateReceita existente
@@ -6879,10 +6548,6 @@ const cancelarExclusao = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dadosParaEnviar),
         });
-
-        // *** LOG PARA DEBUG ***
-        console.log('📥 Status da resposta:', response.status);
-        console.log('📥 Response completo:', response);
 
         if (response.ok) {
           const resultado = await response.json();
@@ -7816,8 +7481,6 @@ const cancelarExclusao = () => {
   // ============================================================================
   // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
   // ============================================================================
-  // Log de debug simplificado
-  console.log('🔍 DEBUG - Renderização principal - loading:', loading);
 
   return (
     <div className="min-h-screen bg-gray-50 flex ml-64">
@@ -7999,15 +7662,8 @@ const cancelarExclusao = () => {
           </div>
         )}
       </main>
-      {/* Popup de feedback com fade */}
-      <FadePopup
-        type={popupData.type}
-        title={popupData.title}
-        message={popupData.message}
-        isVisible={showPopup}
-        onClose={globalClosePopup || (() => setShowPopup(false))}
-      />
-
+      {/* Sistema de popup isolado - não causa re-render */}
+      <PopupPortalContainer />
       {/* Popup de classificação IA */}
       <PopupClassificacaoIA
         isVisible={showClassificacaoPopup}

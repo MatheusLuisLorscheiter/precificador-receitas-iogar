@@ -1,6 +1,6 @@
 {
   "versao": "2.0.0",
-  "created_at": "2025-09-12T12:18:42.676250",
+  "created_at": "2025-10-01T11:11:01.259735",
   "descricao": "Logs de feedback do sistema de IA integrado",
   "logs": [
     {
@@ -523,6 +523,25 @@
       "taxonomia_correta": {
         "categoria": "Vegetais",
         "subcategoria": "Algas",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-10-01T11:11:01.259735",
+      "nome_produto": "Chocolate em pó",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Doces",
+        "subcategoria": "Doce",
         "especificacao": null,
         "variante": null
       },

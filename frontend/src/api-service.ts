@@ -13,7 +13,7 @@ Autor: Will - Empresa: IOGAR
 // ============================================================================
 const API_CONFIG = {
  baseURL: 'https://food-cost-backend.onrender.com',
-  /* RODA LOCALMENTE
+   /*RODA LOCALMENTE
   baseURL: 'http://localhost:8000', // Será ajustado automaticamente */
   timeout: 10000,
   headers: {
@@ -352,8 +352,6 @@ class ApiService {
 
   // Criar nova receita
   async createReceita(receita: any): Promise<ApiResponse<any>> {
-    console.log('🔍 API-SERVICE recebeu:', receita);
-     console.log('🔍 API-SERVICE sugestao_valor:', receita.sugestao_valor);
     // Mapear campos para o formato esperado pelo backend
     const dadosBackend = {
       // CORREÇÃO: Incluir o ID se fornecido (para edição via POST)
@@ -365,16 +363,13 @@ class ApiService {
       categoria: receita.categoria || 'Geral',
       grupo: receita.categoria || 'Geral',
       subgrupo: receita.categoria || 'Geral', 
-      unidade: 'porção',    
+      unidade: receita.unidade || 'un',    
       rendimento: receita.rendimento_porcoes || receita.porcoes || receita.rendimento || 1,
       sugestao_valor: receita.sugestao_valor || 0,
       tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
       restaurante_id: receita.restaurante_id || 1,
       insumos: receita.insumos || []
     };
-
-  console.log('🔍 API-SERVICE dadosBackend montado:', dadosBackend);
-  console.log('🔍 API-SERVICE sugestao_valor no dadosBackend:', dadosBackend.sugestao_valor);
   
   return this.request<any>('/api/v1/receitas/', {
     method: 'POST',
