@@ -142,6 +142,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .envrc
 .venv
 env/
@@ -149,6 +150,11 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Manter arquivos de ambiente versionados
+!.env.development
+!.env.qa
+!.env.example
 
 # Spyder project settings
 .spyderproject
