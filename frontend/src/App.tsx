@@ -37,6 +37,9 @@ import SuperGridReceitas from './components/SuperGridReceitas';
 // Import de integração do Super Popup de relatório Receitas
 import SuperPopupRelatorio from './components/SuperPopupRelatorio';
 
+// Importar configuração centralizada da API
+import { API_BASE_URL } from './config';
+
 // ============================================================================
 // INTERFACES E TIPOS DE DADOS
 // ============================================================================
@@ -1801,7 +1804,7 @@ const FoodCostSystem: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restauranteParaUnidade.id}/unidades`, {
+        const response = await fetch(`${API_BASE}/api/v1/restaurantes/${restauranteParaUnidade.id}/unidades`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1844,13 +1847,8 @@ const FoodCostSystem: React.FC = () => {
   // ============================================================================
   // CONFIGURAÇÃO DA API
   // ============================================================================
-  // Ambiente local
-  // const API_BASE = 'http://localhost:8000';
-  // Ambiente Render
-  const API_BASE = import.meta.env.VITE_API_URL || 
-                 (window.location.hostname === 'localhost' 
-                   ? 'http://localhost:8000' 
-                   : 'https://food-cost-backend.onrender.com'); 
+  // Usar URL centralizada da API
+  const API_BASE = API_BASE_URL;
 
 console.log('🌐 API Base URL:', API_BASE);
   
@@ -2060,7 +2058,7 @@ const fetchInsumos = async () => {
       setLoading(true);
       
       // Primeiro tentar com-unidades para dados completos
-      const response = await fetch('http://localhost:8000/api/v1/restaurantes/com-unidades');
+      const response = await fetch(`${API_BASE}/api/v1/restaurantes/com-unidades`);
       
       if (response.ok) {
         const data = await response.json();
@@ -2068,7 +2066,7 @@ const fetchInsumos = async () => {
       } else {
         // Fallback para grid se com-unidades não funcionar
         console.log('⚠️ Fallback para endpoint grid');
-        const fallbackResponse = await fetch('http://localhost:8000/api/v1/restaurantes/grid');
+        const fallbackResponse = await fetch(`${API_BASE}/api/v1/restaurantes/grid`);
         const fallbackData = await fallbackResponse.json();
         
         // Adicionar propriedade unidades vazia para compatibilidade
@@ -2090,7 +2088,7 @@ const fetchInsumos = async () => {
   // Carrega estatísticas de um restaurante específico
   const carregarEstatisticasRestaurante = async (restauranteId: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restauranteId}/estatisticas`);
+      const response = await fetch(`${API_BASE}/api/v1/restaurantes/${restauranteId}/estatisticas`);
       const data = await response.json();
       setEstatisticasRestaurante(data);
     } catch (error) {
@@ -2104,7 +2102,7 @@ const fetchInsumos = async () => {
 
   const carregarTiposEstabelecimento = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/restaurantes/tipos');
+      const response = await fetch(`${API_BASE}/api/v1/restaurantes/tipos`);
       if (response.ok) {
         const data = await response.json();
         setTiposEstabelecimento(data || []);
@@ -2206,7 +2204,7 @@ const fetchInsumos = async () => {
   // Funções para carregar dados do formulário
   const carregarFornecedoresDisponiveis = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/fornecedores/');
+      const response = await fetch(`${API_BASE}/api/v1/fornecedores/`);
       if (response.ok) {
         const data = await response.json();
         setFornecedoresDisponiveis(data.fornecedores || []);
@@ -2223,7 +2221,7 @@ const fetchInsumos = async () => {
     }
     
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/fornecedores/${fornecedorId}/insumos/selecao/`);
+      const response = await fetch(`${API_BASE}/api/v1/fornecedores/${fornecedorId}/insumos/selecao/`);
       if (response.ok) {
         const insumos = await response.json();
         setInsumosDoFornecedor(insumos);
@@ -2236,7 +2234,7 @@ const fetchInsumos = async () => {
 
   const carregarEstados = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/fornecedores/utils/estados`);
+      const response = await fetch(`${API_BASE}/api/v1/fornecedores/utils/estados`);
       if (response.ok) {
         const estados = await response.json();
         setEstadosBrasil(estados);
@@ -4626,7 +4624,7 @@ const fetchInsumos = async () => {
     try {
       setLoadingEdicao(true);
       
-      const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${restaurante.id}`);
+      const response = await fetch(`${API_BASE}/api/v1/restaurantes/${restaurante.id}`);
       
       if (!response.ok) {
         throw new Error('Erro ao buscar dados do restaurante');
@@ -4689,7 +4687,7 @@ const fetchInsumos = async () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${editingRestaurante.id}`, {
+      const response = await fetch(`${API_BASE}/api/v1/restaurantes/${editingRestaurante.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -4738,7 +4736,7 @@ const fetchInsumos = async () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:8000/api/v1/restaurantes/${deleteRestauranteConfirm.restauranteId}`, {
+      const response = await fetch(`${API_BASE}/api/v1/restaurantes/${deleteRestauranteConfirm.restauranteId}`, {
         method: 'DELETE',
       });
 
@@ -5555,7 +5553,7 @@ const Receitas = React.memo(() => {
       
       // Tentar usar endpoint de delete se existir
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/receitas/${receita.id}`, {
+        const response = await fetch(`${API_BASE}/api/v1/receitas/${receita.id}`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
@@ -6021,7 +6019,7 @@ Receitas.displayName = 'Receitas';
     const carregarFornecedores = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('http://localhost:8000/api/v1/fornecedores/');
+        const response = await fetch(`${API_BASE}/api/v1/fornecedores/`);
         const data = await response.json();
         setFornecedores(data.fornecedores || []);
       } catch (error) {
@@ -6033,7 +6031,7 @@ Receitas.displayName = 'Receitas';
 
     const carregarFornecedorDetalhado = async (fornecedorId: number) => {
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/fornecedores/${fornecedorId}`);
+        const response = await fetch(`${API_BASE}/api/v1/fornecedores/${fornecedorId}`);
         const fornecedor = await response.json();
         setFornecedorSelecionado(fornecedor);
       } catch (error) {
@@ -6096,7 +6094,7 @@ Receitas.displayName = 'Receitas';
       
       try {
         setIsLoading(true);
-        const response = await fetch(`http://localhost:8000/api/v1/fornecedores/${fornecedorParaExcluir.id}`, {
+        const response = await fetch(`${API_BASE}/api/v1/fornecedores/${fornecedorParaExcluir.id}`, {
           method: 'DELETE'
         });
 
@@ -6181,7 +6179,7 @@ Receitas.displayName = 'Receitas';
         console.log('📤 Atualizando insumo:', dadosParaAtualizar);
 
         const response = await fetch(
-          `http://localhost:8000/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/${editandoInsumoFornecedor.id}`,
+          `${API_BASE}/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/${editandoInsumoFornecedor.id}`,
           {
             method: 'PUT',
             headers: {
@@ -6292,7 +6290,7 @@ const cancelarExclusao = () => {
 
     const adicionarFornecedor = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/fornecedores/`, { // <- Note: removido ${fornecedorId} e adicionado {
+        const response = await fetch(`${API_BASE}/api/v1/fornecedores/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -6402,7 +6400,7 @@ const cancelarExclusao = () => {
 
         console.log('🎯 Dados do insumo do fornecedor:', insumoData);
 
-        const response = await fetch(`http://localhost:8000/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/`, {
+        const response = await fetch(`${API_BASE}/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -6541,9 +6539,9 @@ const cancelarExclusao = () => {
         // *** LOG PARA DEBUG ***
         console.log('📤 Dados sendo enviados:', dadosParaEnviar);
         console.log('📤 CPF/CNPJ limpo:', dadosParaEnviar.cpf_cnpj);
-        console.log('📤 URL:', 'http://localhost:8000/api/v1/fornecedores/');
+        console.log('📤 URL:', `${API_BASE}/api/v1/fornecedores/`);
         
-        const response = await fetch('http://localhost:8000/api/v1/fornecedores/', {
+        const response = await fetch(`${API_BASE}/api/v1/fornecedores/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dadosParaEnviar),
@@ -6599,9 +6597,9 @@ const cancelarExclusao = () => {
         console.log('🔄 Dados originais:', editandoFornecedor);
         console.log('🔄 Dados do formulário:', novoFornecedor);
         console.log('🔄 Dados sendo enviados (SEM CNPJ):', dadosParaAtualizar);
-        console.log('🔄 URL:', `http://localhost:8000/api/v1/fornecedores/${editandoFornecedor.id}`);
+        console.log('🔄 URL:', `${API_BASE}/api/v1/fornecedores/${editandoFornecedor.id}`);
         
-        const response = await fetch(`http://localhost:8000/api/v1/fornecedores/${editandoFornecedor.id}`, {
+        const response = await fetch(`${API_BASE}/api/v1/fornecedores/${editandoFornecedor.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dadosParaAtualizar),

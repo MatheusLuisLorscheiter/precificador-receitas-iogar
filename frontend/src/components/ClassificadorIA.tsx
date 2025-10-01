@@ -23,6 +23,9 @@ import {
 // Importar componente do popup de classificação
 import PopupClassificacaoIA from './PopupClassificacaoIA.tsx';
 
+// Importar configuração centralizada da API
+import { API_BASE_URL } from '../config';
+
 // Importar funções de popup do sistema
 declare global {
   function showSuccessPopup(title: string, message: string): void;
@@ -83,7 +86,7 @@ const InsumosSemClassificacao: React.FC = () => {
     setCarregandoInsumos(true);
     try {
       // Usar URL absoluta temporariamente para diagnosticar problema de proxy
-      const response = await fetch(`http://localhost:8000/api/v1/insumos/sem-classificacao?skip=0&limit=50`);
+      const response = await fetch(`${API_BASE_URL}/api/v1/insumos/sem-classificacao?skip=0&limit=50`);
       if (response.ok) {
         const insumos = await response.json();
         console.log('✅ Insumos sem classificacao carregados:', insumos.length);
