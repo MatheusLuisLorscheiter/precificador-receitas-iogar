@@ -19,7 +19,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { 
   Search, Filter, MoreVertical, Edit3, Copy, Trash2, Eye, 
   ChefHat, TrendingUp, DollarSign, Clock, Users, 
-  ChevronLeft, ChevronRight,  Grid3x3 as Grid3X3  , List, SortAsc, SortDesc,
+  ChevronLeft, ChevronRight,  Grid  , List, SortAsc, SortDesc,
   Plus, Download, Upload, Utensils, Package
 } from 'lucide-react';
 
@@ -612,7 +612,7 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
                 onClick={() => setViewMode('grid')}
                 className={`p-2 rounded ${viewMode === 'grid' ? 'bg-green-100 text-green-600' : 'text-gray-400 hover:text-gray-600'}`}
               >
-                <Grid3X3 className="w-4 h-4" />
+                <Grid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
