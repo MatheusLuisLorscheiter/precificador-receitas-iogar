@@ -149,21 +149,30 @@ async def options_handler(request: Request, path: str):
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
+# ============================================================================
+# CONFIGURAÇÃO DE CORS - Desenvolvimento e Produção
+# ============================================================================
 # Configurar CORS para produção
 if os.getenv("ENVIRONMENT") == "production":
     allowed_origins = [
         "https://food-cost-frontend.onrender.com",  # Frontend no Render
-        os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else []
     ]
-    # Flatten the list
-    allowed_origins = [origin for sublist in ([item] if isinstance(item, str) else item for item in allowed_origins) for origin in sublist if origin]
+    # Adicionar origens extras se configuradas
+    cors_extra = os.getenv("CORS_ORIGINS", "")
+    if cors_extra:
+        allowed_origins.extend([origin.strip() for origin in cors_extra.split(",") if origin.strip()])
 else:
     # Desenvolvimento local
     allowed_origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000", 
         "http://0.0.0.0:3000",
+        "http://localhost:5173",  # Vite dev server
+        "http://127.0.0.1:5173",
     ]
+
+# Log das origens permitidas para debug
+print(f"🔒 CORS - Origens permitidas: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,

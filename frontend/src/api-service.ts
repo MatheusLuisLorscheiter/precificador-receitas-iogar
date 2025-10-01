@@ -12,32 +12,38 @@ Autor: Will - Empresa: IOGAR
 // CONFIGURAÇÃO BASE DA API COM DETECÇÃO AUTOMÁTICA DE PORTA
 // ============================================================================
 const API_CONFIG = {
- baseURL: 'https://food-cost-backend.onrender.com',
-   /*RODA LOCALMENTE
-  baseURL: 'http://localhost:8000', // Será ajustado automaticamente */
+  // Detecta automaticamente se está em produção ou desenvolvimento
+  baseURL: import.meta.env.VITE_API_URL || 
+           (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+             ? 'http://localhost:8000'
+             : 'https://food-cost-backend.onrender.com'),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   }
 };
 
-// Interface para resposta padrão da API
-interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
 // Classe principal para gerenciar chamadas à API
 class ApiService {
   private baseURL: string;
+  private isProduction: boolean;
 
   constructor() {
+    // Detectar ambiente de execução
+    this.isProduction = window.location.hostname !== 'localhost' && 
+                        window.location.hostname !== '127.0.0.1';
+    
     this.baseURL = API_CONFIG.baseURL;
-    this.detectarPortaDisponivel(); // Detecta automaticamente a porta
+    
+    // Só detecta porta se estiver em desenvolvimento local
+    if (!this.isProduction) {
+      this.detectarPortaDisponivel();
+    } else {
+      console.log('Modo PRODUCAO - Backend: ' + this.baseURL);
+    }
   }
 
-// Método para detectar porta disponível
+  // Método para detectar porta disponível (APENAS EM DESENVOLVIMENTO)
   private async detectarPortaDisponivel(): Promise<void> {
     const portas = [8000, 8001];
 

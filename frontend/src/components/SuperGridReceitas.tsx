@@ -19,7 +19,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { 
   Search, Filter, MoreVertical, Edit3, Copy, Trash2, Eye, 
   ChefHat, TrendingUp, DollarSign, Clock, Users, 
-  ChevronLeft, ChevronRight, Grid3x3, List, SortAsc, SortDesc,
+  ChevronLeft, ChevronRight,  Grid3x3 as Grid3X3  , List, SortAsc, SortDesc,
   Plus, Download, Upload, Utensils, Package
 } from 'lucide-react';
 
