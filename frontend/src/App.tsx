@@ -1634,6 +1634,8 @@ const FoodCostSystem: React.FC = () => {
   );
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [receitas, setReceitas] = useState<Receita[]>([]);
+  // Estado para controle da sidebar responsiva
+  const [sidebarAberta, setSidebarAberta] = useState(false);
   const [restaurantes, setRestaurantes] = useState<RestauranteGrid[]>([]);
   const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
   const [tiposEstabelecimento, setTiposEstabelecimento] = useState<string[]>([]);
@@ -2286,7 +2288,7 @@ const fetchInsumos = async () => {
   // ============================================================================
   // COMPONENTE SIDEBAR - NAVEGAÇÃO PRINCIPAL
   // ============================================================================
-  const Sidebar = () => {
+  const Sidebar = ({ isAberta, onFechar }: { isAberta: boolean; onFechar: () => void }) => {
     // Itens do menu de navegação
     const menuItems = [
       { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -2301,7 +2303,11 @@ const fetchInsumos = async () => {
     ];
 
     return (
-      <div className="w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen">
+      <div className={`
+        w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen z-40 transition-transform duration-300
+        ${isAberta ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0
+      `}>
         <div className="p-6 relative">
           {/* Logo IOGAR com design do robô */}
           <div className="flex flex-col items-center gap-2 mb-8">
@@ -2348,7 +2354,13 @@ const fetchInsumos = async () => {
             return (
               <button
                 key={item.id}
-                onClick={() => !isDisabled && setActiveTab(item.id)}
+                onClick={() => {
+                  if (!isDisabled) {
+                    setActiveTab(item.id);
+                    localStorage.setItem('activeTab', item.id);
+                    onFechar(); // Fecha sidebar em mobile após clicar
+                  }
+                }}
                 disabled={isDisabled}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-all ${
                   isActive 
@@ -7455,12 +7467,40 @@ const cancelarExclusao = () => {
   // ============================================================================
 
   return (
-    <div className="min-h-screen bg-gray-50 flex ml-64">
-      {/* Sidebar de navegação */}
-      <Sidebar key={activeTab} />
-      
-      {/* Conteúdo principal */}
-      <main className="flex-1 p-8 overflow-auto">
+    <>
+      {/* Botão Hamburger Menu - Visível apenas em mobile/tablet */}
+      <button
+        onClick={() => setSidebarAberta(!sidebarAberta)}
+        className="lg:hidden fixed top-4 left-4 z-50 bg-gradient-to-r from-green-500 to-pink-500 text-white p-3 rounded-lg shadow-lg"
+        aria-label="Menu"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {sidebarAberta ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Overlay escuro - Fecha sidebar ao clicar fora (mobile) */}
+      {sidebarAberta && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setSidebarAberta(false)}
+        />
+      )}
+
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* Sidebar de navegação - Agora responsiva */}
+        <Sidebar 
+          key={activeTab} 
+          isAberta={sidebarAberta} 
+          onFechar={() => setSidebarAberta(false)} 
+        />
+        
+        {/* Conteúdo principal - Ajustado para responsividade */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 lg:ml-64 overflow-auto">
         {/* Renderização condicional baseada na aba ativa */}
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'insumos' && <Insumos />}
@@ -7653,8 +7693,9 @@ const cancelarExclusao = () => {
         showSuccessPopup={showSuccessPopup}
         showErrorPopup={showErrorPopup}
       />
-      
+          
     </div>
+   </>
     );
   };  // FINAL DO COMPONENTE PRINCIPAL
 
