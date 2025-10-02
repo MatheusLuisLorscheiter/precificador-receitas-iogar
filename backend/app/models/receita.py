@@ -174,6 +174,22 @@ class Receita(Base):
     __tablename__ = "receitas"
 
     # ===================================================================================================
+    # Campos de controle (antes herdados de BaseModel)
+    # ===================================================================================================
+    
+    id = Column(Integer, primary_key=True, index=True, comment="ID único da receita")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), 
+                       comment="Data de criação automática")
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), 
+                       comment="Data da última atualização automática")
+    
+    # Campos básicos da receita
+    grupo = Column(String(100), nullable=False, comment="Grupo/categoria da receita")
+    subgrupo = Column(String(100), nullable=False, comment="Subcategoria da receita")
+    codigo = Column(String(50), nullable=False, unique=True, comment="Código único da receita")
+    nome = Column(String(255), nullable=False, comment="Nome da receita")
+
+    # ===================================================================================================
     # Relacionamento obrigatório com restaurante
     # ===================================================================================================
     
