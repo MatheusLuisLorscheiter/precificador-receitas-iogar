@@ -150,13 +150,15 @@ class Restaurante(Base):
 # MODELO RECEITA - Produtos finais que são vendidos
 # ===================================================================================================
 
-class Receita(BaseModel):  # ✅ Herda de BaseModel (tem grupo, subgrupo, codigo, etc.)
+class Receita(Base):  
     """
     Modelo para receitas que pertencem a um restaurante.
     
-    Herda campos do BaseModel:
-    - id, created_at, updated_at (automáticos)
-    - grupo, subgrupo, codigo, nome, quantidade, fator, unidade, preco_compra
+    Campos próprios:
+    - id, created_at, updated_at (definidos aqui)
+    - grupo, subgrupo, codigo, nome, descricao
+    - rendimento_porcoes, tempo_preparo_minutos
+    - restaurante_id, preco_venda, cmv
     
     ATENÇÃO: O campo 'fator' herdado do BaseModel agora deve ser Float para aceitar decimais.
     
