@@ -1038,28 +1038,29 @@ const FormularioRestauranteIsolado = React.memo(({
   };
 
   const handleSubmit = () => {
-    console.log('🔧 handleSubmit - editingReceita:', editingReceita);
-    console.log('🔧 handleSubmit - Modo:', editingReceita ? 'EDIÇÃO' : 'CRIAÇÃO');
-    
+    // Validar campos obrigatórios
+    if (!formData.nome.trim()) {
+      console.error('Nome do restaurante é obrigatório');
+      return;
+    }
+  
     // Mapear campos para o formato do backend
     const dadosBackend = {
-      // Se está editando, incluir o ID
-      ...(editingReceita && { id: editingReceita.id }),
-      codigo: formData.codigo || '',
-      nome: formData.nome,
-      descricao: formData.descricao || '',
-      grupo: formData.categoria || 'Lanches',
-      subgrupo: formData.categoria || 'Lanches',
-      rendimento_porcoes: parseInt(formData.quantidade_porcao) || 1,
-      tempo_preparo_minutos: 15,
-      ativo: true,
-      restaurante_id: selectedRestaurante.id,
-      insumos: receitaInsumos
+      nome: formData.nome.trim(),
+      cnpj: formData.cnpj || '',
+      tipo: formData.tipo,
+      tem_delivery: formData.tem_delivery,
+      endereco: formData.endereco || '',
+      bairro: formData.bairro || '',
+      cidade: formData.cidade || '',
+      estado: formData.estado || '',
+      telefone: formData.telefone || '',
+      ativo: formData.ativo
     };
-    
-    console.log('🔧 Dados enviados:', dadosBackend);
-    onSave(dadosBackend);
-  };
+  
+  console.log('Dados do restaurante enviados:', dadosBackend);
+  onSave(dadosBackend);
+};
 
   if (!isVisible) return null;
 
