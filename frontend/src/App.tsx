@@ -3665,68 +3665,41 @@ const fetchInsumos = async () => {
                               onChange={(e) => {
                                 const valorSelecionado = e.target.value;
                                 
-                                // ============================================================================
-                                // CONVERSÃO INTELIGENTE: Suporta IDs numéricos E strings de fornecedor
-                                // ============================================================================
                                 let insumoId;
                                 
-                                // Se começa com "fornecedor_", extrair o ID original numérico
                                 if (typeof valorSelecionado === 'string' && valorSelecionado.startsWith('fornecedor_')) {
-                                  // Buscar o insumo do fornecedor para pegar o id_original
                                   const insumoFornecedor = insumos.find(i => i.id === valorSelecionado);
                                   insumoId = insumoFornecedor?.id_original || parseInt(valorSelecionado.replace('fornecedor_', ''));
-                                  
-                                  console.log('📦 Insumo de FORNECEDOR:', {
-                                    id_completo: valorSelecionado,
-                                    id_original: insumoId,
-                                    dados: insumoFornecedor
-                                  });
                                 } else {
-                                  // Insumo do sistema - conversão normal
                                   insumoId = parseInt(valorSelecionado);
-                                  
-                                  console.log('📦 Insumo do SISTEMA:', {
-                                    id: insumoId
-                                  });
                                 }
                                 
                                 updateReceitaInsumo(index, 'insumo_id', insumoId);
                               }}
                               className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                              disabled={!insumos || insumos.length === 0}
                             >
-                              <option value={0}>Selecione um insumo...</option>
-                              {(insumos || [])
-                                .filter(insumo => {
-                                  // ============================================================================
-                                  // FILTRO: Mostrar apenas insumos do SISTEMA (sem fornecedor)
-                                  // ============================================================================
-                                  // Insumos de fornecedor NÃO devem aparecer aqui, pois já estão
-                                  // duplicados na tabela principal de insumos após serem importados
-                                  const ehInsumoSistema = typeof insumo.id === 'number' || 
-                                                          (typeof insumo.id === 'string' && !insumo.id.startsWith('fornecedor_'));
-                                  
-                                  // Debug dos primeiros 3 insumos
-                                  if (insumo.id <= 3 || insumo.id === 'fornecedor_1') {
-                                    console.log(`🔍 Filtro insumo ${insumo.id}:`, {
-                                      nome: insumo.nome,
-                                      unidade: insumo.unidade,
-                                      tipo_id: typeof insumo.id,
-                                      eh_sistema: ehInsumoSistema,
-                                      mostrar: ehInsumoSistema
-                                    });
+                              {!insumos || insumos.length === 0 ? (
+                                <option value={0}>Carregando insumos...</option>
+                              ) : (
+                                <>
+                                  <option value={0}>Selecione um insumo...</option>
+                                  {insumos
+                                    .filter(insumo => {
+                                      const ehInsumoSistema = typeof insumo.id === 'number' || 
+                                                            (typeof insumo.id === 'string' && !insumo.id.startsWith('fornecedor_'));
+                                      return ehInsumoSistema;
+                                    })
+                                    .map(insumo => (
+                                      <option key={insumo.id} value={insumo.id}>
+                                        {insumo.codigo ? `${insumo.codigo} - ` : ''}{insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                                      </option>
+                                    ))
                                   }
-                                  
-                                  return ehInsumoSistema;
-                                })
-                                .map((insumo) => (
-                                  <option key={insumo.id} value={insumo.id}>
-                                    {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
-                                  </option>
-                                ))
-                              }
+                                </>
+                              )}
                             </select>
                           </div>
-
                           <div className="w-32">
                             <input
                               type="number"
