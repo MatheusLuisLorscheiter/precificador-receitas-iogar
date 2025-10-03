@@ -7,7 +7,7 @@
 # Autor: Will - Empresa: IOGAR
 # ============================================================================
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, DECIMAL, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, DECIMAL, ForeignKey, Numeric
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
@@ -90,10 +90,11 @@ class FornecedorInsumo(Base):
     )
 
     quantidade = Column(
-        Integer,
+       Numeric(precision=10,
+        scale=3),
         nullable=False,
-        default=1,
-        comment="Quantidade de unidades vendidas pelo fornecedor"
+        default=1.0,
+        comment="Quantidade de unidades vendidas pelo fornecedor (até 3 casas decimais)"
     )
     
     fator = Column(

@@ -24,6 +24,7 @@ interface ReceitaDetalhada {
   descricao?: string;
   categoria: string;
   porcoes: number;
+  rendimento_porcoes?: number;
   tempo_preparo: number;
   cmv_real: number;
   preco_venda_sugerido: number;
@@ -259,9 +260,9 @@ const calcularCustoPorPorcao = () => {
             <div className="bg-white rounded-lg p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-gray-500" />
-                <span className="text-xs text-gray-500 font-medium">PORÇÕES</span>
+                <span className="text-xs text-gray-500 font-medium">RENDIMENTO</span>
               </div>
-              <p className="font-bold text-gray-900">{receita.porcoes} porções</p>
+              <p className="font-bold text-gray-900">{receita.porcoes} {receita.porcoes === 1 ? 'unidade' : 'unidades'}</p>
             </div>
             
             <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -335,14 +336,14 @@ const calcularCustoPorPorcao = () => {
             </p>
           </div>
 
-          {/* Lucro por Porção */}
+          {/* Lucro por Unidade */}
           <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
             <div className="flex items-center gap-3 mb-3">
               <div className="bg-blue-100 p-2 rounded-lg">
                 <TrendingUp className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h4 className="font-semibold text-blue-800">Lucro por Porção</h4>
+                <h4 className="font-semibold text-blue-800">Lucro por Rendimento</h4>
                 <p className="text-xs text-blue-600">Valor líquido</p>
               </div>
             </div>
@@ -430,7 +431,7 @@ const calcularCustoPorPorcao = () => {
                     </span>
                   </div>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm text-gray-600">Custo por porção</span>
+                    <span className="text-sm text-gray-600">Custo por rendimento</span>
                     <span className="text-sm font-medium text-gray-900">
                       {formatarPreco(receita.cmv_real)}
                     </span>
@@ -550,7 +551,7 @@ const calcularCustoPorPorcao = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-red-600">{formatarPreco(receita.cmv_real)}</p>
-              <p className="text-sm text-gray-600">Custo por Porção</p>
+              <p className="text-sm text-gray-600">Custo por Rendimento</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">{formatarPreco(cmv25)}</p>
@@ -558,7 +559,7 @@ const calcularCustoPorPorcao = () => {
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-blue-600">{formatarPreco(cmv25 - receita.cmv_real)}</p>
-              <p className="text-sm text-gray-600">Lucro por Porção</p>
+              <p className="text-sm text-gray-600">Lucro por Rendimento</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-purple-600">{receita.margem_percentual.toFixed(1)}%</p>
@@ -593,7 +594,7 @@ const calcularCustoPorPorcao = () => {
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-purple-700">Lucro por Porção:</span>
+                <span className="text-sm font-semibold text-purple-700">Lucro por rendimento:</span>
                 <span className="text-lg font-bold text-purple-900">
                   {formatarPreco(receita.sugestao_valor - receita.cmv_real)}
                 </span>
@@ -663,7 +664,7 @@ const calcularCustoPorPorcao = () => {
                 {receita.cmv_real < 5 ? 'Alta' : receita.cmv_real < 10 ? 'Média' : 'Baixa'}
               </p>
               <p className="text-xs text-green-600 mt-1">
-                Custo por porção: {formatarPreco(receita.cmv_real)}
+                Custo por rendimento: {formatarPreco(receita.cmv_real)}
               </p>
             </div>
 
@@ -734,9 +735,9 @@ const calcularCustoPorPorcao = () => {
             {/* Recomendação baseada no custo */}
             {receita.cmv_real > 15 && (
               <div className="bg-white rounded-lg p-4 border-l-4 border-yellow-500">
-                <h5 className="font-medium text-yellow-800 mb-2">💡 Custo Alto por Porção</h5>
+                <h5 className="font-medium text-yellow-800 mb-2">💡 Custo Alto por Rendimento</h5>
                 <p className="text-sm text-yellow-700">
-                  O custo de {formatarPreco(receita.cmv_real)} por porção está elevado. 
+                  O custo de {formatarPreco(receita.cmv_real)} por rendimento está elevado. 
                   Analise fornecedores alternativos ou ajuste as quantidades dos insumos mais caros.
                 </p>
               </div>
@@ -884,7 +885,7 @@ const calcularCustoPorPorcao = () => {
           {/* Métricas Rápidas no Header */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
             <div className="bg-white bg-opacity-20 rounded-lg p-3 text-center">
-              <p className="text-sm text-white text-opacity-80">Custo por Porção</p>
+              <p className="text-sm text-white text-opacity-80">Custo por Rendimento</p>
               <p className="text-lg font-bold">{formatarPreco(receita.cmv_real)}</p>
             </div>
             <div className="bg-white bg-opacity-20 rounded-lg p-3 text-center">
@@ -896,7 +897,7 @@ const calcularCustoPorPorcao = () => {
               <p className="text-lg font-bold">{receita.margem_percentual.toFixed(1)}%</p>
             </div>
             <div className="bg-white bg-opacity-20 rounded-lg p-3 text-center">
-              <p className="text-sm text-white text-opacity-80">Lucro/Porção</p>
+              <p className="text-sm text-white text-opacity-80">Lucro/Rendimento</p>
               <p className="text-lg font-bold">{formatarPreco(receita.preco_venda_sugerido - receita.cmv_real)}</p>
             </div>
           </div>
@@ -947,18 +948,18 @@ const calcularCustoPorPorcao = () => {
 
         {receita.porcoes > 1 && (
           <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mt-4">
-            <h4 className="font-semibold text-blue-900 mb-3">Valores por Porção</h4>
+            <h4 className="font-semibold text-blue-900 mb-3">Valores por Rendimento</h4>
             <div className="grid grid-cols-2 gap-4">
               
               <div>
-                <p className="text-sm text-blue-600 mb-1">Custo por Porção</p>
+                <p className="text-sm text-blue-600 mb-1">Custo do Rendimento por unidade</p>
                 <p className="text-lg font-bold text-blue-900">
                   {formatarPreco(calcularCustoPorPorcao())}
                 </p>
               </div>
 
               <div>
-                <p className="text-sm text-blue-600 mb-1">CMV 25% por Porção</p>
+                <p className="text-sm text-blue-600 mb-1">CMV 25% por Rendimento</p>
                 <p className="text-lg font-bold text-blue-900">
                   {formatarPreco(calcularCMVPorPorcao(receita.cmv_25_porcento || 0))}
                 </p>

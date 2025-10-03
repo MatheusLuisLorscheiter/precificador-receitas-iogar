@@ -273,10 +273,31 @@ class ReceitaBase(BaseModel):
     descricao: Optional[str] = Field(None, description="Descrição da receita")
     modo_preparo: Optional[str] = Field(None, description="Modo de preparo")
     tempo_preparo_minutos: Optional[int] = Field(None, ge=0, description="Tempo de preparo em minutos")
-    rendimento_porcoes: Optional[int] = Field(None, ge=1, description="Quantidade de porções")
+    rendimento_porcoes: Optional[float] = Field(None, gt=0, description="Quantidade de porções (até 3 casas decimais)")
     ativo: bool = Field(True, description="Se a receita está ativa")
     processada: bool = Field(False, description="Indica se a receita é processada")
     rendimento: Optional[float] = Field(None, ge=0, description="Rendimento da receita processada (3 casas decimais)")
+
+    @field_validator('rendimento_porcoes')
+    @classmethod
+    def validar_rendimento_porcoes(cls, v):
+        """
+        Valida o rendimento de porções com até 3 casas decimais.
+        
+        Args:
+            v (float): Quantidade de porções
+            
+        Returns:
+            float: Quantidade arredondada para 3 casas decimais
+            
+        Raises:
+            ValueError: Se a quantidade for menor ou igual a zero
+        """
+        if v is not None:
+            if v <= 0:
+                raise ValueError('Rendimento de porções deve ser maior que zero')
+            return round(v, 3)
+        return v
 
     @field_validator('fator')
     @classmethod
