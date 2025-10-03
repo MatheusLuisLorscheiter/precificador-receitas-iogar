@@ -8,7 +8,7 @@
 
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ===================================================================================================
 # SCHEMA SIMPLIFICADO PARA INSUMO (para evitar imports circulares)
@@ -275,6 +275,8 @@ class ReceitaBase(BaseModel):
     tempo_preparo_minutos: Optional[int] = Field(None, ge=0, description="Tempo de preparo em minutos")
     rendimento_porcoes: Optional[int] = Field(None, ge=1, description="Quantidade de porções")
     ativo: bool = Field(True, description="Se a receita está ativa")
+    processada: bool = Field(False, description="Indica se a receita é processada")
+    rendimento: Optional[float] = Field(None, ge=0, description="Rendimento da receita processada (3 casas decimais)")
 
     @field_validator('fator')
     @classmethod
@@ -302,6 +304,8 @@ class ReceitaBase(BaseModel):
         return v.upper().strip()
 
 class ReceitaCreate(ReceitaBase):
+    from pydantic import model_validator
+
     """Schema para criação de receita"""
     class Config:
         json_schema_extra = {
@@ -325,6 +329,15 @@ class ReceitaCreate(ReceitaBase):
                 "ativo": True
             }
         }
+        @model_validator(mode='after')
+        def validate_processada_rendimento(self):
+            """
+            Valida que se a receita é processada, o rendimento deve ser fornecido.
+            """
+            if self.processada and (self.rendimento is None or self.rendimento <= 0):
+                raise ValueError("Rendimento é obrigatório e deve ser maior que zero quando a receita é processada")
+            return self
+
 
 class ReceitaUpdate(BaseModel):
     """Schema para atualização de receita"""
@@ -343,6 +356,8 @@ class ReceitaUpdate(BaseModel):
     tempo_preparo_minutos: Optional[int] = None
     rendimento_porcoes: Optional[int] = None
     ativo: Optional[bool] = None
+    processada: Optional[bool] = None
+    rendimento: Optional[float] = None
 
 # ===================================================================================================
 # SCHEMAS para respostas - CORRIGIDOS COM PREÇOS SUGERIDOS CLAROS
@@ -360,6 +375,8 @@ class ReceitaResponse(ReceitaBase):
     cmv: Optional[int] = Field(None, description="CMV em centavos")
     cmv_real: Optional[float] = Field(None, description="Custo de produção em reais")
     margem_real: Optional[float] = Field(None, description="Margem em decimal")
+    processada: Optional[bool] = Field(False, description="Indica se a receita é processada")
+    rendimento: Optional[float] = Field(None, description="Rendimento da receita processada")
 
     # Relacionamentos (simplificados para evitar erros de referência circular)
     restaurante: Optional[dict] = Field(None, description="Dados do restaurante")

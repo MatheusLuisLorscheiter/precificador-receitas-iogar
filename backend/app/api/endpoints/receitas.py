@@ -58,14 +58,14 @@ def list_receitas(
         custo_real = calcular_custo_receita(db, receita.id)
         
         # ATUALIZAR o campo preco_compra da receita se necessário
-        if custo_real > 0 and receita.preco_compra != int(custo_real * 100):
-            receita.preco_compra = int(custo_real * 100)  # Salvar em centavos
+        if custo_real > 0 and receita.cmv != int(custo_real * 100):
+            receita.cmv = int(custo_real * 100)  # Salvar em centavos
             db.commit()
         
         # Usar custo calculado ou campo salvo
-        preco_compra = custo_real if custo_real > 0 else (receita.preco_compra / 100 if receita.preco_compra else 0)
+        preco_compra = custo_real if custo_real > 0 else (receita.cmv / 100 if receita.cmv else 0)
         
-        print(f"🔍 Receita {receita.nome}: custo_calculado={custo_real}, cmv_salvo={receita.preco_compra}")
+        print(f"🔍 Receita {receita.nome}: custo_calculado={custo_real}, cmv_salvo={receita.cmv}")
         
         # Calcular CMVs com diferentes margens
         cmv_20 = preco_compra / 0.20 if preco_compra > 0 else 0  # 20% de CMV
@@ -247,6 +247,11 @@ def create_receita_endpoint(
                 receita_existente.rendimento_porcoes = receita_data['rendimento']
             
             print(f"⏱️ DEBUG - tempo_preparo recebido: {receita_data.get('tempo_preparo')}")
+            # Atualizar campos de receita processada
+            if 'processada' in receita_data:
+                receita_existente.processada = receita_data['processada']
+            if 'rendimento' in receita_data and receita_data.get('processada'):
+                receita_existente.rendimento = receita_data['rendimento']
             print(f"⏱️ DEBUG - tempo_preparo_minutos recebido: {receita_data.get('tempo_preparo_minutos')}")
 
             if receita_data.get('tempo_preparo_minutos'):
@@ -268,6 +273,11 @@ def create_receita_endpoint(
             if 'ativo' in receita_data:
                 receita_existente.ativo = bool(receita_data['ativo'])
             
+            # Atualizar campos de receita processada
+            if 'processada' in receita_data:
+                receita_existente.processada = bool(receita_data['processada'])
+            if 'rendimento' in receita_data:
+                receita_existente.rendimento = receita_data['rendimento']
             # Salvar alterações
             db.commit()
             db.refresh(receita_existente)
@@ -351,6 +361,8 @@ def create_receita_endpoint(
                 'fator': receita_data.get('fator', 1.0),
                 'preco_compra': 0,  # Será calculado automaticamente
                 'sugestao_valor': int(float(receita_data.get('sugestao_valor', 0)) * 100) if receita_data.get('sugestao_valor') else None,
+                'processada': receita_data.get('processada', False),
+                'rendimento': receita_data.get('rendimento'),
             }
             
             # Adicionar campos opcionais apenas se existirem no modelo

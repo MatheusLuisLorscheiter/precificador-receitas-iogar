@@ -6,9 +6,9 @@
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
-from sqlalchemy import Column, Integer, Float, ForeignKey, String, Text, Boolean, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, Float, Numeric, ForeignKey, String, Text, Boolean, DateTime
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.models.base import Base, BaseModel
 
 # ===================================================================================================
@@ -226,6 +226,8 @@ class Receita(Base):
     tempo_preparo_minutos = Column(Integer, nullable=True, comment="Tempo de preparo em minutos")
     rendimento_porcoes = Column(Integer, nullable=True, comment="Rendimento em porções")
     ativo = Column(Boolean, default=True, comment="Se a receita está ativa no cardápio")
+    processada = Column(Boolean, nullable=False, default=False, comment="Indica se a receita é processada")
+    rendimento = Column(Numeric(precision=10, scale=3), nullable=True, comment="Rendimento da receita processada (3 casas decimais)")
 
     # ===================================================================================================
     # Relacionamentos SQLAlchemy
@@ -359,8 +361,7 @@ class Receita(Base):
 
         # Atualizar CMV da receita (em centavos)
         self.cmv = int(total_cmv * 100)
-        self.preco_compra = self.cmv  # Para compatibilidade
-        
+
         db_session.commit()
     
     def __repr__(self):
