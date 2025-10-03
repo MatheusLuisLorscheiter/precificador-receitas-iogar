@@ -80,7 +80,8 @@ def upgrade() -> None:
     # Drop constraint resiliente
     op.execute("ALTER TABLE fornecedor_insumos DROP CONSTRAINT IF EXISTS uk_fornecedor_insumos_codigo")
     
-    op.create_index(op.f('ix_fornecedor_insumos_id'), 'fornecedor_insumos', ['id'], unique=False)
+    # Criar índices de forma resiliente
+    op.execute("CREATE INDEX IF NOT EXISTS ix_fornecedor_insumos_id ON fornecedor_insumos (id)")
     
     # Alter columns - fornecedores
     op.alter_column('fornecedores', 'nome_razao_social',
@@ -107,8 +108,9 @@ def upgrade() -> None:
     # Drop constraint resiliente
     op.execute("ALTER TABLE fornecedores DROP CONSTRAINT IF EXISTS uk_fornecedores_cpf_cnpj")
     
-    op.create_index(op.f('ix_fornecedores_cpf_cnpj'), 'fornecedores', ['cpf_cnpj'], unique=True)
-    op.create_index(op.f('ix_fornecedores_id'), 'fornecedores', ['id'], unique=False)
+    # Criar índices de forma resiliente
+    op.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_fornecedores_cpf_cnpj ON fornecedores (cpf_cnpj)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_fornecedores_id ON fornecedores (id)")
     
     # Add column se não existir
     op.execute("""
@@ -136,7 +138,7 @@ def upgrade() -> None:
                comment='ID da taxonomia hierárquica master (sistema de padronização)',
                existing_nullable=True)
     
-    op.create_index(op.f('ix_insumos_taxonomia_id'), 'insumos', ['taxonomia_id'], unique=False)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_insumos_taxonomia_id ON insumos (taxonomia_id)")
     
     # Drop columns se existirem
     op.execute("ALTER TABLE insumos DROP COLUMN IF EXISTS fornecedor_id")
