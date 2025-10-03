@@ -678,14 +678,18 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
                   </select>
                 </div>
 
-                {/* Quantidade */}
+                {/* Quantidade -------------- Aceita 3 casas decimais */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-900">Quantidade</label>
+                  <label className="text-sm font-medium text-gray-900">Quantidade</label> 
                   <input
-                    type="number"
-                    min="0"
-                    value={formData.quantidade}
-                    onChange={(e) => updateField('quantidade', parseInt(e.target.value) || 0)}
+                  type="number"
+                  step="0.001"
+                  min="0.001"
+                  value={formData.quantidade}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    updateField('quantidade', valor === '' ? '' : parseFloat(valor));
+                  }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
                     placeholder="0"
                   />
@@ -2661,7 +2665,7 @@ const fetchInsumos = async () => {
         grupo: formData.categoria?.trim() || 'Outros',
         subgrupo: formData.categoria?.trim() || 'Outros',
         unidade: formData.unidade, // Garantir que seja exatamente uma das válidas
-        quantidade: Math.max(1, parseInt(formData.quantidade) || 1), // Mínimo 1
+        quantidade: Math.max(0.001, parseFloat(formData.quantidade) || 1), // Mínimo 1
         fator: Math.max(0.0001, parseFloat(formData.fator) || 1), // Mínimo 0.0001
         preco_compra_real: Math.max(0, parseFloat(formData.preco_compra) || 0)
       };
@@ -2721,12 +2725,14 @@ const fetchInsumos = async () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade *</label>
               <input
                 type="number"
-                min="1"
+                step="0.001"
+                min="0.001"
                 value={formData.quantidade}
-                onChange={(e) => handleChange('quantidade', parseInt(e.target.value) || 1)}
+                onChange={(e) => handleChange('quantidade', parseFloat(e.target.value) || 0.001)}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
-                placeholder="Ex: 1"
+                placeholder="Ex: 1.000"
               />
+              <p className="text-xs text-gray-500 mt-1">Use ponto (.) para decimais. Ex: 1.500</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -2855,9 +2861,7 @@ const fetchInsumos = async () => {
           // Checkbox processado (ANTIGO - manter por compatibilidade)
           eh_processado: editingReceita?.eh_processado || false,
           
-          // NOVOS CAMPOS: Receita processada e rendimento
           processada: editingReceita?.processada || false,
-          rendimento: editingReceita?.rendimento || null,
           
           // Restaurante obrigatório (vem da seleção atual)
           restaurante_id: selectedRestaurante?.id || editingReceita?.restaurante_id || null,
@@ -2886,23 +2890,18 @@ const fetchInsumos = async () => {
         });
       }, [editingReceita]);
 
-      // Atualizar formData quando editingReceita mudar
-      // useEffect(() => {
-      //   if (editingReceita) {
-      //     setFormData(prev => ({
-      //       ...prev,
-      //       codigo: editingReceita.codigo || prev.codigo,
-      //       nome: editingReceita.nome || prev.nome,
-      //       fator: parseFloat(editingReceita.fator || prev.fator),
-      //       unidade: editingReceita.unidade || prev.unidade,
-      //       quantidade_porcao: parseInt(editingReceita.porcoes || editingReceita.rendimento_porcoes || editingReceita.quantidade_porcao || prev.quantidade_porcao),
-      //       preco_compra: parseFloat(editingReceita.preco_compra || prev.preco_compra),
-      //       categoria: editingReceita.grupo || editingReceita.categoria || prev.categoria,
-      //       descricao: editingReceita.descricao || prev.descricao,
-      //       porcoes: editingReceita.porcoes || editingReceita.rendimento_porcoes || prev.porcoes,
-      //     }));
-      //   }
-      // }, [editingReceita]);
+            // useEffect para atualizar formData quando editingReceita mudar
+      useEffect(() => {
+        if (editingReceita) {
+          console.log('🔄 Atualizando formData com dados de processada:', {
+            processada: editingReceita.processada
+          });
+          setFormData(prev => ({
+            ...prev,
+            processada: editingReceita.processada || false
+          }));
+        }
+      }, [editingReceita]);
 
       // Se não há restaurante selecionado, mostrar mensagem em vez de quebrar
       if (!selectedRestaurante && !receitaSegura.restaurante_id) {
@@ -2930,12 +2929,9 @@ const fetchInsumos = async () => {
         switch (field) {
           case 'fator':
           case 'preco_compra':
+          case 'quantidade_porcao':
             // Para campos decimais
             numeroValido = parseFloat(value) || 0;
-            break;
-          case 'quantidade_porcao':
-            // Para campos inteiros
-            numeroValido = parseInt(value) || 1;
             break;
           default:
             numeroValido = value;
@@ -3231,7 +3227,7 @@ const fetchInsumos = async () => {
           fator: parseFloat(formData.fator) || 1.0,
           
           // Campos numéricos com valores padrão seguros
-          rendimento_porcoes: parseInt(formData.quantidade_porcao) || parseInt(formData.porcoes) || 1,
+          rendimento_porcoes: parseFloat(formData.quantidade_porcao) || parseFloat(formData.porcoes) || 1,
           tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 30,
           tempo_preparo: parseInt(formData.tempo_preparo) || 30,
           
@@ -3239,7 +3235,6 @@ const fetchInsumos = async () => {
           ativo: true,
           restaurante_id: parseInt(selectedRestaurante.id),
           processada: Boolean(formData.processada),
-          rendimento: formData.processada ? parseFloat(formData.rendimento) || null : null,
           // CAMPO CRÍTICO: incluir unidade_medida dos insumos
           insumos: insumosValidosParam.map(insumo => {
             // Buscar insumo para garantir que temos a unidade
@@ -3354,10 +3349,7 @@ const fetchInsumos = async () => {
                 sugestao_valor: parseFloat(formData.sugestao_valor) || 0,
                 grupo: String(formData.categoria || 'Lanches').trim(),
                 subgrupo: String(formData.categoria || 'Lanches').trim(),
-                rendimento_porcoes: (() => {
-                  const valor = parseInt(formData.quantidade_porcao) || 1;
-                  return valor;
-                })(),
+                rendimento_porcoes: parseFloat(formData.quantidade_porcao) || 1,
                 tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 15,
                 ativo: true,
                 restaurante_id: parseInt(selectedRestaurante.id),
@@ -3506,16 +3498,17 @@ const fetchInsumos = async () => {
                     {/* Quantidade de Porção */}
                     <div className="space-y-2">
                       <label className="flex items-center text-sm font-medium text-gray-900">
-                        <span>Porções</span>
+                        <span>Rendimento</span>
                         <span className="text-red-500 ml-1">*</span>
                       </label>
                       <input
                         type="number"
-                        min="1"
+                        step="0.001"
+                        min="0.001"
                         value={formData.quantidade_porcao || 1}
                         onChange={(e) => {
-                          
-                          const valor = parseInt(e.target.value) || 1;
+                          const valor = e.target.value;
+                          const valorNumerico = valor === '' ? '' : parseFloat(valor);
                           
                           setFormData(prev => {
                             const novoEstado = { ...prev, quantidade_porcao: valor };
@@ -3604,10 +3597,6 @@ const fetchInsumos = async () => {
                             if (isChecked) {
                               handleChange('fator', 1.0);
                             }
-                            // Se desmarcar, limpar o rendimento
-                            if (!isChecked) {
-                              handleChange('rendimento', null);
-                            }
                           }}
                           className="w-5 h-5 text-green-600 bg-white border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2 transition-all duration-200"
                         />
@@ -3617,56 +3606,11 @@ const fetchInsumos = async () => {
                           Receita Processada
                         </label>
                         <p className="text-sm text-gray-700 mt-2 leading-relaxed">
-                          Marque se esta receita gera um produto intermediário que será usado em outras receitas.
-                          Ao marcar, você deverá informar o rendimento final da produção.
+                          Marque se esta receita gera um produto intermediário que será usado como insumo em outras receitas.
                         </p>
                       </div>
                     </div>
-                  </div>
-                    {/* Campo Rendimento - aparece quando processada está marcada */}
-                    {formData.processada && (
-                      <div className="mt-4 pt-4 border-t border-purple-200">
-                        <label className="block text-sm font-semibold text-gray-900 mb-2">
-                          Rendimento da Receita Processada *
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step="0.001"
-                            min="0"
-                            value={formData.rendimento || ''}
-                            onChange={(e) => handleChange('rendimento', parseFloat(e.target.value) || null)}
-                            placeholder="Ex: 2.500"
-                            className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                            required={formData.processada}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-600 mt-2">
-                          Informe o rendimento final com até 3 casas decimais (ex: 2.500 kg)
-                        </p>
-                        
-                        {/* ADICIONE ESTE BLOCO DE CÁLCULO */}
-                        {formData.rendimento > 0 && calcularCustoTotalInsumos() > 0 && (
-                          <div className="bg-white border border-purple-200 rounded-lg p-4 mt-3">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm font-medium text-gray-700">Custo Total:</span>
-                              <span className="text-lg font-bold text-gray-900">
-                                R$ {calcularCustoTotalInsumos().toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center pt-3 border-t border-purple-200">
-                              <span className="text-sm font-medium text-purple-700">Custo por Unidade:</span>
-                              <span className="text-2xl font-bold text-purple-600">
-                                R$ {(calcularCustoTotalInsumos() / formData.rendimento).toFixed(4)}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-2 text-center">
-                              R$ {calcularCustoTotalInsumos().toFixed(2)} ÷ {formData.rendimento.toFixed(3)} = R$ {(calcularCustoTotalInsumos() / formData.rendimento).toFixed(4)}/un
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}                  
+                  </div>                  
 
                 {/* SEÇÃO 3 COMPLETA COM BUSCA E CÁLCULO */}
                 {/* ============================================================================ */}
@@ -3685,6 +3629,7 @@ const fetchInsumos = async () => {
                         <p className="text-sm text-gray-500">Adicione os ingredientes e veja o cálculo automático do custo</p>
                       </div>
                       <div className="flex items-center space-x-3">
+
                         {/* Exibir custo total calculado */}
                         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
                           <p className="text-xs text-blue-600 font-medium">Custo Total</p>
@@ -3880,12 +3825,15 @@ const fetchInsumos = async () => {
                           </label>
                           <input
                             type="number"
-                            min="1"
-                            step="1"
+                            min="0.001"
+                            step="0.001"
                             value={formData.quantidade_porcao}
-                            onChange={(e) => handleChange('quantidade_porcao', parseInt(e.target.value) || 1)}
+                            onChange={(e) => {
+                              const valor = e.target.value;
+                              handleChange('quantidade_porcao', valor === '' ? '' : parseFloat(valor));
+                            }}
                             className="w-full p-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white text-gray-900"
-                            placeholder="Ex: 10"
+                            placeholder="Ex: 10.000"
                           />
                           <p className="text-xs text-gray-600 mt-1">
                             Quantas unidades esta receita produz (ex: 10 porções, 5 kg, 20 unidades)
@@ -3930,7 +3878,7 @@ const fetchInsumos = async () => {
                           <p className="text-2xl font-bold text-blue-600">
                             R$ {(calcularCustoTotalInsumos() / formData.quantidade_porcao).toFixed(2)}
                           </p>
-                          <p className="text-sm text-gray-600">Custo por Porção</p>
+                          <p className="text-sm text-gray-600">Custo por Rendimento</p>
                         </div>
                         <div className="text-center">
                           <p className="text-2xl font-bold text-purple-600">
@@ -7324,12 +7272,13 @@ const cancelarExclusao = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label> {/* Alterado para receber 3 casas decimais*/}
                     <input
                       type="number"
-                      min="1"
+                      step="0.001"
+                      min="0.001"
                       value={novoInsumo.quantidade}
-                      onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseInt(e.target.value) || 1})}
+                      onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseFloat(e.target.value) || 1})}
                       className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                     />
                   </div>
@@ -7503,15 +7452,16 @@ const cancelarExclusao = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Quantidade <span className="text-red-500">*</span>
+                    Quantidade <span className="text-red-500">*</span> {/* Alterado para receber 3 casas decimais*/}
                   </label>
                   <input
                     type="number"
-                    min="1"
+                    step="0.001"
+                    min="0.001"
                     value={novoInsumo.quantidade}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseInt(e.target.value) || 1})}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseFloat(e.target.value) || 1})}
                     className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="1"
+                    placeholder="1.000"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Quantas unidades estão sendo vendidas

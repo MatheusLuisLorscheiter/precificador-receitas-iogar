@@ -141,6 +141,8 @@ def list_receitas(
             'unidade': getattr(receita, 'unidade', 'un'),
             'quantidade': getattr(receita, 'quantidade', 1),
             'fator': getattr(receita, 'fator', 1.0),
+            'processada': getattr(receita, 'processada', False),
+            'rendimento': float(receita.rendimento) if receita.rendimento else None,
             'total_insumos': len(receita_insumos_data),
             'insumos_processados': insumos_processados,
             # ========== CAMPO CRÍTICO - AQUI ESTÃO OS INSUMOS! ==========

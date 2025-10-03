@@ -249,11 +249,30 @@ class FornecedorInsumoUpdate(BaseModel):
         description="Descrição do insumo"
     )
 
-    quantidade: Optional[int] = Field(
-        None,
-        ge=1,
-        description="Quantidade de unidades vendidas pelo fornecedor"
+    quantidade: float = Field(
+        default=1.0,
+        gt=0,
+        description="Quantidade de unidades vendidas pelo fornecedor (até 3 casas decimais)"
     )
+
+    @field_validator('quantidade')
+    @classmethod
+    def validar_quantidade(cls, v: float) -> float:
+        """
+        Valida a quantidade com até 3 casas decimais.
+        
+        Args:
+            v (float): Quantidade a ser validada
+            
+        Returns:
+            float: Quantidade arredondada para 3 casas decimais
+            
+        Raises:
+            ValueError: Se a quantidade for menor ou igual a zero
+        """
+        if v <= 0:
+            raise ValueError('Quantidade deve ser maior que zero')
+        return round(v, 3)
 
     fator: Optional[float] = Field(
         None,
