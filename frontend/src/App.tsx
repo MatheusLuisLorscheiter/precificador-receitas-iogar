@@ -200,32 +200,32 @@ const FormularioInsumoIsolado = React.memo(({
   isLoading
 }) => {
 
-  // Estado local do formulário
-  const [formData, setFormData] = useState(() => {
-    const initialData = {
-      nome: editingInsumo?.nome || '',
-      codigo: editingInsumo?.codigo || '',
-      unidade: editingInsumo?.unidade || 'kg',
-      fator: editingInsumo?.fator || 1,
-      quantidade: editingInsumo?.quantidade || 1, // Padrão 1 para facilitar cálculo
-      grupo: editingInsumo?.grupo || '',
-      subgrupo: editingInsumo?.subgrupo || '',
-      descricao: editingInsumo?.descricao || '',
-    
-    // ============================================================================
-    // NOVO CAMPO: PREÇO DE COMPRA TOTAL (VALOR PAGO)
-    // ============================================================================
-    preco_compra_total: editingInsumo?.preco_compra_total || 
-                         (editingInsumo?.preco_compra_real && editingInsumo?.quantidade ? 
-                          editingInsumo.preco_compra_real * editingInsumo.quantidade : 0),
-    
-    preco_compra_real: 0,
-    eh_fornecedor_anonimo: editingInsumo?.eh_fornecedor_anonimo !== undefined ? editingInsumo.eh_fornecedor_anonimo : true,
-    fornecedor_insumo_id: editingInsumo?.fornecedor_insumo_id || null
-  };
+// Estado local do formulário
+const [formData, setFormData] = useState(() => {
+  const initialData = {
+    nome: editingInsumo?.nome || '',
+    codigo: editingInsumo?.codigo || '',
+    unidade: editingInsumo?.unidade || 'kg',
+    fator: editingInsumo?.fator || 1,
+    quantidade: editingInsumo?.quantidade || 1, // Padrão 1 para facilitar cálculo
+    grupo: editingInsumo?.grupo || '',
+    subgrupo: editingInsumo?.subgrupo || '',
+    descricao: editingInsumo?.descricao || '',
+  
+  // ============================================================================
+  // NOVO CAMPO: PREÇO DE COMPRA TOTAL (VALOR PAGO)
+  // ============================================================================
+  preco_compra_total: editingInsumo?.preco_compra_total || 
+                        (editingInsumo?.preco_compra_real && editingInsumo?.quantidade ? 
+                        editingInsumo.preco_compra_real * editingInsumo.quantidade : 0),
+  
+  preco_compra_real: 0,
+  eh_fornecedor_anonimo: editingInsumo?.eh_fornecedor_anonimo !== undefined ? editingInsumo.eh_fornecedor_anonimo : true,
+  fornecedor_insumo_id: editingInsumo?.fornecedor_insumo_id || null
+};
 
-  console.log('🔄 FormData INICIALIZADO com:', initialData);
-    return initialData;
+console.log('🔄 FormData INICIALIZADO com:', initialData);
+  return initialData;
 });
 
   // 🔧 FUNÇÃO OTIMIZADA para atualizar campos
@@ -718,7 +718,7 @@ const FormularioInsumoIsolado = React.memo(({
                     <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">R$</span>
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.0001"
                       min="0"
                       value={formData.preco_compra_total || ''}
                       onChange={(e) => updateField('preco_compra_total', parseFloat(e.target.value) || 0)}
@@ -2830,8 +2830,12 @@ const fetchInsumos = async () => {
           quantidade_porcao: parseInt(editingReceita?.porcoes || editingReceita?.rendimento_porcoes || editingReceita?.quantidade_porcao || 1),
           preco_compra: parseFloat(editingReceita?.preco_compra || 0),
       
-          // Checkbox processado
+          // Checkbox processado (ANTIGO - manter por compatibilidade)
           eh_processado: editingReceita?.eh_processado || false,
+          
+          // NOVOS CAMPOS: Receita processada e rendimento
+          processada: editingReceita?.processada || false,
+          rendimento: editingReceita?.rendimento || null,
           
           // Restaurante obrigatório (vem da seleção atual)
           restaurante_id: selectedRestaurante?.id || editingReceita?.restaurante_id || null,
@@ -3212,7 +3216,8 @@ const fetchInsumos = async () => {
           // Status e restaurante
           ativo: true,
           restaurante_id: parseInt(selectedRestaurante.id),
-          
+          processada: Boolean(formData.processada),
+          rendimento: formData.processada ? parseFloat(formData.rendimento) || null : null,
           // CAMPO CRÍTICO: incluir unidade_medida dos insumos
           insumos: insumosValidosParam.map(insumo => {
             // Buscar insumo para garantir que temos a unidade
@@ -3703,7 +3708,7 @@ const fetchInsumos = async () => {
                           <div className="w-32">
                             <input
                               type="number"
-                              step="0.01"
+                              step="0.0001"
                               min="0"
                               value={receitaInsumo.quantidade || 0}
                               onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
@@ -3878,19 +3883,20 @@ const fetchInsumos = async () => {
                   </div>
 
                   {/* Checkbox Receita Processada */}
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
                     <div className="flex items-start space-x-4">
                       <div className="flex items-center h-6 mt-1">
                         <input
                           type="checkbox"
-                          checked={formData.eh_processado}
+                          checked={formData.processada || false}
                           onChange={(e) => {
-                            handleChange('eh_processado', e.target.checked);
-                            if (e.target.checked) {
-                              handleChange('fator', 1);
+                            handleChange('processada', e.target.checked);
+                            // Se desmarcar, limpar o rendimento
+                            if (!e.target.checked) {
+                              handleChange('rendimento', null);
                             }
                           }}
-                          className="w-5 h-5 text-green-600 bg-white border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2 transition-all duration-200"
+                          className="w-5 h-5 text-purple-600 bg-white border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 transition-all duration-200"
                         />
                       </div>
                       <div className="flex-1">
@@ -3898,12 +3904,38 @@ const fetchInsumos = async () => {
                           Receita Processada
                         </label>
                         <p className="text-sm text-gray-700 mt-2 leading-relaxed">
-                          Marque esta opção se esta receita será utilizada como ingrediente em outras receitas. 
-                          Receitas processadas aparecem automaticamente na lista de insumos disponíveis e 
-                          têm fator fixo igual a 1.
+                          Marque se esta receita gera um produto intermediário que será usado em outras receitas.
+                          Ao marcar, você deverá informar o rendimento final da produção.
                         </p>
                       </div>
                     </div>
+
+                    {/* Campo Rendimento - aparece quando processada está marcada */}
+                    {formData.processada && (
+                      <div className="mt-4 pt-4 border-t border-purple-200">
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                          Rendimento da Receita Processada *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.001"
+                            min="0"
+                            value={formData.rendimento || ''}
+                            onChange={(e) => handleChange('rendimento', parseFloat(e.target.value) || null)}
+                            placeholder="Ex: 2.500"
+                            className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                            required={formData.processada}
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                            kg/L/un
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">
+                          Informe o rendimento final com até 3 casas decimais (ex: 2.500 kg)
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                 </div>

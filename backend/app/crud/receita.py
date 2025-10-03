@@ -353,7 +353,6 @@ def create_receita(db: Session, receita: ReceitaCreate) -> Receita:
         quantidade=receita.quantidade,
         fator=receita.fator,
         unidade=receita.unidade,
-        preco_compra=0,  # Será calculado automaticamente
         restaurante_id=receita.restaurante_id,
         preco_venda=preco_venda_centavos,
         cmv=0,  # Será calculado automaticamente
@@ -654,15 +653,18 @@ def calcular_cmv_receita(db: Session, receita_id: int) -> float:
             
             total_custo += custo_recalculado
     
-    # Atualizar CMV na receita (em centavos e reais)
-    receita.cmv = int(total_custo * 100)  # Para compatibilidade
-    receita.preco_compra = receita.cmv  # Para compatibilidade
+    # Dividir pelo fator para obter o custo unitário
+    fator_receita = receita.fator if receita.fator and receita.fator > 0 else 1.0
+    custo_unitario = total_custo / fator_receita
     
+    # Atualizar CMV na receita (em centavos e reais)
+    receita.cmv = int(total_custo * 100)
+
     db.add(receita)
     db.commit()
     db.refresh(receita)
 
-    return total_custo
+    return custo_unitario
 
 def calcular_precos_sugeridos(db: Session, receita_id: int) -> dict:
     """
