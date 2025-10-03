@@ -2750,16 +2750,26 @@ const fetchInsumos = async () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Fator</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fator {formData.eh_processado && <span className="text-amber-600 text-xs">(Fixo em 1.0 para processadas)</span>}
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.fator}
                   onChange={(e) => handleChange('fator', parseFloat(e.target.value) || 1)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
+                  disabled={formData.eh_processado}
+                  className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 ${
+                    formData.eh_processado ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'
+                  }`}
                 />
+                {formData.eh_processado && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Receitas processadas sempre têm fator 1.0
+                  </p>
+                )}
               </div>
-            </div>
+            </div>  {/* ← FECHA O grid-cols-2 AQUI */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Preço de Compra (R$) *</label>
@@ -3546,19 +3556,21 @@ const fetchInsumos = async () => {
                         value={formData.fator}
                         onChange={(e) => {
                           const valor = parseFloat(e.target.value) || 1;
-                          const valorValido = Math.max(0.01, valor); // Garante mínimo 0.01
+                          const valorValido = Math.max(0.01, valor);
                           handleChange('fator', valorValido);
                         }}
-                        disabled={formData.eh_processado}
+                        disabled={formData.processada}  // ← ADICIONE ESTA LINHA
                         className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
-                          formData.eh_processado 
-                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+                          formData.processada 
+                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed'  // ← ADICIONE ESTE ESTILO
                             : 'bg-white text-gray-900'
                         }`}
-                        placeholder="1.00"
+                        placeholder="1.0"
                       />
-                      {formData.eh_processado && (
-                        <p className="text-xs text-amber-600 font-medium">Fixo para processados</p>
+                      {formData.processada && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Receitas processadas sempre têm fator 1.0
+                        </p>
                       )}
                     </div>
 
@@ -3576,6 +3588,85 @@ const fetchInsumos = async () => {
 
                   </div>
                 </div>
+
+                {/* Checkbox Receita Processada */}
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex items-center h-6 mt-1">
+                        <input
+                          type="checkbox"
+                          checked={formData.processada || false}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            handleChange('processada', isChecked);
+                            
+                            // Se marcar, força fator 1
+                            if (isChecked) {
+                              handleChange('fator', 1.0);
+                            }
+                            // Se desmarcar, limpar o rendimento
+                            if (!isChecked) {
+                              handleChange('rendimento', null);
+                            }
+                          }}
+                          className="w-5 h-5 text-green-600 bg-white border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2 transition-all duration-200"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-base font-semibold text-gray-900 cursor-pointer">
+                          Receita Processada
+                        </label>
+                        <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+                          Marque se esta receita gera um produto intermediário que será usado em outras receitas.
+                          Ao marcar, você deverá informar o rendimento final da produção.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                    {/* Campo Rendimento - aparece quando processada está marcada */}
+                    {formData.processada && (
+                      <div className="mt-4 pt-4 border-t border-purple-200">
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                          Rendimento da Receita Processada *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.001"
+                            min="0"
+                            value={formData.rendimento || ''}
+                            onChange={(e) => handleChange('rendimento', parseFloat(e.target.value) || null)}
+                            placeholder="Ex: 2.500"
+                            className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
+                            required={formData.processada}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">
+                          Informe o rendimento final com até 3 casas decimais (ex: 2.500 kg)
+                        </p>
+                        
+                        {/* ADICIONE ESTE BLOCO DE CÁLCULO */}
+                        {formData.rendimento > 0 && calcularCustoTotalInsumos() > 0 && (
+                          <div className="bg-white border border-purple-200 rounded-lg p-4 mt-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-gray-700">Custo Total:</span>
+                              <span className="text-lg font-bold text-gray-900">
+                                R$ {calcularCustoTotalInsumos().toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center pt-3 border-t border-purple-200">
+                              <span className="text-sm font-medium text-purple-700">Custo por Unidade:</span>
+                              <span className="text-2xl font-bold text-purple-600">
+                                R$ {(calcularCustoTotalInsumos() / formData.rendimento).toFixed(4)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2 text-center">
+                              R$ {calcularCustoTotalInsumos().toFixed(2)} ÷ {formData.rendimento.toFixed(3)} = R$ {(calcularCustoTotalInsumos() / formData.rendimento).toFixed(4)}/un
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}                  
 
                 {/* SEÇÃO 3 COMPLETA COM BUSCA E CÁLCULO */}
                 {/* ============================================================================ */}
@@ -3774,6 +3865,56 @@ const fetchInsumos = async () => {
                     )}
                   </div>
 
+                  {/* Campo Rendimento para Receita Processada */}
+                  {formData.eh_processado && receitaInsumos.length > 0 && (
+                    <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Package className="w-5 h-5 text-amber-600" />
+                        Rendimento da Receita Processada
+                      </h4>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Quantidade de Unidades Produzidas *
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={formData.quantidade_porcao}
+                            onChange={(e) => handleChange('quantidade_porcao', parseInt(e.target.value) || 1)}
+                            className="w-full p-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white text-gray-900"
+                            placeholder="Ex: 10"
+                          />
+                          <p className="text-xs text-gray-600 mt-1">
+                            Quantas unidades esta receita produz (ex: 10 porções, 5 kg, 20 unidades)
+                          </p>
+                        </div>
+
+                        {formData.quantidade_porcao > 0 && calcularCustoTotalInsumos() > 0 && (
+                          <div className="bg-white border border-amber-200 rounded-lg p-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-gray-700">Custo Total:</span>
+                              <span className="text-lg font-bold text-gray-900">
+                                R$ {calcularCustoTotalInsumos().toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center pt-3 border-t border-amber-200">
+                              <span className="text-sm font-medium text-amber-700">Custo por Unidade:</span>
+                              <span className="text-2xl font-bold text-amber-600">
+                                R$ {(calcularCustoTotalInsumos() / formData.quantidade_porcao).toFixed(4)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2 text-center">
+                              R$ {calcularCustoTotalInsumos().toFixed(2)} ÷ {formData.quantidade_porcao} unidades = R$ {(calcularCustoTotalInsumos() / formData.quantidade_porcao).toFixed(4)}/un
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Resumo dos custos */}
                   {receitaInsumos.length > 0 && (
                     <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6">
@@ -3894,61 +4035,7 @@ const fetchInsumos = async () => {
                     />
                   </div>
 
-                  {/* Checkbox Receita Processada */}
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="flex items-center h-6 mt-1">
-                        <input
-                          type="checkbox"
-                          checked={formData.processada || false}
-                          onChange={(e) => {
-                            handleChange('processada', e.target.checked);
-                            // Se desmarcar, limpar o rendimento
-                            if (!e.target.checked) {
-                              handleChange('rendimento', null);
-                            }
-                          }}
-                          className="w-5 h-5 text-purple-600 bg-white border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 transition-all duration-200"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="text-base font-semibold text-gray-900 cursor-pointer">
-                          Receita Processada
-                        </label>
-                        <p className="text-sm text-gray-700 mt-2 leading-relaxed">
-                          Marque se esta receita gera um produto intermediário que será usado em outras receitas.
-                          Ao marcar, você deverá informar o rendimento final da produção.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Campo Rendimento - aparece quando processada está marcada */}
-                    {formData.processada && (
-                      <div className="mt-4 pt-4 border-t border-purple-200">
-                        <label className="block text-sm font-semibold text-gray-900 mb-2">
-                          Rendimento da Receita Processada *
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step="0.001"
-                            min="0"
-                            value={formData.rendimento || ''}
-                            onChange={(e) => handleChange('rendimento', parseFloat(e.target.value) || null)}
-                            placeholder="Ex: 2.500"
-                            className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                            required={formData.processada}
-                          />
-                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                            kg/L/un
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-2">
-                          Informe o rendimento final com até 3 casas decimais (ex: 2.500 kg)
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  
 
                 </div>
 
