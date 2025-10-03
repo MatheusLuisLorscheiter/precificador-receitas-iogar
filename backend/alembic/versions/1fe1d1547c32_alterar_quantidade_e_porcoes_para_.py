@@ -85,7 +85,9 @@ def upgrade() -> None:
                comment='Rendimento em porções (até 3 casas decimais)',
                existing_comment='Rendimento em porções',
                existing_nullable=True)
-    op.drop_index(op.f('idx_receitas_processada'), table_name='receitas')
+    op.execute("""
+        DROP INDEX IF EXISTS idx_receitas_processada;
+    """)
     op.drop_index(op.f('ix_receitas_codigo'), table_name='receitas')
     op.drop_index(op.f('ix_receitas_grupo'), table_name='receitas')
     op.drop_index(op.f('ix_receitas_subgrupo'), table_name='receitas')
