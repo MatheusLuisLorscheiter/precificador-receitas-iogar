@@ -327,17 +327,12 @@ const calcularCustoPorPorcao = () => {
               </div>
               <div>
                 <h4 className="font-semibold text-green-800">Preço Sugerido</h4>
-                <p className="text-xs text-green-600">Margem 25% {receita.porcoes > 1 ? '(por rendimento)' : ''}</p>
+                <p className="text-xs text-green-600">Margem 25%</p>
               </div>
             </div>
             <p className="text-2xl font-bold text-green-700">{formatarPreco(receita.preco_venda_sugerido)}</p>
             <p className="text-sm text-green-600 mt-1">
               Margem: {receita.margem_percentual.toFixed(1)}%
-              {receita.porcoes > 1 && (
-                <span className="block text-xs mt-1">
-                  Receita total ({receita.porcoes}x): {formatarPreco(receita.preco_venda_sugerido * receita.porcoes)}
-                </span>
-              )}
             </p>
           </div>
 
@@ -379,7 +374,7 @@ const calcularCustoPorPorcao = () => {
     );
   };
 
-    const TabInsumos = () => {
+  const TabInsumos = () => {
     if (!receita) return null;
 
     return (
@@ -392,60 +387,59 @@ const calcularCustoPorPorcao = () => {
             </h3>
           </div>
         
-          {/* Container com scroll para tabela de insumos */}
-          <div className="overflow-y-auto p-6" style={{ maxHeight: '400px' }}>
-            {!receita.receita_insumos || receita.receita_insumos.length === 0 ? (
-              <div className="p-8 text-center">
-                <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">Nenhum insumo cadastrado nesta receita</p>
-                <p className="text-sm text-gray-400 mt-2">Adicione insumos para calcular o custo automaticamente</p>
-              </div>
-            ) : (
-              <div className="p-6">
-                <div className="space-y-4">
-                  {receita.receita_insumos.map((insumo, index) => (
-                    <div key={index} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">
-                          {insumo.insumo?.nome || 'Insumo sem nome'}
-                        </h4>
-                        <span className="text-sm font-medium text-green-600">
-                          {(() => {
-                            const custoInsumo = insumo.custo_calculado || 
-                              (insumo.quantidade_necessaria * (insumo.insumo?.preco_compra_real || 0));
-                            return formatarPreco(custoInsumo);
-                          })()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-gray-600">
-                        <span>
-                          {(insumo.quantidade_necessaria || 0).toFixed(2)} {insumo.unidade_medida || 'un'}
-                        </span>
-                        <span>
-                          {formatarPreco(insumo.insumo?.preco_compra_real || 0)} / {insumo.insumo?.unidade || 'un'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-900">Total da Receita</span>
-                      <span className="font-bold text-green-600 text-lg">
-                        {formatarPreco(receita.cmv_real * receita.porcoes)}
+          {!receita.receita_insumos || receita.receita_insumos.length === 0 ? (
+            <div className="p-8 text-center">
+              <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">Nenhum insumo cadastrado nesta receita</p>
+              <p className="text-sm text-gray-400 mt-2">Adicione insumos para calcular o custo automaticamente</p>
+            </div>
+          ) : (
+            <div className="p-6">
+              <div className="space-y-4">
+                {/* Lista REAL de insumos da receita */}
+                {receita.receita_insumos.map((insumo, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-gray-900">
+                        {insumo.insumo?.nome || 'Insumo sem nome'}
+                      </h4>
+                      <span className="text-sm font-medium text-green-600">
+                        {(() => {
+                          // Tentar usar custo_calculado, se não existir, calcular manualmente
+                          const custoInsumo = insumo.custo_calculado || 
+                            (insumo.quantidade_necessaria * (insumo.insumo?.preco_compra_real || 0));
+                          return formatarPreco(custoInsumo);
+                        })()}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-sm text-gray-600">Custo por rendimento</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {formatarPreco(receita.cmv_real)}
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>
+                        {(insumo.quantidade_necessaria || 0).toFixed(2)} {insumo.unidade_medida || 'un'}
+                      </span>
+                      <span>
+                        {formatarPreco(insumo.insumo?.preco_compra_real || 0)} / {insumo.insumo?.unidade || 'un'}
                       </span>
                     </div>
                   </div>
+                ))}
+              
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-900">Total da Receita</span>
+                    <span className="font-bold text-green-600 text-lg">
+                      {formatarPreco(receita.cmv_real * receita.porcoes)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-sm text-gray-600">Custo por rendimento</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatarPreco(receita.cmv_real)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -941,7 +935,7 @@ const calcularCustoPorPorcao = () => {
             CONTEÚDO DAS ABAS
             =================================================================================================== */}
         
-        <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 280px)' }}>
+        <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 360px)' }}>
           {activeTab === 'geral' && <TabGeral />}
           {activeTab === 'insumos' && <TabInsumos />}
           {activeTab === 'custos' && <TabCustos />}
