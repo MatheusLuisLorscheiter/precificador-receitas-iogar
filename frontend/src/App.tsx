@@ -3737,18 +3737,14 @@ const fetchInsumos = async () => {
                               ) : (
                                 <>
                                   <option value={0}>Selecione um insumo...</option>
-                                  {insumos
-                                    .filter(insumo => {
-                                      const ehInsumoSistema = typeof insumo.id === 'number' || 
-                                                            (typeof insumo.id === 'string' && !insumo.id.startsWith('fornecedor_'));
-                                      return ehInsumoSistema;
-                                    })
-                                    .map(insumo => (
+                                  {insumos.map(insumo => (
                                       <option key={insumo.id} value={insumo.id}>
-                                        {insumo.codigo ? `${insumo.codigo} - ` : ''}{insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                                        {/* Exibir corretamente tanto insumos de sistema quanto de fornecedor */}
+                                        {insumo.codigo ? `${insumo.codigo} - ` : ''}
+                                        {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                                        {insumo.tipo_origem === 'fornecedor' ? ' [Fornecedor]' : ''}
                                       </option>
-                                    ))
-                                  }
+                                    ))}
                                 </>
                               )}
                             </select>
@@ -4119,7 +4115,7 @@ const fetchInsumos = async () => {
   // COMPONENTE GESTÃO DE INSUMOS
   // ============================================================================
   const Insumos = () => {
-
+    // Estados de Insumo
     const [buscaInsumo, setBuscaInsumo] = useState('');
 
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -4135,6 +4131,12 @@ const fetchInsumos = async () => {
       insumoNome: ''
     });
 
+    // ============================================================================
+    // ESTADOS DE PAGINAÇÃO PARA INSUMOS
+    // ============================================================================
+    const [paginaAtualInsumos, setPaginaAtualInsumos] = useState(1);
+    const itensPorPaginaInsumos = 20;
+
     const [editandoFornecedor, setEditandoFornecedor] = useState(null);
   
     const handleSearchChange = useCallback((term) => {
@@ -4146,7 +4148,15 @@ const fetchInsumos = async () => {
       insumoItem && 
       insumoItem.nome && 
       insumoItem.nome.toLowerCase().includes(buscaInsumo.toLowerCase())
-    ).slice(0, 10);
+    );
+
+    // ============================================================================
+    // CÁLCULO DE PAGINAÇÃO PARA INSUMOS
+    // ============================================================================
+    const indiceInicialInsumos = (paginaAtualInsumos - 1) * itensPorPaginaInsumos;
+    const indiceFinalInsumos = indiceInicialInsumos + itensPorPaginaInsumos;
+    const insumosPaginados = insumosFiltrados.slice(indiceInicialInsumos, indiceFinalInsumos);
+    const totalPaginasInsumos = Math.ceil(insumosFiltrados.length / itensPorPaginaInsumos);
 
     // Função atualizada para salvar insumo com nova lógica de fornecedor
     const handleSaveInsumo = async (dadosInsumo) => {
@@ -4386,7 +4396,7 @@ const fetchInsumos = async () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {insumosFiltrados.map((insumo) => (
+                  {insumosPaginados.map((insumo) => (
                     <tr key={insumo.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         <div className="flex items-center gap-2">
@@ -4415,16 +4425,20 @@ const fetchInsumos = async () => {
                       {/* Unidade - sempre preenchida */}
                       <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
 
-                      {/* Preço Compra - vazio para insumos de fornecedor */}
+                      {/* Preço Compra TOTAL (campo "Preço de compra Total" do formulário) */}
                       <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        {insumo.tipo_origem === 'fornecedor' ? '-' : `R$ ${insumo.preco_compra_real?.toFixed(2) || '0.00'}`}
+                        {insumo.tipo_origem === 'fornecedor' ? '-' : 
+                          `R$ ${insumo.quantidade && insumo.preco_compra_real 
+                            ? (insumo.preco_compra_real * insumo.quantidade).toFixed(2) 
+                            : '0.00'}`
+                        }
                       </td>
 
-                      {/* Valor/Unidade - sempre preenchido */}
+                      {/* Valor/Unidade (campo "Preço por unidade(sistema)" do formulário) */}
                       <td className="px-6 py-4 text-sm font-medium text-green-600">
                         R$ {insumo.tipo_origem === 'fornecedor' 
                           ? insumo.preco_compra_real?.toFixed(2) || '0.00'
-                          : (insumo.quantidade > 0 ? (insumo.preco_compra_real / insumo.quantidade).toFixed(2) : '0.00')
+                          : insumo.preco_compra_real?.toFixed(2) || '0.00'
                         }
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
@@ -4481,7 +4495,75 @@ const fetchInsumos = async () => {
                   ))}
                 </tbody>
               </table>
-              
+              {/* Controles de Paginação */}
+              {totalPaginasInsumos > 1 && (
+                <div className="mt-6 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
+                  <div className="flex flex-1 justify-between sm:hidden">
+                    <button
+                      onClick={() => setPaginaAtualInsumos(Math.max(1, paginaAtualInsumos - 1))}
+                      disabled={paginaAtualInsumos === 1}
+                      className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      onClick={() => setPaginaAtualInsumos(Math.min(totalPaginasInsumos, paginaAtualInsumos + 1))}
+                      disabled={paginaAtualInsumos === totalPaginasInsumos}
+                      className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                  <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        Mostrando <span className="font-medium">{indiceInicialInsumos + 1}</span> a{' '}
+                        <span className="font-medium">
+                          {Math.min(indiceFinalInsumos, insumosFiltrados.length)}
+                        </span>{' '}
+                        de <span className="font-medium">{insumosFiltrados.length}</span> insumos
+                      </p>
+                    </div>
+                    <div>
+                      <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                        <button
+                          onClick={() => setPaginaAtualInsumos(Math.max(1, paginaAtualInsumos - 1))}
+                          disabled={paginaAtualInsumos === 1}
+                          className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                        >
+                          <span className="sr-only">Anterior</span>
+                          <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        {[...Array(totalPaginasInsumos)].map((_, idx) => (
+                          <button
+                            key={idx + 1}
+                            onClick={() => setPaginaAtualInsumos(idx + 1)}
+                            className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                              paginaAtualInsumos === idx + 1
+                                ? 'z-10 bg-green-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'
+                                : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
+                            }`}
+                          >
+                            {idx + 1}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setPaginaAtualInsumos(Math.min(totalPaginasInsumos, paginaAtualInsumos + 1))}
+                          disabled={paginaAtualInsumos === totalPaginasInsumos}
+                          className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                        >
+                          <span className="sr-only">Próxima</span>
+                          <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </nav>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -5391,8 +5473,11 @@ const fetchInsumos = async () => {
       // CMV real = custo POR PORÇÃO
       cmv_real: custoPorPorcao,
       
-      // Preço sugerido padrão (25% de margem) POR PORÇÃO
-      preco_venda_sugerido: cmv25 || 0,
+      // ============================================================================
+      // PREÇO SUGERIDO: Dividir por rendimento se maior que 1
+      // ============================================================================
+      // Se rendimento > 1, o preço sugerido deve ser por porção/rendimento
+      preco_venda_sugerido: porcoes > 1 ? (cmv25 || 0) / porcoes : (cmv25 || 0),
       margem_percentual: 25,
         
         status: receita.ativo !== false ? 'ativo' : 'inativo',
@@ -6611,12 +6696,39 @@ const cancelarExclusao = () => {
         } else {
           const error = await response.json();
           
-          // *** LOG DETALHADO DO ERRO ***
+          // ============================================================================
+          // TRATAMENTO ESPECÍFICO PARA ERROS DE VALIDAÇÃO DE CPF/CNPJ
+          // ============================================================================
           console.error('❌ Erro completo da resposta:', error);
           console.error('❌ Detalhes do erro:', error.detail);
           console.error('❌ Status:', response.status);
           
-          showErrorPopup('Erro no Cadastro', error.detail || 'Não foi possível cadastrar o fornecedor.');
+          // Extrai mensagem de erro (trata tanto string quanto array do Pydantic)
+          let mensagemErro = '';
+          if (typeof error.detail === 'string') {
+            mensagemErro = error.detail;
+          } else if (Array.isArray(error.detail) && error.detail.length > 0) {
+            // Formato Pydantic: array de objetos com campo 'msg'
+            mensagemErro = error.detail[0].msg || JSON.stringify(error.detail[0]);
+          } else {
+            mensagemErro = 'Não foi possível cadastrar o fornecedor.';
+          }
+          
+          // Verifica se é erro de validação de CPF/CNPJ
+          const ehErroValidacaoDocumento = 
+            mensagemErro.includes('CPF inválido') ||
+            mensagemErro.includes('CNPJ inválido') ||
+            mensagemErro.includes('verifique os dígitos') ||
+            mensagemErro.includes('dígitos verificadores');
+          
+          if (ehErroValidacaoDocumento) {
+            showErrorPopup(
+              'CPF/CNPJ Inválido',
+              'O documento informado não é válido. Verifique se os dígitos foram digitados corretamente.'
+            );
+          } else {
+            showErrorPopup('Erro no Cadastro', mensagemErro);
+          }
         }
       } catch (error) {
         console.error('❌ Erro de conexão:', error);
@@ -6714,7 +6826,7 @@ const cancelarExclusao = () => {
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-700">Lista de Fornecedores</h3>
             
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-3 max-h-[650px] overflow-y-auto">
               {fornecedores.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">
                   {isLoading ? 'Carregando fornecedores...' : 'Nenhum fornecedor cadastrado ainda'}
@@ -6822,7 +6934,7 @@ const cancelarExclusao = () => {
                     Insumos ({fornecedorSelecionado.fornecedor_insumos?.length || 0})
                   </h4>
                   
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                  <div className="space-y-3 max-h-[460px] overflow-y-auto">
                     {!fornecedorSelecionado.fornecedor_insumos || fornecedorSelecionado.fornecedor_insumos.length === 0 ? (
                       <p className="text-gray-500 text-center py-4">
                         Nenhum insumo cadastrado para este fornecedor

@@ -130,7 +130,8 @@ class ApiService {
 
   // Listar todos os insumos
   async getInsumos(): Promise<ApiResponse<any[]>> {
-    return this.request<any[]>('/api/v1/insumos/');
+    // Aumentar limit para 1000 para garantir que todos os insumos sejam carregados
+    return this.request<any[]>('/api/v1/insumos/?limit=1000');
   }
 
   // Buscar insumo por ID

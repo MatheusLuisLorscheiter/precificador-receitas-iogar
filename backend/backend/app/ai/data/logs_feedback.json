@@ -1,6 +1,6 @@
 {
   "versao": "2.0.0",
-  "created_at": "2025-10-01T11:11:01.259735",
+  "created_at": "2025-10-06T14:17:18.848466",
   "descricao": "Logs de feedback do sistema de IA integrado",
   "logs": [
     {
@@ -542,6 +542,107 @@
       "taxonomia_correta": {
         "categoria": "Doces",
         "subcategoria": "Doce",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-10-06T11:15:52.511649",
+      "nome_produto": "Presunto Cozido Fatiado",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Laticínios",
+        "subcategoria": "Stracciatella",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-10-06T11:18:03.083062",
+      "nome_produto": "Massa de Pizza Pré-Assada 35cm",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Temperos",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Temperos > A definir",
+        "codigo_taxonomia": null,
+        "taxonomia_id": null
+      },
+      "taxonomia_correta": {
+        "categoria": "Massas",
+        "subcategoria": "Pizza",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-10-06T11:19:15.013976",
+      "nome_produto": "Refrigerante Coca-Cola 2L",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Bebidas",
+        "subcategoria": "Cerveja",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-10-06T11:20:48.422582",
+      "nome_produto": "Água Mineral Crystal 500ml",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Carnes",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Carnes > A definir",
+        "codigo_taxonomia": null,
+        "taxonomia_id": null
+      },
+      "taxonomia_correta": {
+        "categoria": "Bebidas",
+        "subcategoria": "Vinho",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-10-06T14:17:18.841558",
+      "nome_produto": "Água Mineral Crystal",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Carnes",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Carnes > A definir",
+        "codigo_taxonomia": null,
+        "taxonomia_id": null
+      },
+      "taxonomia_correta": {
+        "categoria": "Bebidas",
+        "subcategoria": "Aguardente",
         "especificacao": null,
         "variante": null
       },
