@@ -6,7 +6,7 @@
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, text
 
@@ -719,24 +719,78 @@ def calcular_precos_sugeridos(db: Session, receita_id: int) -> dict:
 # Funções Utilitárias
 # ===================================================================================================
 
-def get_insumos_disponiveis(db: Session, termo: Optional[str] = None) -> List[Insumo]:
+def get_insumos_disponiveis(db: Session, termo: Optional[str] = None) -> List[Dict]:
     """
     Lista insumos disponíveis para adicionar em receitas.
+    Inclui tanto insumos da tabela principal quanto receitas processadas.
     
     Útil para:
     - Dropdown de seleção de insumos
     - Autocomplete ao adicionar insumos
+    
+    Returns:
+        List[Dict]: Lista combinada de insumos e receitas processadas
     """
-    query = db.query(Insumo)
+    # ===================================================================================================
+    # BUSCAR INSUMOS DA TABELA PRINCIPAL
+    # ===================================================================================================
+    query_insumos = db.query(Insumo)
     
     if termo:
         search_filter = or_(
             Insumo.nome.ilike(f"%{termo}%"),
             Insumo.codigo.ilike(f"%{termo}%")
         )
-        query = query.filter(search_filter)
+        query_insumos = query_insumos.filter(search_filter)
     
-    return query.limit(50).all()
+    insumos = query_insumos.limit(50).all()
+    
+    # ===================================================================================================
+    # BUSCAR RECEITAS PROCESSADAS (QUE PODEM SER USADAS COMO INSUMOS)
+    # ===================================================================================================
+    query_receitas = db.query(Receita).filter(Receita.processada == True)
+    
+    if termo:
+        search_filter_receitas = or_(
+            Receita.nome.ilike(f"%{termo}%"),
+            Receita.codigo.ilike(f"%{termo}%")
+        )
+        query_receitas = query_receitas.filter(search_filter_receitas)
+    
+    receitas_processadas = query_receitas.limit(50).all()
+    
+    # ===================================================================================================
+    # COMBINAR RESULTADOS EM FORMATO PADRONIZADO
+    # ===================================================================================================
+    resultados = []
+    
+    # Adicionar insumos tradicionais
+    for insumo in insumos:
+        resultados.append({
+            'id': insumo.id,
+            'nome': insumo.nome,
+            'codigo': insumo.codigo,
+            'unidade': insumo.unidade,
+            'grupo': insumo.grupo,
+            'subgrupo': insumo.subgrupo,
+            'tipo': 'insumo',  # Identificador do tipo
+            'preco_compra_real': insumo.preco_compra_real
+        })
+    
+    # Adicionar receitas processadas
+    for receita in receitas_processadas:
+        resultados.append({
+            'id': receita.id,
+            'nome': f"{receita.nome} (Processado)",  # Indicador visual
+            'codigo': receita.codigo,
+            'unidade': receita.unidade,
+            'grupo': receita.grupo,
+            'subgrupo': receita.subgrupo,
+            'tipo': 'receita_processada',  # Identificador do tipo
+            'preco_compra_real': receita.cmv_real if receita.cmv_real else 0.0
+        })
+    
+    return resultados
 
 def get_grupos_receitas(db: Session, restaurante_id: Optional[int] = None) -> List[str]:
     """Lista grupos únicos de receitas"""

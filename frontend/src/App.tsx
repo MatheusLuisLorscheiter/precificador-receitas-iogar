@@ -2849,7 +2849,11 @@ const fetchInsumos = async () => {
           // Checkbox processado (ANTIGO - manter por compatibilidade)
           eh_processado: editingReceita?.eh_processado || false,
           
-          processada: editingReceita?.processada || false,
+          // ===================================================================================================
+          // CORREÇÃO: Usar operador nullish coalescing (??) ao invés de OR (||)
+          // Isso garante que false explícito seja mantido, não substituído por false padrão
+          // ===================================================================================================
+          processada: editingReceita?.processada ?? false,
           
           // Restaurante obrigatório (vem da seleção atual)
           restaurante_id: selectedRestaurante?.id || editingReceita?.restaurante_id || null,
@@ -2878,15 +2882,19 @@ const fetchInsumos = async () => {
         });
       }, [editingReceita]);
 
-            // useEffect para atualizar formData quando editingReceita mudar
+      // ===================================================================================================
+      // useEffect para atualizar formData quando editingReceita mudar
+      // CORREÇÃO: Usar ?? para manter false explícito
+      // ===================================================================================================
       useEffect(() => {
         if (editingReceita) {
           console.log('🔄 Atualizando formData com dados de processada:', {
-            processada: editingReceita.processada
+            processada: editingReceita.processada,
+            tipo: typeof editingReceita.processada
           });
           setFormData(prev => ({
             ...prev,
-            processada: editingReceita.processada || false
+            processada: editingReceita.processada ?? false
           }));
         }
       }, [editingReceita]);
@@ -3257,6 +3265,8 @@ const fetchInsumos = async () => {
           return;
         }
         
+        console.log('🔍 DEBUG dadosBackend.processada:', dadosBackend.processada);
+        console.log('🔍 DEBUG formData.processada:', formData.processada);
         // Chamar função de salvamento
         onSave(dadosBackend);
       };
@@ -5620,6 +5630,19 @@ const Receitas = React.memo(() => {
 
   const handleEditReceita = async (receita: any) => {
     
+    // ===================================================================================================
+    // DEBUG TEMPORÁRIO: Verificar campo processada
+    // ===================================================================================================
+    console.log('🔍 DEBUG handleEditReceita:', {
+      receita_id: receita.id,
+      receita_nome: receita.nome,
+      processada: receita.processada,
+      tipo_processada: typeof receita.processada,
+      receita_completa: receita
+    });
+    // ===================================================================================================
+    
+
     // Usar o objeto receita que já temos em vez de buscar do backend
     setSelectedReceita(receita);
     setShowReceitaForm(true);
