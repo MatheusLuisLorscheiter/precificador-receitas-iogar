@@ -134,6 +134,12 @@ class ApiService {
     return this.request<any[]>('/api/v1/insumos/?limit=1000');
   }
 
+  // Buscar insumos disponíveis (inclui receitas processadas)
+  async getInsumosDisponiveis(termo?: string): Promise<ApiResponse<any[]>> {
+    const query = termo ? `?termo=${encodeURIComponent(termo)}` : '';
+    return this.request<any[]>(`/api/v1/receitas/utils/insumos-disponiveis${query}`);
+  }
+
   // Buscar insumo por ID
   async getInsumoById(id: number): Promise<ApiResponse<any>> {
     return this.request<any>(`/api/v1/insumos/${id}`);
@@ -375,6 +381,8 @@ class ApiService {
       sugestao_valor: receita.sugestao_valor || 0,
       tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
       restaurante_id: receita.restaurante_id || 1,
+      processada: receita.processada || false,
+      rendimento: receita.rendimento || null,
       insumos: receita.insumos || []
     };
   

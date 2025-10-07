@@ -20,7 +20,7 @@ import {
   Search, Filter, MoreVertical, Edit3, Copy, Trash2, Eye, 
   ChefHat, TrendingUp, DollarSign, Clock, Users, 
   ChevronLeft, ChevronRight,  Grid  , List, SortAsc, SortDesc,
-  Plus, Download, Upload, Utensils, Package
+  Plus, Download, Upload, Utensils, Package, CheckCircle
 } from 'lucide-react';
 
 // ===================================================================================================
@@ -42,6 +42,7 @@ interface Receita {
   updated_at: string;
   restaurante_id: number;
   total_insumos: number;
+  processada?: boolean;
 }
 
 interface FiltroGrid {
@@ -420,6 +421,19 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
         {receita.porcoes} | {receita.tempo_preparo}min
       </td>
       
+      <td className="px-6 py-4 text-center">
+        {receita.processada ? (
+          <div className="flex items-center justify-center">
+            <div className="flex items-center gap-2 px-3 py-1 bg-purple-50 border border-purple-200 rounded-full">
+              <CheckCircle className="w-4 h-4 text-purple-600" />
+              <span className="text-xs font-medium text-purple-700">Sim</span>
+            </div>
+          </div>
+        ) : (
+          <span className="text-gray-300">—</span>
+        )}
+      </td>
+
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="relative">
           <button
@@ -731,6 +745,10 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
                       
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Porções | Tempo
+                      </th>
+
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Processada
                       </th>
                       
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">

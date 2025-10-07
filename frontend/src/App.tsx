@@ -2997,18 +2997,42 @@ const fetchInsumos = async () => {
         if (!buscaInsumo.trim()) return [];
         
         const termo = buscaInsumo.toLowerCase().trim();
-        return insumos.filter(insumo => 
+        
+        // Filtrar insumos normais
+        const insumosNormais = insumos.filter(insumo => 
           insumo.nome.toLowerCase().includes(termo) ||
           insumo.grupo?.toLowerCase().includes(termo) ||
           insumo.codigo?.toLowerCase().includes(termo)
-        ).slice(0, 10);
+        );
+        
+        // Filtrar receitas processadas do restaurante atual
+        const receitasProcessadas = (receitas || [])
+          .filter(receita => 
+            receita.processada && 
+            receita.restaurante_id === selectedRestaurante?.id &&
+            (receita.nome.toLowerCase().includes(termo) ||
+            receita.codigo?.toLowerCase().includes(termo))
+          )
+          .map(receita => ({
+            id: receita.id,
+            nome: `${receita.nome} (Receita Processada)`,
+            codigo: receita.codigo,
+            unidade: receita.unidade || 'un',
+            grupo: 'Receitas Processadas',
+            subgrupo: receita.categoria || 'Geral',
+            preco_compra_real: receita.cmv_real || 0,
+            tipo: 'receita_processada'  // Identificador especial
+          }));
+        
+        // Combinar e limitar a 10 resultados
+        return [...insumosNormais, ...receitasProcessadas].slice(0, 10);
       };
 
       const insumosFiltrados = getInsumosFiltrados();
 
-      // ============================================================================
-      // FUNÇÃO: ADICIONAR INSUMO RAPIDAMENTE PELA BUSCA
-      // ============================================================================
+      // ===================================================================================================
+      // FUNÇÃO: ADICIONAR INSUMO RAPIDAMENTE PELA BUSCA (COM SUPORTE A RECEITAS PROCESSADAS)
+      // ===================================================================================================
       const adicionarInsumoRapido = (insumo) => {
         // Verificação de segurança
         if (!insumo || !insumo.id) {
@@ -3016,8 +3040,25 @@ const fetchInsumos = async () => {
           return;
         }
 
-        console.log('➕ Adicionando insumo:', insumo.nome);
-        const jaAdicionado = receitaInsumos.some(ri => ri.insumo_id === insumo.id);
+        console.log('➕ Adicionando insumo/receita:', insumo.nome, 'Tipo:', insumo.tipo);
+        
+        // ===================================================================================================
+        // CORREÇÃO: Extrair ID real dependendo do tipo
+        // ===================================================================================================
+        let insumoIdReal;
+        
+        if (insumo.tipo === 'receita_processada') {
+          // Para receitas processadas, usar o id_receita
+          insumoIdReal = insumo.id_receita;
+          console.log('🔧 Receita processada detectada - ID real:', insumoIdReal);
+        } else {
+          // Para insumos normais, usar o ID diretamente
+          insumoIdReal = insumo.id;
+          console.log('🔧 Insumo normal - ID:', insumoIdReal);
+        }
+        
+        // Verificar se já foi adicionado (comparar com ID real)
+        const jaAdicionado = receitaInsumos.some(ri => ri.insumo_id === insumoIdReal);
         
         if (jaAdicionado) {
           alert(`${insumo.nome} já foi adicionado à receita.`);
@@ -3025,10 +3066,12 @@ const fetchInsumos = async () => {
         }
 
         const novoInsumo = {
-          insumo_id: insumo.id,
-          quantidade: 1
+          insumo_id: insumoIdReal,  // ← Usar ID real sem prefixo
+          quantidade: 1,
+          unidade_medida: insumo.unidade || 'un'
         };
 
+        console.log('✅ Adicionando ao array:', novoInsumo);
         setReceitaInsumos(prev => [...prev, novoInsumo]);
         setBuscaInsumo('');
       };
@@ -3377,15 +3420,30 @@ const fetchInsumos = async () => {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             
             {/* ============================================================================ */}
-            {/* HEADER DO FORMULÁRIO */}
+            {/* HEADER DO FORMULÁRIO COM INDICADOR DE RECEITA PROCESSADA */}
             {/* ============================================================================ */}
-            
+
             <div className="bg-gradient-to-r from-green-500 to-pink-500 px-6 py-4 rounded-t-xl">
               <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Nova Receita</h2>
-                  <p className="text-white/80 text-sm">Cadastre uma nova receita matriz</p>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">
+                      {editingReceita ? 'Editar Receita' : 'Nova Receita'}
+                    </h2>
+                    <p className="text-white/80 text-sm">
+                      {editingReceita ? 'Atualize os dados da receita' : 'Cadastre uma nova receita matriz'}
+                    </p>
+                  </div>
+                  
+                  {/* Badge de Receita Processada - apenas quando editando e for processada */}
+                  {editingReceita && formData.processada && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 rounded-full border-2 border-white shadow-lg">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                      <span className="text-white text-xs font-semibold">PROCESSADA</span>
+                    </div>
+                  )}
                 </div>
+                
                 <button 
                   onClick={onClose} 
                   className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
@@ -3671,15 +3729,28 @@ const fetchInsumos = async () => {
                             key={insumo.id}
                             type="button"
                             onClick={() => adicionarInsumoRapido(insumo)}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center justify-between"
+                            className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center justify-between ${
+                              insumo.tipo === 'receita_processada' 
+                                ? 'bg-purple-50 border-l-4 border-purple-500' 
+                                : ''
+                            }`}
                           >
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{insumo.nome}</p>
-                              <p className="text-xs text-gray-500">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                {insumo.tipo === 'receita_processada' && (
+                                  <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded-full font-semibold">
+                                    Processada
+                                  </span>
+                                )}
+                                <p className="text-sm font-medium text-gray-900">{insumo.nome}</p>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
                                 {insumo.grupo} • {insumo.unidade} • R$ {(insumo.preco_compra_real || 0).toFixed(2)}
                               </p>
                             </div>
-                            <Plus className="w-4 h-4 text-green-600" />
+                            <Plus className={`w-4 h-4 ${
+                              insumo.tipo === 'receita_processada' ? 'text-purple-600' : 'text-green-600'
+                            }`} />
                           </button>
                         ))}
                         {insumosFiltrados.length === 0 && (
@@ -3735,14 +3806,34 @@ const fetchInsumos = async () => {
                               ) : (
                                 <>
                                   <option value={0}>Selecione um insumo...</option>
+                                  
+                                  {/* ===================================================================================================
+                                      INSUMOS NORMAIS
+                                      =================================================================================================== */}
                                   {insumos.map(insumo => (
-                                      <option key={insumo.id} value={insumo.id}>
-                                        {/* Exibir corretamente tanto insumos de sistema quanto de fornecedor */}
-                                        {insumo.codigo ? `${insumo.codigo} - ` : ''}
-                                        {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
-                                        {insumo.tipo_origem === 'fornecedor' ? ' [Fornecedor]' : ''}
+                                    <option key={insumo.id} value={insumo.id}>
+                                      {insumo.codigo ? `${insumo.codigo} - ` : ''}
+                                      {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                                      {insumo.tipo_origem === 'fornecedor' ? ' [F]' : ''}
+                                    </option>
+                                  ))}
+                                  
+                                  {/* ===================================================================================================
+                                      RECEITAS PROCESSADAS DO RESTAURANTE ATUAL
+                                      =================================================================================================== */}
+                                  {receitas && receitas
+                                    .filter(r => r.processada && r.restaurante_id === selectedRestaurante?.id)
+                                    .map(receita => (
+                                      <option 
+                                        key={`receita_${receita.id}`} 
+                                        value={receita.id}
+                                        className="bg-purple-50"
+                                      >
+                                        🔄 {receita.codigo ? `${receita.codigo} - ` : ''}
+                                        {receita.nome} ({receita.unidade || 'un'}) - R$ {(receita.cmv_real || 0).toFixed(2)} [PROCESSADA]
                                       </option>
-                                    ))}
+                                    ))
+                                  }
                                 </>
                               )}
                             </select>
@@ -5496,6 +5587,8 @@ const fetchInsumos = async () => {
           cmv_25_original: receita.cmv_25_porcento,
           cmv_30_original: receita.cmv_30_porcento
         },
+
+        processada: receita.processada || false,
         
         // Manter dados originais da receita
         receita_insumos: receita.receita_insumos || []
@@ -6090,6 +6183,7 @@ const Receitas = React.memo(() => {
           onSave={handleSaveReceita}
           loading={loading}
           insumos={insumos}
+          receitas={receitas} 
         />
       )}
 
