@@ -87,24 +87,48 @@ def list_receitas(
             
             # Processar cada insumo
             for ri in insumos_query:
-                # Buscar dados completos do insumo
-                insumo = db.query(Insumo).filter(Insumo.id == ri.insumo_id).first()
-                
-                if insumo:
-                    insumo_data = {
-                        'insumo_id': ri.insumo_id,
-                        'quantidade_necessaria': ri.quantidade_necessaria,
-                        'unidade_medida': ri.unidade_medida or 'un',
-                        'custo_calculado': getattr(ri, 'custo_calculado', 0),
-                        'insumo': {
-                            'id': insumo.id,
-                            'nome': insumo.nome,
-                            'unidade': insumo.unidade,
-                            'preco_compra_real': insumo.preco_compra_real
+                # ===================================================================================================
+                # BUSCAR DADOS DO INSUMO OU RECEITA PROCESSADA
+                # ===================================================================================================
+                if ri.receita_processada_id:
+                    # É uma receita processada usada como insumo
+                    receita_proc = db.query(Receita).filter(Receita.id == ri.receita_processada_id).first()
+                    
+                    if receita_proc:
+                        insumo_data = {
+                            'insumo_id': ri.receita_processada_id,
+                            'quantidade_necessaria': ri.quantidade_necessaria,
+                            'unidade_medida': ri.unidade_medida or 'un',
+                            'custo_calculado': getattr(ri, 'custo_calculado', 0),
+                            'insumo': {
+                                'id': receita_proc.id,
+                                'nome': receita_proc.nome,
+                                'unidade': receita_proc.unidade or 'un',
+                                'preco_compra_real': receita_proc.cmv_real or 0
+                            }
                         }
-                    }
-                    receita_insumos_data.append(insumo_data)
-                    print(f"  📦 Insumo: {insumo.nome} - Qtd: {ri.quantidade_necessaria}")
+                        receita_insumos_data.append(insumo_data)
+                        print(f"  📦 Receita Processada: {receita_proc.nome} - Qtd: {ri.quantidade_necessaria}")
+                        
+                elif ri.insumo_id:
+                    # É um insumo normal
+                    insumo = db.query(Insumo).filter(Insumo.id == ri.insumo_id).first()
+                    
+                    if insumo:
+                        insumo_data = {
+                            'insumo_id': ri.insumo_id,
+                            'quantidade_necessaria': ri.quantidade_necessaria,
+                            'unidade_medida': ri.unidade_medida or 'un',
+                            'custo_calculado': getattr(ri, 'custo_calculado', 0),
+                            'insumo': {
+                                'id': insumo.id,
+                                'nome': insumo.nome,
+                                'unidade': insumo.unidade,
+                                'preco_compra_real': insumo.preco_compra_real
+                            }
+                        }
+                        receita_insumos_data.append(insumo_data)
+                        print(f"  📦 Insumo: {insumo.nome} - Qtd: {ri.quantidade_necessaria}")
                 
         except Exception as e:
             print(f"❌ Erro ao buscar insumos da receita {receita.id}: {e}")
@@ -309,16 +333,40 @@ def create_receita_endpoint(
                 for insumo_data in insumos_data:
                     insumo_id = insumo_data.get('insumo_id')
                     quantidade = insumo_data.get('quantidade', 0)
+                    unidade_medida = insumo_data.get('unidade_medida', 'unidade')
                     
                     if insumo_id and quantidade > 0:
-                        print(f"  - Salvando Insumo {insumo_id}: {quantidade}")
+                        # ===================================================================================================
+                        # VERIFICAR SE É RECEITA PROCESSADA OU INSUMO NORMAL
+                        # ===================================================================================================
+                        receita_processada = db.query(Receita).filter(
+                            Receita.id == insumo_id,
+                            Receita.processada == True
+                        ).first()
                         
-                        receita_insumo = ReceitaInsumo(
-                            receita_id=receita_id,
-                            insumo_id=int(insumo_id),
-                            quantidade_necessaria=float(quantidade),
-                            unidade_medida='unidade'
-                        )
+                        if receita_processada:
+                            # É uma receita processada
+                            print(f"  - Salvando Receita Processada {insumo_id}: {quantidade} {unidade_medida}")
+                            
+                            receita_insumo = ReceitaInsumo(
+                                receita_id=receita_id,  # ← Usar receita_id no modo edição
+                                receita_processada_id=int(insumo_id),
+                                insumo_id=None,
+                                quantidade_necessaria=float(quantidade),
+                                unidade_medida=unidade_medida
+                            )
+                        else:
+                            # É um insumo normal
+                            print(f"  - Salvando Insumo {insumo_id}: {quantidade} {unidade_medida}")
+                            
+                            receita_insumo = ReceitaInsumo(
+                                receita_id=receita_id,  # ← Usar receita_id no modo edição
+                                insumo_id=int(insumo_id),
+                                receita_processada_id=None,
+                                quantidade_necessaria=float(quantidade),
+                                unidade_medida=unidade_medida
+                            )
+                        
                         db.add(receita_insumo)
                 
                 # Commit das alterações de insumos
@@ -398,21 +446,43 @@ def create_receita_endpoint(
             if insumos_data:
                 print(f"📦 Processando {len(insumos_data)} insumos...")
                 try:
-                    from app.models.receita import ReceitaInsumo
-                    
                     for insumo_data in insumos_data:
                         insumo_id = insumo_data.get('insumo_id')
                         quantidade = insumo_data.get('quantidade', 0)
+                        unidade_medida = insumo_data.get('unidade_medida', 'unidade')
                         
                         if insumo_id and quantidade > 0:
-                            print(f"  - Salvando Insumo {insumo_id}: {quantidade}")
+                            # ===================================================================================================
+                            # VERIFICAR SE É RECEITA PROCESSADA OU INSUMO NORMAL
+                            # ===================================================================================================
+                            receita_processada = db.query(Receita).filter(
+                                Receita.id == insumo_id,
+                                Receita.processada == True
+                            ).first()
                             
-                            receita_insumo = ReceitaInsumo(
-                                receita_id=nova_receita.id,
-                                insumo_id=int(insumo_id),
-                                quantidade_necessaria=float(quantidade),
-                                unidade_medida='unidade'
-                            )
+                            if receita_processada:
+                                # É uma receita processada
+                                print(f"  - Salvando Receita Processada {insumo_id}: {quantidade} {unidade_medida}")
+                                
+                                receita_insumo = ReceitaInsumo(
+                                    receita_id=nova_receita.id,  # ← Usar nova_receita.id no modo criação
+                                    receita_processada_id=int(insumo_id),
+                                    insumo_id=None,
+                                    quantidade_necessaria=float(quantidade),
+                                    unidade_medida=unidade_medida
+                                )
+                            else:
+                                # É um insumo normal
+                                print(f"  - Salvando Insumo {insumo_id}: {quantidade} {unidade_medida}")
+                                
+                                receita_insumo = ReceitaInsumo(
+                                    receita_id=nova_receita.id,  # ← Usar nova_receita.id no modo criação
+                                    insumo_id=int(insumo_id),
+                                    receita_processada_id=None,
+                                    quantidade_necessaria=float(quantidade),
+                                    unidade_medida=unidade_medida
+                                )
+                            
                             db.add(receita_insumo)
                             
                     # COMMIT das alterações

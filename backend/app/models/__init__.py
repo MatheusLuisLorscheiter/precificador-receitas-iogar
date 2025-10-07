@@ -10,7 +10,7 @@
 from .fornecedor import Fornecedor
 from .fornecedor_insumo import FornecedorInsumo
 from .insumo import Insumo
-
+# from app.models.receita_insumo import ReceitaInsumo
 # Importar modelos de taxonomia
 from .taxonomia import Taxonomia
 

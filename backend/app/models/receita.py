@@ -258,8 +258,11 @@ class Receita(Base):
 
     # Relacionamento com insumos da receita (N para N através de ReceitaInsumo)
     # Uma receita pode ter muitos insumos, um insumo pode estar em muitas receitas
-    receita_insumos = relationship("ReceitaInsumo", back_populates="receita", 
-                                  cascade="all, delete-orphan")
+    receita_insumos = relationship(
+        "ReceitaInsumo", 
+        back_populates="receita",
+        foreign_keys="[ReceitaInsumo.receita_id]"
+    )
 
     # ===================================================================================================
     # Propriedades calculadas (getters) - conversão centavos para reais
@@ -422,9 +425,11 @@ class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do Base
     # ===================================================================================================
     
     receita_id = Column(Integer, ForeignKey("receitas.id"), nullable=False, 
-                       comment="ID da receita")
-    insumo_id = Column(Integer, ForeignKey("insumos.id"), nullable=False, 
-                      comment="ID do insumo")
+                    comment="ID da receita")
+    insumo_id = Column(Integer, ForeignKey("insumos.id"), nullable=True, 
+                    comment="ID do insumo (NULL quando for receita processada)")
+    receita_processada_id = Column(Integer, ForeignKey("receitas.id"), nullable=True,
+                                comment="ID da receita processada usada como insumo")
 
     # ===================================================================================================
     # Quantidade necessária do insumo nesta receita (CORRIGIDO PARA FLOAT)
@@ -454,7 +459,11 @@ class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do Base
     # ===================================================================================================
     
     # Relacionamento com receita (N para 1)
-    receita = relationship("Receita", back_populates="receita_insumos")
+    receita = relationship(
+        "Receita", 
+        back_populates="receita_insumos",
+        foreign_keys=[receita_id]
+    )
     
     # Relacionamento com insumo (N para 1)
     insumo = relationship("Insumo", back_populates="receitas")  # Relacionamento com a tabela insumos
