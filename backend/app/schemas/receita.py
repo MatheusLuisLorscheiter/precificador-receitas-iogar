@@ -422,6 +422,12 @@ class ReceitaListResponse(BaseModel):
     cmv_30_porcento: Optional[float] = Field(None, description="CMV com 30% de lucro")
     ativo: Optional[bool] = True
     
+    # ===================================================================================================
+    # CAMPO CRÍTICO: processada - necessário para indicador visual e uso como insumo
+    # ===================================================================================================
+    processada: Optional[bool] = Field(False, description="Se é receita processada (pode ser usada como insumo)")
+    rendimento: Optional[float] = Field(None, description="Rendimento da receita processada")
+    
     class Config:
         from_attributes = True
         json_schema_extra = {
