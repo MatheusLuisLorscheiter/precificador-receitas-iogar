@@ -2854,7 +2854,7 @@ const fetchInsumos = async () => {
           sugestao_valor: editingReceita?.sugestao_valor || '',
           fator: parseFloat(editingReceita?.fator || 1),
           // Unidade padrão para receitas é 'un' (unidade/porção)
-          unidade: editingReceita?.unidade || '',
+          unidade: editingReceita?.unidade || 'un',
           quantidade_porcao: parseInt(editingReceita?.porcoes || editingReceita?.rendimento_porcoes || editingReceita?.quantidade_porcao || 1),
           preco_compra: parseFloat(editingReceita?.preco_compra || 0),
       
@@ -2900,16 +2900,24 @@ const fetchInsumos = async () => {
       // ===================================================================================================
       useEffect(() => {
         if (editingReceita) {
-          console.log('🔄 Atualizando formData com dados de processada:', {
-            processada: editingReceita.processada,
-            tipo: typeof editingReceita.processada
+          console.log('🔄 Atualizando formData COMPLETO com receita em edição:', editingReceita);
+          setFormData({
+            codigo: editingReceita.codigo || '',
+            nome: editingReceita.nome || '',
+            sugestao_valor: editingReceita.sugestao_valor || '',
+            fator: parseFloat(editingReceita.fator || 1),
+            unidade: editingReceita.unidade || 'un',  // ← ATUALIZAR UNIDADE
+            quantidade_porcao: parseInt(editingReceita.porcoes || editingReceita.rendimento_porcoes || editingReceita.quantidade_porcao || 1),
+            preco_compra: parseFloat(editingReceita.preco_compra || 0),
+            eh_processado: editingReceita.eh_processado || false,
+            processada: editingReceita.processada ?? false,
+            restaurante_id: selectedRestaurante?.id || editingReceita.restaurante_id || null,
+            categoria: editingReceita.grupo || editingReceita.categoria || '',
+            descricao: editingReceita.descricao || '',
+            tempo_preparo: editingReceita.tempo_preparo || editingReceita.tempo_preparo_minutos || 30
           });
-          setFormData(prev => ({
-            ...prev,
-            processada: editingReceita.processada ?? false
-          }));
         }
-      }, [editingReceita]);
+      }, [editingReceita, selectedRestaurante]);
 
       // Se não há restaurante selecionado, mostrar mensagem em vez de quebrar
       if (!selectedRestaurante && !receitaSegura.restaurante_id) {
@@ -3026,7 +3034,8 @@ const fetchInsumos = async () => {
             receita.codigo?.toLowerCase().includes(termo))
           )
           .map(receita => ({
-            id: receita.id,
+            id: receita.id,  // Manter ID original
+            id_display: `receita_${receita.id}`,  // ID com prefixo para display
             nome: `${receita.nome} (Receita Processada)`,
             codigo: receita.codigo,
             unidade: receita.unidade || 'un',
@@ -3054,21 +3063,9 @@ const fetchInsumos = async () => {
 
         console.log('➕ Adicionando insumo/receita:', insumo.nome, 'Tipo:', insumo.tipo);
         
-        // ===================================================================================================
-        // CORREÇÃO: Extrair ID real dependendo do tipo
-        // ===================================================================================================
-        let insumoIdReal;
-        
-        if (insumo.tipo === 'receita_processada') {
-          // Para receitas processadas, usar o id_receita
-          insumoIdReal = insumo.id_receita;
-          console.log('🔧 Receita processada detectada - ID real:', insumoIdReal);
-        } else {
-          // Para insumos normais, usar o ID diretamente
-          insumoIdReal = insumo.id;
-          console.log('🔧 Insumo normal - ID:', insumoIdReal);
-        }
-        
+        const insumoIdReal = insumo.id_original || insumo.id;
+        console.log('🔧 ID real a ser usado:', insumoIdReal);
+
         // Verificar se já foi adicionado (comparar com ID real)
         const jaAdicionado = receitaInsumos.some(ri => ri.insumo_id === insumoIdReal);
         
@@ -3076,12 +3073,6 @@ const fetchInsumos = async () => {
           alert(`${insumo.nome} já foi adicionado à receita.`);
           return;
         }
-
-        const novoInsumo = {
-          insumo_id: insumoIdReal,  // ← Usar ID real sem prefixo
-          quantidade: 1,
-          unidade_medida: insumo.unidade || 'un'
-        };
 
         console.log('✅ Adicionando ao array:', novoInsumo);
         setReceitaInsumos(prev => [...prev, novoInsumo]);
@@ -3115,9 +3106,36 @@ const fetchInsumos = async () => {
           return 0;
         }
         
-        const insumoData = insumos.find(i => i.id === receitaInsumo.insumo_id);
+        let insumoData = insumos.find(i => {
+          // Para insumos de fornecedor, comparar com id_original
+          if (i.tipo_origem === 'fornecedor') {
+            return i.id_original === receitaInsumo.insumo_id;
+          }
+          // Para insumos normais, comparar com id diretamente
+          return i.id === receitaInsumo.insumo_id;
+        });
+
+        // Se não encontrou nos insumos, buscar nas receitas processadas
+        if (!insumoData && receitaInsumo.insumo_id) {
+          const receitaProcessada = receitas?.find(r => 
+            r.processada && 
+            r.id === receitaInsumo.insumo_id
+          );
+          
+          if (receitaProcessada) {
+            // Transformar receita processada em formato de insumo para cálculo
+            insumoData = {
+              id: receitaProcessada.id,
+              nome: receitaProcessada.nome,
+              preco_compra_real: receitaProcessada.cmv_real || 0,
+              preco_compra: receitaProcessada.preco_compra || 0
+            };
+            console.log('✅ Calculando custo de receita processada:', insumoData.nome);
+          }
+        }
+
         if (!insumoData) {
-          console.log(`Insumo ${receitaInsumo.insumo_id} não encontrado`);
+          console.log(`Insumo/Receita ${receitaInsumo.insumo_id} não encontrado`);
           return 0;
         }
         
@@ -3239,15 +3257,49 @@ const fetchInsumos = async () => {
           
           // Se mudou o insumo_id, buscar e logar informações
           if (field === 'insumo_id' && value > 0) {
-            const insumoEncontrado = insumos.find(i => i.id === value);
-            console.log('🔍 Insumo selecionado DETALHES:', {
+            // Buscar insumo nos insumos normais/fornecedor
+            let insumoEncontrado = insumos.find(i => {
+              if (i.tipo_origem === 'fornecedor') {
+                return i.id_original === value;
+              }
+              return i.id === value;
+            });
+            
+            // Se não encontrou, buscar nas receitas processadas
+            if (!insumoEncontrado) {
+              const receitaProcessada = receitas?.find(r => 
+                r.processada && 
+                r.id === value
+              );
+              
+              if (receitaProcessada) {
+                insumoEncontrado = {
+                  id: receitaProcessada.id,
+                  nome: receitaProcessada.nome,
+                  unidade: receitaProcessada.unidade || 'un',
+                  preco_compra_real: receitaProcessada.cmv_real || 0,
+                  tipo: 'receita_processada'
+                };
+              }
+            }
+            
+            console.log('🔍 Insumo/Receita selecionado DETALHES:', {
               id: value,
               encontrado: !!insumoEncontrado,
               nome: insumoEncontrado?.nome,
               unidade: insumoEncontrado?.unidade,
+              tipo: insumoEncontrado?.tipo || insumoEncontrado?.tipo_origem,
               preco_compra_real: insumoEncontrado?.preco_compra_real,
               todos_campos: insumoEncontrado
             });
+            
+            // ============================================================================
+            // ATUALIZAR UNIDADE_MEDIDA AUTOMATICAMENTE
+            // ============================================================================
+            if (insumoEncontrado && insumoEncontrado.unidade) {
+              updated[index].unidade_medida = insumoEncontrado.unidade;
+              console.log(`✅ Unidade atualizada automaticamente para: ${insumoEncontrado.unidade}`);
+            }
           }
           
           return updated;
@@ -3329,16 +3381,6 @@ const fetchInsumos = async () => {
 
       const handleSubmit = () => {       //  INICIO HANDLESUBMIT FORMULARIORECEITA
         console.log('⏱️ DEBUG tempo_preparo:', formData.tempo_preparo);
-        
-        // ============================================================================
-        // NOVA SEÇÃO: DEBUG DE MODO DE EDIÇÃO
-        // ============================================================================
-        console.log('🔧 DEBUG MODO:', {
-          editingReceita: editingReceita,
-          temId: editingReceita && editingReceita.id,
-          idValor: editingReceita?.id,
-          modoDetectado: editingReceita && editingReceita.id ? 'EDIÇÃO' : 'CRIAÇÃO'
-        });
         
         // Validação de dados obrigatórios
         if (!formData.nome || !formData.nome.trim()) {
@@ -3777,7 +3819,38 @@ const fetchInsumos = async () => {
                   {/* Lista de insumos adicionados */}
                   <div className="space-y-3">
                     {receitaInsumos.map((receitaInsumo, index) => {
-                      const insumoSelecionado = insumos.find(i => i.id === receitaInsumo.insumo_id);
+                      let insumoSelecionado = insumos.find(i => {
+                        // Para insumos de fornecedor, comparar com id_original
+                        if (i.tipo_origem === 'fornecedor') {
+                          return i.id_original === receitaInsumo.insumo_id;
+                        }
+                        // Para insumos normais, comparar com id diretamente
+                        return i.id === receitaInsumo.insumo_id;
+                      });
+
+                      // Se não encontrou nos insumos, buscar nas receitas processadas
+                      if (!insumoSelecionado && receitaInsumo.insumo_id) {
+                        const receitaProcessada = receitas?.find(r => 
+                          r.processada && 
+                          r.id === receitaInsumo.insumo_id &&
+                          r.restaurante_id === selectedRestaurante?.id
+                        );
+                        
+                        if (receitaProcessada) {
+                          // Transformar receita processada em formato de insumo para exibição
+                          insumoSelecionado = {
+                            id: receitaProcessada.id,
+                            nome: receitaProcessada.nome,
+                            unidade: receitaProcessada.unidade || 'un',
+                            preco_compra_real: receitaProcessada.cmv_real || 0,
+                            codigo: receitaProcessada.codigo,
+                            tipo: 'receita_processada'
+                          };
+                          console.log('✅ Receita processada encontrada:', insumoSelecionado);
+                        } else {
+                          console.warn(`⚠️ Insumo/Receita ID ${receitaInsumo.insumo_id} não encontrado!`);
+                        }
+                      }
                       const custoItem = calcularCustoInsumo(receitaInsumo);
                       
                       // DEBUG COMPLETO - RASTREAMENTO DE UNIDADE
@@ -3795,15 +3868,67 @@ const fetchInsumos = async () => {
                         <div key={index} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
                           <div className="flex-1">
                             <select
-                              value={receitaInsumo.insumo_id || 0}
+                              value={(() => {
+                                // ============================================================================
+                                // CONVERTER insumo_id PARA O FORMATO COM PREFIXO
+                                // ============================================================================
+                                const insumoId = receitaInsumo.insumo_id;
+                                
+                                if (!insumoId || insumoId === 0) return 0;
+                                
+                                // Verificar se é uma receita processada
+                                const ehReceita = receitas?.some(r => 
+                                  r.processada && 
+                                  r.id === insumoId && 
+                                  r.restaurante_id === selectedRestaurante?.id
+                                );
+                                
+                                if (ehReceita) {
+                                  return `receita_${insumoId}`;
+                                }
+                                
+                                // Verificar se é um insumo de fornecedor
+                                const insumoFornecedor = insumos.find(i => 
+                                  i.tipo_origem === 'fornecedor' && i.id_original === insumoId
+                                );
+                                
+                                if (insumoFornecedor) {
+                                  return insumoFornecedor.id; // Retorna "fornecedor_123"
+                                }
+                                
+                                // Se não for receita nem fornecedor, é insumo normal
+                                return `insumo_${insumoId}`;
+                              })()}
                               onChange={(e) => {
                                 const valorSelecionado = e.target.value;
+                                console.log('🎯 Valor selecionado:', valorSelecionado);
                                 
                                 let insumoId;
                                 
-                                if (typeof valorSelecionado === 'string' && valorSelecionado.startsWith('fornecedor_')) {
-                                  const insumoFornecedor = insumos.find(i => i.id === valorSelecionado);
-                                  insumoId = insumoFornecedor?.id_original || parseInt(valorSelecionado.replace('fornecedor_', ''));
+                                // ============================================================================
+                                // TRATAMENTO DE PREFIXOS PARA EVITAR CONFLITO DE IDs
+                                // ============================================================================
+                                if (typeof valorSelecionado === 'string') {
+                                  if (valorSelecionado.startsWith('insumo_')) {
+                                    // Remover prefixo "insumo_" e converter para número
+                                    insumoId = parseInt(valorSelecionado.replace('insumo_', ''));
+                                    console.log('✅ Insumo normal detectado - ID:', insumoId);
+                                  } 
+                                  else if (valorSelecionado.startsWith('receita_')) {
+                                    // Remover prefixo "receita_" e converter para número
+                                    insumoId = parseInt(valorSelecionado.replace('receita_', ''));
+                                    console.log('✅ Receita processada detectada - ID:', insumoId);
+                                  } 
+                                  else if (valorSelecionado.startsWith('fornecedor_')) {
+                                    // Manter compatibilidade com insumos de fornecedor (se existir)
+                                    const insumoFornecedor = insumos.find(i => i.id === valorSelecionado);
+                                    insumoId = insumoFornecedor?.id_original;
+                                    console.log('✅ Insumo de fornecedor detectado - ID original:', insumoId, 'ID display:', valorSelecionado);
+                                  } 
+                                  else {
+                                    // Fallback: tentar converter diretamente
+                                    insumoId = parseInt(valorSelecionado);
+                                  }
                                 } else {
                                   insumoId = parseInt(valorSelecionado);
                                 }
@@ -3820,15 +3945,28 @@ const fetchInsumos = async () => {
                                   <option value={0}>Selecione um insumo...</option>
                                   
                                   {/* ===================================================================================================
-                                      INSUMOS NORMAIS
+                                      INSUMOS NORMAIS (SISTEMA + FORNECEDORES)
                                       =================================================================================================== */}
-                                  {insumos.map(insumo => (
-                                    <option key={insumo.id} value={insumo.id}>
-                                      {insumo.codigo ? `${insumo.codigo} - ` : ''}
-                                      {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
-                                      {insumo.tipo_origem === 'fornecedor' ? ' [F]' : ''}
-                                    </option>
-                                  ))}
+                                  {insumos.map(insumo => {
+                                    // Determinar o value correto baseado no tipo de insumo
+                                    let valorOption;
+                                    
+                                    if (insumo.tipo_origem === 'fornecedor') {
+                                      // Insumo de fornecedor: usar ID original sem prefixo adicional
+                                      valorOption = insumo.id; // Já vem como "fornecedor_123"
+                                    } else {
+                                      // Insumo normal: adicionar prefixo "insumo_"
+                                      valorOption = `insumo_${insumo.id}`;
+                                    }
+                                    
+                                    return (
+                                      <option key={valorOption} value={valorOption}>
+                                        {insumo.codigo ? `${insumo.codigo} - ` : ''}
+                                        {insumo.nome} ({insumo.unidade}) - R$ {(insumo.preco_compra_real || 0).toFixed(2)}
+                                        {insumo.tipo_origem === 'fornecedor' ? ' [F]' : ''}
+                                      </option>
+                                    );
+                                  })}
                                   
                                   {/* ===================================================================================================
                                       RECEITAS PROCESSADAS DO RESTAURANTE ATUAL
@@ -3838,7 +3976,7 @@ const fetchInsumos = async () => {
                                     .map(receita => (
                                       <option 
                                         key={`receita_${receita.id}`} 
-                                        value={receita.id}
+                                        value={`receita_${receita.id}`}
                                         className="bg-purple-50"
                                       >
                                         🔄 {receita.codigo ? `${receita.codigo} - ` : ''}

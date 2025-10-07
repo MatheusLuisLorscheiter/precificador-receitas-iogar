@@ -190,6 +190,17 @@ class Receita(Base):
     nome = Column(String(255), nullable=False, comment="Nome da receita")
 
     # ===================================================================================================
+    # Campos de unidade e quantidade (para receitas processadas)
+    # ===================================================================================================
+
+    unidade = Column(String(20), nullable=True, default='un', 
+                    comment="Unidade de medida da receita (kg, L, un, etc)")
+    quantidade = Column(Integer, nullable=True, default=1, 
+                    comment="Quantidade base que a receita produz")
+    fator = Column(Float, nullable=True, default=1.0, 
+                comment="Fator de conversão para cálculos")
+
+    # ===================================================================================================
     # Relacionamento obrigatório com restaurante
     # ===================================================================================================
     

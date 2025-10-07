@@ -53,7 +53,7 @@ def list_receitas(
     # Calcular CMVs automaticamente para cada receita
     receitas_com_cmv = []
     for receita in receitas:
-        
+    
         # CALCULAR CUSTO REAL BASEADO NOS INSUMOS
         custo_real = calcular_custo_receita(db, receita.id)
         
@@ -221,6 +221,12 @@ def create_receita_endpoint(
         
         if is_edicao:
             print(f"✏️ MODO EDIÇÃO - Atualizando receita ID: {receita_id}")
+            # ============================================================================
+            # DEBUG: VERIFICAR O QUE CHEGOU NO BACKEND
+            # ============================================================================
+            print(f"🔍 receita_data.get('unidade'): {receita_data.get('unidade')}")
+            print(f"🔍 'unidade' in receita_data: {'unidade' in receita_data}")
+            print(f"🔍 receita_data completo: {receita_data}")
             
             # Buscar receita existente
             receita_existente = db.query(Receita).filter(Receita.id == receita_id).first()
@@ -266,8 +272,9 @@ def create_receita_endpoint(
                 # Converter de reais para centavos se necessário
                 valor = receita_data['sugestao_valor']
                 receita_existente.sugestao_valor = int(float(valor) * 100) if valor < 1000 else int(valor)
-            if receita_data.get('unidade'):
+            if 'unidade' in receita_data:
                 receita_existente.unidade = receita_data['unidade']
+                print(f"✅ UNIDADE ATUALIZADA: {receita_data['unidade']}")
             if receita_data.get('quantidade'):
                 receita_existente.quantidade = receita_data['quantidade']
             if receita_data.get('fator'):
@@ -283,7 +290,9 @@ def create_receita_endpoint(
             # Salvar alterações
             db.commit()
             db.refresh(receita_existente)
-            
+            print(f"🔍 APÓS COMMIT - receita_existente.unidade: {receita_existente.unidade}")
+            print(f"🔍 APÓS COMMIT - receita_existente.nome: {receita_existente.nome}")
+            print(f"🔍 APÓS COMMIT - receita_existente.id: {receita_existente.id}")
             print(f"✅ Receita ID {receita_id} atualizada com sucesso!")
             
             # ============================================================================
@@ -317,15 +326,20 @@ def create_receita_endpoint(
                 print(f"✅ Insumos da receita atualizados!")
             
             # Retornar receita atualizada
-            return {
+            resposta = {
                 "id": receita_existente.id,
                 "nome": receita_existente.nome,
                 "codigo": receita_existente.codigo,
                 "restaurante_id": receita_existente.restaurante_id,
                 "ativo": receita_existente.ativo,
+                "unidade": receita_existente.unidade,  # ← ADICIONAR UNIDADE
+                "processada": receita_existente.processada,  # ← ADICIONAR PROCESSADA
                 "total_insumos": len(insumos_data),
                 "message": "Receita atualizada com sucesso"
             }
+
+            print(f"📤 RESPOSTA sendo enviada: {resposta}")
+            return resposta
             
         else:
             print("➕ MODO CRIAÇÃO - Nova receita")
