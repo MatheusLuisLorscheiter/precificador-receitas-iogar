@@ -13,10 +13,15 @@ Autor: Will - Empresa: IOGAR
 // ============================================================================
 const API_CONFIG = {
   // Detecta automaticamente se está em produção ou desenvolvimento
-  baseURL: import.meta.env.VITE_API_URL || 
-           (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-             ? 'http://localhost:8000'
-             : 'https://food-cost-backend.onrender.com'),
+  baseURL: (() => {
+    // Se estiver rodando no Render (producao)
+    if (window.location.hostname.includes('render.com') || 
+        window.location.hostname.includes('food-cost-frontend')) {
+      return 'https://food-cost-backend.onrender.com';
+    }
+    // Senao, tenta pegar da variavel de ambiente ou usa localhost
+    return import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  })(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
