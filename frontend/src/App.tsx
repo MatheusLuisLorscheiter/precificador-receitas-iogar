@@ -2290,7 +2290,8 @@ const fetchInsumos = async () => {
   // ============================================================================
   // COMPONENTE SIDEBAR - NAVEGAÇÃO PRINCIPAL
   // ============================================================================
-  const Sidebar = () => {
+  const [sidebarAberta, setSidebarAberta] = useState(false);
+  const Sidebar = ({ isAberta, onFechar }: { isAberta: boolean; onFechar: () => void }) => {
     // Itens do menu de navegação
     const menuItems = [
       { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -2305,7 +2306,11 @@ const fetchInsumos = async () => {
     ];
 
     return (
-      <div className="w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen">
+      <div className={`
+        w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen z-40 transition-transform duration-300
+        ${isAberta ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0
+      `}>
         <div className="p-6 relative">
           {/* Logo IOGAR com design do robô */}
           <div className="flex flex-col items-center gap-2 mb-8">
@@ -2333,7 +2338,7 @@ const fetchInsumos = async () => {
               className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
             >
               <option value="">Selecione um restaurante</option>
-              {restaurantes.map(restaurante => (
+              {restaurantes.map((restaurante) => (
                 <option key={restaurante.id} value={restaurante.id}>
                   {restaurante.nome}
                 </option>
@@ -2352,7 +2357,13 @@ const fetchInsumos = async () => {
             return (
               <button
                 key={item.id}
-                onClick={() => !isDisabled && setActiveTab(item.id)}
+                onClick={() => { 
+                  if (!isDisabled) {
+                    setActiveTab(item.id);
+                    localStorage.setItem('activeTab', item.id);
+                    onFechar(); // Fecha sidebar em mobile após clicar
+                  }
+                }}
                 disabled={isDisabled}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-all ${
                   isActive 
@@ -2393,6 +2404,8 @@ const fetchInsumos = async () => {
     );
   };
 
+  <div className="min-h-screen bg-gray-50 flex"></div>
+
   // ============================================================================
   // COMPONENTE DASHBOARD - TELA PRINCIPAL
   // ============================================================================
@@ -2403,6 +2416,7 @@ const fetchInsumos = async () => {
     const totalReceitas = receitas.length;
 
     return (
+      
       <div className="space-y-6">
         {/* Header principal com gradiente IOGAR */}
         <div className="bg-gradient-to-r from-green-500 to-pink-500 rounded-xl p-8 text-white">
@@ -4608,139 +4622,258 @@ const fetchInsumos = async () => {
             </div>
           ) : (
             <div>
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Nome</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Categoria</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Quantidade</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Unidade</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Preço Compra</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Valor/Unidade</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Fator</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Comparativo de Preços</th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {insumosPaginados.map((insumo) => (
-                    <tr key={insumo.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        <div className="flex items-center gap-2">
-                          {/* Ícone F para insumos de fornecedores */}
-                          {insumo.tipo_origem === 'fornecedor' && (
-                            <div 
-                              className="bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
-                              title={`Fornecedor: ${insumo.fornecedor_nome || 'Nome não disponível'}`}
-                            >
-                              F
+              {/* Versão Desktop - Tabela */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Nome</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Categoria</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Quantidade</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Unidade</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Preço Compra</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Valor/Unidade</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Fator</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">Comparativo de Preços</th>
+                      <th className="px-6 py-4 text-right text-sm font-medium text-gray-900">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {insumosPaginados.map((insumo) => (
+                      <tr key={insumo.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          <div className="flex items-center gap-2">
+                            {insumo.tipo_origem === 'fornecedor' && (
+                              <div 
+                                className="bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
+                                title={`Fornecedor: ${insumo.fornecedor_nome || 'Nome não disponível'}`}
+                              >
+                                F
+                              </div>
+                            )}
+                            <span>{insumo.nome}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {insumo.tipo_origem === 'fornecedor' ? '-' : (insumo.grupo || 'Sem categoria')}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {insumo.quantidade ?? 0}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                          {insumo.tipo_origem === 'fornecedor' ? '-' : 
+                            `R$ ${insumo.quantidade && insumo.preco_compra_real 
+                              ? (insumo.preco_compra_real * insumo.quantidade).toFixed(2) 
+                              : '0.00'}`
+                          }
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-green-600">
+                          R$ {insumo.tipo_origem === 'fornecedor' 
+                            ? insumo.preco_compra_real?.toFixed(2) || '0.00'
+                            : insumo.preco_compra_real?.toFixed(2) || '0.00'
+                          }
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {insumo.fator !== null && insumo.fator !== undefined ? 
+                            parseFloat(parseFloat(insumo.fator).toFixed(2)) : 
+                            ''
+                          }
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500">Fornecedor A:</span>
+                              <span className="text-xs text-gray-400">Em breve</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500">Fornecedor B:</span>
+                              <span className="text-xs text-gray-400">Em breve</span>
+                            </div>
+                            <button className="w-full mt-2 py-1 px-2 bg-green-50 text-green-600 rounded text-xs hover:bg-green-100 transition-colors">
+                              Ver Comparativo
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          {insumo.tipo_origem !== 'fornecedor' ? (
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleEditInsumo(insumo);
+                                }}
+                                className="px-3 py-1.5 text-xs bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDeleteInsumo(insumo.id, insumo.nome);
+                                }}
+                                className="px-3 py-1.5 text-xs bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-lg hover:from-pink-600 hover:to-red-600 transition-all"
+                              >
+                                Excluir
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-500 italic">
+                              Gerenciar na aba Fornecedores
                             </div>
                           )}
-                          <span>{insumo.nome}</span>
-                        </div>
-                      </td>
-                      {/* Categoria - vazia para insumos de fornecedor */}
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {insumo.tipo_origem === 'fornecedor' ? '-' : (insumo.grupo || 'Sem categoria')}
-                      </td>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                      {/* Quantidade - vazia para insumos de fornecedor */}
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {insumo.quantidade ?? 0}
-                      </td>
-
-                      {/* Unidade - sempre preenchida */}
-                      <td className="px-6 py-4 text-sm text-gray-600">{insumo.unidade}</td>
-
-                      {/* Preço Compra TOTAL (campo "Preço de compra Total" do formulário) */}
-                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        {insumo.tipo_origem === 'fornecedor' ? '-' : 
-                          `R$ ${insumo.quantidade && insumo.preco_compra_real 
-                            ? (insumo.preco_compra_real * insumo.quantidade).toFixed(2) 
-                            : '0.00'}`
-                        }
-                      </td>
-
-                      {/* Valor/Unidade (campo "Preço por unidade(sistema)" do formulário) */}
-                      <td className="px-6 py-4 text-sm font-medium text-green-600">
-                        R$ {insumo.tipo_origem === 'fornecedor' 
-                          ? insumo.preco_compra_real?.toFixed(2) || '0.00'
-                          : insumo.preco_compra_real?.toFixed(2) || '0.00'
-                        }
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {insumo.fator !== null && insumo.fator !== undefined ? 
-                          parseFloat(parseFloat(insumo.fator).toFixed(2)) : 
-                          ''
-                        }
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">Fornecedor A:</span>
-                            <span className="text-xs text-gray-400">Em breve</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">Fornecedor B:</span>
-                            <span className="text-xs text-gray-400">Em breve</span>
-                          </div>
-                          <button className="w-full mt-2 py-1 px-2 bg-green-50 text-green-600 rounded text-xs hover:bg-green-100 transition-colors">
-                            Ver Comparativo
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        {/* Mostrar botões apenas para insumos do sistema */}
-                        {insumo.tipo_origem !== 'fornecedor' ? (
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleEditInsumo(insumo);
-                              }}
-                              className="px-3 py-1.5 text-xs bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleDeleteInsumo(insumo.id, insumo.nome);
-                              }}
-                              className="px-3 py-1.5 text-xs bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-lg hover:from-pink-600 hover:to-red-600 transition-all"
-                            >
-                              Excluir
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-500 italic">
-                            Gerenciar na aba Fornecedores
+              {/* Versão Mobile - Cards */}
+              <div className="md:hidden space-y-4">
+                {insumosPaginados.map((insumo) => (
+                  <div key={insumo.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                    {/* Header do Card */}
+                    <div className="flex items-start justify-between mb-3 pb-3 border-b border-gray-100">
+                      <div className="flex items-center gap-2 flex-1">
+                        {insumo.tipo_origem === 'fornecedor' && (
+                          <div 
+                            className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0"
+                            title={`Fornecedor: ${insumo.fornecedor_nome || 'Nome não disponível'}`}
+                          >
+                            F
                           </div>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {/* Controles de Paginação */}
+                        <h3 className="font-semibold text-gray-900 text-base">{insumo.nome}</h3>
+                      </div>
+                    </div>
+
+                    {/* Grid de Informações */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <span className="text-xs text-gray-500 block mb-1">Categoria</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {insumo.tipo_origem === 'fornecedor' ? '-' : (insumo.grupo || 'Sem categoria')}
+                        </span>
+                      </div>
+                      
+                      <div>
+                        <span className="text-xs text-gray-500 block mb-1">Unidade</span>
+                        <span className="text-sm font-medium text-gray-900">{insumo.unidade}</span>
+                      </div>
+                      
+                      <div>
+                        <span className="text-xs text-gray-500 block mb-1">Quantidade</span>
+                        <span className="text-sm font-medium text-gray-900">{insumo.quantidade ?? 0}</span>
+                      </div>
+                      
+                      {insumo.fator !== null && insumo.fator !== undefined && (
+                        <div>
+                          <span className="text-xs text-gray-500 block mb-1">Fator</span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {parseFloat(parseFloat(insumo.fator).toFixed(2))}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Preços */}
+                    <div className="bg-gray-50 rounded-lg p-3 mb-3 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">Preço Compra Total:</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {insumo.tipo_origem === 'fornecedor' ? '-' : 
+                            `R$ ${insumo.quantidade && insumo.preco_compra_real 
+                              ? (insumo.preco_compra_real * insumo.quantidade).toFixed(2) 
+                              : '0.00'}`
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-600">Valor/Unidade:</span>
+                        <span className="text-sm font-bold text-green-600">
+                          R$ {insumo.tipo_origem === 'fornecedor' 
+                            ? insumo.preco_compra_real?.toFixed(2) || '0.00'
+                            : insumo.preco_compra_real?.toFixed(2) || '0.00'
+                          }
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Comparativo de Preços */}
+                    <div className="bg-blue-50 rounded-lg p-3 mb-3">
+                      <div className="text-xs font-medium text-blue-900 mb-2">Comparativo de Preços</div>
+                      <div className="space-y-1 mb-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600">Fornecedor A:</span>
+                          <span className="text-xs text-gray-400">Em breve</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600">Fornecedor B:</span>
+                          <span className="text-xs text-gray-400">Em breve</span>
+                        </div>
+                      </div>
+                      <button className="w-full py-2 bg-white text-blue-600 rounded-md text-xs font-medium hover:bg-blue-100 transition-colors border border-blue-200">
+                        Ver Comparativo Completo
+                      </button>
+                    </div>
+
+                    {/* Botões de Ação */}
+                    {insumo.tipo_origem !== 'fornecedor' ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleEditInsumo(insumo);
+                          }}
+                          className="flex-1 py-2.5 text-sm bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all font-medium"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDeleteInsumo(insumo.id, insumo.nome);
+                          }}
+                          className="flex-1 py-2.5 text-sm bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-lg hover:from-pink-600 hover:to-red-600 transition-all font-medium"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center text-xs text-gray-500 italic py-2 bg-gray-50 rounded-lg">
+                        Gerenciar na aba Fornecedores
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Controles de Paginação - Responsivos */}
               {totalPaginasInsumos > 1 && (
                 <div className="mt-6 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
+                  {/* Mobile - Botões Anterior/Próxima */}
                   <div className="flex flex-1 justify-between sm:hidden">
                     <button
                       onClick={() => setPaginaAtualInsumos(Math.max(1, paginaAtualInsumos - 1))}
                       disabled={paginaAtualInsumos === 1}
-                      className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Anterior
                     </button>
+                    <span className="text-sm text-gray-700">
+                      {paginaAtualInsumos} / {totalPaginasInsumos}
+                    </span>
                     <button
                       onClick={() => setPaginaAtualInsumos(Math.min(totalPaginasInsumos, paginaAtualInsumos + 1))}
                       disabled={paginaAtualInsumos === totalPaginasInsumos}
-                      className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Próxima
                     </button>
                   </div>
+
+                  {/* Desktop - Paginação Completa */}
                   <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-gray-700">
@@ -4756,7 +4889,7 @@ const fetchInsumos = async () => {
                         <button
                           onClick={() => setPaginaAtualInsumos(Math.max(1, paginaAtualInsumos - 1))}
                           disabled={paginaAtualInsumos === 1}
-                          className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                          className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span className="sr-only">Anterior</span>
                           <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -4779,7 +4912,7 @@ const fetchInsumos = async () => {
                         <button
                           onClick={() => setPaginaAtualInsumos(Math.min(totalPaginasInsumos, paginaAtualInsumos + 1))}
                           disabled={paginaAtualInsumos === totalPaginasInsumos}
-                          className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                          className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span className="sr-only">Próxima</span>
                           <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -4888,6 +5021,39 @@ const fetchInsumos = async () => {
     });
     const [loadingEdicao, setLoadingEdicao] = useState<boolean>(false);
     const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
+
+    // ============================================================================
+    // HOOK PARA RESPONSIVIDADE - DETECTAR TAMANHO DA TELA
+    // ============================================================================
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+    // ============================================================================
+    // ESTADOS PARA PAGINAÇÃO DE RESTAURANTES
+    // ============================================================================
+    const [paginaAtual, setPaginaAtual] = useState(1);
+    const restaurantesPorPagina = 10;
+    
+    // Calcular índices para paginação
+    const indexUltimoRestaurante = paginaAtual * restaurantesPorPagina;
+    const indexPrimeiroRestaurante = indexUltimoRestaurante - restaurantesPorPagina;
+    const restaurantesPaginados = restaurantes.slice(indexPrimeiroRestaurante, indexUltimoRestaurante);
+    const totalPaginas = Math.ceil(restaurantes.length / restaurantesPorPagina);
+
+    useEffect(() => {
+      const handleResize = () => {
+        setIsMobile(window.innerWidth < 768);
+      };
+
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // ============================================================================
+    // RESETAR PAGINAÇÃO QUANDO LISTA DE RESTAURANTES MUDAR
+    // ============================================================================
+    useEffect(() => {
+      setPaginaAtual(1);
+    }, [restaurantes.length]);
 
     if (loading) {
       return (
@@ -5149,12 +5315,12 @@ const fetchInsumos = async () => {
         {/* LAYOUT GRID 70% + ESTATÍSTICAS 30% */}
         {/* ============================================================================ */}
         
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* ============================================================================ */}
           {/* COLUNA PRINCIPAL - GRID DE RESTAURANTES (70%) */}
           {/* ============================================================================ */}
           
-          <div className="col-span-8">
+          <div className="col-span-12 lg:col-span-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               {/* Header da tabela */}
               <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
@@ -5429,23 +5595,82 @@ const fetchInsumos = async () => {
                     ))}
                   </tbody>
                 </table>
+                {/* ============================================================================ */}
+                {/* CONTROLES DE PAGINAÇÃO */}
+                {/* ============================================================================ */}
+                {totalPaginas > 1 && (
+                  <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      {/* Informação de registros */}
+                      <div className="text-sm text-gray-600">
+                        Mostrando {indexPrimeiroRestaurante + 1} a {Math.min(indexUltimoRestaurante, restaurantes.length)} de {restaurantes.length} restaurantes
+                      </div>
 
-                {/* Estado vazio */}
-                {/* {restaurantes.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="bg-gray-50 p-6 rounded-lg inline-block mb-4">
-                      <Users className="w-12 h-12 text-gray-400 mx-auto" />
+                      {/* Botões de navegação */}
+                      <div className="flex items-center gap-2">
+                        {/* Botão Anterior */}
+                        <button
+                          onClick={() => setPaginaAtual(prev => Math.max(prev - 1, 1))}
+                          disabled={paginaAtual === 1}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                            paginaAtual === 1
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                          }`}
+                        >
+                          Anterior
+                        </button>
+
+                        {/* Números de página */}
+                        <div className="flex items-center gap-1">
+                          {[...Array(totalPaginas)].map((_, index) => {
+                            const numeroPagina = index + 1;
+                            
+                            // Mostrar apenas algumas páginas (primeira, última, atual e adjacentes)
+                            if (
+                              numeroPagina === 1 ||
+                              numeroPagina === totalPaginas ||
+                              (numeroPagina >= paginaAtual - 1 && numeroPagina <= paginaAtual + 1)
+                            ) {
+                              return (
+                                <button
+                                  key={numeroPagina}
+                                  onClick={() => setPaginaAtual(numeroPagina)}
+                                  className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                                    paginaAtual === numeroPagina
+                                      ? 'bg-green-600 text-white'
+                                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                  }`}
+                                >
+                                  {numeroPagina}
+                                </button>
+                              );
+                            } else if (
+                              numeroPagina === paginaAtual - 2 ||
+                              numeroPagina === paginaAtual + 2
+                            ) {
+                              return <span key={numeroPagina} className="text-gray-400">...</span>;
+                            }
+                            return null;
+                          })}
+                        </div>
+
+                        {/* Botão Próximo */}
+                        <button
+                          onClick={() => setPaginaAtual(prev => Math.min(prev + 1, totalPaginas))}
+                          disabled={paginaAtual === totalPaginas}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                            paginaAtual === totalPaginas
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                          }`}
+                        >
+                          Próximo
+                        </button>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum restaurante cadastrado</h3>
-                    <p className="text-gray-500 mb-4">Comece criando o primeiro restaurante da sua rede</p>
-                    <button 
-                      onClick={abrirFormRestaurante}
-                      className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      Criar Primeiro Restaurante
-                    </button>
                   </div>
-                )} */}
+                )}
               </div>
             </div>
           </div>
@@ -5454,7 +5679,7 @@ const fetchInsumos = async () => {
           {/* COLUNA LATERAL - ESTATÍSTICAS (30%) */}
           {/* ============================================================================ */}
           
-          <div className="col-span-4">
+          <div className="col-span-12 lg:col-span-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Estatísticas</h3>
               
@@ -5526,11 +5751,11 @@ const fetchInsumos = async () => {
                   <p className="text-gray-500 text-sm">
                     Selecione um restaurante para ver as estatísticas
                   </p>
-                </div>
+                </div>  // Terminar aqui
               )}
             </div>
           </div>
-        </div>
+        </div>  {/* TERMINO DA DIV */}
         <FormularioRestauranteIsolado 
           isVisible={showRestauranteForm}
           editingRestaurante={editingRestaurante}
@@ -7890,209 +8115,238 @@ const cancelarExclusao = () => {
   // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
   // ============================================================================
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex ml-64">
-      {/* Sidebar de navegação */}
-      <Sidebar key={activeTab} />
-      
-      {/* Conteúdo principal */}
-      <main className="flex-1 p-8 overflow-auto">
-        {/* Renderização condicional baseada na aba ativa */}
-        {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'insumos' && <Insumos />}
-        {activeTab === 'restaurantes' && <Restaurantes />}
-        {activeTab === 'receitas' && <Receitas />}
-        {activeTab === 'fornecedores' && <Fornecedores />}
-        {activeTab === 'ia' && <ClassificadorIA />}
+return (
+    <>
+      {/* Botão Hamburger Menu - Visível apenas em mobile/tablet */}
+      <button
+        onClick={() => setSidebarAberta(!sidebarAberta)}
+        className="lg:hidden fixed top-4 right-4 z-50 bg-gradient-to-r from-green-500 to-pink-500 text-white p-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
+        aria-label="Menu de navegação"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {sidebarAberta ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Overlay escuro - Fecha sidebar ao clicar fora (mobile) */}
+      {sidebarAberta && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setSidebarAberta(false)}
+        />
+      )}
+
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* Sidebar de navegação - Agora responsiva */}
+        <Sidebar 
+          key={activeTab} 
+          isAberta={sidebarAberta} 
+          onFechar={() => setSidebarAberta(false)} 
+        />
         
-        {/* Páginas em desenvolvimento - Automação */}
-        {activeTab === 'automacao' && (
-          <div className="space-y-6">
-            {/* Header da seção de automação */}
-            <div className="bg-gradient-to-r from-green-500 to-pink-500 rounded-xl p-8 text-white">
-              <div className="flex items-center gap-4 mb-4">
-                <Zap className="w-8 h-8" />
-                <h2 className="text-3xl font-bold">Automação IOGAR</h2>
-              </div>
-              <p className="text-green-100 text-lg">
-                Seu restaurante no piloto automático com inteligência operacional
-              </p>
-            </div>
-            
-            {/* Grid com funcionalidades de automação */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Sistema de Importação */}
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-green-50 p-3 rounded-lg w-fit mb-4">
-                  <Upload className="w-6 h-6 text-green-600" />
+        {/* Conteúdo principal - Ajustado para responsividade */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 lg:ml-64 overflow-auto">
+          {/* Renderização condicional baseada na aba ativa */}
+          {activeTab === 'dashboard' && <Dashboard />}
+          {activeTab === 'insumos' && <Insumos />}
+          {activeTab === 'restaurantes' && <Restaurantes />}
+          {activeTab === 'receitas' && <Receitas />}
+          {activeTab === 'fornecedores' && <Fornecedores />}
+          {activeTab === 'ia' && <ClassificadorIA />}
+          
+          {/* Páginas em desenvolvimento - Automação */}
+          {activeTab === 'automacao' && (
+            <div className="space-y-6">
+              {/* Header da seção de automação */}
+              <div className="bg-gradient-to-r from-green-500 to-pink-500 rounded-xl p-8 text-white">
+                <div className="flex items-center gap-4 mb-4">
+                  <Zap className="w-8 h-8" />
+                  <h2 className="text-3xl font-bold">Automação IOGAR</h2>
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Sistema de Importação</h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Importação de arquivos CSV/SQL
+                <p className="text-green-100 text-lg">
+                  Seu restaurante no piloto automático com inteligência operacional
                 </p>
-                <button className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
-                  Configurar
-                </button>
               </div>
-
-              {/* Integração TOTVS Chef Web */}
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-green-50 p-3 rounded-lg w-fit mb-4">
-                  <LinkIcon className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Integração TOTVS Chef Web</h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Conectado ao TOTVS Chef Web para sincronização completa
-                </p>
-                <button className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
-                  Conectar
-                </button>
-              </div>
-
-              {/* Análise com IA */}
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-purple-50 p-3 rounded-lg w-fit mb-4">
-                  <Brain className="w-6 h-6 text-purple-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Análise com IA</h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Sugestões inteligentes de precificação e otimização de custos
-                </p>
-                <button className="w-full py-2 px-4 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors">
-                  Ativar IA
-                </button>
-              </div>
-
-              {/* Monitoramento em Tempo Real */}
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-orange-50 p-3 rounded-lg w-fit mb-4">
-                  <Monitor className="w-6 h-6 text-orange-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Monitoramento em Tempo Real</h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Logs e alertas automáticos do sistema
-                </p>
-                <button className="w-full py-2 px-4 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors">
-                  Monitorar
-                </button>
-              </div>
-
-              {/* Power BI Integration */}
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-yellow-50 p-3 rounded-lg w-fit mb-4">
-                  <BarChart3 className="w-6 h-6 text-yellow-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Power BI Integration</h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Exportação automática para dashboards
-                </p>
-                <button className="w-full py-2 px-4 bg-yellow-50 text-yellow-600 rounded-lg hover:bg-yellow-100 transition-colors">
-                  Integrar
-                </button>
-              </div>
-
-              {/* Controle de Usuários */}
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="bg-pink-50 p-3 rounded-lg w-fit mb-4">
-                  <Shield className="w-6 h-6 text-pink-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Controle de Usuários</h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Autenticação JWT e permissões
-                </p>
-                <button className="w-full py-2 px-4 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors">
-                  Gerenciar
-                </button>
-              </div>
-            </div>
-
-            {/* Seção de estatísticas da automação */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <Activity className="w-5 h-5 text-green-600" />
+              
+              {/* Grid com funcionalidades de automação */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Sistema de Importação */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="bg-green-50 p-3 rounded-lg w-fit mb-4">
+                    <Upload className="w-6 h-6 text-green-600" />
                   </div>
-                  <h4 className="font-medium text-gray-900">Processos Automatizados</h4>
+                  <h3 className="font-semibold text-gray-900 mb-2">Sistema de Importação</h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Importação de arquivos CSV/SQL
+                  </p>
+                  <button className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
+                    Configurar
+                  </button>
                 </div>
-                <p className="text-2xl font-bold text-green-600">6</p>
-                <p className="text-sm text-gray-500">Fluxos ativos</p>
+
+                {/* Integração TOTVS Chef Web */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="bg-green-50 p-3 rounded-lg w-fit mb-4">
+                    <LinkIcon className="w-6 h-6 text-green-600" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Integração TOTVS Chef Web</h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Conectado ao TOTVS Chef Web para sincronização completa
+                  </p>
+                  <button className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
+                    Conectar
+                  </button>
+                </div>
+
+                {/* Análise com IA */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="bg-purple-50 p-3 rounded-lg w-fit mb-4">
+                    <Brain className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Análise com IA</h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Sugestões inteligentes de precificação e otimização de custos
+                  </p>
+                  <button className="w-full py-2 px-4 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors">
+                    Ativar IA
+                  </button>
+                </div>
+
+                {/* Monitoramento em Tempo Real */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="bg-orange-50 p-3 rounded-lg w-fit mb-4">
+                    <Monitor className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Monitoramento em Tempo Real</h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Logs e alertas automáticos do sistema
+                  </p>
+                  <button className="w-full py-2 px-4 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors">
+                    Monitorar
+                  </button>
+                </div>
+
+                {/* Power BI Integration */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="bg-yellow-50 p-3 rounded-lg w-fit mb-4">
+                    <BarChart3 className="w-6 h-6 text-yellow-600" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Power BI Integration</h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Exportação automática para dashboards
+                  </p>
+                  <button className="w-full py-2 px-4 bg-yellow-50 text-yellow-600 rounded-lg hover:bg-yellow-100 transition-colors">
+                    Integrar
+                  </button>
+                </div>
+
+                {/* Controle de Usuários */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="bg-pink-50 p-3 rounded-lg w-fit mb-4">
+                    <Shield className="w-6 h-6 text-pink-600" />
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Controle de Usuários</h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Autenticação JWT e permissões
+                  </p>
+                  <button className="w-full py-2 px-4 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors">
+                    Gerenciar
+                  </button>
+                </div>
               </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-green-100 p-2 rounded-lg">
-                    <Database className="w-5 h-5 text-green-600" />
+              {/* Seção de estatísticas da automação */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="bg-green-100 p-2 rounded-lg">
+                      <Activity className="w-5 h-5 text-green-600" />
+                    </div>
+                    <h4 className="font-medium text-gray-900">Processos Automatizados</h4>
                   </div>
-                  <h4 className="font-medium text-gray-900">Dados Sincronizados</h4>
+                  <p className="text-2xl font-bold text-green-600">6</p>
+                  <p className="text-sm text-gray-500">Fluxos ativos</p>
                 </div>
-                <p className="text-2xl font-bold text-green-600">98%</p>
-                <p className="text-sm text-gray-500">Taxa de sincronização</p>
-              </div>
 
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-purple-100 p-2 rounded-lg">
-                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="bg-green-100 p-2 rounded-lg">
+                      <Database className="w-5 h-5 text-green-600" />
+                    </div>
+                    <h4 className="font-medium text-gray-900">Dados Sincronizados</h4>
                   </div>
-                  <h4 className="font-medium text-gray-900">Economia de Tempo</h4>
+                  <p className="text-2xl font-bold text-green-600">98%</p>
+                  <p className="text-sm text-gray-500">Taxa de sincronização</p>
                 </div>
-                <p className="text-2xl font-bold text-purple-600">15h</p>
-                <p className="text-sm text-gray-500">Por semana</p>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="bg-purple-100 p-2 rounded-lg">
+                      <TrendingUp className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <h4 className="font-medium text-gray-900">Economia de Tempo</h4>
+                  </div>
+                  <p className="text-2xl font-bold text-purple-600">15h</p>
+                  <p className="text-sm text-gray-500">Por semana</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+          
+          {/* Páginas em desenvolvimento - Relatórios */}
+          {activeTab === 'relatorios' && (
+            <div className="text-center py-20">
+              <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
+                <div className="bg-gradient-to-br from-green-50 to-pink-50 p-4 rounded-lg mb-6">
+                  <BarChart3 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">Relatórios Inteligentes</h3>
+                <p className="text-gray-500">Dashboards e relatórios em desenvolvimento...</p>
+              </div>
+            </div>
+          )}
+          
+          {/* Páginas em desenvolvimento - Configurações */}
+          {activeTab === 'settings' && (
+            <div className="text-center py-20">
+              <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
+                <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-lg mb-6">
+                  <Settings className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">Configurações do Sistema</h3>
+                <p className="text-gray-500">Configurações avançadas em desenvolvimento...</p>
+              </div>
+            </div>
+          )}
+        </main>
         
-        {/* Páginas em desenvolvimento - Relatórios */}
-        {activeTab === 'relatorios' && (
-          <div className="text-center py-20">
-            <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
-              <div className="bg-gradient-to-br from-green-50 to-pink-50 p-4 rounded-lg mb-6">
-                <BarChart3 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">Relatórios Inteligentes</h3>
-              <p className="text-gray-500">Dashboards e relatórios em desenvolvimento...</p>
-            </div>
-          </div>
-        )}
+        {/* Sistema de popup isolado - não causa re-render */}
+        <PopupPortalContainer />
         
-        {/* Páginas em desenvolvimento - Configurações */}
-        {activeTab === 'settings' && (
-          <div className="text-center py-20">
-            <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
-              <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-lg mb-6">
-                <Settings className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">Configurações do Sistema</h3>
-              <p className="text-gray-500">Configurações avançadas em desenvolvimento...</p>
-            </div>
-          </div>
-        )}
-      </main>
-      {/* Sistema de popup isolado - não causa re-render */}
-      <PopupPortalContainer />
-      {/* Popup de classificação IA */}
-      <PopupClassificacaoIA
-        isVisible={showClassificacaoPopup}
-        nomeInsumo={insumoRecemCriado?.nome || ''}
-        insumoId={insumoRecemCriado?.id || null}
-        onClose={() => setShowClassificacaoPopup(false)}
-        onClassificacaoAceita={(taxonomiaId) => {
-          console.log('Classificação aceita com taxonomia ID:', taxonomiaId);
-          setShowClassificacaoPopup(false);
-        }}
-        onFeedbackEnviado={() => {
-          console.log('Feedback enviado');
-          setShowClassificacaoPopup(false);
-        }}
-        showSuccessPopup={showSuccessPopup}
-        showErrorPopup={showErrorPopup}
-      />
-      
-    </div>
-    );
-  };  // FINAL DO COMPONENTE PRINCIPAL
-
+        {/* Popup de classificação IA */}
+        <PopupClassificacaoIA
+          isVisible={showClassificacaoPopup}
+          nomeInsumo={insumoRecemCriado?.nome || ''}
+          insumoId={insumoRecemCriado?.id || null}
+          onClose={() => setShowClassificacaoPopup(false)}
+          onClassificacaoAceita={(taxonomiaId) => {
+            console.log('Classificação aceita com taxonomia ID:', taxonomiaId);
+            setShowClassificacaoPopup(false);
+          }}
+          onFeedbackEnviado={() => {
+            console.log('Feedback enviado');
+            setShowClassificacaoPopup(false);
+          }}
+          showSuccessPopup={showSuccessPopup}
+          showErrorPopup={showErrorPopup}
+        />
+      </div>
+    </>
+  );
+};
 // Exportação do componente principal
 export default FoodCostSystem;
