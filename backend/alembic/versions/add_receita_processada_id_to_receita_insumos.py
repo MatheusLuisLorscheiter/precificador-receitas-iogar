@@ -13,7 +13,7 @@ import sqlalchemy as sa
 # IDENTIFICADORES DA REVISION
 # ===================================================================================================
 revision: str = '7c8d9e10ab2f'
-down_revision: Union[str, Sequence[str], None] = '1fe1d1547c32'
+down_revision: Union[str, Sequence[str], None] = 'cc4958572a31'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
