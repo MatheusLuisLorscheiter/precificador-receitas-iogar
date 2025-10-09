@@ -841,9 +841,13 @@ const calcularCustoPorPorcao = () => {
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
                 <FileText className="w-8 h-8" />
               </div>
+              {/* Título e subtítulo da receita com indicador de processada */}
               <div>
                 <h2 className="text-2xl font-bold">{receita.nome}</h2>
-                <p className="text-white text-opacity-90">{receita.codigo} • {receita.categoria}</p>
+                <p className="text-white text-opacity-90">
+                  {receita.codigo} • {receita.categoria}
+                  {receita.processada && <> • Processada</>}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
