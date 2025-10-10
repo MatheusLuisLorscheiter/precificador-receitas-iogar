@@ -1306,7 +1306,7 @@ const FormularioUnidadeIsolado = React.memo<FormularioUnidadeIsoladoProps>(({
   loading 
 }) => {
   console.log('🔧 FormularioUnidadeIsolado renderizado - isVisible:', isVisible);
-  
+
   // ============================================================================
   // ESTADOS DO FORMULÁRIO DE UNIDADE
   // ============================================================================
@@ -1622,6 +1622,198 @@ const setEditandoFornecedorStable = () => {
 // 🔍 DEBUG: Contadores para detectar loops
 let fetchReceitasCallCount = 0;
 let receitasRenderCount = 0;
+
+// ============================================================================
+// COMPONENTE POPUP DE ESTATÍSTICAS DO RESTAURANTE
+// ============================================================================
+const PopupEstatisticasRestaurante = React.memo(({ 
+  isVisible, 
+  restaurante, 
+  estatisticas,
+  loading,
+  onClose 
+}: { 
+  isVisible: boolean;
+  restaurante: any;
+  estatisticas: any;
+  loading: boolean;
+  onClose: () => void;
+}) => {
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop com fade */}
+      <div 
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+        onClick={onClose}
+      />
+      
+      {/* Popup */}
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl animate-scale-in overflow-hidden">
+        
+        {/* Header com gradiente */}
+        <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-3 rounded-lg backdrop-blur-sm">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">Estatísticas</h2>
+                <p className="text-green-100 text-sm mt-1">
+                  {restaurante?.nome || 'Restaurante'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:text-gray-200 transition-colors p-2 hover:bg-white/10 rounded-lg"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* Corpo do popup */}
+        <div className="p-6">
+          {/* Informações do restaurante */}
+          <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-gray-900 mb-3">Informações Gerais</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Tipo:</span>
+                <span className="text-gray-900 font-medium ml-2 capitalize">
+                  {restaurante?.tipo?.replace('_', ' ') || 'N/A'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Unidades:</span>
+                <span className="text-gray-900 font-medium ml-2">
+                  {restaurante?.quantidade_unidades || 0}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Cidade:</span>
+                <span className="text-gray-900 font-medium ml-2">
+                  {restaurante?.cidade || 'N/A'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Estado:</span>
+                <span className="text-gray-900 font-medium ml-2">
+                  {restaurante?.estado || 'N/A'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Delivery:</span>
+                <span className={`font-medium ml-2 ${restaurante?.tem_delivery ? 'text-green-600' : 'text-gray-400'}`}>
+                  {restaurante?.tem_delivery ? 'Sim' : 'Não'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Status:</span>
+                <span className={`font-medium ml-2 ${restaurante?.ativo ? 'text-green-600' : 'text-red-600'}`}>
+                  {restaurante?.ativo ? 'Ativo' : 'Inativo'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Estatísticas */}
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-blue-600" />
+              Métricas
+            </h3>
+
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-gray-500">Carregando estatísticas...</p>
+              </div>
+            ) : estatisticas ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Card Total Receitas */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-blue-500 p-2 rounded-lg">
+                      <ChefHat className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-3xl font-bold text-blue-900">
+                      {estatisticas.total_receitas || 0}
+                    </span>
+                  </div>
+                  <p className="text-blue-700 font-medium">Total de Receitas</p>
+                  <p className="text-blue-600 text-xs mt-1">Receitas cadastradas</p>
+                </div>
+
+                {/* Card Últimos Insumos */}
+                <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-6 border border-yellow-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-yellow-500 p-2 rounded-lg">
+                      <Package className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-3xl font-bold text-yellow-900">
+                      {estatisticas.ultimos_insumos?.length || 0}
+                    </span>
+                  </div>
+                  <p className="text-yellow-700 font-medium">Insumos Recentes</p>
+                  <p className="text-yellow-600 text-xs mt-1">Últimas movimentações</p>
+                </div>
+
+                {/* Card Últimas Receitas */}
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-green-500 p-2 rounded-lg">
+                      <Utensils className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-3xl font-bold text-green-900">
+                      {estatisticas.ultimas_receitas?.length || 0}
+                    </span>
+                  </div>
+                  <p className="text-green-700 font-medium">Receitas Recentes</p>
+                  <p className="text-green-600 text-xs mt-1">Últimas adições</p>
+                </div>
+
+                {/* Card Status Geral */}
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="bg-purple-500 p-2 rounded-lg">
+                      <TrendingUp className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-3xl font-bold text-purple-900">
+                      {restaurante?.quantidade_unidades || 1}
+                    </span>
+                  </div>
+                  <p className="text-purple-700 font-medium">Unidades Ativas</p>
+                  <p className="text-purple-600 text-xs mt-1">Total na rede</p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-500">Nenhuma estatística disponível</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-100">
+          <button
+            onClick={onClose}
+            className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-blue-600 transition-all font-medium"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+PopupEstatisticasRestaurante.displayName = 'PopupEstatisticasRestaurante';
 
 // ============================================================================
 // COMPONENTE PRINCIPAL DO SISTEMA
@@ -5055,6 +5247,182 @@ const fetchInsumos = async () => {
       setPaginaAtual(1);
     }, [restaurantes.length]);
 
+    // ============================================================================
+    // ESTADO PARA RESTAURANTE SELECIONADO NO MOBILE
+    // ============================================================================
+    const [restauranteSelecionadoMobile, setRestauranteSelecionadoMobile] = useState<number | null>(null);
+
+    // ============================================================================
+    // ESTADO PARA CONTROLAR POPUP DE ESTATÍSTICAS
+    // ============================================================================
+    const [showPopupEstatisticas, setShowPopupEstatisticas] = useState(false);
+
+    // ============================================================================
+    // COMPONENTE AUXILIAR - CARD DE RESTAURANTE PARA MOBILE
+    // ============================================================================
+    const RestauranteCard = ({ restaurante }: { restaurante: any }) => {
+      const isExpanded = restaurantesExpandidos.has(restaurante.id);
+      
+      const handleCardClick = async () => {
+        setSelectedRestaurante(restaurante);
+        setShowPopupEstatisticas(true);
+        
+        try {
+          setLoading(true);
+          const response = await apiService.getRestauranteEstatisticas(restaurante.id);
+          
+          if (!response.error && response.data) {
+            setEstatisticasRestaurante(response.data);
+          }
+        } catch (error) {
+          console.error('Erro ao buscar estatísticas:', error);
+          setEstatisticasRestaurante(null);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      return (
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          {/* Header do card com informações principais */}
+          <div 
+            className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={handleCardClick}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="bg-green-50 p-2 rounded-lg">
+                  <Users className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">{restaurante.nome}</h3>
+                  <p className="text-xs text-gray-500">
+                    {restaurante.eh_matriz ? 'Matriz' : 'Filial'}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Badge de status */}
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                restaurante.ativo 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {restaurante.ativo ? 'Ativo' : 'Inativo'}
+              </span>
+            </div>
+
+            {/* Informações do restaurante */}
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Cidade:</span>
+                <span className="font-medium text-gray-900">{restaurante.cidade || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Estado:</span>
+                <span className="font-medium text-gray-900">{restaurante.estado || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Tipo:</span>
+                <span className="font-medium text-gray-900 capitalize">
+                  {restaurante.tipo ? restaurante.tipo.replace('_', ' ') : 'N/A'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Delivery:</span>
+                <span className={`font-medium ${restaurante.tem_delivery ? 'text-green-600' : 'text-gray-400'}`}>
+                  {restaurante.tem_delivery ? 'Sim' : 'Não'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Unidades:</span>
+                <span className="font-medium text-gray-900">{restaurante.quantidade_unidades}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Botão expandir filiais (se houver) */}
+          {restaurante.eh_matriz && restaurante.quantidade_unidades > 1 && (
+            <div className="border-t border-gray-100">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleExpansao(restaurante.id);
+                }}
+                className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <span>
+                  {isExpanded ? 'Ocultar' : 'Ver'} {restaurante.quantidade_unidades - 1} filiais
+                </span>
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Filiais expandidas */}
+          {isExpanded && restaurante.unidades && restaurante.unidades.length > 0 && (
+            <div className="border-t border-gray-100 bg-gray-50 p-4 space-y-3">
+              {restaurante.unidades.map((unidade: any, index: number) => (
+                <div key={`unidade-${restaurante.id}-${index}`} className="bg-white rounded-lg p-3 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1 h-8 bg-green-500 rounded-full"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{unidade.nome}</p>
+                      <p className="text-xs text-gray-500">Filial</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Cidade:</span>
+                      <span className="text-gray-900">{unidade.cidade || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Estado:</span>
+                      <span className="text-gray-900">{unidade.estado || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Ações do card */}
+          <div className="border-t border-gray-100 p-3 flex gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                abrirEdicaoRestaurante(restaurante);
+              }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              <Edit2 className="w-4 h-4" />
+              Editar
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteRestauranteConfirm({
+                  isOpen: true,
+                  restauranteId: restaurante.id,
+                  restauranteNome: restaurante.nome,
+                  temUnidades: restaurante.eh_matriz && restaurante.quantidade_unidades > 1,
+                  quantidadeUnidades: restaurante.quantidade_unidades || 0
+                });
+              }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir
+            </button>
+          </div>
+        </div>
+      );
+    };
+
     if (loading) {
       return (
         <div className="text-center py-20">
@@ -5085,6 +5453,34 @@ const fetchInsumos = async () => {
       }
       console.log('🔄 EXPANSÃO - Novo estado:', novosExpandidos);   // APOS RESOLVER, EXCLUA
       setRestaurantesExpandidos(novosExpandidos);
+    };
+
+    // ============================================================================
+    // FUNÇÃO PARA SELECIONAR RESTAURANTE E ABRIR POPUP DE ESTATÍSTICAS
+    // ============================================================================
+    const handleSelectRestaurante = async (restaurante: any) => {
+      console.log('🔍 handleSelectRestaurante chamado', restaurante);
+      console.log('🔍 Abrindo popup...');
+      
+      setSelectedRestaurante(restaurante);
+      setShowPopupEstatisticas(true);
+      
+      console.log('🔍 Estado atualizado, popup deveria estar visível');
+      
+      try {
+        setLoading(true);
+        const response = await apiService.getRestauranteEstatisticas(restaurante.id);
+        
+        if (!response.error && response.data) {
+          setEstatisticasRestaurante(response.data);
+          console.log('✅ Estatísticas carregadas:', response.data);
+        }
+      } catch (error) {
+        console.error('❌ Erro ao buscar estatísticas:', error);
+        setEstatisticasRestaurante(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     const handleToggleExpandirRestaurante = (restauranteId: number) => {
@@ -5291,20 +5687,20 @@ const fetchInsumos = async () => {
       setLoading(false);
     }
   };
-    return (
+    return (  // Return do componente Restaurante
       <div className="space-y-6">
         {/* ============================================================================ */}
         {/* HEADER DA SEÇÃO COM BOTÃO CRIAR RESTAURANTE */}
         {/* ============================================================================ */}
         
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Gestão de Restaurantes</h2>
-            <p className="text-gray-600">Configure as unidades da sua rede de restaurantes</p>
+            <p className="text-gray-600 text-sm sm:text-base">Configure as unidades da sua rede de restaurantes</p>
           </div>
           <button 
             onClick={abrirFormRestaurante}
-            className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all"
+            className="w-full sm:w-auto bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all"
           >
             <Plus className="w-5 h-5" />
             Novo Restaurante
@@ -5320,7 +5716,7 @@ const fetchInsumos = async () => {
           {/* COLUNA PRINCIPAL - GRID DE RESTAURANTES (70%) */}
           {/* ============================================================================ */}
           
-          <div className="col-span-12 lg:col-span-8">
+          <div className="col-span-12">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               {/* Header da tabela */}
               <div className="bg-gray-50 px-6 py-4 border-b border-gray-100">
@@ -5330,431 +5726,422 @@ const fetchInsumos = async () => {
                 </p>
               </div>
 
-              {/* Tabela responsiva */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  {/* Cabeçalho da tabela */}
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm w-8"></th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Nome</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Cidade</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Estado</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Delivery</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Tipo</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Qtd Unidades</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Ações</th>
-                    </tr>
-                  </thead>
-
-                  {/* Corpo da tabela */}
-                  <tbody className="divide-y divide-gray-100">
-                    {/* ============================================================================ */}
-                    {/* ESTADO VAZIO - NENHUM RESTAURANTE CADASTRADO */}
-                    {/* ============================================================================ */}
-                    {(!restaurantes || restaurantes.length === 0) && (
-                      <tr>
-                        <td colSpan={9} className="py-16">
-                          <div className="text-center">
-                            <div className="bg-gray-50 rounded-xl p-8 max-w-md mx-auto">
-                              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Store className="w-8 h-8 text-green-600" />
-                              </div>
-                              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum restaurante cadastrado</h3>
-                              <p className="text-gray-500 mb-4">
-                                Comece criando o primeiro restaurante da sua rede
-                              </p>
-                              <button 
-                                onClick={abrirFormRestaurante}
-                                className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-2 rounded-lg hover:from-green-600 hover:to-pink-600 transition-all inline-flex items-center gap-2"
-                              >
-                                <Plus className="w-4 h-4" />
-                                Criar Primeiro Restaurante
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                    {(restaurantes || []).map((restaurante) => (
-                      <React.Fragment key={restaurante.id}>
-                        {/* ============================================================================ */}
-                        {/* LINHA PRINCIPAL DO RESTAURANTE */}
-                        {/* ============================================================================ */}
-                        
-                        <tr 
-                          className={`hover:bg-gray-50 transition-colors cursor-pointer ${
-                            selectedRestaurante?.id === restaurante.id ? 'bg-green-50' : ''
-                          }`}
-                          onClick={() => {
-                            setSelectedRestaurante(restaurante);
-                            carregarEstatisticasRestaurante(restaurante.id);
-                          }}
-                        >
-                          {/* Botão de expansão */}
-                          <td className="py-4 px-4">
-                            {restaurante.quantidade_unidades > 1 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleExpansao(restaurante.id);
-                                }}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
-                              >
-                                {restaurantesExpandidos.has(restaurante.id) ? (
-                                  <ChevronDown className="w-4 h-4" />
-                                ) : (
-                                  <ChevronRight className="w-4 h-4" />
-                                )}
-                              </button>
-                            )}
-                          </td>
-
-                          {/* Nome do restaurante */}
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="bg-green-50 p-2 rounded-lg">
-                                <Users className="w-4 h-4 text-green-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900">{restaurante.nome}</p>
-                                <p className="text-xs text-gray-500">
-                                  {restaurante.eh_matriz ? 'Matriz' : 'Filial'}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Cidade */}
-                          <td className="py-4 px-4">
-                            <span className="text-gray-700">
-                              {restaurante?.cidade || 'N/A'}
-                            </span>
-                          </td>
-
-                          {/* Estado */}
-                          <td className="py-4 px-4">
-                            <span className="text-gray-600 text-sm">
-                              {restaurante?.estado || 'N/A'}
-                            </span>
-                          </td>
-
-                          {/* Delivery */}
-                          <td className="py-4 px-4">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                              restaurante?.tem_delivery 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {restaurante?.tem_delivery ? 'Sim' : 'Não'}
-                            </span>
-                          </td>
-
-                          {/* Tipo */}
-                          <td className="py-4 px-4">
-                            <span className="text-gray-700 capitalize">
-                              {restaurante?.tipo ? restaurante.tipo.replace('_', ' ') : 'N/A'}
-                            </span>
-                          </td>
-
-                          {/* Quantidade de unidades */}
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-900">
-                                {restaurante?.quantidade_unidades || 0}
-                              </span>
-                              {restaurante.eh_matriz && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    abrirFormUnidade(restaurante);
-                                  }}
-                                  className="text-green-600 hover:text-green-700 transition-colors"
-                                  title="Adicionar nova unidade"
-                                >
-                                  <Plus className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Status */}
-                          <td className="py-4 px-4">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                              restaurante?.ativo 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {restaurante?.ativo ? 'Ativo' : 'Inativo'}
-                            </span>
-                          </td>
-
-                          {/* Ações */}
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  abrirEdicaoRestaurante(restaurante);
-                                }}
-                                className="text-blue-600 hover:text-blue-700 transition-colors"
-                                title="Editar restaurante"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteRestauranteConfirm({
-                                    isOpen: true,
-                                    restauranteId: restaurante.id,
-                                    restauranteNome: restaurante.nome,
-                                    temUnidades: restaurante.eh_matriz && restaurante.quantidade_unidades > 1,
-                                    quantidadeUnidades: restaurante.quantidade_unidades || 0
-                                  });
-                                }}
-                                className="text-red-600 hover:text-red-700 transition-colors"
-                                title="Excluir restaurante"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
+              {/* ============================================================================ */}
+              {/* RENDERIZAÇÃO CONDICIONAL - TABELA (DESKTOP) OU CARDS (MOBILE) */}
+              {/* ============================================================================ */}
+              
+              {!isMobile ? (
+                // MODO DESKTOP - TABELA
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      {/* Cabeçalho da tabela */}
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm w-8"></th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Nome</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Cidade</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Estado</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Delivery</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Tipo</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Qtd Unidades</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Status</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700 text-sm">Ações</th>
                         </tr>
+                      </thead>
 
-                        {/* LINHAS EXPANDIDAS - UNIDADES/FILIAIS */}
-                        {restaurantesExpandidos.has(restaurante.id) && restaurante.unidades && (                          
-                          restaurante.unidades.map((unidade, index) => (                            
-                            <tr key={`unidade-${restaurante.id}-${index}`} className="bg-gray-50 border-l-4 border-green-200">
-                              <td className="py-3 px-4 pl-12"></td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2 text-sm">
-                                  <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                                  <span className="text-gray-600">{unidade.nome}</span>
+                      {/* Corpo da tabela */}
+                      <tbody className="divide-y divide-gray-100">
+                        {/* Estado vazio */}
+                        {(!restaurantes || restaurantes.length === 0) && (
+                          <tr>
+                            <td colSpan={9} className="py-16">
+                              <div className="text-center">
+                                <div className="bg-gray-50 rounded-xl p-8 max-w-md mx-auto">
+                                  <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Store className="w-8 h-8 text-green-600" />
+                                  </div>
+                                  <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum restaurante cadastrado</h3>
+                                  <p className="text-gray-500 mb-4">
+                                    Comece criando o primeiro restaurante da sua rede
+                                  </p>
+                                  <button 
+                                    onClick={abrirFormRestaurante}
+                                    className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                                  >
+                                    Criar Primeiro Restaurante
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+
+                        {/* Renderizar restaurantes paginados */}
+                        {restaurantesPaginados.map((restaurante) => (
+                          <React.Fragment key={restaurante.id}>
+                            {/* LINHA PRINCIPAL DO RESTAURANTE */}
+                            <tr 
+                              className="hover:bg-gray-50 transition-colors cursor-pointer"
+                              onClick={() => handleSelectRestaurante(restaurante)}
+                            >
+                              {/* Botão expandir */}
+                              <td className="py-4 px-4">
+                                {restaurante.eh_matriz && restaurante.quantidade_unidades > 1 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleExpansao(restaurante.id);
+                                    }}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                  >
+                                    {restaurantesExpandidos.has(restaurante.id) ? (
+                                      <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                )}
+                              </td>
+
+                              {/* Nome */}
+                              <td className="py-4 px-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="bg-green-50 p-2 rounded-lg">
+                                    <Users className="w-4 h-4 text-green-600" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-gray-900">{restaurante.nome}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {restaurante.eh_matriz ? 'Matriz' : 'Filial'}
+                                    </p>
+                                  </div>
                                 </div>
                               </td>
-                              <td className="py-3 px-4 text-sm text-gray-600">
-                                {unidade.cidade || 'Não informado'}
+
+                              {/* Cidade */}
+                              <td className="py-4 px-4">
+                                <span className="text-gray-700">{restaurante.cidade || 'N/A'}</span>
                               </td>
-                              <td className="py-3 px-4 text-sm text-gray-600 font-mono">
-                                {unidade.estado || '--'}
+
+                              {/* Estado */}
+                              <td className="py-4 px-4">
+                                <span className="text-gray-600 text-sm">{restaurante.estado || 'N/A'}</span>
                               </td>
-                              <td className="py-3 px-4">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  unidade.tem_delivery 
-                                    ? 'bg-green-100 text-green-700' 
+
+                              {/* Delivery */}
+                              <td className="py-4 px-4">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                  restaurante.tem_delivery 
+                                    ? 'bg-green-100 text-green-800' 
                                     : 'bg-gray-100 text-gray-600'
                                 }`}>
-                                  {unidade.tem_delivery ? 'Sim' : 'Não'}
+                                  {restaurante.tem_delivery ? 'Sim' : 'Não'}
                                 </span>
                               </td>
-                              <td className="py-3 px-4 text-sm text-gray-600">Filial</td>
-                              <td className="py-3 px-4 text-sm text-gray-600">--</td>
-                              <td className="py-3 px-4">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  unidade.ativo 
-                                    ? 'bg-green-100 text-green-700' 
-                                    : 'bg-red-100 text-red-700'
+
+                              {/* Tipo */}
+                              <td className="py-4 px-4">
+                                <span className="text-gray-700 capitalize">
+                                  {restaurante.tipo ? restaurante.tipo.replace('_', ' ') : 'N/A'}
+                                </span>
+                              </td>
+
+                              {/* Quantidade Unidades */}
+                              <td className="py-4 px-4">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  {restaurante.quantidade_unidades}
+                                </span>
+                              </td>
+
+                              {/* Status */}
+                              <td className="py-4 px-4">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                  restaurante.ativo 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
                                 }`}>
-                                  {unidade.ativo ? 'Ativo' : 'Inativo'}
+                                  {restaurante.ativo ? 'Ativo' : 'Inativo'}
                                 </span>
                               </td>
-                              <td className="py-3 px-4">
+
+                              {/* Ações */}
+                              <td className="py-4 px-4">
                                 <div className="flex items-center gap-2">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      abrirEdicaoRestaurante(unidade);
+                                      abrirEdicaoRestaurante(restaurante);
                                     }}
                                     className="text-blue-600 hover:text-blue-700 transition-colors"
-                                    title="Editar unidade"
+                                    title="Editar restaurante"
                                   >
-                                    <Edit2 className="w-3 h-3" />
+                                    <Edit2 className="w-4 h-4" />
                                   </button>
                                   
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (setDeleteRestauranteConfirm(`Tem certeza que deseja excluir a unidade "${unidade.nome}"?`)) {
-                                        handleExcluirRestaurante(unidade.id);
-                                      }
+                                      setDeleteRestauranteConfirm({
+                                        isOpen: true,
+                                        restauranteId: restaurante.id,
+                                        restauranteNome: restaurante.nome,
+                                        temUnidades: restaurante.eh_matriz && restaurante.quantidade_unidades > 1,
+                                        quantidadeUnidades: restaurante.quantidade_unidades || 0
+                                      });
                                     }}
                                     className="text-red-600 hover:text-red-700 transition-colors"
-                                    title="Excluir unidade"
+                                    title="Excluir restaurante"
                                   >
-                                    <Trash2 className="w-3 h-3" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               </td>
                             </tr>
-                          ))
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-                {/* ============================================================================ */}
-                {/* CONTROLES DE PAGINAÇÃO */}
-                {/* ============================================================================ */}
-                {totalPaginas > 1 && (
-                  <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      {/* Informação de registros */}
-                      <div className="text-sm text-gray-600">
-                        Mostrando {indexPrimeiroRestaurante + 1} a {Math.min(indexUltimoRestaurante, restaurantes.length)} de {restaurantes.length} restaurantes
-                      </div>
 
-                      {/* Botões de navegação */}
-                      <div className="flex items-center gap-2">
-                        {/* Botão Anterior */}
-                        <button
-                          onClick={() => setPaginaAtual(prev => Math.max(prev - 1, 1))}
-                          disabled={paginaAtual === 1}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                            paginaAtual === 1
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                          }`}
-                        >
-                          Anterior
-                        </button>
-
-                        {/* Números de página */}
-                        <div className="flex items-center gap-1">
-                          {[...Array(totalPaginas)].map((_, index) => {
-                            const numeroPagina = index + 1;
-                            
-                            // Mostrar apenas algumas páginas (primeira, última, atual e adjacentes)
-                            if (
-                              numeroPagina === 1 ||
-                              numeroPagina === totalPaginas ||
-                              (numeroPagina >= paginaAtual - 1 && numeroPagina <= paginaAtual + 1)
-                            ) {
-                              return (
-                                <button
-                                  key={numeroPagina}
-                                  onClick={() => setPaginaAtual(numeroPagina)}
-                                  className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                                    paginaAtual === numeroPagina
-                                      ? 'bg-green-600 text-white'
-                                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                                  }`}
-                                >
-                                  {numeroPagina}
-                                </button>
-                              );
-                            } else if (
-                              numeroPagina === paginaAtual - 2 ||
-                              numeroPagina === paginaAtual + 2
-                            ) {
-                              return <span key={numeroPagina} className="text-gray-400">...</span>;
-                            }
-                            return null;
-                          })}
-                        </div>
-
-                        {/* Botão Próximo */}
-                        <button
-                          onClick={() => setPaginaAtual(prev => Math.min(prev + 1, totalPaginas))}
-                          disabled={paginaAtual === totalPaginas}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                            paginaAtual === totalPaginas
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                          }`}
-                        >
-                          Próximo
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ============================================================================ */}
-          {/* COLUNA LATERAL - ESTATÍSTICAS (30%) */}
-          {/* ============================================================================ */}
-          
-          <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Estatísticas</h3>
-              
-              {selectedRestaurante ? (
-                <div className="space-y-4">
-                  {/* Restaurante selecionado */}
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-green-900 mb-2">
-                      {selectedRestaurante.nome}
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-green-700">Tipo:</span>
-                        <span className="text-green-900 font-medium capitalize">
-                          {selectedRestaurante.tipo.replace('_', ' ')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-green-700">Unidades:</span>
-                        <span className="text-green-900 font-medium">
-                          {selectedRestaurante.quantidade_unidades}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-green-700">Delivery:</span>
-                        <span className="text-green-900 font-medium">
-                          {selectedRestaurante.tem_delivery ? 'Sim' : 'Não'}
-                        </span>
-                      </div>
-                    </div>
+                            {/* LINHAS EXPANDIDAS - FILIAIS */}
+                            {restaurantesExpandidos.has(restaurante.id) && restaurante.unidades && (
+                              restaurante.unidades.map((unidade: any, index: number) => (
+                                <tr key={`unidade-${restaurante.id}-${index}`} className="bg-gray-50">
+                                  <td className="py-3 px-4"></td>
+                                  <td colSpan={7} className="py-3 px-4">
+                                    <div className="flex items-center gap-3 pl-6">
+                                      <div className="w-1 h-12 bg-green-500 rounded-full"></div>
+                                      <div className="flex-1 bg-white rounded-lg p-3 border border-gray-200">
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <p className="font-medium text-gray-900">{unidade.nome}</p>
+                                            <p className="text-sm text-gray-500">
+                                              {unidade.cidade} - {unidade.estado}
+                                            </p>
+                                          </div>
+                                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                            unidade.tem_delivery 
+                                              ? 'bg-green-100 text-green-800' 
+                                              : 'bg-gray-100 text-gray-600'
+                                          }`}>
+                                            {unidade.tem_delivery ? 'Delivery' : 'Sem Delivery'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  
+                                  {/* Ações da filial */}
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          abrirEdicaoRestaurante(unidade);
+                                        }}
+                                        className="text-blue-600 hover:text-blue-700 transition-colors"
+                                        title="Editar filial"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </button>
+                                      
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDeleteRestauranteConfirm({
+                                            isOpen: true,
+                                            restauranteId: unidade.id,
+                                            restauranteNome: unidade.nome,
+                                            temUnidades: false,
+                                            quantidadeUnidades: 1
+                                          });
+                                        }}
+                                        className="text-red-600 hover:text-red-700 transition-colors"
+                                        title="Excluir filial"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
 
-                  {/* Estatísticas carregadas */}
-                  {estatisticasRestaurante && (
-                    <div className="space-y-3">
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <span className="text-blue-700 text-sm">Total Receitas</span>
-                          <span className="text-blue-900 font-bold">
-                            {estatisticasRestaurante.total_receitas}
-                          </span>
+                  {/* Paginação Desktop */}
+                  {totalPaginas > 1 && (
+                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-gray-600">
+                          Mostrando {indexPrimeiroRestaurante + 1} a {Math.min(indexUltimoRestaurante, restaurantes.length)} de {restaurantes.length} restaurantes
                         </div>
-                      </div>
 
-                      <div className="bg-yellow-50 p-3 rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <span className="text-yellow-700 text-sm">Últimos Insumos</span>
-                          <span className="text-yellow-900 font-bold">
-                            {estatisticasRestaurante.ultimos_insumos?.length || 0}
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setPaginaAtual(prev => Math.max(prev - 1, 1))}
+                            disabled={paginaAtual === 1}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                              paginaAtual === 1
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                            }`}
+                          >
+                            Anterior
+                          </button>
+
+                          <div className="flex items-center gap-1">
+                            {[...Array(totalPaginas)].map((_, index) => {
+                              const numeroPagina = index + 1;
+                              
+                              if (
+                                numeroPagina === 1 ||
+                                numeroPagina === totalPaginas ||
+                                (numeroPagina >= paginaAtual - 1 && numeroPagina <= paginaAtual + 1)
+                              ) {
+                                return (
+                                  <button
+                                    key={numeroPagina}
+                                    onClick={() => setPaginaAtual(numeroPagina)}
+                                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                                      paginaAtual === numeroPagina
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                    }`}
+                                  >
+                                    {numeroPagina}
+                                  </button>
+                                );
+                              } else if (
+                                numeroPagina === paginaAtual - 2 ||
+                                numeroPagina === paginaAtual + 2
+                              ) {
+                                return <span key={numeroPagina} className="text-gray-400">...</span>;
+                              }
+                              return null;
+                            })}
+                          </div>
+
+                          <button
+                            onClick={() => setPaginaAtual(prev => Math.min(prev + 1, totalPaginas))}
+                            disabled={paginaAtual === totalPaginas}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                              paginaAtual === totalPaginas
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                            }`}
+                          >
+                            Próximo
+                          </button>
                         </div>
                       </div>
                     </div>
                   )}
-
-                  {/* Loading de estatísticas */}
-                  {loading && (
-                    <div className="text-center py-4">
-                      <div className="animate-spin w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full mx-auto"></div>
-                      <p className="text-sm text-gray-500 mt-2">Carregando estatísticas...</p>
-                    </div>
-                  )}
-                </div>
+                </>
               ) : (
-                <div className="text-center py-8">
-                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                    <BarChart3 className="w-8 h-8 text-gray-400 mx-auto" />
-                  </div>
-                  <p className="text-gray-500 text-sm">
-                    Selecione um restaurante para ver as estatísticas
-                  </p>
-                </div>  // Terminar aqui
+                // MODO MOBILE - CARDS
+                <>
+                  {/* Estado vazio mobile */}
+                  {(!restaurantes || restaurantes.length === 0) ? (
+                    <div className="p-6 text-center">
+                      <div className="bg-gray-50 rounded-xl p-8">
+                        <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Store className="w-8 h-8 text-green-600" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum restaurante cadastrado</h3>
+                        <p className="text-gray-500 mb-4 text-sm">
+                          Comece criando o primeiro restaurante da sua rede
+                        </p>
+                        <button 
+                          onClick={abrirFormRestaurante}
+                          className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          Criar Primeiro Restaurante
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Grid de cards */}
+                      <div className="p-4 space-y-4">
+                        {restaurantesPaginados.map((restaurante) => (
+                          <RestauranteCard key={restaurante.id} restaurante={restaurante} />
+                        ))}
+                      </div>
+
+                      {/* Paginação Mobile */}
+                      {totalPaginas > 1 && (
+                        <div className="px-4 py-4 border-t border-gray-100 bg-gray-50">
+                          <div className="space-y-3">
+                            <div className="text-xs text-center text-gray-600">
+                              Página {paginaAtual} de {totalPaginas} ({restaurantes.length} restaurantes)
+                            </div>
+
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => setPaginaAtual(prev => Math.max(prev - 1, 1))}
+                                disabled={paginaAtual === 1}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                  paginaAtual === 1
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                }`}
+                              >
+                                Anterior
+                              </button>
+
+                              <div className="flex items-center gap-1">
+                                {[...Array(Math.min(5, totalPaginas))].map((_, index) => {
+                                  let numeroPagina;
+                                  
+                                  if (totalPaginas <= 5) {
+                                    numeroPagina = index + 1;
+                                  } else if (paginaAtual <= 3) {
+                                    numeroPagina = index + 1;
+                                  } else if (paginaAtual >= totalPaginas - 2) {
+                                    numeroPagina = totalPaginas - 4 + index;
+                                  } else {
+                                    numeroPagina = paginaAtual - 2 + index;
+                                  }
+                                  
+                                  return (
+                                    <button
+                                      key={numeroPagina}
+                                      onClick={() => setPaginaAtual(numeroPagina)}
+                                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                                        paginaAtual === numeroPagina
+                                          ? 'bg-green-600 text-white'
+                                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                      }`}
+                                    >
+                                      {numeroPagina}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              <button
+                                onClick={() => setPaginaAtual(prev => Math.min(prev + 1, totalPaginas))}
+                                disabled={paginaAtual === totalPaginas}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                  paginaAtual === totalPaginas
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                }`}
+                              >
+                                Próximo
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
               )}
             </div>
           </div>
+
+        
         </div>  {/* TERMINO DA DIV */}
         <FormularioRestauranteIsolado 
           isVisible={showRestauranteForm}
@@ -5769,6 +6156,21 @@ const fetchInsumos = async () => {
             }
           }}
           loading={loading}
+        />
+
+        {/* ============================================================================ */}
+        {/* POPUP DE ESTATÍSTICAS */}
+        {/* ============================================================================ */}
+        <PopupEstatisticasRestaurante
+          isVisible={showPopupEstatisticas}
+          restaurante={selectedRestaurante}
+          estatisticas={estatisticasRestaurante}
+          loading={loading}
+          onClose={() => {
+            setShowPopupEstatisticas(false);
+            setSelectedRestaurante(null);
+            setEstatisticasRestaurante(null);
+          }}
         />
 
       {/* ============================================================================ */}
@@ -5838,8 +6240,8 @@ const fetchInsumos = async () => {
           </div>
         )}
       </div>
-    );
-  }; // FINal DO COMPONENTE RESTAURANTE
+    );        // FINAL DO COMPONENTE RESTAURANTE
+  }; 
 
 
   // ============================================================================
