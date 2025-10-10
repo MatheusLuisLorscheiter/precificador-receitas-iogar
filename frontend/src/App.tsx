@@ -1622,7 +1622,7 @@ let receitasRenderCount = 0;
 // ============================================================================
 // COMPONENTE POPUP DE ESTATÍSTICAS DO RESTAURANTE
 // ============================================================================
-const PopupEstatisticasRestaurante = React.memo(({ 
+const PopupEstatisticasRestaurante = ({ 
   isVisible, 
   restaurante, 
   estatisticas,
@@ -1635,6 +1635,7 @@ const PopupEstatisticasRestaurante = React.memo(({
   loading: boolean;
   onClose: () => void;
 }) => {
+  console.log('🎯 PopupEstatisticasRestaurante renderizado', { isVisible, restaurante, estatisticas, loading });
   if (!isVisible) return null;
 
   return (
@@ -1807,7 +1808,7 @@ const PopupEstatisticasRestaurante = React.memo(({
       </div>
     </div>
   );
-});
+};
 
 PopupEstatisticasRestaurante.displayName = 'PopupEstatisticasRestaurante';
 
@@ -1904,6 +1905,13 @@ const FoodCostSystem: React.FC = () => {
     telefone: ''
   });
   const [estatisticasRestaurante, setEstatisticasRestaurante] = useState<RestauranteEstatisticas | null>(null);
+  const [showPopupEstatisticas, setShowPopupEstatisticas] = useState(false);
+
+  // LOG: Monitorar mudanças no estado
+  useEffect(() => {
+    console.log('🎯 showPopupEstatisticas mudou para:', showPopupEstatisticas);
+    console.trace('Stack trace de quem mudou:');
+  }, [showPopupEstatisticas]);
   const [loading, setLoading] = useState<boolean>(false);
   const [showInsumoForm, setShowInsumoForm] = useState<boolean>(false);
   // Estados para popup de classificação IA
@@ -2369,11 +2377,11 @@ const fetchInsumos = async () => {
   }, []); // IMPORTANTE: Array vazio para executar apenas uma vez
 
   // Carregar estatísticas quando um restaurante é selecionado na aba restaurantes
-  useEffect(() => {
-    if (selectedRestaurante && activeTab === 'restaurantes') {
-      carregarEstatisticasRestaurante(selectedRestaurante.id);
-    }
-  }, [selectedRestaurante, activeTab]);
+  // useEffect(() => {
+  //   if (selectedRestaurante && activeTab === 'restaurantes') {
+  //     carregarEstatisticasRestaurante(selectedRestaurante.id);
+  //   }
+  // }, [selectedRestaurante, activeTab]);
 
   // ✨ NOVO: Recarregar dados ao trocar de aba - ADICIONAR AQUI
   useEffect(() => {
@@ -5282,11 +5290,11 @@ const fetchInsumos = async () => {
     const restaurantesPorPagina = 10;
 
     // Bloquear scroll quando qualquer modal está aberto
-    useBlockBodyScroll(
-      showRestauranteForm || 
-      showUnidadeForm || 
-      deleteRestauranteConfirm.isOpen
-    );
+    // useBlockBodyScroll(
+    //   showRestauranteForm || 
+    //   showUnidadeForm || 
+    //   deleteRestauranteConfirm.isOpen
+    // );
         
     // Calcular índices para paginação
     const indexUltimoRestaurante = paginaAtual * restaurantesPorPagina;
@@ -5319,6 +5327,7 @@ const fetchInsumos = async () => {
     // ESTADO PARA CONTROLAR POPUP DE ESTATÍSTICAS
     // ============================================================================
     const [showPopupEstatisticas, setShowPopupEstatisticas] = useState(false);
+    const [loadingEstatisticas, setLoadingEstatisticas] = useState(false);
 
     // ============================================================================
     // COMPONENTE AUXILIAR - CARD DE RESTAURANTE PARA MOBILE
@@ -5326,23 +5335,40 @@ const fetchInsumos = async () => {
     const RestauranteCard = ({ restaurante }: { restaurante: any }) => {
       const isExpanded = restaurantesExpandidos.has(restaurante.id);
       
-      const handleCardClick = async () => {
-        setSelectedRestaurante(restaurante);
-        setShowPopupEstatisticas(true);
+      const handleCardClick = async (restaurante: RestauranteGrid) => {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🖱️ CLIQUE NO CARD - INÍCIO');
+        console.log('🔍 showPopupEstatisticas atual:', showPopupEstatisticas);
+        console.log('🔍 restaurante recebido:', restaurante);
+        console.log('🔍 restaurante.id:', restaurante?.id);
         
+        console.log('⏳ Entrando no try...');
         try {
-          setLoading(true);
-          const response = await apiService.getRestauranteEstatisticas(restaurante.id);
+          console.log('📍 Passo 1: setSelectedRestaurante');
+          setSelectedRestaurante(restaurante);
+          console.log('✅ Passo 1 concluído');
           
-          if (!response.error && response.data) {
-            setEstatisticasRestaurante(response.data);
-          }
+          console.log('📍 Passo 2: Buscando estatísticas...');
+          const estatisticas = await apiService.getRestauranteEstatisticas(restaurante.id);
+          console.log('✅ Passo 2 concluído');
+          console.log('📊 Estatísticas retornadas:', estatisticas);
+          
+          console.log('📍 Passo 3: setEstatisticasRestaurante');
+          setEstatisticasRestaurante(estatisticas.data); // IMPORTANTE: usar .data
+          console.log('✅ Passo 3 concluído');
+          
+          console.log('📍 Passo 4: setShowPopupEstatisticas(true)');
+          console.log('🔍 Valor ANTES:', showPopupEstatisticas);
+          setShowPopupEstatisticas(true);
+          console.log('✅ Passo 4 concluído');
+          console.log('✅ CLIQUE NO CARD - FIM (sucesso)');
+          
         } catch (error) {
-          console.error('Erro ao buscar estatísticas:', error);
-          setEstatisticasRestaurante(null);
-        } finally {
-          setLoading(false);
+          console.error('❌❌❌ ERRO CAPTURADO:', error);
+          console.error('❌ Stack:', error.stack);
+          setShowPopupEstatisticas(true);
         }
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       };
       
       return (
@@ -5350,7 +5376,7 @@ const fetchInsumos = async () => {
           {/* Header do card com informações principais */}
           <div 
             className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-            onClick={handleCardClick}
+            onClick={() => handleCardClick(restaurante)}
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3 flex-1">
@@ -5522,16 +5548,22 @@ const fetchInsumos = async () => {
     // FUNÇÃO PARA SELECIONAR RESTAURANTE E ABRIR POPUP DE ESTATÍSTICAS
     // ============================================================================
     const handleSelectRestaurante = async (restaurante: any) => {
+      console.log('🚨🚨🚨 FUNÇÃO CHAMADA! 🚨🚨🚨');
+
       console.log('🔍 handleSelectRestaurante chamado', restaurante);
-      console.log('🔍 Abrindo popup...');
       
       setSelectedRestaurante(restaurante);
-      setShowPopupEstatisticas(true);
+      console.log('🔍 setSelectedRestaurante executado');
       
-      console.log('🔍 Estado atualizado, popup deveria estar visível');
+      setShowPopupEstatisticas(true);
+      console.log('🔍 setShowPopupEstatisticas(true) executado');
+      
+      // Aguardar próximo frame para verificar
+      await new Promise(resolve => setTimeout(resolve, 0));
+      console.log('🔍 Estado DEPOIS (próximo frame):', { showPopupEstatisticas, selectedRestaurante });
       
       try {
-        setLoading(true);
+        setLoadingEstatisticas(true);
         const response = await apiService.getRestauranteEstatisticas(restaurante.id);
         
         if (!response.error && response.data) {
@@ -5542,7 +5574,7 @@ const fetchInsumos = async () => {
         console.error('❌ Erro ao buscar estatísticas:', error);
         setEstatisticasRestaurante(null);
       } finally {
-        setLoading(false);
+        setLoadingEstatisticas(false);
       }
     };
 
@@ -6212,6 +6244,11 @@ const fetchInsumos = async () => {
           tiposEstabelecimento={tiposEstabelecimento}
           onClose={() => setShowRestauranteForm(false)}
           onSave={(dadosRestaurante) => {
+            console.log('🔍 POPUP RENDER:', {
+              isVisible: showPopupEstatisticas,
+              restaurante: selectedRestaurante?.nome,
+              temEstatisticas: !!estatisticasRestaurante
+            });
             if (editingRestaurante) {
               handleSalvarEdicaoRestaurante(dadosRestaurante);
             } else {
@@ -6221,6 +6258,8 @@ const fetchInsumos = async () => {
           loading={loading}
         />
 
+        
+
         {/* ============================================================================ */}
         {/* POPUP DE ESTATÍSTICAS */}
         {/* ============================================================================ */}
@@ -6228,8 +6267,10 @@ const fetchInsumos = async () => {
           isVisible={showPopupEstatisticas}
           restaurante={selectedRestaurante}
           estatisticas={estatisticasRestaurante}
-          loading={loading}
+          loading={loadingEstatisticas}
           onClose={() => {
+            console.log('❌ onClose do popup foi chamado!');
+            console.trace('Stack trace do onClose:');
             setShowPopupEstatisticas(false);
             setSelectedRestaurante(null);
             setEstatisticasRestaurante(null);
