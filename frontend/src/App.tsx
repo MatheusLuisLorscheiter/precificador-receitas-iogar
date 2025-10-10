@@ -211,10 +211,6 @@ const [formData, setFormData] = useState(() => {
     grupo: editingInsumo?.grupo || '',
     subgrupo: editingInsumo?.subgrupo || '',
     descricao: editingInsumo?.descricao || '',
-  
-  // ============================================================================
-  // NOVO CAMPO: PREÇO DE COMPRA TOTAL (VALOR PAGO)
-  // ============================================================================
   preco_compra_total: editingInsumo?.preco_compra_total || 
                         (editingInsumo?.preco_compra_real && editingInsumo?.quantidade ? 
                         editingInsumo.preco_compra_real * editingInsumo.quantidade : 0),
@@ -447,8 +443,8 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
 
   // INICIO RETURN FORMULARIO INSUMO
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
+    <div className="bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-4xl sm:max-h-[90vh] flex flex-col overflow-hidden">
         
         {/* ============================================================================ */}
         {/* HEADER DO FORMULÁRIO */}
@@ -1069,8 +1065,8 @@ const FormularioRestauranteIsolado = React.memo(({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden">
         {/* Cabeçalho fixo com gradiente */}
         <div className="bg-gradient-to-r from-green-500 to-pink-500 rounded-t-xl">
           <div className="flex items-center justify-between p-6">
@@ -1388,8 +1384,8 @@ const FormularioUnidadeIsolado = React.memo<FormularioUnidadeIsoladoProps>(({
   // ============================================================================
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
+    <div className="bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden">
         
         {/* ============================================================================ */}
         {/* HEADER DO POPUP COM GRADIENTE VERDE E ROSA */}
@@ -1814,6 +1810,33 @@ const PopupEstatisticasRestaurante = React.memo(({
 });
 
 PopupEstatisticasRestaurante.displayName = 'PopupEstatisticasRestaurante';
+
+// ============================================================================
+// HOOK CUSTOMIZADO PARA BLOQUEAR SCROLL DO BODY QUANDO MODAL ESTÁ ABERTO
+// ============================================================================
+export const useBlockBodyScroll = (isBlocked: boolean) => {
+  useEffect(() => {
+    if (isBlocked) {
+      // Salvar posição atual do scroll
+      const scrollY = window.scrollY;
+      
+      // Bloquear scroll
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        // Restaurar scroll ao fechar modal
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isBlocked]);
+};
 
 // ============================================================================
 // COMPONENTE PRINCIPAL DO SISTEMA
@@ -3079,6 +3102,9 @@ const fetchInsumos = async () => {
         onConfirm: () => {}
       });
 
+      // Bloquear scroll quando qualquer modal está aberto
+      useBlockBodyScroll(showConfirmDialog);
+
       // Log detalhado dos dados recebidos
       useEffect(() => {
         console.log('🔧 DADOS COMPLETOS DA RECEITA:', {
@@ -4063,8 +4089,9 @@ const fetchInsumos = async () => {
                       });
 
                       return (
-                        <div key={index} className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
-                          <div className="flex-1">
+                        <div key={index} className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 space-y-3">
+                          {/* Linha 1: Select do Insumo (largura total) */}
+                          <div className="w-full">
                             <select
                               value={(() => {
                                 // ============================================================================
@@ -4186,43 +4213,62 @@ const fetchInsumos = async () => {
                               )}
                             </select>
                           </div>
-                          <div className="w-32">
-                            <input
-                              type="number"
-                              step="0.0001"
-                              min="0"
-                              value={receitaInsumo.quantidade || 0}
-                              onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
-                              placeholder="Qtd"
-                            />
-                            <p className="text-xs text-gray-500 mt-1 text-center">
-                              {(() => {
-                                const unidadeExibida = insumoSelecionado?.unidade || 'un';
-                                console.log(`📍 EXIBINDO UNIDADE [${index}]:`, {
-                                  unidade_exibida: unidadeExibida,
-                                  de_onde_veio: insumoSelecionado?.unidade ? 'insumoSelecionado' : 'fallback'
-                                });
-                                return unidadeExibida;
-                              })()}
-                            </p>
-                          </div>
 
-                          {/* Custo calculado do item */}
-                          <div className="w-24 text-center">
-                            <p className="text-sm font-semibold text-green-600">
-                              R$ {custoItem.toFixed(2)}
-                            </p>
-                            <p className="text-xs text-gray-500">Custo</p>
-                          </div>
+                          {/* Linha 2: Quantidade, Unidade, Custo e Lixeira */}
+                          <div className="flex items-center gap-3">
+                            {/* Quantidade */}
+                            <div className="flex-1">
+                              <label className="text-xs text-gray-600 mb-1 block">Quantidade</label>
+                              <input
+                                type="number"
+                                step="0.0001"
+                                min="0"
+                                value={receitaInsumo.quantidade || 0}
+                                onChange={(e) => updateReceitaInsumo(index, 'quantidade', parseFloat(e.target.value))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
+                                placeholder="Qtd"
+                              />
+                            </div>
 
-                          <button
-                            type="button"
-                            onClick={() => removeInsumoFromReceita(index)}
-                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            {/* Unidade */}
+                            <div className="w-16 text-center">
+                              <label className="text-xs text-gray-600 mb-1 block">Un.</label>
+                              <div className="px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                                <p className="text-sm font-medium text-gray-700">
+                                  {(() => {
+                                    const unidadeExibida = insumoSelecionado?.unidade || 'un';
+                                    console.log(`📍 EXIBINDO UNIDADE [${index}]:`, {
+                                      unidade_exibida: unidadeExibida,
+                                      de_onde_veio: insumoSelecionado?.unidade ? 'insumoSelecionado' : 'fallback'
+                                    });
+                                    return unidadeExibida;
+                                  })()}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Custo */}
+                            <div className="w-24 text-center">
+                              <label className="text-xs text-gray-600 mb-1 block">Custo</label>
+                              <div className="px-2 py-2 bg-green-50 border border-green-200 rounded-lg">
+                                <p className="text-sm font-semibold text-green-600">
+                                  R$ {custoItem.toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Botão Excluir */}
+                            <div className="flex items-end pb-1">
+                              <button
+                                type="button"
+                                onClick={() => removeInsumoFromReceita(index)}
+                                className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-colors border border-red-200"
+                                title="Remover insumo"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
@@ -4557,6 +4603,14 @@ const fetchInsumos = async () => {
 
     const [searchTerm, setSearchTerm] = useState<string>('');
 
+    // ============================================================================
+    // ESTADOS DE PAGINAÇÃO PARA INSUMOS
+    // ============================================================================
+    const [paginaAtualInsumos, setPaginaAtualInsumos] = useState(1);
+    const itensPorPaginaInsumos = 20;
+
+    const [editandoFornecedor, setEditandoFornecedor] = useState(null);
+
     // Estado para modal de confirmação de exclusão
     const [deleteConfirm, setDeleteConfirm] = useState<{
       isOpen: boolean;
@@ -4568,13 +4622,11 @@ const fetchInsumos = async () => {
       insumoNome: ''
     });
 
-    // ============================================================================
-    // ESTADOS DE PAGINAÇÃO PARA INSUMOS
-    // ============================================================================
-    const [paginaAtualInsumos, setPaginaAtualInsumos] = useState(1);
-    const itensPorPaginaInsumos = 20;
-
-    const [editandoFornecedor, setEditandoFornecedor] = useState(null);
+    // Bloquear scroll quando qualquer modal está aberto
+    useBlockBodyScroll(
+      showInsumoForm || 
+      deleteConfirm.isOpen
+    );
   
     const handleSearchChange = useCallback((term) => {
       setSearchTerm(term);
@@ -5228,7 +5280,14 @@ const fetchInsumos = async () => {
     // ============================================================================
     const [paginaAtual, setPaginaAtual] = useState(1);
     const restaurantesPorPagina = 10;
-    
+
+    // Bloquear scroll quando qualquer modal está aberto
+    useBlockBodyScroll(
+      showRestauranteForm || 
+      showUnidadeForm || 
+      deleteRestauranteConfirm.isOpen
+    );
+        
     // Calcular índices para paginação
     const indexUltimoRestaurante = paginaAtual * restaurantesPorPagina;
     const indexPrimeiroRestaurante = indexUltimoRestaurante - restaurantesPorPagina;
@@ -6192,8 +6251,8 @@ const fetchInsumos = async () => {
       />
               {/* POPUP CONFIRMAÇÃO DE EXCLUSÃO DE RESTAURANTE revisar*/}
         {deleteRestauranteConfirm.isOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70]">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-red-50 p-2 rounded-full">
                   <Trash2 className="w-6 h-6 text-red-600" />
@@ -7023,6 +7082,15 @@ Receitas.displayName = 'Receitas';
     const [showPopupEditarInsumo, setShowPopupEditarInsumo] = useState(false);
     const [insumoParaExcluir, setInsumoParaExcluir] = useState<any>(null);
     const [showConfirmExclusaoInsumo, setShowConfirmExclusaoInsumo] = useState(false);
+
+    // Bloquear scroll quando qualquer modal está aberto
+    useBlockBodyScroll(
+      showPopupFornecedor || 
+      showPopupInsumo || 
+      showConfirmExclusao || 
+      showPopupEditarInsumo || 
+      showConfirmExclusaoInsumo
+    );
 
     // =========================================================================
     // FUNÇÕES DE CARREGAMENTO DE DADOS
@@ -7873,8 +7941,8 @@ const cancelarExclusao = () => {
 
         {/* 🆕 POPUP CADASTRO DE FORNECEDOR - ADICIONAR AQUI */}
         {showPopupFornecedor && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden">             
               
               {/* ============================================================================ */}
               {/* HEADER DO FORMULÁRIO */}
@@ -8165,8 +8233,8 @@ const cancelarExclusao = () => {
 
         {/* 🗑️ POPUP CONFIRMAÇÃO DE EXCLUSÃO - ADICIONAR AQUI */}
         {showConfirmExclusao && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70]">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-red-50 p-2 rounded-full">
                   <Trash2 className="w-6 h-6 text-red-600" />
@@ -8207,8 +8275,8 @@ const cancelarExclusao = () => {
         
         {/* POPUP EDIÇÃO DE INSUMO DO FORNECEDOR */}
         {showPopupEditarInsumo && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80]">
-            <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80] p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg">
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-green-50 p-2 rounded-full">
                   <Edit2 className="w-6 h-6 text-green-600" />
@@ -8315,8 +8383,8 @@ const cancelarExclusao = () => {
 
         {/* POPUP CONFIRMAÇÃO DE EXCLUSÃO DE INSUMO */}
         {showConfirmExclusaoInsumo && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80]">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80] p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-red-50 p-2 rounded-full">
                   <Trash2 className="w-6 h-6 text-red-600" />
@@ -8360,8 +8428,8 @@ const cancelarExclusao = () => {
 
         {/* 🆕 POPUP CADASTRO DE INSUMO DO FORNECEDOR - TAMBÉM ADICIONAR AQUI */}
         {showPopupInsumo && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
+            <div className="bg-white w-full h-full sm:h-auto sm:rounded-lg sm:max-w-3xl sm:max-h-[90vh] flex flex-col overflow-hidden">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-2xl font-bold text-gray-800">
                   Cadastrar Insumo para {fornecedorSelecionado?.nome_razao_social}
