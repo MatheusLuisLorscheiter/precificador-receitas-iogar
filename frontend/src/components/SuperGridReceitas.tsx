@@ -22,6 +22,9 @@ import {
   ChevronLeft, ChevronRight,  Grid  , List, SortAsc, SortDesc,
   Plus, Download, Upload, Utensils, Package, CheckCircle
 } from 'lucide-react';
+import SkeletonLoader from './SkeletonLoader';
+import EmptyState from './EmptyState';
+import Tooltip from './Tooltip';
 
 // ===================================================================================================
 // INTERFACES E TIPOS
@@ -192,12 +195,14 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
   // ===================================================================================================
 
   const ReceitaCard = ({ receita }: { receita: Receita }) => (
-    <div 
-      className={`relative bg-white rounded-xl border-2 transition-all duration-200 hover:shadow-lg cursor-pointer overflow-hidden ${
-        receitaSelecionada === receita.id 
-          ? 'border-green-500 shadow-lg' 
+    <div
+      className={`relative bg-white rounded-xl border-2 transition-all duration-300 hover:shadow-lg cursor-pointer overflow-hidden transform hover:-translate-y-1 ease-in-out active:scale-98 ${
+        receitaSelecionada === receita.id
+          ? 'border-green-500 shadow-lg'
           : 'border-gray-100 hover:border-green-300'
       }`}
+      role="article"
+      aria-label={`Receita ${receita.nome}`}
       onClick={() => {
         if (onViewReceita) {
           onViewReceita(receita);
@@ -373,7 +378,7 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
 
   const ReceitaRow = ({ receita }: { receita: Receita }) => (
     <tr 
-      className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+      className={`hover:bg-gray-50 cursor-pointer transition-colors duration-200 ${
         receitaSelecionada === receita.id ? 'bg-green-50' : ''
       }`}
       onClick={() => {
@@ -530,44 +535,61 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
           =================================================================================================== */}
       
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex flex-col gap-4">
           
           {/* Título e estatísticas */}
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Gestão de Receitas</h2>
             <div className="flex items-center gap-6 text-sm text-gray-500">
-              <span className="flex items-center gap-1">
-                <ChefHat className="w-4 h-4" />
-                {receitas.length} receitas
-              </span>
-              <span className="flex items-center gap-1">
-                <TrendingUp className="w-4 h-4" />
-                {receitasFiltradas.length} filtradas
-              </span>
-              <span className="flex items-center gap-1">
-                <DollarSign className="w-4 h-4" />
-                CMV médio: {formatarPreco(receitas.reduce((acc, r) => acc + r.cmv_real, 0) / receitas.length || 0)}
-              </span>
+              <Tooltip content="Total de receitas cadastradas no sistema">
+                <span className="flex items-center gap-1 cursor-help">
+                  <ChefHat className="w-4 h-4" />
+                  {receitas.length} receitas
+                </span>
+              </Tooltip>
+              
+              <Tooltip content="Receitas exibidas após aplicar filtros de busca">
+                <span className="flex items-center gap-1 cursor-help">
+                  <TrendingUp className="w-4 h-4" />
+                  {receitasFiltradas.length} filtradas
+                </span>
+              </Tooltip>
+              
+              <Tooltip content="Custo Médio de Venda calculado a partir de todas as receitas">
+                <span className="flex items-center gap-1 cursor-help">
+                  <DollarSign className="w-4 h-4" />
+                  CMV médio: {formatarPreco(receitas.reduce((acc, r) => acc + r.cmv_real, 0) / receitas.length || 0)}
+                </span>
+              </Tooltip>
             </div>
           </div>
           
           {/* Ações principais */}
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-              <Download className="w-4 h-4" />
-              Exportar
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            {/* Grupo de botões Exportar e Importar */}
+            <div className="flex items-center gap-3">
+              <Tooltip content="Exportar receitas para arquivo Excel ou CSV">
+                <button className="flex items-center justify-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 hover:shadow-sm transition-all duration-200 flex-1 sm:flex-initial active:scale-95">
+                  <Download className="w-4 h-4" />
+                  Exportar
+                </button>
+              </Tooltip>
+              
+              <Tooltip content="Importar receitas a partir de arquivo Excel ou CSV">
+                <button className="flex items-center justify-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 hover:shadow-sm transition-all duration-200 flex-1 sm:flex-initial active:scale-95">
+                  <Upload className="w-4 h-4" />
+                  Importar
+                </button>
+              </Tooltip>
+            </div>
             
-            <button className="flex items-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-              <Upload className="w-4 h-4" />
-              Importar
-            </button>
-            
+            {/* Botão Nova Receita - abaixo no mobile, ao lado no desktop */}
             <button
               onClick={onCreateReceita}
-              className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all"
+              className="flex items-center justify-center gap-2 px-6 py-2 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 hover:shadow-lg transition-all duration-200 w-full sm:w-auto active:scale-95"
+              aria-label="Criar nova receita"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4" aria-hidden="true" />
               Nova Receita
             </button>
           </div>
@@ -583,13 +605,15 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
           
           {/* Campo de busca */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" aria-hidden="true" />
             <input
               type="text"
               placeholder="Buscar por nome ou código da receita..."
               value={filtros.busca}
               onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              aria-label="Buscar receitas por nome ou código"
+              role="searchbox"
             />
           </div>
           
@@ -601,6 +625,7 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
               value={filtros.categoria}
               onChange={(e) => setFiltros(prev => ({ ...prev, categoria: e.target.value }))}
               className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+              aria-label="Filtrar por categoria"
             >
               <option value="">Todas as categorias</option>
               {categoriasUnicas.map(categoria => (
@@ -613,6 +638,7 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
               value={filtros.status}
               onChange={(e) => setFiltros(prev => ({ ...prev, status: e.target.value }))}
               className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+              aria-label="Filtrar por status"
             >
               <option value="">Todos os status</option>
               <option value="ativo">Ativo</option>
@@ -621,18 +647,22 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
             </select>
             
             {/* Toggle de visualização */}
-            <div className="flex rounded-lg border border-gray-200 p-1">
+            <div className="flex rounded-lg border border-gray-200 p-1" role="group" aria-label="Modo de visualização">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 rounded ${viewMode === 'grid' ? 'bg-green-100 text-green-600' : 'text-gray-400 hover:text-gray-600'}`}
+                aria-label="Visualizar em grade"
+                aria-pressed={viewMode === 'grid'}
               >
-                <Grid className="w-4 h-4" />
+                <Grid className="w-4 h-4" aria-hidden="true" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
                 className={`p-2 rounded ${viewMode === 'list' ? 'bg-green-100 text-green-600' : 'text-gray-400 hover:text-gray-600'}`}
+                aria-label="Visualizar em lista"
+                aria-pressed={viewMode === 'list'}
               >
-                <List className="w-4 h-4" />
+                <List className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -644,30 +674,41 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
           =================================================================================================== */}
       
       {loading ? (
-        <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-          <p className="text-gray-500">Carregando receitas...</p>
+        <div className="space-y-4">
+          {/* Skeleton loader baseado no modo de visualização atual */}
+          {viewMode === 'grid' ? (
+            <SkeletonLoader variant="grid" />
+          ) : (
+            <SkeletonLoader variant="table" />
+          )}
         </div>
       ) : receitasFiltradas.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 text-center">
-          <ChefHat className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">
-            {receitas.length === 0 ? 'Nenhuma receita cadastrada' : 'Nenhuma receita encontrada'}
-          </h3>
-          <p className="text-gray-500 mb-6">
-            {receitas.length === 0 
-              ? 'Comece criando sua primeira receita para aparecer aqui'
-              : 'Tente ajustar os filtros ou busca para encontrar receitas'
-            }
-          </p>
-          {receitas.length === 0 && (
-            <button
-              onClick={onCreateReceita}
-              className="bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-pink-600 transition-all"
-            >
-              Criar primeira receita
-            </button>
-          )}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+          <EmptyState
+            icon={ChefHat}
+            title={filtros.busca || filtros.categoria || filtros.status !== 'todos' 
+              ? "Nenhuma receita encontrada" 
+              : "Nenhuma receita cadastrada"}
+            description={filtros.busca || filtros.categoria || filtros.status !== 'todos'
+              ? "Não encontramos receitas com os filtros aplicados. Tente ajustar os critérios de busca."
+              : "Comece criando sua primeira receita para gerenciar custos e calcular preços de venda."}
+            actionLabel="Nova Receita"
+            onAction={onCreateReceita}
+            secondaryActionLabel={filtros.busca || filtros.categoria || filtros.status !== 'todos' 
+              ? "Limpar Filtros" 
+              : ""}
+            onSecondaryAction={filtros.busca || filtros.categoria || filtros.status !== 'todos' 
+              ? () => {
+                  setFiltros({
+                    busca: '',
+                    categoria: '',
+                    status: 'todos',
+                    ordenacao: 'nome',
+                    direcao: 'asc'
+                  });
+                }
+              : undefined}
+          />
         </div>
       ) : (
         <>
@@ -781,13 +822,14 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
                 </div>
                 
                 {/* Controles de paginação */}
-                <div className="flex items-center gap-2">
+                <nav className="flex items-center gap-2" aria-label="Navegação de páginas">
                   <button
                     onClick={() => setPaginaAtual(Math.max(1, paginaAtual - 1))}
                     disabled={paginaAtual === 1}
-                    className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                    aria-label="Página anterior"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                   </button>
                   
                   {/* Números das páginas */}
@@ -823,11 +865,12 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
                   <button
                     onClick={() => setPaginaAtual(Math.min(totalPaginas, paginaAtual + 1))}
                     disabled={paginaAtual === totalPaginas}
-                    className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                    aria-label="Próxima página"
                   >
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-5 h-5" aria-hidden="true" />
                   </button>
-                </div>
+                </nav>
               </div>
             </div>
           )}
