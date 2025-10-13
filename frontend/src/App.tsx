@@ -24,7 +24,7 @@ import {
   Users, ChefHat, Utensils, Plus, Search, Edit2, Edit3, Trash2, Save,
   X, Check, AlertCircle, BarChart3, Settings, Zap, FileText,
   Upload, Activity, Brain, Monitor, Shield, Database, LinkIcon,
-  Target, Eye, ChevronDown, ChevronRight, Copy, AlertTriangle, Store,
+  Target, Eye, ChevronDown, ChevronRight, Copy, AlertTriangle, Store
 } from 'lucide-react';
 
 // Importar componente da IA
@@ -36,6 +36,10 @@ import SuperGridReceitas from './components/SuperGridReceitas';
 
 // Import de integração do Super Popup de relatório Receitas
 import SuperPopupRelatorio from './components/SuperPopupRelatorio';
+
+// Importar componente e contexto do Popup de Estatísticas
+import PopupEstatisticasRestaurante from './components/PopupEstatisticasRestaurante';
+import { usePopupEstatisticas } from './contexts/PopupEstatisticasContext';
 
 // Importar configuração centralizada da API
 import { API_BASE_URL } from './config';
@@ -1622,195 +1626,7 @@ let receitasRenderCount = 0;
 // ============================================================================
 // COMPONENTE POPUP DE ESTATÍSTICAS DO RESTAURANTE
 // ============================================================================
-const PopupEstatisticasRestaurante = ({ 
-  isVisible, 
-  restaurante, 
-  estatisticas,
-  loading,
-  onClose 
-}: { 
-  isVisible: boolean;
-  restaurante: any;
-  estatisticas: any;
-  loading: boolean;
-  onClose: () => void;
-}) => {
-  console.log('🎯 PopupEstatisticasRestaurante renderizado', { isVisible, restaurante, estatisticas, loading });
-  if (!isVisible) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop com fade */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
-      />
-      
-      {/* Popup */}
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl animate-scale-in overflow-hidden">
-        
-        {/* Header com gradiente */}
-        <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-3 rounded-lg backdrop-blur-sm">
-                <BarChart3 className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold">Estatísticas</h2>
-                <p className="text-green-100 text-sm mt-1">
-                  {restaurante?.nome || 'Restaurante'}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:text-gray-200 transition-colors p-2 hover:bg-white/10 rounded-lg"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-
-        {/* Corpo do popup */}
-        <div className="p-6">
-          {/* Informações do restaurante */}
-          <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Informações Gerais</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-600">Tipo:</span>
-                <span className="text-gray-900 font-medium ml-2 capitalize">
-                  {restaurante?.tipo?.replace('_', ' ') || 'N/A'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Unidades:</span>
-                <span className="text-gray-900 font-medium ml-2">
-                  {restaurante?.quantidade_unidades || 0}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Cidade:</span>
-                <span className="text-gray-900 font-medium ml-2">
-                  {restaurante?.cidade || 'N/A'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Estado:</span>
-                <span className="text-gray-900 font-medium ml-2">
-                  {restaurante?.estado || 'N/A'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Delivery:</span>
-                <span className={`font-medium ml-2 ${restaurante?.tem_delivery ? 'text-green-600' : 'text-gray-400'}`}>
-                  {restaurante?.tem_delivery ? 'Sim' : 'Não'}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Status:</span>
-                <span className={`font-medium ml-2 ${restaurante?.ativo ? 'text-green-600' : 'text-red-600'}`}>
-                  {restaurante?.ativo ? 'Ativo' : 'Inativo'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Estatísticas */}
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-blue-600" />
-              Métricas
-            </h3>
-
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-gray-500">Carregando estatísticas...</p>
-              </div>
-            ) : estatisticas ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Card Total Receitas */}
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="bg-blue-500 p-2 rounded-lg">
-                      <ChefHat className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-3xl font-bold text-blue-900">
-                      {estatisticas.total_receitas || 0}
-                    </span>
-                  </div>
-                  <p className="text-blue-700 font-medium">Total de Receitas</p>
-                  <p className="text-blue-600 text-xs mt-1">Receitas cadastradas</p>
-                </div>
-
-                {/* Card Últimos Insumos */}
-                <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-6 border border-yellow-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="bg-yellow-500 p-2 rounded-lg">
-                      <Package className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-3xl font-bold text-yellow-900">
-                      {estatisticas.ultimos_insumos?.length || 0}
-                    </span>
-                  </div>
-                  <p className="text-yellow-700 font-medium">Insumos Recentes</p>
-                  <p className="text-yellow-600 text-xs mt-1">Últimas movimentações</p>
-                </div>
-
-                {/* Card Últimas Receitas */}
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="bg-green-500 p-2 rounded-lg">
-                      <Utensils className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-3xl font-bold text-green-900">
-                      {estatisticas.ultimas_receitas?.length || 0}
-                    </span>
-                  </div>
-                  <p className="text-green-700 font-medium">Receitas Recentes</p>
-                  <p className="text-green-600 text-xs mt-1">Últimas adições</p>
-                </div>
-
-                {/* Card Status Geral */}
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="bg-purple-500 p-2 rounded-lg">
-                      <TrendingUp className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-3xl font-bold text-purple-900">
-                      {restaurante?.quantidade_unidades || 1}
-                    </span>
-                  </div>
-                  <p className="text-purple-700 font-medium">Unidades Ativas</p>
-                  <p className="text-purple-600 text-xs mt-1">Total na rede</p>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500">Nenhuma estatística disponível</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 border-t border-gray-100">
-          <button
-            onClick={onClose}
-            className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-blue-600 transition-all font-medium"
-          >
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-PopupEstatisticasRestaurante.displayName = 'PopupEstatisticasRestaurante';
+//Código aqui excluido
 
 // ============================================================================
 // HOOK CUSTOMIZADO PARA BLOQUEAR SCROLL DO BODY QUANDO MODAL ESTÁ ABERTO
@@ -1905,13 +1721,6 @@ const FoodCostSystem: React.FC = () => {
     telefone: ''
   });
   const [estatisticasRestaurante, setEstatisticasRestaurante] = useState<RestauranteEstatisticas | null>(null);
-  const [showPopupEstatisticas, setShowPopupEstatisticas] = useState(false);
-
-  // LOG: Monitorar mudanças no estado
-  useEffect(() => {
-    console.log('🎯 showPopupEstatisticas mudou para:', showPopupEstatisticas);
-    console.trace('Stack trace de quem mudou:');
-  }, [showPopupEstatisticas]);
   const [loading, setLoading] = useState<boolean>(false);
   const [showInsumoForm, setShowInsumoForm] = useState<boolean>(false);
   // Estados para popup de classificação IA
@@ -5266,6 +5075,14 @@ const fetchInsumos = async () => {
   // COMPONENTE GESTÃO DE RESTAURANTES
   // ============================================================================
   const Restaurantes = () => {
+    // ============================================================================
+    // HOOK DO POPUP (PRIMEIRA COISA!)
+    // ============================================================================
+    const { abrirPopup, setEstatisticas, setLoading } = usePopupEstatisticas();
+
+    // Estados antigos (manter - usados em muitos lugares)
+    const [selectedRestaurante, setSelectedRestaurante] = useState<Restaurante | null>(null);
+    const [estatisticasRestaurante, setEstatisticasRestaurante] = useState<RestauranteEstatisticas | null>(null);
 
     // Estado para popup de confirmação de exclusão de restaurante
     const [deleteRestauranteConfirm, setDeleteRestauranteConfirm] = useState({
@@ -5324,59 +5141,38 @@ const fetchInsumos = async () => {
     const [restauranteSelecionadoMobile, setRestauranteSelecionadoMobile] = useState<number | null>(null);
 
     // ============================================================================
-    // ESTADO PARA CONTROLAR POPUP DE ESTATÍSTICAS
-    // ============================================================================
-    const [showPopupEstatisticas, setShowPopupEstatisticas] = useState(false);
-    const [loadingEstatisticas, setLoadingEstatisticas] = useState(false);
-
-    // ============================================================================
     // COMPONENTE AUXILIAR - CARD DE RESTAURANTE PARA MOBILE
     // ============================================================================
     const RestauranteCard = ({ restaurante }: { restaurante: any }) => {
       const isExpanded = restaurantesExpandidos.has(restaurante.id);
       
-      const handleCardClick = async (restaurante: RestauranteGrid) => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🖱️ CLIQUE NO CARD - INÍCIO');
-        console.log('🔍 showPopupEstatisticas atual:', showPopupEstatisticas);
-        console.log('🔍 restaurante recebido:', restaurante);
-        console.log('🔍 restaurante.id:', restaurante?.id);
+      const handleCardClick = async (e: React.MouseEvent, restaurante: any) => {
+        e.stopPropagation();
+        console.log('🎯 CARD CLICADO', restaurante);
         
-        console.log('⏳ Entrando no try...');
+        abrirPopup(restaurante);
+        
         try {
-          console.log('📍 Passo 1: setSelectedRestaurante');
-          setSelectedRestaurante(restaurante);
-          console.log('✅ Passo 1 concluído');
+          setLoading(true);  // ← Corrigido
+          const response = await apiService.getRestauranteEstatisticas(restaurante.id);
           
-          console.log('📍 Passo 2: Buscando estatísticas...');
-          const estatisticas = await apiService.getRestauranteEstatisticas(restaurante.id);
-          console.log('✅ Passo 2 concluído');
-          console.log('📊 Estatísticas retornadas:', estatisticas);
-          
-          console.log('📍 Passo 3: setEstatisticasRestaurante');
-          setEstatisticasRestaurante(estatisticas.data); // IMPORTANTE: usar .data
-          console.log('✅ Passo 3 concluído');
-          
-          console.log('📍 Passo 4: setShowPopupEstatisticas(true)');
-          console.log('🔍 Valor ANTES:', showPopupEstatisticas);
-          setShowPopupEstatisticas(true);
-          console.log('✅ Passo 4 concluído');
-          console.log('✅ CLIQUE NO CARD - FIM (sucesso)');
-          
+          if (!response.error && response.data) {
+            setEstatisticas(response.data);  // ← Corrigido
+            console.log('✅ Estatísticas carregadas');
+          }
         } catch (error) {
-          console.error('❌❌❌ ERRO CAPTURADO:', error);
-          console.error('❌ Stack:', error.stack);
-          setShowPopupEstatisticas(true);
+          console.error('❌ Erro:', error);
+        } finally {
+          setLoading(false);
         }
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       };
-      
+            
       return (
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {/* Header do card com informações principais */}
           <div 
             className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
-            onClick={() => handleCardClick(restaurante)}
+            onClick={(e) => handleCardClick(e, restaurante)}
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3 flex-1">
@@ -5548,33 +5344,22 @@ const fetchInsumos = async () => {
     // FUNÇÃO PARA SELECIONAR RESTAURANTE E ABRIR POPUP DE ESTATÍSTICAS
     // ============================================================================
     const handleSelectRestaurante = async (restaurante: any) => {
-      console.log('🚨🚨🚨 FUNÇÃO CHAMADA! 🚨🚨🚨');
-
-      console.log('🔍 handleSelectRestaurante chamado', restaurante);
+      console.log('🎯 LINHA CLICADA', restaurante);
       
-      setSelectedRestaurante(restaurante);
-      console.log('🔍 setSelectedRestaurante executado');
-      
-      setShowPopupEstatisticas(true);
-      console.log('🔍 setShowPopupEstatisticas(true) executado');
-      
-      // Aguardar próximo frame para verificar
-      await new Promise(resolve => setTimeout(resolve, 0));
-      console.log('🔍 Estado DEPOIS (próximo frame):', { showPopupEstatisticas, selectedRestaurante });
+      abrirPopup(restaurante);
       
       try {
-        setLoadingEstatisticas(true);
+        setLoading(true);  // ← Corrigido
         const response = await apiService.getRestauranteEstatisticas(restaurante.id);
         
         if (!response.error && response.data) {
-          setEstatisticasRestaurante(response.data);
-          console.log('✅ Estatísticas carregadas:', response.data);
+          setEstatisticas(response.data);  // ← Corrigido
+          console.log('✅ Estatísticas carregadas');
         }
       } catch (error) {
-        console.error('❌ Erro ao buscar estatísticas:', error);
-        setEstatisticasRestaurante(null);
+        console.error('❌ Erro:', error);
       } finally {
-        setLoadingEstatisticas(false);
+        setLoading(false);
       }
     };
 
@@ -6238,44 +6023,6 @@ const fetchInsumos = async () => {
 
         
         </div>  {/* TERMINO DA DIV */}
-        <FormularioRestauranteIsolado 
-          isVisible={showRestauranteForm}
-          editingRestaurante={editingRestaurante}
-          tiposEstabelecimento={tiposEstabelecimento}
-          onClose={() => setShowRestauranteForm(false)}
-          onSave={(dadosRestaurante) => {
-            console.log('🔍 POPUP RENDER:', {
-              isVisible: showPopupEstatisticas,
-              restaurante: selectedRestaurante?.nome,
-              temEstatisticas: !!estatisticasRestaurante
-            });
-            if (editingRestaurante) {
-              handleSalvarEdicaoRestaurante(dadosRestaurante);
-            } else {
-              handleCriarRestaurante(dadosRestaurante); 
-            }
-          }}
-          loading={loading}
-        />
-
-        
-
-        {/* ============================================================================ */}
-        {/* POPUP DE ESTATÍSTICAS */}
-        {/* ============================================================================ */}
-        <PopupEstatisticasRestaurante
-          isVisible={showPopupEstatisticas}
-          restaurante={selectedRestaurante}
-          estatisticas={estatisticasRestaurante}
-          loading={loadingEstatisticas}
-          onClose={() => {
-            console.log('❌ onClose do popup foi chamado!');
-            console.trace('Stack trace do onClose:');
-            setShowPopupEstatisticas(false);
-            setSelectedRestaurante(null);
-            setEstatisticasRestaurante(null);
-          }}
-        />
 
       {/* ============================================================================ */}
       {/* FORMULÁRIO ISOLADO - CRIAR UNIDADE/FILIAL */}
@@ -8859,6 +8606,8 @@ return (
           showSuccessPopup={showSuccessPopup}
           showErrorPopup={showErrorPopup}
         />
+        {/* Popup de Estatísticas - Context API */}
+        <PopupEstatisticasRestaurante />
       </div>
     </>
   );
