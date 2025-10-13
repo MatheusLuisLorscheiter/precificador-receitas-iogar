@@ -41,3 +41,59 @@ body {
 .animate-scale-in {
   animation: scale-in 0.3s ease-out;
 }
+
+/* Animação para tooltip */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Escala para feedback de toque em mobile */
+.active\:scale-98:active {
+  transform: scale(0.98);
+}
+
+/* Otimização de performance para animações */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Melhoria de scroll suave */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevenção de seleção acidental em mobile */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Aceleração de hardware para animações */
+.animate-hardware {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Prevenir scroll automático ao expandir elementos */
+.no-auto-scroll {
+  scroll-margin-top: 0;
+  scroll-margin-bottom: 0;
+}
+
+.no-auto-scroll * {
+  scroll-margin: 0 !important;
+}

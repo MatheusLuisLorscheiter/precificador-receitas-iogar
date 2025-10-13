@@ -1069,8 +1069,8 @@ const FormularioRestauranteIsolado = React.memo(({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4 overflow-hidden">
+      <div className="bg-white w-full max-h-[95vh] rounded-xl sm:max-h-[90vh] sm:shadow-2xl sm:max-w-2xl flex flex-col overflow-y-auto">
         {/* Cabeçalho fixo com gradiente */}
         <div className="bg-gradient-to-r from-green-500 to-pink-500 rounded-t-xl">
           <div className="flex items-center justify-between p-6">
@@ -1275,7 +1275,7 @@ const FormularioRestauranteIsolado = React.memo(({
           </button>
         </div>
       </div>
-    </div>
+      </div>
   );
 });
 
@@ -1388,8 +1388,8 @@ const FormularioUnidadeIsolado = React.memo<FormularioUnidadeIsoladoProps>(({
   // ============================================================================
   
   return (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
-    <div className="bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden">
+  <div className="fixed inset-0 flex items-center justify-center z-50 p-4 overflow-hidden">
+    <div className="bg-white w-full max-h-[95vh] rounded-xl sm:max-h-[90vh] sm:shadow-2xl sm:max-w-2xl flex flex-col overflow-y-auto">
         
         {/* ============================================================================ */}
         {/* HEADER DO POPUP COM GRADIENTE VERDE E ROSA */}
@@ -5168,7 +5168,7 @@ const fetchInsumos = async () => {
       };
             
       return (
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden no-auto-scroll">
           {/* Header do card com informações principais */}
           <div 
             className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
@@ -5228,11 +5228,17 @@ const fetchInsumos = async () => {
 
           {/* Botão expandir filiais (se houver) */}
           {restaurante.eh_matriz && restaurante.quantidade_unidades > 1 && (
-            <div className="border-t border-gray-100">
+            <div 
+              className="border-t border-gray-100"
+              onClick={(e) => e.stopPropagation()}
+            >
               <button
+                type="button"
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
-                  toggleExpansao(restaurante.id);
+                  toggleExpansao(restaurante.id, e);
+                  return false;
                 }}
                 className="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
@@ -5253,13 +5259,46 @@ const fetchInsumos = async () => {
             <div className="border-t border-gray-100 bg-gray-50 p-4 space-y-3">
               {restaurante.unidades.map((unidade: any, index: number) => (
                 <div key={`unidade-${restaurante.id}-${index}`} className="bg-white rounded-lg p-3 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-1 h-8 bg-green-500 rounded-full"></div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{unidade.nome}</p>
-                      <p className="text-xs text-gray-500">Filial</p>
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className="w-1 h-8 bg-green-500 rounded-full"></div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{unidade.nome}</p>
+                        <p className="text-xs text-gray-500">Filial</p>
+                      </div>
+                    </div>
+                    
+                    {/* Botões de ação da filial */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          abrirEdicaoRestaurante(unidade);
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Editar filial"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteRestauranteConfirm({
+                            isOpen: true,
+                            restauranteId: unidade.id,
+                            restauranteNome: unidade.nome,
+                            temUnidades: false,
+                            quantidadeUnidades: 1
+                          });
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Excluir filial"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
+                  
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Cidade:</span>
@@ -5287,6 +5326,20 @@ const fetchInsumos = async () => {
               <Edit2 className="w-4 h-4" />
               Editar
             </button>
+            
+            {restaurante.eh_matriz && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  abrirFormUnidade(restaurante);
+                }}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Filial
+              </button>
+            )}
+            
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -5325,20 +5378,41 @@ const fetchInsumos = async () => {
     // FUNÇÕES AUXILIARES PARA MANIPULAÇÃO DE EXPANSÃO
     // ============================================================================
     
-    const toggleExpansao = (restauranteId: number) => {
-      console.log('🔄 EXPANSÃO - ID:', restauranteId);                      // APOS RESOLVER, EXCLUA
-      console.log('🔄 EXPANSÃO - Estado atual:', restaurantesExpandidos);   // APOS RESOLVER, EXCLUA
+    const toggleExpansao = (restauranteId: number, event?: React.MouseEvent) => {
+      // Salvar posição ANTES de expandir
+      const scrollY = window.scrollY;
+      
       const novosExpandidos = new Set(restaurantesExpandidos);
       if (novosExpandidos.has(restauranteId)) {
         novosExpandidos.delete(restauranteId);
-        console.log('🔄 EXPANSÃO - COLAPSANDO');  // APOS RESOLVER, EXCLUA
       } else {
         novosExpandidos.add(restauranteId);
-        console.log('🔄 EXPANSÃO - EXPANDINDO');  // APOS RESOLVER, EXCLUA
       }
-      console.log('🔄 EXPANSÃO - Novo estado:', novosExpandidos);   // APOS RESOLVER, EXCLUA
       setRestaurantesExpandidos(novosExpandidos);
+      
+      // Forçar manter a posição após React renderizar
+      requestAnimationFrame(() => {
+        if (Math.abs(window.scrollY - scrollY) > 10) {
+          window.scrollTo({ top: scrollY, behavior: 'instant' });
+        }
+      });
     };
+
+    // Bloquear scroll quando formulários estiverem abertos
+    useEffect(() => {
+      if (showRestauranteForm || showUnidadeForm) {
+        // Salvar estado atual do overflow
+        const originalOverflow = document.body.style.overflow;
+        
+        // Bloquear scroll
+        document.body.style.overflow = 'hidden';
+        
+        // Cleanup: restaurar quando fechar
+        return () => {
+          document.body.style.overflow = originalOverflow;
+        };
+      }
+    }, [showRestauranteForm, showUnidadeForm]);
 
     // ============================================================================
     // FUNÇÃO PARA SELECIONAR RESTAURANTE E ABRIR POPUP DE ESTATÍSTICAS
@@ -5423,18 +5497,28 @@ const fetchInsumos = async () => {
   };
 
   const abrirEdicaoRestaurante = async (restaurante: RestauranteGrid) => {
-    console.log('Editando restaurante:', restaurante.nome);
+    console.log('🔍 DEBUG - Função chamada');
+    console.log('🔍 DEBUG - Restaurante recebido:', restaurante);
+    console.log('🔍 DEBUG - ID:', restaurante.id);
+    console.log('🔍 DEBUG - API_BASE_URL:', API_BASE_URL);
     
     try {
       setLoadingEdicao(true);
+      console.log('🔍 DEBUG - setLoadingEdicao(true) executado');
       
-      const response = await fetch(`${API_BASE}/api/v1/restaurantes/${restaurante.id}`);
+      const url = `${API_BASE_URL}/api/v1/restaurantes/${restaurante.id}`;
+      console.log('🔍 DEBUG - URL da requisição:', url);
+      
+      const response = await fetch(url);
+      console.log('🔍 DEBUG - Response status:', response.status);
+      console.log('🔍 DEBUG - Response ok:', response.ok);
       
       if (!response.ok) {
         throw new Error('Erro ao buscar dados do restaurante');
       }
       
       const restauranteCompleto = await response.json();
+      console.log('🔍 DEBUG - Dados recebidos:', restauranteCompleto);
       
       setEditingRestaurante({
         id: restauranteCompleto.id,
@@ -5452,17 +5536,20 @@ const fetchInsumos = async () => {
         restaurante_pai_id: restauranteCompleto.restaurante_pai_id || null,
         quantidade_unidades: restauranteCompleto.quantidade_unidades
       });
+      console.log('🔍 DEBUG - setEditingRestaurante executado');
       
       setShowRestauranteForm(true);
+      console.log('🔍 DEBUG - setShowRestauranteForm(true) executado');
       
     } catch (error) {
-      console.error('Erro ao carregar dados do restaurante:', error);
+      console.error('❌ ERRO CAPTURADO:', error);
       showErrorPopup(
         'Erro ao carregar dados', 
         'Não foi possível carregar os dados completos do restaurante'
       );
     } finally {
       setLoadingEdicao(false);
+      console.log('🔍 DEBUG - setLoadingEdicao(false) executado');
     }
   };
 
@@ -5666,12 +5753,18 @@ const fetchInsumos = async () => {
                               onClick={() => handleSelectRestaurante(restaurante)}
                             >
                               {/* Botão expandir */}
-                              <td className="py-4 px-4">
+                              <td 
+                                className="py-4 px-4"
+                                onClick={(e) => e.stopPropagation()}  // ← ADICIONAR aqui
+                              >
                                 {restaurante.eh_matriz && restaurante.quantidade_unidades > 1 && (
                                   <button
+                                    type="button"
                                     onClick={(e) => {
+                                      e.preventDefault();
                                       e.stopPropagation();
-                                      toggleExpansao(restaurante.id);
+                                      toggleExpansao(restaurante.id, e);
+                                      return false;
                                     }}
                                     className="text-gray-400 hover:text-gray-600 transition-colors"
                                   >
@@ -5758,6 +5851,20 @@ const fetchInsumos = async () => {
                                   >
                                     <Edit2 className="w-4 h-4" />
                                   </button>
+
+                                  {/* Botão Adicionar Filial (só para matriz) */}
+                                  {restaurante.eh_matriz && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        abrirFormUnidade(restaurante);
+                                      }}
+                                      className="text-green-600 hover:text-green-700 transition-colors"
+                                      title="Adicionar filial"
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                    </button>
+                                  )}
                                   
                                   <button
                                     onClick={(e) => {
@@ -5778,33 +5885,71 @@ const fetchInsumos = async () => {
                                 </div>
                               </td>
                             </tr>
-
                             {/* LINHAS EXPANDIDAS - FILIAIS */}
                             {restaurantesExpandidos.has(restaurante.id) && restaurante.unidades && (
                               restaurante.unidades.map((unidade: any, index: number) => (
                                 <tr key={`unidade-${restaurante.id}-${index}`} className="bg-gray-50">
+                                  {/* Coluna vazia para expansão */}
                                   <td className="py-3 px-4"></td>
-                                  <td colSpan={7} className="py-3 px-4">
+                                  
+                                  {/* Nome com indicador visual */}
+                                  <td className="py-3 px-4">
                                     <div className="flex items-center gap-3 pl-6">
                                       <div className="w-1 h-12 bg-green-500 rounded-full"></div>
-                                      <div className="flex-1 bg-white rounded-lg p-3 border border-gray-200">
-                                        <div className="flex items-center justify-between">
-                                          <div>
-                                            <p className="font-medium text-gray-900">{unidade.nome}</p>
-                                            <p className="text-sm text-gray-500">
-                                              {unidade.cidade} - {unidade.estado}
-                                            </p>
-                                          </div>
-                                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                                            unidade.tem_delivery 
-                                              ? 'bg-green-100 text-green-800' 
-                                              : 'bg-gray-100 text-gray-600'
-                                          }`}>
-                                            {unidade.tem_delivery ? 'Delivery' : 'Sem Delivery'}
-                                          </span>
+                                      <div className="flex items-center gap-3">
+                                        <div className="bg-green-50 p-2 rounded-lg">
+                                          <Users className="w-4 h-4 text-green-600" />
+                                        </div>
+                                        <div>
+                                          <p className="font-medium text-gray-900">{unidade.nome}</p>
+                                          <p className="text-xs text-gray-500">Filial</p>
                                         </div>
                                       </div>
                                     </div>
+                                  </td>
+                                  
+                                  {/* Cidade */}
+                                  <td className="py-3 px-4">
+                                    <span className="text-gray-700">{unidade.cidade || 'N/A'}</span>
+                                  </td>
+                                  
+                                  {/* Estado */}
+                                  <td className="py-3 px-4">
+                                    <span className="text-gray-600 text-sm">{unidade.estado || 'N/A'}</span>
+                                  </td>
+                                  
+                                  {/* Delivery */}
+                                  <td className="py-3 px-4">
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                      unidade.tem_delivery 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {unidade.tem_delivery ? 'Sim' : 'Não'}
+                                    </span>
+                                  </td>
+                                  
+                                  {/* Tipo */}
+                                  <td className="py-3 px-4">
+                                    <span className="text-gray-700 capitalize">
+                                      {unidade.tipo ? unidade.tipo.replace('_', ' ') : 'N/A'}
+                                    </span>
+                                  </td>
+                                  
+                                  {/* Quantidade Unidades - vazio para filiais */}
+                                  <td className="py-3 px-4">
+                                    <span className="text-gray-400 text-sm">-</span>
+                                  </td>
+                                  
+                                  {/* Status */}
+                                  <td className="py-3 px-4">
+                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                      unidade.ativo 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : 'bg-red-100 text-red-800'
+                                    }`}>
+                                      {unidade.ativo ? 'Ativo' : 'Inativo'}
+                                    </span>
                                   </td>
                                   
                                   {/* Ações da filial */}
@@ -6024,19 +6169,85 @@ const fetchInsumos = async () => {
         
         </div>  {/* TERMINO DA DIV */}
 
+      {/* Formulário de Restaurante com Backdrop */}
+      {showRestauranteForm && (
+        <>
+          {/* Backdrop escuro */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in"
+            style={{ 
+              top: 0, 
+              left: 0, 
+              right: 0, 
+              bottom: 0,
+              margin: 0,
+              padding: 0
+            }}
+            onClick={() => {
+              setShowRestauranteForm(false);
+              setEditingRestaurante(null);
+            }}
+          />
+
+      {/* ============================================================================ */}
+      {/* FORMULÁRIO ISOLADO - CRIAR/EDITAR RESTAURANTE */}
+      {/* ============================================================================ */}
+      <FormularioRestauranteIsolado 
+        isVisible={showRestauranteForm}
+        editingRestaurante={editingRestaurante}
+        tiposEstabelecimento={tiposEstabelecimento}
+        onClose={() => {
+          setShowRestauranteForm(false);
+          setEditingRestaurante(null);
+        }}
+        onSave={(dadosRestaurante) => {
+          if (editingRestaurante) {
+            handleSalvarEdicaoRestaurante(dadosRestaurante);
+          } else {
+            handleCriarRestaurante(dadosRestaurante); 
+          }
+        }}
+        loading={loading}
+      /> 
+    </>
+  )} 
+
       {/* ============================================================================ */}
       {/* FORMULÁRIO ISOLADO - CRIAR UNIDADE/FILIAL */}
       {/* ============================================================================ */}
-      <FormularioUnidadeIsolado 
-        isVisible={showUnidadeForm}
-        restauranteMatriz={restauranteParaUnidade}
-        onClose={() => {
-          setShowUnidadeForm(false);
-          setRestauranteParaUnidade(null);
-        }}
-        onSave={handleCriarUnidade}
-        loading={loading}
-      />
+      {/* Formulário de Unidade com Backdrop */}
+      {showUnidadeForm && (
+        <>
+          {/* Backdrop escuro */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in"
+            style={{ 
+              top: 0, 
+              left: 0, 
+              right: 0, 
+              bottom: 0,
+              margin: 0,
+              padding: 0
+            }}
+            onClick={() => {
+              setShowUnidadeForm(false);
+              setRestauranteParaUnidade(null);
+            }}
+          />
+          
+          {/* Formulário */}
+          <FormularioUnidadeIsolado 
+            isVisible={showUnidadeForm}
+            restauranteMatriz={restauranteParaUnidade}
+            onClose={() => {
+              setShowUnidadeForm(false);
+              setRestauranteParaUnidade(null);
+            }}
+            onSave={handleCriarUnidade}
+            loading={loading}
+          />
+        </>
+      )}
               {/* POPUP CONFIRMAÇÃO DE EXCLUSÃO DE RESTAURANTE revisar*/}
         {deleteRestauranteConfirm.isOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
@@ -7605,7 +7816,7 @@ const cancelarExclusao = () => {
                             className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                             title="Excluir fornecedor"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" /> 
                           </button>
                         </div>
                       </div>
