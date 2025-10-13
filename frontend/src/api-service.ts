@@ -34,44 +34,44 @@ class ApiService {
   private isProduction: boolean;
 
   constructor() {
-    // Detectar ambiente de execução
+    // Configuração simplificada - sempre usar localhost:8000 em desenvolvimento
     this.isProduction = window.location.hostname !== 'localhost' && 
                         window.location.hostname !== '127.0.0.1';
     
-    this.baseURL = API_CONFIG.baseURL;
-    
-    // Só detecta porta se estiver em desenvolvimento local
-    if (!this.isProduction) {
-      this.detectarPortaDisponivel();
+    if (this.isProduction) {
+      this.baseURL = API_CONFIG.baseURL;
+      console.log('🌐 Modo PRODUÇÃO - Backend:', this.baseURL);
     } else {
-      console.log('Modo PRODUCAO - Backend: ' + this.baseURL);
+      this.baseURL = 'http://localhost:8000';
+      console.log('🔧 Modo DESENVOLVIMENTO - Backend:', this.baseURL);
     }
   }
 
   // Método para detectar porta disponível (APENAS EM DESENVOLVIMENTO)
-  private async detectarPortaDisponivel(): Promise<void> {
-    const portas = [8000, 8001];
+  // private async detectarPortaDisponivel(): Promise<void> {
+  //   console.log('🔍 Detectando porta disponível...');
+  //   const portas = [8000, 8001];
 
-    for (const porta of portas) {
-      try {
-        const testURL = `http://localhost:${porta}/health`;
-        const response = await fetch(testURL, {
-          method: 'GET',
-          signal: AbortSignal.timeout(2000)
-        });
+  //   for (const porta of portas) {
+  //     try {
+  //       const testURL = `http://localhost:${porta}/health`;
+  //       const response = await fetch(testURL, {
+  //         method: 'GET',
+  //         signal: AbortSignal.timeout(2000)
+  //       });
 
-        if (response.ok) {
-          this.baseURL = `http://localhost:${porta}`;
-          console.log(`✅ Backend encontrado na porta ${porta}`);
-          return;
-        }
-      } catch (error) {
-        // Continua tentando próxima porta
-      }
-    }
+  //       if (response.ok) {
+  //         this.baseURL = `http://localhost:${porta}`;
+  //         console.log(`✅ Backend encontrado na porta ${porta}`);
+  //         return;
+  //       }
+  //     } catch (error) {
+  //       // Continua tentando próxima porta
+  //     }
+  //   }
 
-    console.warn('⚠️ Usando porta padrão 8000');
-  }
+  //   console.warn('⚠️ Usando porta padrão 8000');
+  // }
 
   // Método genérico para fazer requisições
   private async request<T>(
@@ -492,6 +492,7 @@ async updateReceita(id: number, receita: any): Promise<ApiResponse<any>> {
 
   // Buscar estatísticas de um restaurante
   async getRestauranteEstatisticas(id: number): Promise<ApiResponse<any>> {
+    console.log('🔍 API - ID recebido:', id, 'Tipo:', typeof id);
     return this.request<any>(`/api/v1/restaurantes/${id}/estatisticas`);
   }
 

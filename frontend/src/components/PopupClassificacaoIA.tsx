@@ -8,6 +8,7 @@
 // ============================================================================
 
 import React, { useState, useEffect } from 'react';
+import { useBlockBodyScroll } from '../App';
 import { Brain, Check, X, Edit, AlertTriangle, Loader2 } from 'lucide-react';
 
 
@@ -71,6 +72,9 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   const [subcategoriaSelecionada, setSubcategoriaSelecionada] = useState('');
   const [especificacao, setEspecificacao] = useState('');
   const [variante, setVariante] = useState('');
+
+  // Bloquear scroll quando popup está aberto
+  useBlockBodyScroll(isVisible);
 
   // ============================================================================
   // FUNÇÕES DE API

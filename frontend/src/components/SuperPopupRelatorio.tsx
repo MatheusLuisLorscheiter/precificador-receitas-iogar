@@ -828,8 +828,8 @@ const calcularCustoPorPorcao = () => {
   if (!isVisible || !receita) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
+    <div className="bg-white w-full h-full sm:h-auto sm:rounded-2xl sm:shadow-2xl sm:max-w-6xl sm:max-h-[90vh] flex flex-col overflow-hidden">
         
         {/* ===================================================================================================
             HEADER DO POPUP
@@ -911,8 +911,9 @@ const calcularCustoPorPorcao = () => {
             NAVEGAÇÃO POR ABAS
             =================================================================================================== */}
         
-        <div className="border-b border-gray-200">
-          <nav className="flex">
+        <div className="border-b border-gray-200 relative">
+          {/* Container com scroll horizontal suave */}
+          <nav className="flex overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory">
             {[
               { key: 'geral', label: 'Visão Geral', icon: FileText },
               { key: 'insumos', label: 'Insumos', icon: Package },
@@ -922,7 +923,7 @@ const calcularCustoPorPorcao = () => {
               <button
                 key={key}
                 onClick={() => setActiveTab(key as any)}
-                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all border-b-2 ${
+                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all border-b-2 whitespace-nowrap flex-shrink-0 snap-start ${
                   activeTab === key
                     ? 'border-green-500 text-green-600 bg-green-50'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -933,7 +934,22 @@ const calcularCustoPorPorcao = () => {
               </button>
             ))}
           </nav>
+          
+          {/* Indicadores visuais de fade nas laterais (apenas desktop) */}
+          <div className="hidden sm:block absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent pointer-events-none"></div>
+          <div className="hidden sm:block absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent pointer-events-none"></div>
         </div>
+
+        {/* Estilo para esconder scrollbar mas manter funcionalidade */}
+        <style>{`
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+        `}</style>
 
         {/* ===================================================================================================
             CONTEÚDO DAS ABAS
