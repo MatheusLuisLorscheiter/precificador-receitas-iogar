@@ -172,9 +172,9 @@ class ApiService {
     
     // Verificar se tem preço total OU preço por unidade
     const precoParaValidar = insumo.preco_compra_total || insumo.preco_compra_real;
-    if (!precoParaValidar || Number(precoParaValidar) <= 0) {
-      console.error('❌ ERRO: preço inválido');
-      return { error: 'Preço deve ser maior que zero' };
+    if (precoParaValidar && Number(precoParaValidar) <= 0) {
+      console.error('❌ ERRO: preço inválido quando informado');
+      return { error: 'Se informado, o preço deve ser maior que zero' };
     }
     
     // ============================================================================
@@ -188,7 +188,7 @@ class ApiService {
       quantidade: Number(insumo.quantidade) || 1,
       fator: Number(insumo.fator) || 1.0,
       unidade: String(insumo.unidade || 'kg').trim(),
-      preco_compra_real: Number(insumo.preco_compra_real || insumo.preco_compra_total || 0),
+      preco_compra_real: insumo.preco_compra_real || insumo.preco_compra_total || null,
       fornecedor_id: insumo.fornecedor_id || null,
       fornecedor_insumo_id: insumo.fornecedor_insumo_id || null
     };

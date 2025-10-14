@@ -46,6 +46,8 @@ interface Receita {
   restaurante_id: number;
   total_insumos: number;
   processada?: boolean;
+  tem_insumos_sem_preco?: boolean;
+  insumos_pendentes?: number[];
 }
 
 interface FiltroGrid {
@@ -54,6 +56,10 @@ interface FiltroGrid {
   status: string;
   ordenacao: 'nome' | 'categoria' | 'cmv' | 'margem' | 'created_at';
   direcao: 'asc' | 'desc';
+  //===================================================================================================
+  // FILTRO DE RECEITAS COM INSUMOS PENDENTES
+  // ===================================================================================================
+  mostrarApenasPendentes: boolean;
 }
 
 interface SuperGridReceitasProps {
@@ -88,7 +94,11 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
     categoria: '',
     status: '',
     ordenacao: 'nome',
-    direcao: 'asc'
+    direcao: 'asc',
+    // ===================================================================================================
+    // FILTRO DE RECEITAS COM INSUMOS PENDENTES - INICIADO COMO FALSE
+    // ===================================================================================================
+    mostrarApenasPendentes: false
   });
   
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -121,6 +131,13 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
     // Filtro por status
     if (filtros.status) {
       resultado = resultado.filter(receita => receita.status === filtros.status);
+    }
+
+    // ===================================================================================================
+    // FILTRO POR RECEITAS COM INSUMOS PENDENTES
+    // ===================================================================================================
+    if (filtros.mostrarApenasPendentes) {
+      resultado = resultado.filter(receita => receita.tem_insumos_sem_preco === true);
     }
 
     // Ordenação
@@ -174,17 +191,26 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
     }).format(valor);
   };
 
-  const getStatusBadge = (status: string) => {
-    const configs = {
-      ativo: { bg: 'bg-green-100', text: 'text-green-800', label: 'Ativo' },
-      inativo: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Inativo' },
-      processado: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Processado' }
-    };
-    
-    const config = configs[status] || configs.ativo;
+  const getStatusBadge = (status: string, temInsumosSemPreco?: boolean) => {
+    // DEBUG: Ver o que está chegando
+    console.log('🐛 getStatusBadge chamado:', { status, temInsumosSemPreco });
+
+  // Se a receita tem insumos sem preço, forçar status pendente
+  const statusFinal = temInsumosSemPreco ? 'pendente' : status;
+  console.log('🐛 statusFinal:', statusFinal);
+  
+  const configs = {
+    ativo: { bg: 'bg-green-100', text: 'text-green-800', label: 'Ativo', icon: '✓' },
+    inativo: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Inativo', icon: '○' },
+    processado: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Processado', icon: '⚙' },
+    pendente: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pendente', icon: '⚠' }
+  };
+  
+  const config = configs[statusFinal] || configs.ativo;
     
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+        <span>{config.icon}</span>
         {config.label}
       </span>
     );
@@ -311,9 +337,22 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
         </div>
         
         <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{receita.nome}</h3>
+        
+        {/* ===================================================================================================
+            BADGE DE ALERTA - INSUMOS SEM PRECO
+            =================================================================================================== */}
+        {receita.tem_insumos_sem_preco && receita.insumos_pendentes && receita.insumos_pendentes.length > 0 && (
+          <div className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 rounded-lg px-2 py-1 mb-2">
+            <span className="text-yellow-600 text-base">⚠️</span>
+            <span className="text-xs font-medium text-yellow-700">
+              {receita.insumos_pendentes.length} {receita.insumos_pendentes.length === 1 ? 'insumo pendente' : 'insumos pendentes'}
+            </span>
+          </div>
+        )}
+        
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500">{receita.categoria}</span>
-          {getStatusBadge(receita.status)}
+          {getStatusBadge(receita.status, receita.tem_insumos_sem_preco)}
         </div>
       </div>
 
@@ -399,7 +438,7 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
       </td>
       
       <td className="px-6 py-4 whitespace-nowrap">
-        {getStatusBadge(receita.status)}
+        {getStatusBadge(receita.status, receita.tem_insumos_sem_preco)}
       </td>
       
      <td className="px-6 py-4 whitespace-nowrap">
@@ -605,15 +644,13 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
           
           {/* Campo de busca */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" aria-hidden="true" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-500 w-5 h-5" />
             <input
               type="text"
               placeholder="Buscar por nome ou código da receita..."
               value={filtros.busca}
               onChange={(e) => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              aria-label="Buscar receitas por nome ou código"
-              role="searchbox"
+              className="w-full pl-10 pr-4 py-2 bg-white border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-600 placeholder:text-gray-400"
             />
           </div>
           
@@ -645,6 +682,22 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
               <option value="inativo">Inativo</option>
               <option value="processado">Processado</option>
             </select>
+            
+            {/* ===================================================================================================
+                CHECKBOX - MOSTRAR APENAS RECEITAS COM INSUMOS PENDENTES
+                =================================================================================================== */}
+            <label className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={filtros.mostrarApenasPendentes}
+                onChange={(e) => setFiltros(prev => ({ ...prev, mostrarApenasPendentes: e.target.checked }))}
+                className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
+                aria-label="Mostrar apenas receitas com insumos pendentes"
+              />
+              <span className="text-sm text-gray-700 whitespace-nowrap">
+                Apenas Pendentes
+              </span>
+            </label>
             
             {/* Toggle de visualização */}
             <div className="flex rounded-lg border border-gray-200 p-1" role="group" aria-label="Modo de visualização">
@@ -704,7 +757,11 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
                     categoria: '',
                     status: 'todos',
                     ordenacao: 'nome',
-                    direcao: 'asc'
+                    direcao: 'asc',
+                    // ===================================================================================================
+                    // LIMPAR FILTRO DE PENDENTES TAMBEM
+                    // ===================================================================================================
+                    mostrarApenasPendentes: false
                   });
                 }
               : undefined}

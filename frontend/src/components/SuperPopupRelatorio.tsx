@@ -39,6 +39,9 @@ interface ReceitaDetalhada {
   cmv_25_porcento?: number;
   cmv_30_porcento?: number;
   receita_insumos?: any[];
+
+  tem_insumos_sem_preco?: boolean;
+  insumos_pendentes?: number[];
 }
 
 interface SuperPopupRelatorioProps {
@@ -62,6 +65,30 @@ const SuperPopupRelatorio: React.FC<SuperPopupRelatorioProps> = ({
   onDuplicate,
   onDelete
 }) => {
+  // ===================================================================================================
+  // BLOQUEAR SCROLL DO BODY QUANDO POPUP ESTÁ ABERTO
+  // ===================================================================================================
+  useEffect(() => {
+    if (isVisible) {
+      // Salvar posição atual do scroll
+      const scrollY = window.scrollY;
+      
+      // Bloquear scroll
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        // Restaurar scroll ao fechar popup
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isVisible]);
 
 const calcularCustoPorPorcao = () => {
     if (!receita || receita.porcoes <= 0) return 0;
@@ -232,6 +259,49 @@ const calcularCustoPorPorcao = () => {
 
     return (
       <div className="space-y-6">
+        
+        {/* ===================================================================================================
+            ALERTA DE INSUMOS SEM PRECO
+            =================================================================================================== */}
+        {receita.tem_insumos_sem_preco && receita.insumos_pendentes && receita.insumos_pendentes.length > 0 && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-5">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-lg font-semibold text-yellow-900 mb-2">
+                  ⚠️ Atenção: Esta receita possui insumos sem preço cadastrado
+                </h4>
+                <p className="text-sm text-yellow-800 mb-3">
+                  Os seguintes insumos não possuem preço cadastrado, o que impede o cálculo correto do custo da receita:
+                </p>
+                <ul className="space-y-2 mb-4">
+                  {receita.receita_insumos
+                    ?.filter(ri => receita.insumos_pendentes?.includes(ri.insumo?.id))
+                    .map((ri, index) => (
+                      <li key={index} className="flex items-center gap-2 text-sm text-yellow-900">
+                        <span className="w-2 h-2 bg-yellow-600 rounded-full"></span>
+                        <span className="font-medium">{ri.insumo?.nome || 'Insumo desconhecido'}</span>
+                        <span className="text-yellow-700">(ID: {ri.insumo?.id})</span>
+                      </li>
+                    ))}
+                </ul>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      // Futura implementação: Navegar para aba Insumos com filtro
+                      console.log('Ir para insumos:', receita.insumos_pendentes);
+                    }}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium"
+                  >
+                    Cadastrar Preços
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Informações Básicas */}
         <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-6 border border-green-100">
@@ -828,8 +898,19 @@ const calcularCustoPorPorcao = () => {
   if (!isVisible || !receita) return null;
 
   return (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
-    <div className="bg-white w-full h-full sm:h-auto sm:rounded-2xl sm:shadow-2xl sm:max-w-6xl sm:max-h-[90vh] flex flex-col overflow-hidden">
+  <div className="fixed inset-0 z-50">
+    {/* Overlay escuro com backdrop blur */}
+    <div 
+      className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    />
+    
+    {/* Modal do relatório */}
+    <div className="absolute inset-0 flex items-center justify-center p-0 sm:p-4">
+      <div 
+        className="relative bg-white w-full h-full sm:h-auto sm:rounded-2xl sm:shadow-2xl sm:max-w-6xl sm:max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        >
         
         {/* ===================================================================================================
             HEADER DO POPUP
@@ -1041,7 +1122,7 @@ const calcularCustoPorPorcao = () => {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };
-
 export default SuperPopupRelatorio;

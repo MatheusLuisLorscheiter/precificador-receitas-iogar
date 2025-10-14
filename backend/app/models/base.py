@@ -8,6 +8,7 @@
 from sqlalchemy import Column, Integer, Float, DateTime, String
 from sqlalchemy.sql import func
 from sqlalchemy.orm import declarative_base
+from typing import Optional
 
 # Criar a base declarativa
 Base = declarative_base()
@@ -40,4 +41,31 @@ class BaseModel(Base):
     quantidade = Column(Integer, default=1)
     fator = Column(Float, default=1.0)  # ✅ CORRIGIDO: Float em vez de Integer
     unidade = Column(String(20), nullable=False) 
-    preco_compra = Column(Integer)
+    preco_compra = Column(Integer, nullable=True, comment="Preço de compra em centavos (NULL = sem preço definido)")
+
+    # Property para conversão de preço de centavos para reais
+    @property
+    def preco_compra_real(self) -> Optional[float]:
+        """
+        Converte preco_compra de centavos para reais.
+        
+        Returns:
+            float: Preço em reais (ex: 1250 centavos = 12.50 reais)
+            None: Se preço não estiver definido
+        """
+        if self.preco_compra is None:
+            return None
+        return self.preco_compra / 100.0
+    
+    @preco_compra_real.setter
+    def preco_compra_real(self, valor: Optional[float]):
+        """
+        Define preco_compra convertendo de reais para centavos.
+        
+        Args:
+            valor: Preço em reais (ex: 12.50) ou None
+        """
+        if valor is None:
+            self.preco_compra = None
+        else:
+            self.preco_compra = int(valor * 100)
