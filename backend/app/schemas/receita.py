@@ -399,6 +399,11 @@ class ReceitaResponse(ReceitaBase):
     processada: Optional[bool] = Field(False, description="Indica se a receita é processada")
     rendimento: Optional[float] = Field(None, description="Rendimento da receita processada")
 
+    # Campos para controle de insumos sem preço (Prioridade 1)
+    tem_insumos_sem_preco: Optional[bool] = Field(False, description="Se a receita possui insumos sem preço")
+    insumos_pendentes: Optional[List[int]] = Field(None, description="Lista de IDs dos insumos sem preço")
+
+
     # Relacionamentos (simplificados para evitar erros de referência circular)
     restaurante: Optional[dict] = Field(None, description="Dados do restaurante")
     receita_pai: Optional[dict] = Field(None, description="Receita pai (se for variação)")

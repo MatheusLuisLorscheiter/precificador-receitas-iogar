@@ -447,8 +447,19 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
 
   // INICIO RETURN FORMULARIO INSUMO
   return (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
-    <div className="bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-4xl sm:max-h-[90vh] flex flex-col overflow-hidden">
+  <div className="fixed inset-0 z-50">
+    {/* Overlay escuro com backdrop blur */}
+    <div 
+      className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      onClick={handleClose}
+    />
+    
+    {/* Modal do formulário */}
+    <div className="absolute inset-0 flex items-center justify-center p-0 sm:p-4">
+      <div 
+        className="relative bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-4xl sm:max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* ============================================================================ */}
         {/* HEADER DO FORMULÁRIO */}
@@ -946,6 +957,7 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
         </div>
       </div>
     </div>
+  </div>
   );
   // FIM RETURN FORMULARIO INSUMO
 });
@@ -2874,11 +2886,6 @@ const fetchInsumos = async () => {
       
       // Verificação de segurança para receita em edição
       const receitaSegura = editingReceita || {};
-      
-      // ===================================================================================================
-      // ESTADOS COM VALORES PADRÃO SEGUROS
-      // ===================================================================================================
-      const [buscaInsumo, setBuscaInsumo] = useState('');
 
       const [formData, setFormData] = useState(() => {
         return {
@@ -3048,6 +3055,11 @@ const fetchInsumos = async () => {
         { value: 'un', label: 'Unidade (un)' },
         { value: 'cx', label: 'Caixa (cx)' }
       ];
+
+      // ===================================================================================================
+      // ESTADO DE BUSCA DE INSUMOS NO FORMULÁRIO
+      // ===================================================================================================
+      const [buscaInsumo, setBuscaInsumo] = useState('');
 
       // Função simples sem useMemo para evitar erros
       const getInsumosFiltrados = () => {
@@ -4417,7 +4429,6 @@ const fetchInsumos = async () => {
   const Insumos = () => {
     // Estados de Insumo
     const [buscaInsumo, setBuscaInsumo] = useState('');
-
     const [searchTerm, setSearchTerm] = useState<string>('');
 
     // ============================================================================
@@ -4453,7 +4464,7 @@ const fetchInsumos = async () => {
     const insumosFiltrados = insumos.filter(insumoItem => 
       insumoItem && 
       insumoItem.nome && 
-      insumoItem.nome.toLowerCase().includes(buscaInsumo.toLowerCase())
+      insumoItem.nome.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     // ============================================================================
@@ -6418,7 +6429,13 @@ const fetchInsumos = async () => {
         processada: receita.processada || false,
         
         // Manter dados originais da receita
-        receita_insumos: receita.receita_insumos || []
+        receita_insumos: receita.receita_insumos || [],
+
+        // ===================================================================================================
+        // CAMPOS DE PENDENCIA - INSUMOS SEM PRECO
+        // ===================================================================================================
+        tem_insumos_sem_preco: receita.tem_insumos_sem_preco || false,
+        insumos_pendentes: receita.insumos_pendentes || []
       };
 
       console.log('✅ Receita convertida:', {
@@ -7938,10 +7955,32 @@ const cancelarExclusao = () => {
           </div>
         </div>
 
-        {/* 🆕 POPUP CADASTRO DE FORNECEDOR - ADICIONAR AQUI */}
+        {/* POPUP CADASTRO DE FORNECEDOR COM OVERLAY ESCURO */}
         {showPopupFornecedor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
-          <div className="bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden">             
+        <div className="fixed inset-0 z-50">
+          {/* Overlay escuro com backdrop blur */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => {
+              setEditandoFornecedor(null);
+              setNovoFornecedor({
+                nome_razao_social: '',
+                cpf_cnpj: '',
+                telefone: '',
+                ramo: '',
+                cidade: '',
+                estado: ''
+              });
+              setShowPopupFornecedor(false);
+            }}
+          />
+          
+          {/* Modal do formulário */}
+          <div className="absolute inset-0 flex items-center justify-center p-0 sm:p-4">
+            <div 
+              className="relative bg-white w-full h-full sm:h-auto sm:rounded-xl sm:shadow-2xl sm:max-w-2xl sm:max-h-[90vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >            
               
               {/* ============================================================================ */}
               {/* HEADER DO FORMULÁRIO */}
@@ -8227,6 +8266,7 @@ const cancelarExclusao = () => {
               </div>
             </div>
           </div>
+         </div> 
         )}
         
 
@@ -8274,8 +8314,19 @@ const cancelarExclusao = () => {
         
         {/* POPUP EDIÇÃO DE INSUMO DO FORNECEDOR */}
         {showPopupEditarInsumo && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[80] p-4">
-            <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+        <div className="fixed inset-0 z-[80]">
+          {/* Overlay escuro com backdrop blur */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={cancelarEdicaoInsumo}
+          />
+          
+          {/* Modal do formulário */}
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div 
+              className="relative bg-white rounded-lg p-6 w-full max-w-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-green-50 p-2 rounded-full">
                   <Edit2 className="w-6 h-6 text-green-600" />
@@ -8378,6 +8429,7 @@ const cancelarExclusao = () => {
               </div>
             </div>
           </div>
+         </div> 
         )}
 
         {/* POPUP CONFIRMAÇÃO DE EXCLUSÃO DE INSUMO */}
@@ -8425,23 +8477,32 @@ const cancelarExclusao = () => {
           </div>
         )}
 
-        {/* 🆕 POPUP CADASTRO DE INSUMO DO FORNECEDOR - TAMBÉM ADICIONAR AQUI */}
+        {/* POPUP CADASTRO DE INSUMO DO FORNECEDOR - RESPONSIVO */}
         {showPopupInsumo && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
             <div className="bg-white w-full h-full sm:h-auto sm:rounded-lg sm:max-w-3xl sm:max-h-[90vh] flex flex-col overflow-hidden">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-800">
-                  Cadastrar Insumo para {fornecedorSelecionado?.nome_razao_social}
-                </h3>
+              
+              {/* Header com gradiente */}
+              <div className="bg-gradient-to-r from-green-500 to-pink-500 px-6 py-4 flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    Cadastrar Insumo
+                  </h3>
+                  <p className="text-white/80 text-sm">
+                    {fornecedorSelecionado?.nome_razao_social}
+                  </p>
+                </div>
                 <button 
                   onClick={() => setShowPopupInsumo(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-white hover:text-white/80 transition-colors"
                 >
-                  ×
+                  <X className="w-6 h-6" />
                 </button>
               </div>
               
-              <div className="grid grid-cols-2 gap-6">
+              {/* Corpo do formulário com scroll */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Apenas os 5 campos necessários */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -8579,6 +8640,7 @@ const cancelarExclusao = () => {
               </div>
             </div>
           </div>
+        </div>
         )}
       </div>
     );
@@ -8590,20 +8652,35 @@ const cancelarExclusao = () => {
 
 return (
     <>
-      {/* Botão Hamburger Menu - Visível apenas em mobile/tablet */}
-      <button
-        onClick={() => setSidebarAberta(!sidebarAberta)}
-        className="lg:hidden fixed top-4 right-4 z-50 bg-gradient-to-r from-green-500 to-pink-500 text-white p-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
-        aria-label="Menu de navegação"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {sidebarAberta ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          )}
-        </svg>
-      </button>
+      {/* Barra de Navegação Mobile - Visível apenas em mobile/tablet */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-green-500 to-pink-500 shadow-lg">
+        <div className="flex items-center justify-between px-4 py-3">
+          {/* Logo IOGAR */}
+          <div className="flex items-center gap-2">
+            <img
+              src={logoIogar}
+              alt="Logo IOGAR"
+              className="h-10 w-auto"
+            />
+            <span className="text-white font-semibold text-sm">Food Cost System</span>
+          </div>
+
+          {/* Botão Hamburger Menu */}
+          <button
+            onClick={() => setSidebarAberta(!sidebarAberta)}
+            className="group"
+            aria-label="Menu de navegação"
+          >
+            <div className="relative flex overflow-hidden items-center justify-center rounded-full w-[50px] h-[50px] transform transition-all bg-white/20 backdrop-blur-sm ring-0 ring-white/30 hover:ring-4 group-focus:ring-4 ring-opacity-30 duration-200 shadow-md hover:shadow-lg">
+              <div className={`flex flex-col justify-between w-[20px] h-[20px] transform transition-all duration-500 origin-center overflow-hidden ${sidebarAberta ? 'rotate-0' : ''}`}>
+                <div className={`bg-white h-[2px] w-7 transform transition-all duration-500 origin-left ${sidebarAberta ? 'rotate-45' : 'rotate-0'}`}></div>
+                <div className={`bg-white h-[2px] w-7 rounded transform transition-all duration-500 ${sidebarAberta ? 'scale-x-0' : 'scale-x-100'}`}></div>
+                <div className={`bg-white h-[2px] w-7 transform transition-all duration-500 origin-left ${sidebarAberta ? '-rotate-45' : 'rotate-0'}`}></div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
 
       {/* Overlay escuro - Fecha sidebar ao clicar fora (mobile) */}
       {sidebarAberta && (
@@ -8621,8 +8698,8 @@ return (
           onFechar={() => setSidebarAberta(false)} 
         />
         
-        {/* Conteúdo principal - Ajustado para responsividade */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 lg:ml-64 overflow-auto">
+        {/* Conteúdo principal - Ajustado para responsividade com espaço para barra mobile */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 lg:ml-64 overflow-auto pt-20 lg:pt-4">
           {/* Renderização condicional baseada na aba ativa */}
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'insumos' && <Insumos />}

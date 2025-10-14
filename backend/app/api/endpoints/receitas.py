@@ -54,14 +54,21 @@ def list_receitas(
     receitas_com_cmv = []
     for receita in receitas:
     
-        # CALCULAR CUSTO REAL BASEADO NOS INSUMOS
-        custo_real = calcular_custo_receita(db, receita.id)
-        
-        # ATUALIZAR o campo preco_compra da receita se necessário
+        # CALCULAR CUSTO REAL BASEADO NOS INSUMOS (com suporte a CMV parcial)
+        resultado_calculo = calcular_custo_receita(db, receita.id)
+        custo_real = resultado_calculo['custo_total']
+        tem_pendentes = resultado_calculo['tem_insumos_sem_preco']
+        insumos_pendentes = resultado_calculo['insumos_pendentes']
+
+        # ATUALIZAR campos da receita
         if custo_real > 0 and receita.cmv != int(custo_real * 100):
             receita.cmv = int(custo_real * 100)  # Salvar em centavos
-            db.commit()
-        
+
+        # Atualizar status de insumos pendentes
+        receita.tem_insumos_sem_preco = tem_pendentes
+        receita.insumos_pendentes = insumos_pendentes if tem_pendentes else None
+        db.commit()
+
         # Usar custo calculado ou campo salvo
         preco_compra = custo_real if custo_real > 0 else (receita.cmv / 100 if receita.cmv else 0)
         
@@ -145,6 +152,9 @@ def list_receitas(
             'rendimento': float(receita.rendimento) if receita.rendimento else None,
             'total_insumos': len(receita_insumos_data),
             'insumos_processados': insumos_processados,
+            # Campos para controle de insumos sem preço (Prioridade 1)
+            'tem_insumos_sem_preco': receita.tem_insumos_sem_preco,
+            'insumos_pendentes': receita.insumos_pendentes,
             # ========== CAMPO CRÍTICO - AQUI ESTÃO OS INSUMOS! ==========
             'receita_insumos': receita_insumos_data
         })
@@ -155,14 +165,25 @@ def list_receitas(
 # FUNÇÃO AUXILIAR PARA CALCULAR CUSTO DA RECEITA
 # ===================================================================================================
 
-def calcular_custo_receita(db: Session, receita_id: int) -> float:
+def calcular_custo_receita(db: Session, receita_id: int) -> dict:
     """
-    Calcula o custo total de uma receita baseado nos seus insumos
+    Calcula o custo total de uma receita baseado nos seus insumos.
+    NOVO: Suporta cálculo parcial quando há insumos sem preço.
+    
+    Returns:
+        dict: {
+            'custo_total': float,
+            'tem_insumos_sem_preco': bool,
+            'insumos_pendentes': list[int],
+            'total_insumos': int,
+            'insumos_com_preco': int
+        }
     """
     try:
         # Buscar insumos da receita
         query = """
         SELECT 
+            ri.insumo_id,
             ri.quantidade_necessaria,
             i.preco_compra,
             i.nome
@@ -176,26 +197,60 @@ def calcular_custo_receita(db: Session, receita_id: int) -> float:
         
         if not insumos_receita:
             print(f"⚠️ Receita ID {receita_id} não tem insumos cadastrados")
-            return 0.0
+            return {
+                'custo_total': 0.0,
+                'tem_insumos_sem_preco': False,
+                'insumos_pendentes': [],
+                'total_insumos': 0,
+                'insumos_com_preco': 0
+            }
         
         custo_total = 0.0
+        insumos_sem_preco = []
+        insumos_com_preco_count = 0
         
         for insumo in insumos_receita:
             quantidade = float(insumo.quantidade_necessaria)
-            # Preço em centavos, converter para reais
-            preco_unitario = float(insumo.preco_compra) / 100 if insumo.preco_compra else 0
-            custo_insumo = quantidade * preco_unitario
+            preco_compra = insumo.preco_compra
             
-            custo_total += custo_insumo
-            
-            print(f"  - {insumo.nome}: {quantidade} x R${preco_unitario:.2f} = R${custo_insumo:.2f}")
+            # Verificar se insumo tem preço
+            if preco_compra is None or preco_compra == 0:
+                # Insumo SEM preço - adicionar à lista de pendentes
+                insumos_sem_preco.append(int(insumo.insumo_id))
+                print(f"  ⚠️ {insumo.nome}: SEM PREÇO (pendente)")
+            else:
+                # Insumo COM preço - calcular custo
+                preco_unitario = float(preco_compra) / 100  # Converter centavos para reais
+                custo_insumo = quantidade * preco_unitario
+                custo_total += custo_insumo
+                insumos_com_preco_count += 1
+                print(f"  ✅ {insumo.nome}: {quantidade} x R${preco_unitario:.2f} = R${custo_insumo:.2f}")
         
-        print(f"✅ Custo total da receita ID {receita_id}: R${custo_total:.2f}")
-        return custo_total
+        tem_pendentes = len(insumos_sem_preco) > 0
+        
+        if tem_pendentes:
+            print(f"⚠️ Receita ID {receita_id}: {len(insumos_sem_preco)} insumo(s) sem preço")
+            print(f"💰 Custo PARCIAL (apenas {insumos_com_preco_count}/{len(insumos_receita)} insumos): R${custo_total:.2f}")
+        else:
+            print(f"✅ Custo TOTAL da receita ID {receita_id}: R${custo_total:.2f}")
+        
+        return {
+            'custo_total': custo_total,
+            'tem_insumos_sem_preco': tem_pendentes,
+            'insumos_pendentes': insumos_sem_preco,
+            'total_insumos': len(insumos_receita),
+            'insumos_com_preco': insumos_com_preco_count
+        }
         
     except Exception as e:
         print(f"❌ Erro ao calcular custo da receita {receita_id}: {e}")
-        return 0.0
+        return {
+            'custo_total': 0.0,
+            'tem_insumos_sem_preco': False,
+            'insumos_pendentes': [],
+            'total_insumos': 0,
+            'insumos_com_preco': 0
+        }
 
 @router.post("/", summary="Criar ou atualizar receita")
 def create_receita_endpoint(

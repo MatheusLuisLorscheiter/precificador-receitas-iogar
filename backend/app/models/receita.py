@@ -6,7 +6,7 @@
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
-from sqlalchemy import Column, Integer, Float, Numeric, ForeignKey, String, Text, Boolean, DateTime
+from sqlalchemy import Column, Integer, Float, Numeric, ForeignKey, String, Text, Boolean, DateTime, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.base import Base, BaseModel
@@ -237,6 +237,8 @@ class Receita(Base):
     tempo_preparo_minutos = Column(Integer, nullable=True, comment="Tempo de preparo em minutos")
     rendimento_porcoes = Column(Numeric(precision=10, scale=3), nullable=True, comment="Rendimento em porções (até 3 casas decimais)")
     ativo = Column(Boolean, default=True, comment="Se a receita está ativa no cardápio")
+    tem_insumos_sem_preco = Column(Boolean, default=False, nullable=False, comment="TRUE se a receita possui insumos sem preço definido")
+    insumos_pendentes = Column(JSON, nullable=True, comment="Lista de IDs dos insumos que estão sem preço (formato: [1, 5, 12])")
     processada = Column(Boolean, nullable=False, default=False, comment="Indica se a receita é processada")
     rendimento = Column(Numeric(precision=10, scale=3), nullable=True, comment="Rendimento da receita processada (3 casas decimais)")
 
