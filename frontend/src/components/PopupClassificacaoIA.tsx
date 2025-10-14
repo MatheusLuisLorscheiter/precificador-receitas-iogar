@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBlockBodyScroll } from '../App';
 import { Brain, Check, X, Edit, AlertTriangle, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 
 // ============================================================================
@@ -539,7 +540,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
                         onClick={async () => {
                           try {
                             // Marcar insumo como aguardando classificação no backend
-                            const response = await fetch(`/api/v1/insumos/${insumoId}/marcar-aguardando-classificacao`, {
+                            const response = await fetch(`${API_BASE_URL}/api/v1/insumos/${insumoId}/marcar-aguardando-classificacao`, {
                               method: 'PUT',
                               headers: { 'Content-Type': 'application/json' }
                             });

@@ -81,18 +81,23 @@ class InsumoBase(BaseModel):
     @classmethod
     def validar_preco(cls, v):
         """
-        Valida o preço de compra.
+        Valida o preço de compra quando fornecido.
         
         Regras:
-        - Deve ser positivo
+        - Aceita None (insumo sem preço definido)
+        - Se fornecido, deve ser positivo
         - Máximo 2 casas decimais
         """
-        if v is not None and v <= 0:
-            raise ValueError('Preço deve ser maior que zero')
-        if v is not None:
-            # Arredonda para 2 casas decimais
-            return round(v, 2)
-        return v
+        # Permite None para insumos sem preço
+        if v is None:
+            return None
+        
+        # Se fornecido, valida que seja positivo
+        if v < 0:
+            raise ValueError('Preço não pode ser negativo')
+        
+        # Arredonda para 2 casas decimais
+        return round(v, 2)
 
 # ===================================================================================================
 # Schemas para criação
@@ -229,11 +234,23 @@ class InsumoUpdate(BaseModel):
     @field_validator('preco_compra_real')
     @classmethod
     def validar_preco(cls, v):
-        """Valida preço se fornecido"""
-        if v is None:
+        """
+        Valida o preço de compra quando fornecido.
+        
+        Regras:
+        - Aceita None (insumo sem preço definido)
+        - Aceita 0 (insumo sem preço)
+        - Se maior que 0, arredonda para 2 casas decimais
+        """
+        # Permite None ou 0 para insumos sem preço
+        if v is None or v == 0:
             return v
+        
+        # Se fornecido e maior que zero, valida que seja positivo
         if v < 0:
-            raise ValueError('Preço deve ser positivo')
+            raise ValueError('Preço não pode ser negativo')
+        
+        # Arredonda para 2 casas decimais
         return round(v, 2)
     
     fornecedor_id: Optional[int] = Field(

@@ -362,8 +362,8 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
       return;
     }
 
-    if (!formData.preco_compra_total || formData.preco_compra_total <= 0) {
-      showErrorPopup('Campo obrigatório', 'O preço de compra total deve ser maior que zero.');
+    if (formData.preco_compra_total && formData.preco_compra_total <= 0) {
+      showErrorPopup('Valor Inválido', 'Se informado, o preço de compra total deve ser maior que zero.');
       return;
     }
 
@@ -4475,7 +4475,7 @@ const fetchInsumos = async () => {
           codigo: dadosInsumo.codigo || '',
           nome: dadosInsumo.nome || '',
           unidade: dadosInsumo.unidade || 'kg',
-          preco_compra_real: dadosInsumo.preco_compra_real || 0,  // ✅ CORRETO
+          preco_compra_real: dadosInsumo.preco_compra_real || null,
           fator: dadosInsumo.fator || 1.0,
           quantidade: dadosInsumo.quantidade || 0,
           
