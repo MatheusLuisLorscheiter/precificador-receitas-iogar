@@ -51,6 +51,10 @@ interface SuperPopupRelatorioProps {
   onEdit?: (receita: ReceitaDetalhada) => void;
   onDuplicate?: (receita: ReceitaDetalhada) => void;
   onDelete?: (receita: ReceitaDetalhada) => void;
+  // ===================================================================================================
+  // CALLBACK PARA NAVEGAR PARA ABA INSUMOS COM FILTRO
+  // ===================================================================================================
+  onNavigateToInsumos?: (insumosPendentes: number[]) => void;
 }
 
 // ===================================================================================================
@@ -63,7 +67,11 @@ const SuperPopupRelatorio: React.FC<SuperPopupRelatorioProps> = ({
   onClose,
   onEdit,
   onDuplicate,
-  onDelete
+  onDelete,
+  // ===================================================================================================
+  // CALLBACK PARA NAVEGAR PARA ABA INSUMOS
+  // ===================================================================================================
+  onNavigateToInsumos
 }) => {
   // ===================================================================================================
   // BLOQUEAR SCROLL DO BODY QUANDO POPUP ESTÁ ABERTO
@@ -290,8 +298,14 @@ const calcularCustoPorPorcao = () => {
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
-                      // Futura implementação: Navegar para aba Insumos com filtro
-                      console.log('Ir para insumos:', receita.insumos_pendentes);
+                      // ===================================================================================================
+                      // NAVEGAR PARA ABA INSUMOS COM FILTRO NOS INSUMOS PENDENTES
+                      // ===================================================================================================
+                      if (onNavigateToInsumos && receita.insumos_pendentes) {
+                        console.log('🔄 Navegando para insumos pendentes:', receita.insumos_pendentes);
+                        onNavigateToInsumos(receita.insumos_pendentes);
+                        onClose(); // Fechar o popup
+                      }
                     }}
                     className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium"
                   >

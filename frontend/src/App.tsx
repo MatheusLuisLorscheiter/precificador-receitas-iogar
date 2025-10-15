@@ -1680,6 +1680,10 @@ const FoodCostSystem: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [receitas, setReceitas] = useState<Receita[]>([]);
+  // ===================================================================================================
+  // ESTADO PARA INSUMOS PENDENTES - USADO PARA FILTRO NA ABA INSUMOS
+  // ===================================================================================================
+  const [insumosPendentesFiltro, setInsumosPendentesFiltro] = useState<number[]>([]);
   const [restaurantes, setRestaurantes] = useState<RestauranteGrid[]>([]);
   const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
   const [tiposEstabelecimento, setTiposEstabelecimento] = useState<string[]>([]);
@@ -4433,10 +4437,10 @@ const fetchInsumos = async () => {
   // Definir displayName para o React.memo
   SearchInput.displayName = 'SearchInput';
 
-  // ============================================================================
-  // COMPONENTE GESTÃO DE INSUMOS
-  // ============================================================================
-  const Insumos = () => {
+  // ===================================================================================================
+  // COMPONENTE GESTÃO DE INSUMOS - COM SUPORTE A FILTRO DE PENDENTES
+  // ===================================================================================================
+  const Insumos = ({ insumosPendentes = [] }: { insumosPendentes?: number[] }) => {
   // Usar estados globais ao invés de locais
   const paginaAtualInsumos = paginaAtualInsumosGlobal;
   const setPaginaAtualInsumos = setPaginaAtualInsumosGlobal;
@@ -4446,11 +4450,26 @@ const fetchInsumos = async () => {
   // Estados de Insumo
   const [buscaInsumo, setBuscaInsumo] = useState('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  
+  // ===================================================================================================
+  // ESTADO PARA FILTRO DE INSUMOS PENDENTES
+  // ===================================================================================================
+  const [filtrandoPendentes, setFiltrandoPendentes] = useState(false);
 
     // ============================================================================
     // ESTADOS DE PAGINAÇÃO PARA INSUMOS
     // ============================================================================
     const itensPorPaginaInsumos = 20;
+
+    // ===================================================================================================
+    // EFFECT PARA ATIVAR FILTRO QUANDO HÁ INSUMOS PENDENTES
+    // ===================================================================================================
+    useEffect(() => {
+      if (insumosPendentes && insumosPendentes.length > 0) {
+        console.log('🔍 Ativando filtro de insumos pendentes:', insumosPendentes);
+        setFiltrandoPendentes(true);
+      }
+    }, [insumosPendentes]);
     
     // ============================================================================
     // Restaurar página após fetchInsumos
@@ -4500,12 +4519,23 @@ const fetchInsumos = async () => {
       setSearchTerm(term);
     }, [setSearchTerm]);
 
-    // Filtro dos insumos baseado na busca
-    const insumosFiltrados = insumos.filter(insumoItem => 
-      insumoItem && 
-      insumoItem.nome && 
-      insumoItem.nome.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // ===================================================================================================
+    // FILTRO DOS INSUMOS - COM SUPORTE A FILTRO DE PENDENTES
+    // ===================================================================================================
+    const insumosFiltrados = insumos.filter(insumoItem => {
+      if (!insumoItem || !insumoItem.nome) return false;
+      
+      // Filtro por busca
+      const passaBusca = insumoItem.nome.toLowerCase().includes(buscaInsumo.toLowerCase());
+      
+      // Se está filtrando pendentes, mostrar apenas os IDs da lista
+      if (filtrandoPendentes && insumosPendentes.length > 0) {
+        const ehPendente = insumosPendentes.includes(insumoItem.id);
+        return passaBusca && ehPendente;
+      }
+      
+      return passaBusca;
+    });
 
     // ============================================================================
     // CÁLCULO DE PAGINAÇÃO PARA INSUMOS
@@ -4850,6 +4880,38 @@ const fetchInsumos = async () => {
             </div>
           ) : (
             <div>
+              {/* ===================================================================================================
+                  BANNER DE ALERTA - INSUMOS PENDENTES
+                  =================================================================================================== */}
+              {filtrandoPendentes && insumosPendentes.length > 0 && (
+                <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0">
+                      <AlertTriangle className="w-6 h-6 text-yellow-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-lg font-semibold text-yellow-900 mb-2">
+                        📦 Insumos Pendentes de Preço
+                      </h4>
+                      <p className="text-sm text-yellow-800 mb-3">
+                        Mostrando {insumosFiltrados.length} insumo(s) que precisam ter o preço cadastrado para completar o cálculo de custo das receitas.
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => {
+                            setFiltrandoPendentes(false);
+                            console.log('✅ Filtro de pendentes desativado');
+                          }}
+                          className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium"
+                        >
+                          Limpar Filtro
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Versão Desktop - Tabela */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
@@ -6710,6 +6772,21 @@ const Receitas = React.memo(() => {
     }
   };
 
+  // ===================================================================================================
+  // HANDLER PARA NAVEGAR PARA ABA INSUMOS COM FILTRO DE PENDENTES
+  // ===================================================================================================
+  const handleNavigateToInsumos = (insumosPendentes: number[]) => {
+    console.log('🔄 Navegando para aba Insumos com filtro:', insumosPendentes);
+    
+    // Salvar IDs dos insumos pendentes no estado
+    setInsumosPendentesFiltro(insumosPendentes);
+    
+    // Mudar para aba Insumos
+    setActiveTab('insumos');
+    
+    console.log('✅ Navegação concluída - aba:', 'insumos', 'filtro:', insumosPendentes);
+  };
+
   const handleViewReceita = (receita: any) => {
     console.log('👁️ Visualizar receita:', receita);
     
@@ -7194,6 +7271,7 @@ const Receitas = React.memo(() => {
         onEdit={handleEditFromPopup}
         onDuplicate={handleDuplicateFromPopup}
         onDelete={handleDeleteFromPopup}
+        onNavigateToInsumos={handleNavigateToInsumos}
       /> 
     </div>
   );
@@ -8866,7 +8944,7 @@ return (
         <main className="flex-1 p-4 md:p-6 lg:p-8 lg:ml-64 overflow-auto pt-20 lg:pt-4">
           {/* Renderização condicional baseada na aba ativa */}
           {activeTab === 'dashboard' && <Dashboard />}
-          {activeTab === 'insumos' && <Insumos />}
+          {activeTab === 'insumos' && <Insumos insumosPendentes={insumosPendentesFiltro} />}
           {activeTab === 'restaurantes' && <Restaurantes />}
           {activeTab === 'receitas' && <Receitas />}
           {activeTab === 'fornecedores' && <Fornecedores />}
