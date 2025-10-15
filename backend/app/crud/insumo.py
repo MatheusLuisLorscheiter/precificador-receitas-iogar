@@ -430,10 +430,11 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
     Raises:
         ValueError: Se código já existir
     """
-    # Verificar se código já existe antes de tentar criar
-    existing_insumo = get_insumo_by_codigo(db, insumo.codigo.upper())
-    if existing_insumo:
-        raise ValueError(f"O código '{insumo.codigo.upper()}' já está cadastrado. Por favor, escolha um código diferente.")
+    # Verificar se código já existe antes de tentar criar (apenas se fornecido)
+    if insumo.codigo and insumo.codigo.strip():
+        existing_insumo = get_insumo_by_codigo(db, insumo.codigo.upper())
+        if existing_insumo:
+            raise ValueError(f"O código '{insumo.codigo.upper()}' já está cadastrado. Por favor, escolha um código diferente.")
     
     # Converter preço de reais para centavos
     preco_centavos = None
@@ -476,7 +477,7 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
     db_insumo = Insumo(
         grupo=insumo.grupo,
         subgrupo=insumo.subgrupo,
-        codigo=insumo.codigo.upper(),
+        codigo=insumo.codigo.upper() if insumo.codigo else None,
         nome=insumo.nome,
         quantidade=insumo.quantidade,
         fator=fator_final,  # Usar fator corrigido

@@ -268,20 +268,56 @@ def criar_insumo(
     db: Session = Depends(get_db)
 ):
     """
-    Cria um novo insumo.
+    Cria um novo insumo com codigo gerado automaticamente.
+    
+    **Codigo Automatico:**
+    - Faixa 5000-5999 (prefixo INS)
+    - Gerado automaticamente pelo sistema
     
     **Validações:**
-    - Código deve ser único
     - Unidade deve ser válida (unidade, caixa, kg, g, L, ml)
-    - Preço deve ser positivo
+    - Preço deve ser positivo (se fornecido)
     
     **Retorna:**
-    - Insumo criado com ID
-    - Erro 400 se dados inválidos
-    - Erro 409 se código já existe
+    - Insumo criado com ID e código gerado
+    - Erro 400 se dados inválidos ou faixa esgotada
     """
+    # DEBUG COMPLETO
+    print("=" * 80)
+    print("🔍 DEBUG - Tentando criar insumo:")
     try:
-        insumo_criado = crud_insumo.create_insumo(db=db, insumo=insumo)
+        print(f"  📦 model_dump: {insumo.model_dump()}")
+    except Exception as e:
+        print(f"  ❌ Erro ao fazer dump: {e}")
+    print(f"  🔑 codigo attr: '{insumo.codigo if hasattr(insumo, 'codigo') else 'N/A'}'")
+    print(f"  📝 nome attr: '{insumo.nome if hasattr(insumo, 'nome') else 'N/A'}'")
+    print("=" * 80)
+    try:
+        # Importar service de codigo
+        from app.services.codigo_service import gerar_proximo_codigo
+        from app.config.codigo_config import TipoCodigo
+        
+        # Gerar codigo automaticamente
+        try:
+            codigo_gerado = gerar_proximo_codigo(db, TipoCodigo.INSUMO)
+            print(f"✅ Código gerado automaticamente para insumo: {codigo_gerado}")
+        except ValueError as e:
+            # Faixa esgotada
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Erro ao gerar código: {str(e)}"
+            )
+        
+        # Criar novo objeto InsumoCreate com codigo gerado
+        insumo_dict = insumo.model_dump()
+        insumo_dict['codigo'] = codigo_gerado
+        
+        # Recriar objeto InsumoCreate com codigo gerado
+        from app.schemas.insumo import InsumoCreate as InsumoCreateSchema
+        insumo_com_codigo = InsumoCreateSchema(**insumo_dict)
+        
+        # Criar insumo usando CRUD
+        insumo_criado = crud_insumo.create_insumo(db=db, insumo=insumo_com_codigo)
 
         # Converter preço para reais na resposta
         if hasattr(insumo_criado, 'preco_compra') and insumo_criado.preco_compra:
@@ -293,10 +329,20 @@ def criar_insumo(
 
         return insumo_criado
     
+    except HTTPException:
+        # Re-raise HTTPException para nao capturar novamente
+        raise
+    
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e)
+        )
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno ao criar insumo: {str(e)}"
         )
     
 @router.post("/batch", response_model=List[InsumoResponse], summary="Criar múltiplos insumos")
