@@ -41,6 +41,15 @@ try:
     except ImportError as e:
         print(f"⚠️  Módulo taxonomia_aliases não encontrado: {e}")
         HAS_TAXONOMIA_ALIASES = False
+
+    # Tentar importar o módulo codigos
+    try:
+        from app.api.endpoints import codigos
+        HAS_CODIGOS = True
+        print("[OK] Módulo codigos importado com sucesso")
+    except ImportError as e:
+        print(f"⚠️  Módulo codigos não encontrado: {e}")
+        HAS_CODIGOS = False
         
 except ImportError as e:
     print(f"❌ Erro ao importar endpoints: {e}")
@@ -724,6 +733,15 @@ app.include_router(
     prefix="/api/v1/receitas", 
     tags=["receitas"]
 )
+
+# Incluir router de códigos (se disponível)
+if HAS_CODIGOS:
+    app.include_router(
+        codigos.router, 
+        prefix="/api/v1/codigos", 
+        tags=["codigos"]
+    )
+    print("✅ Router de códigos registrado: /api/v1/codigos")
 
 # Router para operações com fornecedores
 app.include_router(

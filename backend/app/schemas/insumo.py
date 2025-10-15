@@ -21,7 +21,7 @@ class InsumoBase(BaseModel):
     """
     grupo: str = Field(..., min_length=1, max_length=100, description="Grupo de insumo")
     subgrupo: str = Field(..., min_length=1, max_length=100, description="Subgrupo do insumo")
-    codigo: str = Field(..., min_length=1, max_length=50, description="Código único do produto")
+    codigo: Optional[str] = Field(default=None, description="Código único (gerado automaticamente se não fornecido)")
     nome: str = Field(..., min_length=1, max_length=255, description="Nome do produto")
     quantidade: int = Field(default=1, ge=1, description="Quantidade padrão")
     fator: float = Field(default=1.0, gt=0, description="Fator de conversão (aceita decimais)")
@@ -60,13 +60,19 @@ class InsumoBase(BaseModel):
         Valida o formato do código do produto.
         
         Regras:
-        - Deve conter apenas letras, números e hífen
-        - Deve estar em maiúsculo
+        - Aceita None (código será gerado automaticamente)
+        - Se fornecido, deve conter apenas letras, números e hífen
+        - Converte para maiúsculo
         """
-        # Remove caracteres especiais para validação
+        # Se for None ou string vazia, retornar None (será gerado automaticamente)
+        if v is None or (isinstance(v, str) and v.strip() == ''):
+            return None
+        
+        # Se fornecido, validar formato
         codigo_limpo = v.replace('-', '').replace('_', '')
         if not codigo_limpo.isalnum():
             raise ValueError('Código deve conter apenas letras, números, hífen ou underscore')
+        
         return v.upper()
 
     @field_validator('fator')
@@ -98,6 +104,22 @@ class InsumoBase(BaseModel):
         
         # Arredonda para 2 casas decimais
         return round(v, 2)
+    
+    @field_validator('codigo', mode='before')
+    @classmethod
+    def validar_codigo_opcional(cls, v):
+        """
+        Valida código se fornecido, mas permite None ou string vazia
+        """
+        # Se for None ou string vazia, retornar None
+        if v is None or (isinstance(v, str) and v.strip() == ''):
+            return None
+        
+        # Se fornecido, validar formato
+        codigo_limpo = v.replace('-', '').replace('_', '')
+        if not codigo_limpo.isalnum():
+            raise ValueError('Código deve conter apenas letras, números, hífen ou underscore')
+        return v.upper()
 
 # ===================================================================================================
 # Schemas para criação

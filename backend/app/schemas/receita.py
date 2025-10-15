@@ -258,7 +258,7 @@ class ReceitaBase(BaseModel):
     """Schema base para receitas"""
     grupo: str = Field(..., min_length=1, max_length=100, description="Grupo da receita")
     subgrupo: str = Field(..., min_length=1, max_length=100, description="Subgrupo da receita")
-    codigo: str = Field(..., min_length=1, max_length=50, description="Código único da receita")
+    codigo: Optional[str] = Field(None, min_length=1, max_length=50, description="Código único (gerado automaticamente se não fornecido)")
     nome: str = Field(..., min_length=1, max_length=255, description="Nome da receita")
     quantidade: int = Field(1, ge=1, description="Quantidade produzida")
     fator: float = Field(1.0, gt=0, description="Fator de conversão")
@@ -323,6 +323,22 @@ class ReceitaBase(BaseModel):
         if v is None:
             return v
         return v.upper().strip()
+    
+    @field_validator('codigo', mode='before')
+    @classmethod
+    def validar_codigo_opcional(cls, v):
+        """
+        Valida código se fornecido, mas permite None ou string vazia
+        """
+        # Se for None ou string vazia, retornar None
+        if v is None or (isinstance(v, str) and v.strip() == ''):
+            return None
+        
+        # Se fornecido, validar formato
+        if isinstance(v, str) and len(v.strip()) > 0:
+            return v.upper()
+        
+        return None
 
 class ReceitaCreate(ReceitaBase):
     from pydantic import model_validator

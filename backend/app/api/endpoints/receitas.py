@@ -448,12 +448,35 @@ def create_receita_endpoint(
             print("➕ MODO CRIAÇÃO - Nova receita")
             
             # ============================================================================
-            # CRIAR NOVA RECEITA (código original)
+            # CRIAR NOVA RECEITA COM CODIGO AUTOMATICO
             # ============================================================================
             
-            # Campos obrigatórios básicos
+            # Importar service de codigo
+            from app.services.codigo_service import gerar_proximo_codigo
+            from app.config.codigo_config import TipoCodigo
+            
+            # Determinar tipo de receita para geracao de codigo
+            is_processada = receita_data.get('is_processada', False) or receita_data.get('processada', False)
+            tipo_codigo = (
+                TipoCodigo.RECEITA_PROCESSADA 
+                if is_processada 
+                else TipoCodigo.RECEITA_NORMAL
+            )
+            
+            # Gerar codigo automaticamente
+            try:
+                codigo_gerado = gerar_proximo_codigo(db, tipo_codigo)
+                print(f"✅ Código gerado automaticamente: {codigo_gerado}")
+            except ValueError as e:
+                # Faixa esgotada
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Erro ao gerar código: {str(e)}"
+                )
+            
+            # Campos obrigatórios básicos (com codigo gerado)
             campos_obrigatorios = {
-                'codigo': receita_data.get('codigo', '').strip(),
+                'codigo': codigo_gerado,  # Usar codigo gerado automaticamente
                 'nome': receita_data.get('nome', '').strip(),
                 'restaurante_id': int(receita_data.get('restaurante_id', 0)),
                 'ativo': bool(receita_data.get('ativo', True))

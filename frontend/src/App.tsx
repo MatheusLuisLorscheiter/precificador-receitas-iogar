@@ -208,7 +208,6 @@ const FormularioInsumoIsolado = React.memo(({
 const [formData, setFormData] = useState(() => {
   const initialData = {
     nome: editingInsumo?.nome || '',
-    codigo: editingInsumo?.codigo || '',
     unidade: editingInsumo?.unidade || 'kg',
     fator: editingInsumo?.fator || 1,
     quantidade: editingInsumo?.quantidade || 1, // Padrão 1 para facilitar cálculo
@@ -354,11 +353,6 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
     // ========================================================================
     if (!formData.nome?.trim()) {
       showErrorPopup('Campo obrigatório', 'O nome do insumo é obrigatório.');
-      return;
-    }
-
-    if (!formData.codigo?.trim()) {
-      showErrorPopup('Campo obrigatório', 'O código do insumo é obrigatório.');
       return;
     }
 
@@ -603,22 +597,21 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
               {/* Grid de campos principais */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
-                {/* Código */}
-                <div className="space-y-2">
-                  <label className="flex items-center text-sm font-medium text-gray-900">
-                    <span>Código</span>
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.codigo}
-                    onChange={(e) => updateField('codigo', e.target.value)}
-                    disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                    className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
-                      (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'
-                    }`}
-                    placeholder="Ex: INS001"
-                  />
+                {/* Badge informativo de codigo automatico */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-blue-900">Código Automático</p>
+                      <p className="text-xs text-blue-600 mt-0.5">
+                        O sistema gerará automaticamente (faixa 5000-5999)
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Nome */}
@@ -1785,7 +1778,6 @@ const FoodCostSystem: React.FC = () => {
   const [selectedReceita, setSelectedReceita] = useState<Receita | null>(null);
   const [novoInsumo, setNovoInsumo] = useState(() => ({
     nome: '',
-    codigo: '',
     unidade: 'kg',
     preco_compra_real: 0, // ✅ Campo correto para o backend
     fator: 1.0,
@@ -2696,8 +2688,7 @@ const fetchInsumos = async () => {
       preco_compra: editingInsumo?.preco_compra_real || 0,
       fator: editingInsumo?.fator || 1,
       categoria: editingInsumo?.categoria || '',
-      quantidade: editingInsumo?.quantidade || 0,
-      codigo: editingInsumo?.codigo || ''
+      quantidade: editingInsumo?.quantidade || 0
     });
 
     const handleChange = (field, value) => {
@@ -2759,15 +2750,17 @@ const fetchInsumos = async () => {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Código</label>
-              <input
-                type="text"
-                value={formData.codigo}
-                onChange={(e) => handleChange('codigo', e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 bg-white text-gray-900"
-                placeholder="Ex: FAR001"
-              />
+            {/* Badge informativo de codigo automatico */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Código Automático</p>
+                  <p className="text-xs text-blue-600">O sistema gerará o código automaticamente (faixa 5000-5999)</p>
+                </div>
+              </div>
             </div>
 
             <div>
@@ -2960,7 +2953,6 @@ const fetchInsumos = async () => {
         if (editingReceita) {
           console.log('🔄 Atualizando formData COMPLETO com receita em edição:', editingReceita);
           setFormData({
-            codigo: editingReceita.codigo || '',
             nome: editingReceita.nome || '',
             sugestao_valor: editingReceita.sugestao_valor || '',
             fator: parseFloat(editingReceita.fator || 1),
@@ -3595,20 +3587,17 @@ const fetchInsumos = async () => {
                   {/* Grid de campos principais */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
-                    {/* Código de Produto */}
-                    <div className="space-y-2">
-                      <label className="flex items-center text-sm font-medium text-gray-900">
-                        <span>Código de Produto</span>
-                        <span className="text-red-500 ml-1">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.codigo}
-                        onChange={(e) => handleChange('codigo', e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                        placeholder="REC001"
-                        autoFocus
-                      />
+                    {/* Badge informativo de codigo automatico */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-blue-900">Código Automático</p>
+                          <p className="text-xs text-blue-600">O sistema gerará o código automaticamente (faixa 3000-4999)</p>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Nome da Receita */}
@@ -4553,7 +4542,6 @@ const fetchInsumos = async () => {
 
         // Preparar dados com nova estrutura
         const dadosParaEnvio = {
-          codigo: dadosInsumo.codigo || '',
           nome: dadosInsumo.nome || '',
           unidade: dadosInsumo.unidade || 'kg',
           preco_compra_real: dadosInsumo.preco_compra_real || null,
@@ -4632,7 +4620,6 @@ const fetchInsumos = async () => {
           setInsumoFornecedorSelecionado(null);
           setNovoInsumo({
             nome: '',
-            codigo: '',
             unidade: 'kg',
             preco_compra_real: 0, // ✅ Usar apenas este campo
             fator: 1.0,

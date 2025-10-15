@@ -159,12 +159,6 @@ class ApiService {
     // 🔍 VALIDAÇÃO MANUAL ANTES DE ENVIAR
     // ============================================================================
     
-    // Verificar campos obrigatórios
-    if (!insumo.codigo || insumo.codigo.trim() === '') {
-      console.error('❌ ERRO: código vazio');
-      return { error: 'Código é obrigatório' };
-    }
-    
     if (!insumo.nome || insumo.nome.trim() === '') {
       console.error('❌ ERRO: nome vazio');
       return { error: 'Nome é obrigatório' };
@@ -182,8 +176,7 @@ class ApiService {
     // ============================================================================
     const dadosBackend = {
       grupo: String(insumo.grupo || 'Geral').trim(),
-      subgrupo: String(insumo.subgrupo || 'Geral').trim(), 
-      codigo: String(insumo.codigo || '').trim().toUpperCase(),
+      subgrupo: String(insumo.subgrupo || 'Geral').trim(),
       nome: String(insumo.nome || '').trim(),
       quantidade: Number(insumo.quantidade) || 1,
       fator: Number(insumo.fator) || 1.0,
