@@ -258,12 +258,16 @@ class Receita(Base):
     receita_pai = relationship("Receita", remote_side="Receita.id", 
                               back_populates="variacoes")
 
+    # ===================================================================================================
+    # CORREÇÃO: Adicionar cascade delete para excluir receita_insumos ao deletar receita
+    # ===================================================================================================
     # Relacionamento com insumos da receita (N para N através de ReceitaInsumo)
     # Uma receita pode ter muitos insumos, um insumo pode estar em muitas receitas
     receita_insumos = relationship(
         "ReceitaInsumo", 
         back_populates="receita",
-        foreign_keys="[ReceitaInsumo.receita_id]"
+        foreign_keys="[ReceitaInsumo.receita_id]",
+        cascade="all, delete-orphan"  # ← ADICIONAR CASCADE
     )
 
     # ===================================================================================================
@@ -459,16 +463,26 @@ class ReceitaInsumo(Base):  # ✅ Herda de Base (não precisa dos campos do Base
     # ===================================================================================================
     # Relacionamentos SQLAlchemy
     # ===================================================================================================
-    
+
     # Relacionamento com receita (N para 1)
     receita = relationship(
         "Receita", 
         back_populates="receita_insumos",
         foreign_keys=[receita_id]
     )
-    
+
     # Relacionamento com insumo (N para 1)
     insumo = relationship("Insumo", back_populates="receitas")  # Relacionamento com a tabela insumos
+
+    # ===================================================================================================
+    # CORREÇÃO: Adicionar relacionamento com receita processada
+    # ===================================================================================================
+    # Relacionamento com receita processada usada como insumo (N para 1)
+    receita_processada = relationship(
+        "Receita",
+        foreign_keys=[receita_processada_id],
+        backref="usado_como_insumo_em"
+    )
 
     # ===================================================================================================
     # Métodos de cálculo de custos (CORRIGIDOS COM CONVERSÃO DE UNIDADES)

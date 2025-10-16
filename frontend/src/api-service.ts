@@ -363,12 +363,21 @@ class ApiService {
 
   // Criar nova receita
   async createReceita(receita: any): Promise<ApiResponse<any>> {
+    // ===================================================================================================
+    // CORREÇÃO: Não enviar código em modo criação (backend gera automaticamente)
+    // ===================================================================================================
+    const isEdicao = Boolean(receita.id);
+    
     // Mapear campos para o formato esperado pelo backend
     const dadosBackend = {
-      // CORREÇÃO: Incluir o ID se fornecido (para edição via POST)
-      ...(receita.id && { id: receita.id }),
+      // Incluir o ID se fornecido (para edição via POST)
+      ...(isEdicao && { id: receita.id }),
       
-      codigo: receita.codigo || '',
+      // ===================================================================================================
+      // CORREÇÃO: Só incluir código se estiver em modo edição
+      // ===================================================================================================
+      ...(isEdicao && receita.codigo && { codigo: receita.codigo }),
+      
       nome: receita.nome,
       descricao: receita.descricao || '',
       categoria: receita.categoria || 'Geral',

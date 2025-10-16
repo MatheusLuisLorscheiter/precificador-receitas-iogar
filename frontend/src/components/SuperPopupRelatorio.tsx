@@ -461,27 +461,42 @@ const calcularCustoPorPorcao = () => {
   const TabInsumos = () => {
     if (!receita) return null;
 
+    // ===================================================================================================
+    // SEPARAR INSUMOS NORMAIS DE RECEITAS PROCESSADAS
+    // ===================================================================================================
+    const insumosNormais = receita.receita_insumos?.filter(ri => 
+      ri.insumo && !ri.receita_processada_id
+    ) || [];
+    
+    const receitasProcessadas = receita.receita_insumos?.filter(ri => 
+      ri.receita_processada_id
+    ) || [];
+
+    // ===================================================================================================
+    // DEBUG TEMPORÁRIO: Verificar estrutura dos dados
+    // ===================================================================================================
+    console.log('🔍 DEBUG TabInsumos:');
+    console.log('📦 Total receita_insumos:', receita.receita_insumos?.length);
+    console.log('📦 Insumos normais:', insumosNormais.length);
+    console.log('🍳 Receitas processadas:', receitasProcessadas.length);
+    console.log('📋 Estrutura completa:', receita.receita_insumos);
+    // ===================================================================================================
+
     return (
       <div className="space-y-6">
-        <div className="bg-white rounded-xl border border-gray-100">
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Package className="w-5 h-5 text-green-600" />
-              Lista de Insumos ({receita.receita_insumos?.length || 0} itens)
-            </h3>
-          </div>
-        
-          {!receita.receita_insumos || receita.receita_insumos.length === 0 ? (
-            <div className="p-8 text-center">
-              <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Nenhum insumo cadastrado nesta receita</p>
-              <p className="text-sm text-gray-400 mt-2">Adicione insumos para calcular o custo automaticamente</p>
+        {/* Seção de Insumos Normais */}
+        {insumosNormais.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-100">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Package className="w-5 h-5 text-green-600" />
+                Insumos ({insumosNormais.length} itens)
+              </h3>
             </div>
-          ) : (
+            
             <div className="p-6">
               <div className="space-y-4">
-                {/* Lista REAL de insumos da receita */}
-                {receita.receita_insumos.map((insumo, index) => (
+                {insumosNormais.map((insumo, index) => (
                   <div key={index} className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium text-gray-900">
@@ -489,7 +504,6 @@ const calcularCustoPorPorcao = () => {
                       </h4>
                       <span className="text-sm font-medium text-green-600">
                         {(() => {
-                          // Tentar usar custo_calculado, se não existir, calcular manualmente
                           const custoInsumo = insumo.custo_calculado || 
                             (insumo.quantidade_necessaria * (insumo.insumo?.preco_compra_real || 0));
                           return formatarPreco(custoInsumo);
@@ -506,25 +520,74 @@ const calcularCustoPorPorcao = () => {
                     </div>
                   </div>
                 ))}
-              
-                <div className="border-t border-gray-200 pt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-gray-900">Total da Receita</span>
-                    <span className="font-bold text-green-600 text-lg">
-                      {formatarPreco(receita.cmv_real * receita.porcoes)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm text-gray-600">Custo por rendimento</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {formatarPreco(receita.cmv_real)}
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Seção de Receitas Processadas */}
+        {receitasProcessadas.length > 0 && (
+          <div className="bg-white rounded-xl border border-purple-100">
+            <div className="p-6 border-b border-purple-100">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <ChefHat className="w-5 h-5 text-purple-600" />
+                Receitas Processadas ({receitasProcessadas.length} itens)
+              </h3>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
+                {receitasProcessadas.map((item, index) => (
+                  <div key={index} className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-gray-900">
+                        {item.receita_processada?.nome || 'Receita Processada'}
+                      </h4>
+                      <span className="text-sm font-medium text-purple-600">
+                        {formatarPreco(item.custo_calculado || 0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>
+                        {(item.quantidade_necessaria || 0).toFixed(2)} {item.unidade_medida || 'un'}
+                      </span>
+                      <span className="text-purple-600">
+                        Receita processada
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mensagem quando não há nenhum insumo */}
+        {insumosNormais.length === 0 && receitasProcessadas.length === 0 && (
+          <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
+            <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">Nenhum insumo cadastrado nesta receita</p>
+            <p className="text-sm text-gray-400 mt-2">Adicione insumos para calcular o custo automaticamente</p>
+          </div>
+        )}
+
+        {/* Total Geral */}
+        {(insumosNormais.length > 0 || receitasProcessadas.length > 0) && (
+          <div className="bg-gradient-to-r from-green-50 to-purple-50 rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-gray-900">Total da Receita</span>
+              <span className="font-bold text-green-600 text-lg">
+                {formatarPreco(receita.cmv_real * receita.porcoes)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-sm text-gray-600">Custo por rendimento</span>
+              <span className="text-sm font-medium text-gray-900">
+                {formatarPreco(receita.cmv_real)}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -941,6 +1004,12 @@ const calcularCustoPorPorcao = () => {
                 <h2 className="text-2xl font-bold">{receita.nome}</h2>
                 <p className="text-white text-opacity-90">
                   {receita.codigo} • {receita.categoria}
+                  {(() => {
+                    console.log('🔍 DEBUG - Receita completa:', receita);
+                    console.log('🔍 DEBUG - receita.processada:', receita.processada);
+                    console.log('🔍 DEBUG - typeof:', typeof receita.processada);
+                    return null;
+                  })()}
                   {receita.processada && <> • Processada</>}
                 </p>
               </div>

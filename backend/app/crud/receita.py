@@ -372,10 +372,14 @@ def create_receita(db: Session, receita: ReceitaCreate) -> Receita:
     return db_receita
 
 def get_receita_by_id(db: Session, receita_id: int) -> Optional[Receita]:
+    # ===================================================================================================
+    # CORREÇÃO: Adicionar joinedload para receitas processadas usadas como insumos
+    # ===================================================================================================
     """Busca receita por ID com relacionamentos"""
     return db.query(Receita).options(
         joinedload(Receita.restaurante),
         joinedload(Receita.receita_insumos).joinedload(ReceitaInsumo.insumo),
+        joinedload(Receita.receita_insumos).joinedload(ReceitaInsumo.receita_processada),
         joinedload(Receita.receita_pai),
         joinedload(Receita.variacoes)
     ).filter(Receita.id == receita_id).first()
@@ -388,8 +392,15 @@ def get_receitas(
     grupo: Optional[str] = None,
     ativo: Optional[bool] = None
 ) -> List[Receita]:
+    # ===================================================================================================
+    # CORREÇÃO: Adicionar joinedload para carregar receita_insumos com relacionamentos
+    # ===================================================================================================
     """Lista receitas com filtros opcionais"""
-    query = db.query(Receita).options(joinedload(Receita.restaurante))
+    query = db.query(Receita).options(
+        joinedload(Receita.restaurante),
+        joinedload(Receita.receita_insumos).joinedload(ReceitaInsumo.insumo),
+        joinedload(Receita.receita_insumos).joinedload(ReceitaInsumo.receita_processada)
+    )
     
     if restaurante_id:
         query = query.filter(Receita.restaurante_id == restaurante_id)

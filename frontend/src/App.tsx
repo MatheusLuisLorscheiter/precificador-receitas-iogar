@@ -3392,13 +3392,23 @@ const fetchInsumos = async () => {
       };
 
       const proceedWithSave = (insumosValidosParam) => {
+        // ===================================================================================================
+        // CORREÇÃO: Não enviar campo código em modo criação (sistema gera automaticamente)
+        // ===================================================================================================
+        const isEdicao = Boolean(editingReceita && editingReceita.id);
+        
         // Mapear campos para o formato EXATO esperado pelo backend
         const dadosBackend = {
           // Incluir o ID se está editando
-          ...(editingReceita && editingReceita.id && { id: editingReceita.id }),
+          ...(isEdicao && { id: editingReceita.id }),
+          
+          // ===================================================================================================
+          // CORREÇÃO: Só incluir código se estiver em modo edição
+          // Em modo criação, o backend gera automaticamente
+          // ===================================================================================================
+          ...(isEdicao && { codigo: String(formData.codigo || '').trim() }),
           
           // Campos obrigatórios básicos
-          codigo: String(formData.codigo || '').trim(),
           nome: String(formData.nome || '').trim(),
           descricao: String(formData.descricao || '').trim(),
           sugestao_valor: parseFloat(formData.sugestao_valor) || 0,
@@ -6824,10 +6834,19 @@ const Receitas = React.memo(() => {
   };
 
   const handleCreateReceita = () => {
+    // ===================================================================================================
+    // CRIAR NOVA RECEITA - Garantir que não haja código residual
+    // ===================================================================================================
     console.log('➕ Criar nova receita');
+    
+    // Limpar completamente a receita selecionada (não herdar código de receitas antigas)
     setSelectedReceita(null);
+    
+    // Resetar dados da nova receita
     setNovaReceita({ nome: '', descricao: '', categoria: '', porcoes: 1 });
     setReceitaInsumos([]);
+    
+    // Abrir formulário em modo criação
     setShowReceitaForm(true);
   };
 

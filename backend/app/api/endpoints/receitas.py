@@ -98,12 +98,16 @@ def list_receitas(
                 # BUSCAR DADOS DO INSUMO OU RECEITA PROCESSADA
                 # ===================================================================================================
                 if ri.receita_processada_id:
+                    # ===================================================================================================
+                    # CORREÇÃO: Incluir receita_processada_id para o frontend identificar corretamente
+                    # ===================================================================================================
                     # É uma receita processada usada como insumo
                     receita_proc = db.query(Receita).filter(Receita.id == ri.receita_processada_id).first()
                     
                     if receita_proc:
                         insumo_data = {
-                            'insumo_id': ri.receita_processada_id,
+                            'insumo_id': None,  # ← NULL quando for receita processada
+                            'receita_processada_id': ri.receita_processada_id,  # ← ADICIONAR ESTE CAMPO
                             'quantidade_necessaria': ri.quantidade_necessaria,
                             'unidade_medida': ri.unidade_medida or 'un',
                             'custo_calculado': getattr(ri, 'custo_calculado', 0),
@@ -112,6 +116,12 @@ def list_receitas(
                                 'nome': receita_proc.nome,
                                 'unidade': receita_proc.unidade or 'un',
                                 'preco_compra_real': receita_proc.cmv_real or 0
+                            },
+                            'receita_processada': {  # ← ADICIONAR DADOS COMPLETOS DA RECEITA PROCESSADA
+                                'id': receita_proc.id,
+                                'nome': receita_proc.nome,
+                                'codigo': receita_proc.codigo,
+                                'unidade': receita_proc.unidade or 'un'
                             }
                         }
                         receita_insumos_data.append(insumo_data)
@@ -446,6 +456,14 @@ def create_receita_endpoint(
             
         else:
             print("➕ MODO CRIAÇÃO - Nova receita")
+
+            # ===================================================================================================
+            # DEBUG TEMPORÁRIO: Verificar se campo codigo está chegando do frontend
+            # ===================================================================================================
+            print(f"🔍 DEBUG - Campo 'codigo' em receita_data: {receita_data.get('codigo')}")
+            print(f"🔍 DEBUG - 'codigo' in receita_data: {'codigo' in receita_data}")
+            print(f"🔍 DEBUG - receita_data keys: {list(receita_data.keys())}")
+            # ===================================================================================================
             
             # ============================================================================
             # CRIAR NOVA RECEITA COM CODIGO AUTOMATICO

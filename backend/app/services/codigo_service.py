@@ -92,18 +92,21 @@ def _buscar_ultimo_codigo_usado(db: Session, tipo: TipoCodigo) -> Optional[int]:
     fim = faixa["fim"]
     
     try:
+        # ===================================================================================================
+        # CORREÇÃO: Usar campo 'processada' ao invés de 'is_processada'
+        # ===================================================================================================
         # Determinar qual tabela consultar
         if tipo == TipoCodigo.RECEITA_NORMAL:
-            # Buscar em receitas normais (is_processada = False)
+            # Buscar em receitas normais (processada = False)
             query = db.query(Receita).filter(
-                Receita.is_processada == False,
+                Receita.processada == False,
                 Receita.codigo.isnot(None)
             )
             
         elif tipo == TipoCodigo.RECEITA_PROCESSADA:
-            # Buscar em receitas processadas (is_processada = True)
+            # Buscar em receitas processadas (processada = True)
             query = db.query(Receita).filter(
-                Receita.is_processada == True,
+                Receita.processada == True,
                 Receita.codigo.isnot(None)
             )
             
