@@ -269,7 +269,7 @@ def criar_insumo(
 ):
     """
     Cria um novo insumo com codigo gerado automaticamente.
-    
+    Request Body
     **Codigo Automatico:**
     - Faixa 5000-5999 (prefixo INS)
     - Gerado automaticamente pelo sistema

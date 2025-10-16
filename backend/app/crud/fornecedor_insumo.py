@@ -59,36 +59,37 @@ def get_fornecedor_insumo_by_codigo(
 
 
 def get_fornecedor_insumos(
-    db: Session,
+    db: Session, 
     fornecedor_id: int,
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 20,
     busca: Optional[str] = None
 ) -> List[FornecedorInsumo]:
     """
-    Lista insumos do catálogo de um fornecedor com paginação e busca.
+    Lista insumos do catálogo de um fornecedor com paginação e filtro de busca.
     
     Args:
         db (Session): Sessão do banco de dados
         fornecedor_id (int): ID do fornecedor
         skip (int): Número de registros a pular (paginação)
         limit (int): Máximo de registros por página
-        busca (Optional[str]): Termo de busca (código, nome)
+        busca (Optional[str]): Termo de busca para código ou nome
         
     Returns:
-        List[FornecedorInsumo]: Lista de insumos do catálogo
+        List[FornecedorInsumo]: Lista de insumos do catálogo com paginação
     """
+    # Consultar insumos do fornecedor
     query = db.query(FornecedorInsumo).filter(
         FornecedorInsumo.fornecedor_id == fornecedor_id
     )
     
-    # Aplicar filtro de busca se fornecido
+    # Aplicar filtro de busca se fornecido e válido
     if busca and busca.strip():
-        termo_busca = f"%{busca.strip()}%"
+        termo_normalizado = f"%{busca.strip()}%"
         query = query.filter(
             or_(
-                FornecedorInsumo.codigo.ilike(termo_busca),
-                FornecedorInsumo.nome.ilike(termo_busca)
+                FornecedorInsumo.codigo.ilike(termo_normalizado),
+                FornecedorInsumo.nome.ilike(termo_normalizado)
             )
         )
     
@@ -107,24 +108,27 @@ def count_fornecedor_insumos(
     Args:
         db (Session): Sessão do banco de dados
         fornecedor_id (int): ID do fornecedor
-        busca (Optional[str]): Termo de busca (se aplicado)
+        busca (Optional[str]): Termo de busca para filtro (opcional)
         
     Returns:
-        int: Total de insumos
+        int: Total de insumos que correspondem aos critérios
     """
+    # Consultar insumos do fornecedor
     query = db.query(FornecedorInsumo).filter(
         FornecedorInsumo.fornecedor_id == fornecedor_id
     )
     
+    # Aplicar filtro de busca se fornecido e válido
     if busca and busca.strip():
-        termo_busca = f"%{busca.strip()}%"
+        termo_normalizado = f"%{busca.strip()}%"
         query = query.filter(
             or_(
-                FornecedorInsumo.codigo.ilike(termo_busca),
-                FornecedorInsumo.nome.ilike(termo_busca)
+                FornecedorInsumo.codigo.ilike(termo_normalizado),
+                FornecedorInsumo.nome.ilike(termo_normalizado)
             )
         )
     
+    # Retornar contagem de insumos
     return query.count()
 
 

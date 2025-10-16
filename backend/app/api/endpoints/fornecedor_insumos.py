@@ -39,30 +39,20 @@ def listar_insumos_do_fornecedor(
     fornecedor_id: int,
     skip: int = Query(0, ge=0, description="Número de registros a pular"),
     limit: int = Query(20, ge=1, le=100, description="Máximo de registros por página"),
-    busca: Optional[str] = Query(None, description="Termo de busca (código, nome)"),
+    busca: Optional[str] = Query(None, min_length=2, description="Termo de busca (código, nome)"),
     db: Session = Depends(get_db)
 ):
     """
     Lista insumos do catálogo de um fornecedor com paginação e busca.
     
-    **Funcionalidades:**
-    - Lista todos os insumos oferecidos pelo fornecedor
-    - Busca por código ou nome do insumo
-    - Paginação para performance
-    - Ordenação alfabética por nome
+    Parâmetros de query:
+    - skip: número de registros para pular (padrão: 0)
+    - limit: máximo de registros por página (padrão: 20, máximo: 100)
+    - busca: termo para buscar em código e nome (mínimo: 2 caracteres)
     
-    **Parâmetros:**
-    - `fornecedor_id`: ID do fornecedor
-    - `skip`: Registros a pular (paginação)
-    - `limit`: Máximo por página (1-100)
-    - `busca`: Termo de busca opcional
-    
-    **Retorna:**
-    - Lista paginada de insumos do catálogo
-    - Total de insumos encontrados
-    - Metadados de paginação
+    Retorna lista paginada de insumos com contagem total.
     """
-    # Verificar se fornecedor existe
+    # Validar se fornecedor existe
     fornecedor = crud_fornecedor.get_fornecedor_by_id(db, fornecedor_id)
     if not fornecedor:
         raise HTTPException(
@@ -70,29 +60,21 @@ def listar_insumos_do_fornecedor(
             detail=f"Fornecedor com ID {fornecedor_id} não encontrado"
         )
     
-    # Buscar insumos do catálogo
+    # Obter total de insumos com filtro de busca (para paginação)
+    total = crud_fornecedor_insumo.count_fornecedor_insumos(db, fornecedor_id, busca)
+    
+    # Buscar insumos com paginação e filtro
     insumos = crud_fornecedor_insumo.get_fornecedor_insumos(
-        db=db,
-        fornecedor_id=fornecedor_id,
-        skip=skip,
-        limit=limit,
-        busca=busca
+        db, fornecedor_id, skip, limit, busca
     )
     
-    # Contar total para paginação
-    total = crud_fornecedor_insumo.count_fornecedor_insumos(
-        db=db,
-        fornecedor_id=fornecedor_id,
-        busca=busca
-    )
-    
+    # Retornar resposta paginada
     return FornecedorInsumoListResponse(
-        insumos=insumos,
-        total=total,
-        skip=skip,
-        limit=limit
-    )
-
+    insumos=insumos,
+    total=total,
+    skip=skip,
+    limit=limit
+)
 
 @router.get("/fornecedores/{fornecedor_id}/insumos/{insumo_id}", response_model=FornecedorInsumoResponse)
 def obter_insumo_do_fornecedor(
