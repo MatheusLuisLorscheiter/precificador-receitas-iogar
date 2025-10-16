@@ -17,7 +17,7 @@
 import { apiService } from './api-service';
 
 import logoIogar from './image/iogar_logo.png';
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PopupPortalContainer, { showSuccessPopup, showErrorPopup } from './components/PopupPortal';
 import {
   ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
@@ -1665,18 +1665,16 @@ export const useBlockBodyScroll = (isBlocked: boolean) => {
 // ============================================================================
 const FoodCostSystem: React.FC = () => {
   
-  // ============================================================================
-  // Estado da navegação - sempre inicia pela Dashboard ao carregar/recarregar
-  // Mantém a aba atual durante navegação, mas reseta ao dar F5
-  // ============================================================================
-
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // ==========================================================================
+  // ESTADOS DO SISTEMA
+  // ==========================================================================
+  
+  // Estado da navegação - controla qual aba está ativa
+  const [activeTab, setActiveTab] = useState<string>(
+    () => localStorage.getItem('activeTab') || 'dashboard'
+  );
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [receitas, setReceitas] = useState<Receita[]>([]);
-  // ===================================================================================================
-  // ESTADO PARA INSUMOS PENDENTES - USADO PARA FILTRO NA ABA INSUMOS
-  // ===================================================================================================
-  const [insumosPendentesFiltro, setInsumosPendentesFiltro] = useState<number[]>([]);
   const [restaurantes, setRestaurantes] = useState<RestauranteGrid[]>([]);
   const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
   const [tiposEstabelecimento, setTiposEstabelecimento] = useState<string[]>([]);
@@ -1697,23 +1695,6 @@ const FoodCostSystem: React.FC = () => {
     telefone: '',
     ativo: true
   });
-
-  // ============================================================================
-  // ESTADO GLOBAL: Paginação de insumos (para preservar ao excluir)
-  // ============================================================================
-  const [paginaAtualInsumosGlobal, setPaginaAtualInsumosGlobal] = useState(1);
-  const [paginaSalvaParaRestaurarGlobal, setPaginaSalvaParaRestaurarGlobal] = useState<number | null>(null);
-
-  // ============================================================================
-  // UseEffect global para restaurar página após exclusão
-  // ============================================================================
-  useEffect(() => {
-    if (paginaSalvaParaRestaurarGlobal !== null && insumos.length > 0) {
-      console.log(`✅ RESTAURANDO página GLOBAL para: ${paginaSalvaParaRestaurarGlobal}`);
-      setPaginaAtualInsumosGlobal(paginaSalvaParaRestaurarGlobal);
-      setPaginaSalvaParaRestaurarGlobal(null);
-    }
-  }, [insumos, paginaSalvaParaRestaurarGlobal]);
 
   const [cnpjValido, setCnpjValido] = useState(true);
 
@@ -1898,6 +1879,11 @@ const FoodCostSystem: React.FC = () => {
         setLoading(false);
       }
     };
+
+  // Salvar aba ativa no localStorage
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab);
+  }, [activeTab]);
   
   // ============================================================================
   // CONFIGURAÇÃO DA API
@@ -4426,64 +4412,19 @@ const fetchInsumos = async () => {
   // Definir displayName para o React.memo
   SearchInput.displayName = 'SearchInput';
 
-  // ===================================================================================================
-  // COMPONENTE GESTÃO DE INSUMOS - COM SUPORTE A FILTRO DE PENDENTES
-  // ===================================================================================================
-  const Insumos = ({ insumosPendentes = [] }: { insumosPendentes?: number[] }) => {
-  // Usar estados globais ao invés de locais
-  const paginaAtualInsumos = paginaAtualInsumosGlobal;
-  const setPaginaAtualInsumos = setPaginaAtualInsumosGlobal;
-  const paginaSalvaParaRestaurar = paginaSalvaParaRestaurarGlobal;
-  const setPaginaSalvaParaRestaurar = setPaginaSalvaParaRestaurarGlobal;
-  
-  // Estados de Insumo
-  const [buscaInsumo, setBuscaInsumo] = useState('');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  
-  // ===================================================================================================
-  // ESTADO PARA FILTRO DE INSUMOS PENDENTES
-  // ===================================================================================================
-  const [filtrandoPendentes, setFiltrandoPendentes] = useState(false);
+  // ============================================================================
+  // COMPONENTE GESTÃO DE INSUMOS
+  // ============================================================================
+  const Insumos = () => {
+    // Estados de Insumo
+    const [buscaInsumo, setBuscaInsumo] = useState('');
+    const [searchTerm, setSearchTerm] = useState<string>('');
 
     // ============================================================================
     // ESTADOS DE PAGINAÇÃO PARA INSUMOS
     // ============================================================================
+    const [paginaAtualInsumos, setPaginaAtualInsumos] = useState(1);
     const itensPorPaginaInsumos = 20;
-
-    // ===================================================================================================
-    // EFFECT PARA ATIVAR FILTRO QUANDO HÁ INSUMOS PENDENTES
-    // ===================================================================================================
-    useEffect(() => {
-      if (insumosPendentes && insumosPendentes.length > 0) {
-        console.log('🔍 Ativando filtro de insumos pendentes:', insumosPendentes);
-        setFiltrandoPendentes(true);
-      }
-    }, [insumosPendentes]);
-    
-    // ============================================================================
-    // Restaurar página após fetchInsumos
-    // ============================================================================
-    useEffect(() => {
-      console.log(`🔍 useEffect disparado:`);
-      console.log(`   - paginaSalvaParaRestaurar: ${paginaSalvaParaRestaurar}`);
-      console.log(`   - insumos.length: ${insumos.length}`);
-      console.log(`   - paginaAtualInsumos: ${paginaAtualInsumos}`);
-      
-      if (paginaSalvaParaRestaurar !== null && insumos.length > 0) {
-        console.log(`✅ Agendando restauração da página para: ${paginaSalvaParaRestaurar}`);
-        
-        // Usar setTimeout para garantir que aconteça após todos os re-renders
-        setTimeout(() => {
-          console.log(`🔄 EXECUTANDO restauração para página ${paginaSalvaParaRestaurar}`);
-          setPaginaAtualInsumos(paginaSalvaParaRestaurar);
-          setPaginaSalvaParaRestaurar(null);
-        }, 100);
-      } else {
-        console.log(`❌ NÃO restaurou porque:`);
-        console.log(`   - paginaSalvaParaRestaurar é null? ${paginaSalvaParaRestaurar === null}`);
-        console.log(`   - insumos.length > 0? ${insumos.length > 0}`);
-      }
-    }, [insumos, paginaSalvaParaRestaurar]);
 
     const [editandoFornecedor, setEditandoFornecedor] = useState(null);
 
@@ -4508,23 +4449,12 @@ const fetchInsumos = async () => {
       setSearchTerm(term);
     }, [setSearchTerm]);
 
-    // ===================================================================================================
-    // FILTRO DOS INSUMOS - COM SUPORTE A FILTRO DE PENDENTES
-    // ===================================================================================================
-    const insumosFiltrados = insumos.filter(insumoItem => {
-      if (!insumoItem || !insumoItem.nome) return false;
-      
-      // Filtro por busca
-      const passaBusca = insumoItem.nome.toLowerCase().includes(buscaInsumo.toLowerCase());
-      
-      // Se está filtrando pendentes, mostrar apenas os IDs da lista
-      if (filtrandoPendentes && insumosPendentes.length > 0) {
-        const ehPendente = insumosPendentes.includes(insumoItem.id);
-        return passaBusca && ehPendente;
-      }
-      
-      return passaBusca;
-    });
+    // Filtro dos insumos baseado na busca
+    const insumosFiltrados = insumos.filter(insumoItem => 
+      insumoItem && 
+      insumoItem.nome && 
+      insumoItem.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     // ============================================================================
     // CÁLCULO DE PAGINAÇÃO PARA INSUMOS
@@ -4680,60 +4610,26 @@ const fetchInsumos = async () => {
       });
     }, []);
 
-    // ============================================================================
-    // Função para confirmar e executar a exclusão - MANTÉM PÁGINA ATUAL
-    // ============================================================================
+    // Função para confirmar e executar a exclusão
     const confirmDeleteInsumo = async () => {
       if (!deleteConfirm.insumoId) return;
 
       try {
         setLoading(true);
-        
-        // Salvar página atual ANTES de excluir
-        const paginaAtual = paginaAtualInsumos;
-        console.log(`📍 Salvando página atual: ${paginaAtual}`);
-        
         const response = await apiService.deleteInsumo(deleteConfirm.insumoId);
-        
-        console.log(`🔍 Response completo:`, response);
-        console.log(`🔍 response.error:`, response.error);
-        console.log(`🔍 response.data:`, response.data);
 
-        // Verificar se houve erro
-        if (response.error) {
-          console.log(`❌ Entrou no bloco de erro`);
-          // Erro 409 = Conflito (insumo sendo usado em receita)
-          if (response.error.includes('409') || response.error.includes('Conflict') || 
-              response.error.includes('receita') || response.error.includes('uso')) {
-            showErrorPopup(
-              'Não é Possível Excluir',
-              `O insumo "${deleteConfirm.insumoNome}" está sendo usado em uma ou mais receitas. Remova-o das receitas antes de excluir.`
-            );
-          } else {
-            showErrorPopup(
-              'Erro ao Excluir',
-              response.error || 'Não foi possível excluir o insumo.'
-            );
-          }
-          return;
+        if (response.data || !response.error) {
+          await fetchInsumos();
+          showSuccessPopup(
+            'Insumo Excluído!',
+            `${deleteConfirm.insumoNome} foi removido com sucesso do sistema.`
+          );
+        } else {
+          showErrorPopup(
+            'Erro ao Excluir',
+            response.error || 'Não foi possível excluir o insumo.'
+          );
         }
-
-        console.log(`✅ Passou da verificação de erro`);
-        
-        // Sucesso - salvar página para restaurar depois do fetch
-        console.log(`💾 Salvando página ${paginaAtual} para restaurar depois`);
-        setPaginaSalvaParaRestaurar(paginaAtual);
-        console.log(`💾 Estado paginaSalvaParaRestaurar definido para: ${paginaAtual}`);
-        
-        console.log(`🔄 Chamando fetchInsumos...`);
-        // Recarregar lista (o useEffect vai restaurar a página)
-        await fetchInsumos();
-        console.log(`✅ fetchInsumos concluído`);
-        
-        showSuccessPopup(
-          'Insumo Excluído!',
-          `${deleteConfirm.insumoNome} foi removido com sucesso do sistema.`
-        );
       } catch (error) {
         console.error('Erro ao deletar insumo:', error);
         showErrorPopup(
@@ -4744,7 +4640,7 @@ const fetchInsumos = async () => {
         setLoading(false);
         setDeleteConfirm({ isOpen: false, insumoId: null, insumoNome: '' });
       }
-    };
+    }; 
 
     // Função para editar insumo
     const handleEditInsumo = (insumo: Insumo) => {
@@ -4781,84 +4677,6 @@ const fetchInsumos = async () => {
         {/* Barra de busca - COMPONENTE ISOLADO */}
         <SearchInput onSearch={handleSearchChange} />
 
-        {/* ============================================================================ */}
-        {/* PAGINAÇÃO NO TOPO - MOBILE E DESKTOP */}
-        {/* ============================================================================ */}
-        {totalPaginasInsumos > 1 && (
-          <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-t-lg">
-            {/* Mobile - Botões Anterior/Próxima */}
-            <div className="flex flex-1 justify-between sm:hidden">
-              <button
-                onClick={() => setPaginaAtualInsumos(Math.max(1, paginaAtualInsumos - 1))}
-                disabled={paginaAtualInsumos === 1}
-                className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Anterior
-              </button>
-              <span className="text-sm text-gray-700">
-                {paginaAtualInsumos} / {totalPaginasInsumos}
-              </span>
-              <button
-                onClick={() => setPaginaAtualInsumos(Math.min(totalPaginasInsumos, paginaAtualInsumos + 1))}
-                disabled={paginaAtualInsumos === totalPaginasInsumos}
-                className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Próxima
-              </button>
-            </div>
-
-            {/* Desktop - Paginação Completa */}
-            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Mostrando <span className="font-medium">{indiceInicialInsumos + 1}</span> a{' '}
-                  <span className="font-medium">
-                    {Math.min(indiceFinalInsumos, insumosFiltrados.length)}
-                  </span>{' '}
-                  de <span className="font-medium">{insumosFiltrados.length}</span> insumos
-                </p>
-              </div>
-              <div>
-                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                  <button
-                    onClick={() => setPaginaAtualInsumos(Math.max(1, paginaAtualInsumos - 1))}
-                    disabled={paginaAtualInsumos === 1}
-                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="sr-only">Anterior</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  {[...Array(totalPaginasInsumos)].map((_, idx) => (
-                    <button
-                      key={idx + 1}
-                      onClick={() => setPaginaAtualInsumos(idx + 1)}
-                      className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                        paginaAtualInsumos === idx + 1
-                          ? 'z-10 bg-green-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'
-                          : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
-                      }`}
-                    >
-                      {idx + 1}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setPaginaAtualInsumos(Math.min(totalPaginasInsumos, paginaAtualInsumos + 1))}
-                    disabled={paginaAtualInsumos === totalPaginasInsumos}
-                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="sr-only">Próxima</span>
-                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Tabela de insumos */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {insumos.length === 0 ? (
@@ -4866,34 +4684,82 @@ const fetchInsumos = async () => {
               <p className="text-gray-500">Nenhum insumo cadastrado. Tente adicionar um novo insumo ou verificar a conexão com a API.</p>
             </div>
           ) : (
+
             <div>
+
               {/* ===================================================================================================
-                  BANNER DE ALERTA - INSUMOS PENDENTES
+                  PAGINAÇÃO NO TOPO - CONTROLES RESPONSIVOS
                   =================================================================================================== */}
-              {filtrandoPendentes && insumosPendentes.length > 0 && (
-                <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0">
-                      <AlertTriangle className="w-6 h-6 text-yellow-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-lg font-semibold text-yellow-900 mb-2">
-                        📦 Insumos Pendentes de Preço
-                      </h4>
-                      <p className="text-sm text-yellow-800 mb-3">
-                        Mostrando {insumosFiltrados.length} insumo(s) que precisam ter o preço cadastrado para completar o cálculo de custo das receitas.
+              {totalPaginasInsumos > 1 && (
+                <div className="mb-4 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
+                  {/* Mobile - Botões Anterior/Próxima */}
+                  <div className="flex flex-1 justify-between sm:hidden">
+                    <button
+                      onClick={() => setPaginaAtualInsumos(Math.max(1, paginaAtualInsumos - 1))}
+                      disabled={paginaAtualInsumos === 1}
+                      className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Anterior
+                    </button>
+                    <span className="text-sm text-gray-700">
+                      {paginaAtualInsumos} / {totalPaginasInsumos}
+                    </span>
+                    <button
+                      onClick={() => setPaginaAtualInsumos(Math.min(totalPaginasInsumos, paginaAtualInsumos + 1))}
+                      disabled={paginaAtualInsumos === totalPaginasInsumos}
+                      className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Próxima
+                    </button>
+                  </div>
+
+                  {/* Desktop - Paginação Completa */}
+                  <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        Mostrando <span className="font-medium">{indiceInicialInsumos + 1}</span> a{' '}
+                        <span className="font-medium">
+                          {Math.min(indiceFinalInsumos, insumosFiltrados.length)}
+                        </span>{' '}
+                        de <span className="font-medium">{insumosFiltrados.length}</span> insumos
                       </p>
-                      <div className="flex gap-3">
+                    </div>
+                    <div>
+                      <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                         <button
-                          onClick={() => {
-                            setFiltrandoPendentes(false);
-                            console.log('✅ Filtro de pendentes desativado');
-                          }}
-                          className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium"
+                          onClick={() => setPaginaAtualInsumos(Math.max(1, paginaAtualInsumos - 1))}
+                          disabled={paginaAtualInsumos === 1}
+                          className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Limpar Filtro
+                          <span className="sr-only">Anterior</span>
+                          <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                          </svg>
                         </button>
-                      </div>
+                        {[...Array(totalPaginasInsumos)].map((_, idx) => (
+                          <button
+                            key={idx + 1}
+                            onClick={() => setPaginaAtualInsumos(idx + 1)}
+                            className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                              paginaAtualInsumos === idx + 1
+                                ? 'z-10 bg-green-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'
+                                : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
+                            }`}
+                          >
+                            {idx + 1}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setPaginaAtualInsumos(Math.min(totalPaginasInsumos, paginaAtualInsumos + 1))}
+                          disabled={paginaAtualInsumos === totalPaginasInsumos}
+                          className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="sr-only">Próxima</span>
+                          <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </nav>
                     </div>
                   </div>
                 </div>
@@ -6759,21 +6625,6 @@ const Receitas = React.memo(() => {
     }
   };
 
-  // ===================================================================================================
-  // HANDLER PARA NAVEGAR PARA ABA INSUMOS COM FILTRO DE PENDENTES
-  // ===================================================================================================
-  const handleNavigateToInsumos = (insumosPendentes: number[]) => {
-    console.log('🔄 Navegando para aba Insumos com filtro:', insumosPendentes);
-    
-    // Salvar IDs dos insumos pendentes no estado
-    setInsumosPendentesFiltro(insumosPendentes);
-    
-    // Mudar para aba Insumos
-    setActiveTab('insumos');
-    
-    console.log('✅ Navegação concluída - aba:', 'insumos', 'filtro:', insumosPendentes);
-  };
-
   const handleViewReceita = (receita: any) => {
     console.log('👁️ Visualizar receita:', receita);
     
@@ -7258,7 +7109,6 @@ const Receitas = React.memo(() => {
         onEdit={handleEditFromPopup}
         onDuplicate={handleDuplicateFromPopup}
         onDelete={handleDeleteFromPopup}
-        onNavigateToInsumos={handleNavigateToInsumos}
       /> 
     </div>
   );
@@ -8694,12 +8544,10 @@ const cancelarExclusao = () => {
           </div>
         )}
 
-        {/* ============================================================================ */}
-        {/* FORMULÁRIO INSUMO DO FORNECEDOR - PADRÃO MOBILE COM HEADER VISÍVEL */}
-        {/* ============================================================================ */}
+        {/* POPUP CADASTRO DE INSUMO DO FORNECEDOR - RESPONSIVO */}
         {showPopupInsumo && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 sm:p-4">
+            <div className="bg-white w-full h-full sm:h-auto sm:rounded-lg sm:max-w-3xl sm:max-h-[90vh] flex flex-col overflow-hidden">
               
               {/* Header com gradiente */}
               <div className="bg-gradient-to-r from-green-500 to-pink-500 px-6 py-4 flex justify-between items-center">
@@ -8719,115 +8567,105 @@ const cancelarExclusao = () => {
                 </button>
               </div>
               
-              {/* ============================================================================ */}
-              {/* CORPO DO FORMULÁRIO - Grid responsivo com campos proporcionais */}
-              {/* ============================================================================ */}
+              {/* Corpo do formulário com scroll */}
               <div className="flex-1 overflow-y-auto p-6">
-                <div className="space-y-6">
-                  
-                  {/* ========================================================================== */}
-                  {/* LINHA 1: Código e Nome (lado a lado) */}
-                  {/* ========================================================================== */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Código <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={novoInsumo.codigo}
-                        onChange={(e) => setNovoInsumo({...novoInsumo, codigo: e.target.value.toUpperCase()})}
-                        className="w-full px-4 py-3 bg-white border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-colors"
-                        placeholder="Ex: TOM001"
-                        required
-                      />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Apenas os 5 campos necessários */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Código <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={novoInsumo.codigo}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, codigo: e.target.value})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="Ex: INS001"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nome <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={novoInsumo.nome}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, nome: e.target.value})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="Ex: Tomate Premium"
+                  />
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nome <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={novoInsumo.nome}
-                        onChange={(e) => setNovoInsumo({...novoInsumo, nome: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-colors"
-                        placeholder="Ex: Tomate Premium"
-                        required
-                      />
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Unidade <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={novoInsumo.unidade}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, unidade: e.target.value})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                  >
+                    <option value="kg">Kg</option>
+                    <option value="g">G</option>
+                    <option value="L">L</option>
+                    <option value="ml">ml</option>
+                    <option value="unidade">Unidade</option>
+                    <option value="caixa">Caixa</option>
+                    <option value="pacote">Pacote</option>
+                  </select>
+                </div>
 
-                  {/* ========================================================================== */}
-                  {/* LINHA 2: Unidade, Preço cobrado e Quantidade (3 colunas) */}
-                  {/* ========================================================================== */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Unidade <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={novoInsumo.unidade}
-                        onChange={(e) => setNovoInsumo({...novoInsumo, unidade: e.target.value})}
-                        className="w-full px-4 py-3 bg-white border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-colors"
-                      >
-                        <option value="kg">kg</option>
-                        <option value="g">g</option>
-                        <option value="L">L</option>
-                        <option value="ml">ml</option>
-                        <option value="un">unidade</option>
-                      </select>
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Preço cobrado <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={novoInsumo.preco_compra_real}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, preco_compra_real: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="0.00"
+                  />
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Preço cobrado <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={novoInsumo.preco_compra_real}
-                        onChange={(e) => setNovoInsumo({...novoInsumo, preco_compra_real: parseFloat(e.target.value) || 0})}
-                        className="w-full px-4 py-3 bg-white border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-colors"
-                        placeholder="0.00"
-                        required
-                      />
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Quantidade <span className="text-red-500">*</span> {/* Alterado para receber 3 casas decimais*/}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    value={novoInsumo.quantidade}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseFloat(e.target.value) || 1})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="1.000"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Quantas unidades estão sendo vendidas
+                  </p>
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Quantidade <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={novoInsumo.quantidade}
-                        onChange={(e) => setNovoInsumo({...novoInsumo, quantidade: parseInt(e.target.value) || 1})}
-                        className="w-full px-4 py-3 bg-white border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-colors"
-                        placeholder="1"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* ========================================================================== */}
-                  {/* LINHA 3: Fator */}
-                  {/* ========================================================================== */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Fator <span className="text-gray-400">(ex: 0.75 para 750ml)</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={novoInsumo.fator}
-                      onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value) || 1})}
-                      className="w-full px-4 py-3 bg-white border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-colors"
-                      placeholder="1.0"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Valor fechado (ex: 0.75 para 750ml, 20.0 para caixa com 20 unidades)
-                    </p>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fator <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={novoInsumo.fator}
+                    onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value) || 0})}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
+                    placeholder="1.0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Valor fechado (ex: 0.75 para 750ml, 20.0 para caixa 20un)
+                  </p>
+                </div>
 
                 {/* Campo de cálculo em tempo real */}
                 <div className="col-span-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -8931,7 +8769,7 @@ return (
         <main className="flex-1 p-4 md:p-6 lg:p-8 lg:ml-64 overflow-auto pt-20 lg:pt-4">
           {/* Renderização condicional baseada na aba ativa */}
           {activeTab === 'dashboard' && <Dashboard />}
-          {activeTab === 'insumos' && <Insumos insumosPendentes={insumosPendentesFiltro} />}
+          {activeTab === 'insumos' && <Insumos />}
           {activeTab === 'restaurantes' && <Restaurantes />}
           {activeTab === 'receitas' && <Receitas />}
           {activeTab === 'fornecedores' && <Fornecedores />}

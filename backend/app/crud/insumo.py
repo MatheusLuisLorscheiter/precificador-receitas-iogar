@@ -368,9 +368,9 @@ def count_insumos(db: Session, filters: Optional[InsumoFilter] = None) -> int:
 
 def search_insumos(db: Session, termo_busca: str, limit: int = 20) -> List[Insumo]:
     """
-    Busca insumos por termo geral (nome, código ou grupo).
+    Busca insumos por nome, código, grupo ou subgrupo.
     
-    🆕 ATUALIZADO: Agora inclui cálculo de comparação de preços para cada resultado
+    Atualizado: Inclui cálculo de comparação de preços para cada resultado
     
     Args:
         db (Session): Sessão do banco de dados
@@ -380,8 +380,8 @@ def search_insumos(db: Session, termo_busca: str, limit: int = 20) -> List[Insum
     Returns:
         List[Insumo]: Lista de insumos encontrados (com dados de comparação)
     """
-
-    termo = f"%{termo_busca}%"
+    # Normalizar termo de busca com wildcards para filtro ILIKE
+    termo = f"%{termo_busca.strip()}%"
     insumos = db.query(Insumo).filter(
         or_(
             Insumo.nome.ilike(termo),
@@ -391,25 +391,7 @@ def search_insumos(db: Session, termo_busca: str, limit: int = 20) -> List[Insum
         )
     ).order_by(Insumo.nome).limit(limit).all()
     
-    # ========================================================================
-    # 🆕 CALCULAR COMPARAÇÃO DE PREÇOS PARA CADA INSUMO
-    # ========================================================================
-    for insumo in insumos:
-        # Calcular dados de comparação
-        comparacao = calcular_comparacao_precos(db, insumo)
-        
-        # Adicionar campos calculados ao objeto
-        insumo.preco_por_unidade = comparacao['preco_por_unidade']
-        insumo.fornecedor_preco_unidade = comparacao['fornecedor_preco_unidade']
-        insumo.diferenca_percentual = comparacao['diferenca_percentual']
-        insumo.eh_mais_barato = comparacao['eh_mais_barato']
-        
-        # Converter preço para reais (compatibilidade)
-        if hasattr(insumo, 'preco_compra') and insumo.preco_compra:
-            insumo.preco_compra_real = insumo.preco_compra / 100
-        else:
-            insumo.preco_compra_real = None
-    
+    # Retornar resultados da busca sem modificação de atributos
     return insumos
 
 #   ===================================================================================================

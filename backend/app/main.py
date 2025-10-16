@@ -68,7 +68,11 @@ from app.models import taxonomia, taxonomia_alias, insumo, fornecedor, fornecedo
 import os
 import time
 
-
+# ============================================================================
+# TRATAMENTO DE SINAIS E SHUTDOWN GRACIOSOS
+# ============================================================================
+import signal
+import sys
 
 #   ===================================================================================================
 #   Configuração do ciclo de vida da aplicação
