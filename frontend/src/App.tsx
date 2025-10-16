@@ -597,22 +597,45 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
               {/* Grid de campos principais */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
-                {/* Badge informativo de codigo automatico */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-blue-900">Código Automático</p>
-                      <p className="text-xs text-blue-600 mt-0.5">
-                        O sistema gerará automaticamente (faixa 5000-5999)
-                      </p>
+                {/* Badge informativo de codigo automatico ou codigo existente */}
+                {editingInsumo?.codigo ? (
+                  // Quando está editando - mostra o código existente
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center shadow-md">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-purple-900">Código do Insumo</p>
+                        <p className="text-lg font-bold text-purple-700 mt-0.5">
+                          {editingInsumo.codigo}
+                        </p>
+                        <p className="text-xs text-purple-600 mt-1">
+                          Código gerado automaticamente (não editável)
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  // Quando está criando - mostra mensagem de geração automática
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-blue-900">Código Automático</p>
+                        <p className="text-xs text-blue-600 mt-0.5">
+                          O sistema gerará automaticamente (faixa 5000-5999)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Nome */}
                 <div className="lg:col-span-2 space-y-2">
@@ -2736,18 +2759,37 @@ const fetchInsumos = async () => {
               />
             </div>
 
-            {/* Badge informativo de codigo automatico */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <div>
-                  <p className="text-sm font-medium text-blue-900">Código Automático</p>
-                  <p className="text-xs text-blue-600">O sistema gerará o código automaticamente (faixa 5000-5999)</p>
+            {/* Badge informativo de codigo */}
+            {editingInsumo?.codigo ? (
+              // Editando - mostra código existente
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-purple-900">Código do Insumo</p>
+                    <p className="text-lg font-bold text-purple-700">{editingInsumo.codigo}</p>
+                    <p className="text-xs text-purple-600">Gerado automaticamente (não editável)</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              // Criando - mensagem de geração
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Código Automático</p>
+                    <p className="text-xs text-blue-600">Será gerado automaticamente (faixa 5000-5999)</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
@@ -3573,18 +3615,43 @@ const fetchInsumos = async () => {
                   {/* Grid de campos principais */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
-                    {/* Badge informativo de codigo automatico */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <div>
-                          <p className="text-sm font-medium text-blue-900">Código Automático</p>
-                          <p className="text-xs text-blue-600">O sistema gerará o código automaticamente (faixa 3000-4999)</p>
+                    {/* Badge informativo de codigo */}
+                    {editingReceita?.codigo ? (
+                      // Editando - mostra código existente
+                      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-purple-900">Código da Receita</p>
+                            <p className="text-lg font-bold text-purple-700">{editingReceita.codigo}</p>
+                            <p className="text-xs text-purple-600">
+                              {editingReceita.processada ? 'Receita Processada' : 'Receita Normal'} (não editável)
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      // Criando - mensagem de geração
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-blue-900">Código Automático</p>
+                            <p className="text-xs text-blue-600">
+                              Faixa 3000-3999 (Normal) ou 4000-4999 (Processada)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Nome da Receita */}
                     <div className="lg:col-span-2 space-y-2">
@@ -7133,7 +7200,6 @@ Receitas.displayName = 'Receitas';
     });
 
     const [novoInsumo, setNovoInsumo] = useState({
-      codigo: '',
       nome: '',
       grupo: '',
       subgrupo: '',
@@ -7201,24 +7267,6 @@ Receitas.displayName = 'Receitas';
         console.error('Erro ao carregar fornecedor:', error);
       }
     };
-
-    // =========================================================================
-    // FUNÇÕES DE MANIPULAÇÃO DE RESTAURANTES
-    // =========================================================================
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
 
     // =========================================================================
     // FUNÇÕES DE EDIÇÃO E EXCLUSÃO DE FORNECEDORES
@@ -7328,7 +7376,6 @@ Receitas.displayName = 'Receitas';
         setIsLoading(true);
         
         const dadosParaAtualizar = {
-          codigo: novoInsumo.codigo,
           nome: novoInsumo.nome,
           grupo: novoInsumo.grupo || null,
           subgrupo: novoInsumo.subgrupo || null,
@@ -7511,35 +7558,11 @@ const cancelarExclusao = () => {
         return;
       }
 
-      // ============================================================================
-      // VALIDAÇÃO PREVENTIVA - CÓDIGO DUPLICADO NO FRONTEND
-      // Validação em 2 camadas:
-      // Primeira camada: Validação no frontend (mais rápida, melhor UX)
-      // Segunda camada: Validação no backend (mais segura, última linha de defesa)
-      // Validação adcional:
-      // - Verifica se o código não está vazio
-      // - Formata o código (trim + uppercase) antes de comparar
-      // - Mantém o tratamento de erro do backend como fallback
-      // ============================================================================
-      const codigoLimpo = String(novoInsumo.codigo || '').trim().toUpperCase();
-      
-      if (!codigoLimpo) {
+      // Validação básica de campos obrigatórios
+      if (!novoInsumo.nome?.trim()) {
         showErrorPopup(
-          'Código Obrigatório',
-          'Por favor, informe um código para o insumo.'
-        );
-        return;
-      }
-
-      // Verificar se o código já existe nos insumos do fornecedor atual
-      const codigoJaExiste = fornecedorSelecionado.fornecedor_insumos?.some(
-        insumo => insumo.codigo.toUpperCase() === codigoLimpo
-      );
-
-      if (codigoJaExiste) {
-        showErrorPopup(
-          'Código Duplicado',
-          `O código "${codigoLimpo}" já está cadastrado para este fornecedor. Por favor, escolha um código diferente.`
+          'Campo Obrigatório',
+          'Por favor, informe o nome do insumo.'
         );
         return;
       }
@@ -7547,12 +7570,9 @@ const cancelarExclusao = () => {
       try {
         setIsLoading(true);
         
-        // ============================================================================
-        // 🔧 MAPEAR DADOS PARA SCHEMA CORRETO DO BACKEND
-        // ============================================================================
+        // Mapear dados para schema correto do backend (SEM codigo)
         const insumoData = {
-          // Campos obrigatórios do InsumoCreate
-          codigo: codigoLimpo,
+          // codigo removido - será gerado automaticamente pelo backend
           nome: String(novoInsumo.nome || '').trim(), 
           unidade: String(novoInsumo.unidade || 'kg').trim(),
           preco_unitario: Number(novoInsumo.preco_compra_real) || 0,
@@ -7561,7 +7581,7 @@ const cancelarExclusao = () => {
           fator: Number(novoInsumo.fator) || 1.0
         };
 
-        console.log('🎯 Dados do insumo do fornecedor:', insumoData);
+        console.log('🎯 Dados do insumo do fornecedor (sem código):', insumoData);
 
         const response = await fetch(`${API_BASE}/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/`, {
           method: 'POST',
@@ -7572,13 +7592,14 @@ const cancelarExclusao = () => {
         });
 
         if (response.ok) {
+          const resultado = await response.json();
+          
           // Recarrega dados do fornecedor para mostrar o novo insumo
           await carregarFornecedorDetalhado(fornecedorSelecionado.id);
           
-     
-          // Limpa formulário e fecha popup
+          // Limpa formulário e fecha popup (SEM codigo)
           setNovoInsumo({
-            codigo: '',
+            // codigo removido
             nome: '',
             descricao: '',
             unidade: 'kg',
@@ -7588,70 +7609,46 @@ const cancelarExclusao = () => {
           });
           setShowPopupInsumo(false);
           
-          // ============================================================================
-          // 🔧 POPUP DE SUCESSO PADRONIZADO - CADASTRO INSUMO FORNECEDOR
-          // ============================================================================
+          // Popup de sucesso mostrando o código gerado
           showSuccessPopup(
             'Insumo Cadastrado!',
-            `${insumoData.nome} foi adicionado ao catálogo do fornecedor ${fornecedorSelecionado?.nome_razao_social || 'selecionado'} com sucesso.`
+            `${insumoData.nome} foi adicionado ao catálogo com código ${resultado.codigo || 'gerado automaticamente'}.`
           );
         } else {
           const error = await response.json();
           
-          // ============================================================================
-          // 🔧 TRATAMENTO ESPECÍFICO PARA CÓDIGO DUPLICADO - MELHORADO
-          // ============================================================================
-          // Verifica múltiplas variações da mensagem de erro de código duplicado
-          const mensagemErro = error.detail || '';
-          const ehCodigoDuplicado = 
-            mensagemErro.includes('já está cadastrado') ||
-            mensagemErro.includes('já existe') ||
-            mensagemErro.includes('already exists') ||
-            mensagemErro.includes('duplicate') ||
-            (response.status === 400 && mensagemErro.toLowerCase().includes('código'));
-          
-          if (ehCodigoDuplicado) {
-            showErrorPopup(
-              'Código Duplicado',
-              `O código "${insumoData.codigo}" já está cadastrado para este fornecedor. Por favor, escolha um código diferente.`
-            );
-          } else {
-            // Outros tipos de erro
-            showErrorPopup(
-              'Erro ao Cadastrar Insumo',
-              error.detail || 'Ocorreu um erro inesperado ao cadastrar o insumo. Verifique os dados informados e tente novamente.'
-            );
-          }
+          // Tratamento de erros do backend
+          showErrorPopup(
+            'Erro ao Cadastrar Insumo',
+            error.detail || 'Ocorreu um erro inesperado ao cadastrar o insumo. Verifique os dados informados e tente novamente.'
+          );
         }
-        // ============================================================================
-        // TRATAMENTO DE ERRO PADRONIZADO - CONEXÃO INSUMO FORNECEDOR
-        // ============================================================================
-        } catch (error) {
-          console.error('Erro ao cadastrar insumo:', error);
-          
-          // Verificar o tipo de erro para dar uma mensagem mais precisa
-          const mensagemErro = error.message || '';
-          const ehErroDeConexao = 
-            mensagemErro.includes('Failed to fetch') ||
-            mensagemErro.includes('NetworkError') ||
-            mensagemErro.includes('fetch') ||
-            !navigator.onLine;
-          
-          if (ehErroDeConexao) {
-            showErrorPopup(
-              'Erro de Conexão',
-              'Não foi possível conectar com o servidor. Verifique se o servidor está rodando na porta 8000 e sua conexão de internet está funcionando.'
-            );
-          } else {
-            showErrorPopup(
-              'Erro ao Cadastrar Insumo',
-              `Ocorreu um erro inesperado: ${mensagemErro}. Tente novamente ou verifique os dados informados.`
-            );
-          }
-        } finally {
+      } catch (error) {
+        console.error('Erro ao cadastrar insumo:', error);
+        
+        // Verificar o tipo de erro para dar uma mensagem mais precisa
+        const mensagemErro = error.message || '';
+        const ehErroDeConexao = 
+          mensagemErro.includes('Failed to fetch') ||
+          mensagemErro.includes('NetworkError') ||
+          mensagemErro.includes('fetch') ||
+          !navigator.onLine;
+        
+        if (ehErroDeConexao) {
+          showErrorPopup(
+            'Erro de Conexão',
+            'Não foi possível conectar com o servidor. Verifique se o servidor está rodando na porta 8000 e sua conexão de internet está funcionando.'
+          );
+        } else {
+          showErrorPopup(
+            'Erro ao Cadastrar Insumo',
+            `Ocorreu um erro inesperado: ${mensagemErro}. Tente novamente ou verifique os dados informados.`
+          );
+        }
+      } finally {
         setIsLoading(false);
       }
-    };
+    };  //CORRIGIR
 
     // =========================================================================
     // FUNÇÕES AUXILIARES
@@ -8413,15 +8410,35 @@ const cancelarExclusao = () => {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
-                    <input
-                      type="text"
-                      value={novoInsumo.codigo}
-                      onChange={(e) => setNovoInsumo({...novoInsumo, codigo: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    />
-                  </div>
+                  {/* Badge informativo de codigo */}
+                  {editandoInsumoFornecedor?.codigo ? (
+                    // Editando - mostra código existente
+                    <div className="col-span-2 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-lg p-3">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-semibold text-purple-900">Código do Insumo</p>
+                          <p className="text-base font-bold text-purple-700">{editandoInsumoFornecedor.codigo}</p>
+                          <p className="text-xs text-purple-600">Gerado automaticamente (não editável)</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Criando - mensagem de geração
+                    <div className="col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-semibold text-blue-900">Código Automático</p>
+                          <p className="text-xs text-blue-600">Gerado automaticamente (faixa 5000-5999)</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
@@ -8570,19 +8587,39 @@ const cancelarExclusao = () => {
               {/* Corpo do formulário com scroll */}
               <div className="flex-1 overflow-y-auto p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Apenas os 5 campos necessários */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Código <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={novoInsumo.codigo}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, codigo: e.target.value})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="Ex: INS001"
-                  />
-                </div>
+                {/* Badge informativo de codigo */}
+                {editandoInsumoFornecedor?.codigo ? (
+                  // Editando - mostra código existente
+                  <div className="md:col-span-2 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-purple-900">Código do Insumo</p>
+                        <p className="text-lg font-bold text-purple-700">{editandoInsumoFornecedor.codigo}</p>
+                        <p className="text-xs text-purple-600">Gerado automaticamente (não editável)</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Criando - mensagem de geração
+                  <div className="md:col-span-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-blue-900">Código Automático</p>
+                        <p className="text-xs text-blue-600">O sistema gerará automaticamente (faixa 5000-5999)</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
