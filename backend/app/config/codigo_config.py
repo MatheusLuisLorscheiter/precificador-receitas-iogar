@@ -28,19 +28,19 @@ FAIXAS_CODIGOS = {
     TipoCodigo.RECEITA_NORMAL: {
         "inicio": 3000,
         "fim": 3999,
-        "prefixo": "REC",
+        "prefixo": "",  # Sem prefixo - apenas números
         "descricao": "Receitas Normais"
     },
     TipoCodigo.RECEITA_PROCESSADA: {
         "inicio": 4000,
         "fim": 4999,
-        "prefixo": "PROC",
+        "prefixo": "",  # Sem prefixo - apenas números
         "descricao": "Receitas Processadas"
     },
     TipoCodigo.INSUMO: {
         "inicio": 5000,
         "fim": 5999,
-        "prefixo": "INS",
+        "prefixo": "",  # Sem prefixo - apenas números
         "descricao": "Insumos"
     }
 }
@@ -91,14 +91,14 @@ def validar_codigo_na_faixa(codigo: str, tipo: TipoCodigo) -> bool:
 
 def formatar_codigo(numero: int, tipo: TipoCodigo) -> str:
     """
-    Formata um numero no padrao de codigo
+    Formata um numero no padrao de codigo (apenas numeros, sem prefixo)
     
     Args:
         numero: Numero do codigo
         tipo: Tipo de codigo
         
     Returns:
-        Codigo formatado (ex: "REC-3045")
+        Codigo formatado (ex: "3045", "5001")
     """
-    faixa = obter_faixa(tipo)
-    return f"{faixa['prefixo']}-{numero}"
+    # Retornar apenas o número como string
+    return str(numero)
