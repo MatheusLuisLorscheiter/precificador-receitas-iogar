@@ -22,19 +22,39 @@ def upgrade() -> None:
     Adiciona campos para rastreamento de insumos sem preço nas receitas.
     Permite marcar receitas como pendentes quando há insumos sem preço.
     """
-    # Adicionar campo booleano para flag de pendência
-    op.add_column('receitas', 
-        sa.Column('tem_insumos_sem_preco', sa.Boolean(), nullable=False, 
-                  server_default='false',
-                  comment='TRUE se a receita possui insumos sem preço definido')
-    )
+    # Adicionar coluna tem_insumos_sem_preco (se não existir)
+    op.execute("""
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name='receitas' AND column_name='tem_insumos_sem_preco'
+            ) THEN
+                ALTER TABLE receitas 
+                ADD COLUMN tem_insumos_sem_preco BOOLEAN DEFAULT FALSE NOT NULL;
+                
+                COMMENT ON COLUMN receitas.tem_insumos_sem_preco 
+                IS 'TRUE se a receita possui insumos sem preço definido';
+            END IF;
+        END $$;
+    """)
     
-    # Adicionar campo JSON para lista de insumos pendentes
-    op.add_column('receitas',
-        sa.Column('insumos_pendentes', postgresql.JSON(), nullable=True,
-                  comment='Lista de IDs dos insumos que estão sem preço')
-    )
-
+    # Adicionar coluna insumos_pendentes (se não existir)
+    op.execute("""
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name='receitas' AND column_name='insumos_pendentes'
+            ) THEN
+                ALTER TABLE receitas 
+                ADD COLUMN insumos_pendentes JSON;
+                
+                COMMENT ON COLUMN receitas.insumos_pendentes 
+                IS 'Lista de IDs dos insumos que estão sem preço';
+            END IF;
+        END $$;
+    """)
 
 def downgrade() -> None:
     """

@@ -16,7 +16,6 @@
 // ============================================================================
 import { apiService } from './api-service';
 
-import logoIogar from './image/iogar_logo.png';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PopupPortalContainer, { showSuccessPopup, showErrorPopup } from './components/PopupPortal';
 import {
@@ -43,6 +42,9 @@ import { usePopupEstatisticas } from './contexts/PopupEstatisticasContext';
 
 // Importar configuração centralizada da API
 import { API_BASE_URL } from './config';
+
+import { useAuth } from './contexts/AuthContext';
+import iogarLogo from './image/iogar_logo.png';
 
 // ============================================================================
 // INTERFACES E TIPOS DE DADOS
@@ -1687,6 +1689,11 @@ export const useBlockBodyScroll = (isBlocked: boolean) => {
 // COMPONENTE PRINCIPAL DO SISTEMA
 // ============================================================================
 const FoodCostSystem: React.FC = () => {
+  // Hook de autenticação
+  const { logout, user } = useAuth();
+
+  // Estado para confirmação de logout
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
   
   // ==========================================================================
   // ESTADOS DO SISTEMA
@@ -2414,15 +2421,40 @@ const fetchInsumos = async () => {
         lg:translate-x-0
       `}>
         <div className="p-6 relative">
-          {/* Logo IOGAR com design do robô */}
+          {/* Logo IOGAR */}
           <div className="flex flex-col items-center gap-2 mb-8">
             <img
-              src={logoIogar}
+              src={iogarLogo}
               alt="Logo IOGAR"
               className="rounded-lg shadow-lg mb-2"
               style={{ maxWidth: '140px', height: 'auto' }}
             />
             <p className="text-xs text-gray-400 text-center">Food Cost System</p>
+          </div>
+          {/* Botão de Logout e info do usuário */}
+          <div className="flex items-center gap-3">
+            {user && (
+              <div className="hidden md:flex items-center gap-2 text-white text-sm">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center font-semibold">
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium">{user.username}</span>
+                  <span className="text-xs opacity-80">{user.role}</span>
+                </div>
+              </div>
+            )}
+            
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all text-white text-sm font-medium"
+              title="Sair do sistema"
+            >
+              <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+              </svg>
+              <span className="hidden sm:inline">Sair</span>
+            </button>
           </div>
 
           {/* Seleção de restaurante */}
@@ -5263,7 +5295,52 @@ const fetchInsumos = async () => {
             </div>
           </div>
         )}
-      </div>
+
+         {/* POPUP CONFIRMAÇÃO DE LOGOUT */}
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-blue-50 p-2 rounded-full">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Confirmar Saída</h3>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-600 mb-2">
+                  Deseja realmente sair do sistema?
+                </p>
+                {user && (
+                  <p className="text-sm text-gray-500">
+                    Você está logado como: <span className="font-semibold">{user.username}</span>
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLogoutConfirm(false);
+                    logout();
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors"
+                >
+                  Confirmar Saída
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>   /* <--- Este é o fechamento do componente principal */
     );
   };
 
@@ -8824,10 +8901,10 @@ return (
           {/* Logo IOGAR */}
           <div className="flex items-center gap-2">
             <img
-              src={logoIogar}
+              src={iogarLogo}
               alt="Logo IOGAR"
               className="h-10 w-auto"
-            />
+              />
             <span className="text-white font-semibold text-sm">Food Cost System</span>
           </div>
 

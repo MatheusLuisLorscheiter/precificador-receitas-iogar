@@ -15,6 +15,24 @@ from contextlib import asynccontextmanager
 # Imports dos routers/endpoints das APIs
 try:
     from app.api.endpoints import insumos, receitas, fornecedores, taxonomias
+
+     # Importar endpoint de autenticação
+    try:
+        from app.api.endpoints import auth
+        HAS_AUTH = True
+        print("[OK] Módulo auth importado com sucesso")
+    except ImportError as e:
+        print(f"⚠️  Módulo auth não encontrado: {e}")
+        HAS_AUTH = False
+
+    # Importar endpoint de gerenciamento de usuários (ADMIN)
+    try:
+        from app.api.endpoints import users
+        HAS_USERS = True
+        print("[OK] Módulo users importado com sucesso")
+    except ImportError as e:
+        print(f"⚠️  Módulo users não encontrado: {e}")
+        HAS_USERS = False
     
     # Importar endpoints de restaurantes
     try:
@@ -55,6 +73,7 @@ except ImportError as e:
     print(f"❌ Erro ao importar endpoints: {e}")
     raise
 
+
 # Imports para configuração do banco de dados
 from app.database import engine
 from app.models.base import Base
@@ -94,6 +113,8 @@ async def lifespan(app: FastAPI):
         print(f"❌ Erro ao conectar com o banco: {e}")
     
     # Informações úteis para o desenvolvedor
+    print("🔐 Autenticação: http://localhost:8000/api/v1/auth/login")
+    print("👥 Gerenciar Usuários: http://localhost:8000/api/v1/users")
     print("🔍 CRUD Insumos: http://localhost:8000/api/v1/insumos")
     print("🔍 CRUD Receitas: http://localhost:8000/api/v1/receitas")
     print("🏪 CRUD Restaurantes: http://localhost:8000/api/v1/restaurantes")
@@ -720,11 +741,24 @@ def fix_remover_coluna_cnpj():
             "status": "failed"
         }
 
+# ============================================================================
+# REGISTRAR ROUTERS - AUTENTICAÇÃO (PRIORIDADE)
+# ============================================================================
+
+# Router de autenticação (sem prefixo adicional, fica em /api/v1/auth)
+if HAS_AUTH:
+    app.include_router(auth.router, prefix="/api/v1/auth", tags=["Autenticação"])
+    print("[OK] Router de autenticação registrado: /api/v1/auth")
+
+# Router de gerenciamento de usuários (apenas ADMIN)
+if HAS_USERS:
+    app.include_router(users.router, prefix="/api/v1/users", tags=["Usuários"])
+    print("[OK] Router de usuários registrado: /api/v1/users")
 #   ===================================================================================================
-#   Incluir routers das APIs
+#   REGISTRAR ROUTERS - MÓDULOS DO SISTEMA
 #   ===================================================================================================
 
-# APIs de Insumos (Já em funcionamento)
+# Incluir routers de insumos 
 app.include_router(
     insumos.router,
     prefix="/api/v1/insumos",

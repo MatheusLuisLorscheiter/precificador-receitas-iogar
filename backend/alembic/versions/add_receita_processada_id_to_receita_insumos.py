@@ -28,51 +28,66 @@ def upgrade() -> None:
     3. Adiciona check constraint para garantir que UM dos dois seja preenchido
     """
     
-    # ===================================================================================================
-    # ADICIONAR COLUNA receita_processada_id
-    # ===================================================================================================
-    op.add_column('receita_insumos', 
-        sa.Column('receita_processada_id', sa.Integer(), nullable=True,
-                  comment='ID da receita processada usada como insumo (quando aplicável)')
-    )
+    # Adicionar coluna receita_processada_id (se não existir)
+    op.execute("""
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name='receita_insumos' AND column_name='receita_processada_id'
+            ) THEN
+                ALTER TABLE receita_insumos 
+                ADD COLUMN receita_processada_id INTEGER;
+                
+                COMMENT ON COLUMN receita_insumos.receita_processada_id 
+                IS 'ID da receita processada usada como insumo (quando aplicável)';
+            END IF;
+        END $$;
+    """)
     
-    # ===================================================================================================
-    # CRIAR FOREIGN KEY PARA RECEITAS
-    # ===================================================================================================
-    op.create_foreign_key(
-        'fk_receita_insumos_receita_processada',
-        'receita_insumos', 'receitas',
-        ['receita_processada_id'], ['id'],
-        ondelete='CASCADE'
-    )
+    # Criar foreign key (se não existir)
+    op.execute("""
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint 
+                WHERE conname = 'fk_receita_insumos_receita_processada'
+            ) THEN
+                ALTER TABLE receita_insumos 
+                ADD CONSTRAINT fk_receita_insumos_receita_processada 
+                FOREIGN KEY(receita_processada_id) REFERENCES receitas (id) ON DELETE CASCADE;
+            END IF;
+        END $$;
+    """)
     
-    # ===================================================================================================
-    # CRIAR ÍNDICE PARA PERFORMANCE
-    # ===================================================================================================
-    op.create_index(
-        'idx_receita_insumos_receita_processada',
-        'receita_insumos',
-        ['receita_processada_id']
-    )
+    # Criar índice (se não existir)
+    op.execute('CREATE INDEX IF NOT EXISTS idx_receita_insumos_receita_processada ON receita_insumos (receita_processada_id)')
     
-    # ===================================================================================================
-    # TORNAR insumo_id NULLABLE
-    # ===================================================================================================
-    op.alter_column('receita_insumos', 'insumo_id',
-                    existing_type=sa.Integer(),
-                    nullable=True,
-                    comment='ID do insumo (NULL quando for receita processada)')
+    # Alterar insumo_id para nullable (se necessário)
+    op.execute("""
+        DO $$ 
+        BEGIN
+            ALTER TABLE receita_insumos ALTER COLUMN insumo_id DROP NOT NULL;
+        EXCEPTION
+            WHEN others THEN NULL;
+        END $$;
+    """)
     
-    # ===================================================================================================
-    # ADICIONAR CHECK CONSTRAINT
-    # Garante que EXATAMENTE UM dos dois campos seja preenchido
-    # ===================================================================================================
-    op.create_check_constraint(
-        'check_insumo_ou_receita',
-        'receita_insumos',
-        '(insumo_id IS NOT NULL AND receita_processada_id IS NULL) OR '
-        '(insumo_id IS NULL AND receita_processada_id IS NOT NULL)'
-    )
+    # Criar constraint de check (se não existir)
+    op.execute("""
+        DO $$ 
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint 
+                WHERE conname = 'check_insumo_ou_receita'
+            ) THEN
+                ALTER TABLE receita_insumos 
+                ADD CONSTRAINT check_insumo_ou_receita 
+                CHECK ((insumo_id IS NOT NULL AND receita_processada_id IS NULL) 
+                    OR (insumo_id IS NULL AND receita_processada_id IS NOT NULL));
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:

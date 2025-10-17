@@ -113,6 +113,19 @@ class Restaurante(Base):
     estado = Column(String(2), nullable=True, comment="Estado (sigla: SP, RJ, etc.)")
     telefone = Column(String(20), nullable=True, comment="Telefone de contato")
 
+    # ============================================================================
+    # RELACIONAMENTO COM USUÁRIOS (SISTEMA DE AUTENTICAÇÃO)
+    # ============================================================================
+    
+    # Relacionamento com usuários vinculados ao restaurante
+    # Um restaurante pode ter vários usuários do tipo STORE
+    usuarios = relationship(
+        "User",
+        back_populates="restaurante",
+        lazy="select",
+        cascade="all, delete-orphan"
+    )
+
     # ===================================================================================================
     # Relacionamentos SQLAlchemy
     # ===================================================================================================
