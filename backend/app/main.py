@@ -210,12 +210,14 @@ print(f"🔒 CORS - Origens permitidas: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=[
+        "http://localhost:5173",           # Frontend local (Vite)
+        "http://localhost:3000",           # Frontend local (alternativo)
+        "https://food-cost-frontend.onrender.com"  
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,
 )
 
 @app.get("/test-cors", summary="Testar CORS")
