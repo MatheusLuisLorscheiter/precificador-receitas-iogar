@@ -1693,9 +1693,52 @@ const FoodCostSystem: React.FC = () => {
   // ==========================================================================
   
   // Estado da navegação - controla qual aba está ativa
-  const [activeTab, setActiveTab] = useState<string>(
-    () => localStorage.getItem('activeTab') || 'dashboard'
-  );
+  // ===================================================================================================
+  // SISTEMA INTELIGENTE DE ABA INICIAL
+  // F5 = mantém aba atual | Ctrl+Alt+R = Dashboard | Ctrl+F5 = Dashboard | Primeira vez = Dashboard
+  // ===================================================================================================
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    // Verificar se é primeira vez (não tem aba salva)
+    const abaSalva = localStorage.getItem('activeTab');
+    
+    if (!abaSalva) {
+      // Primeira vez - vai para Dashboard
+      console.log('🏠 Primeira vez - Iniciando no Dashboard');
+      localStorage.setItem('activeTab', 'dashboard');
+      return 'dashboard';
+    }
+    
+    // F5 normal - mantém aba atual
+    console.log(`🔄 Recarregando - Mantendo aba: ${abaSalva}`);
+    return abaSalva;
+  });
+
+  // ===================================================================================================
+  // ATALHOS DE TECLADO
+  // Ctrl+Alt+R = Voltar para Dashboard
+  // ===================================================================================================
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ctrl+Alt+R = Voltar para Dashboard
+      if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        console.log('🏠 Atalho Ctrl+Alt+R - Voltando para Dashboard');
+        setActiveTab('dashboard');
+        localStorage.setItem('activeTab', 'dashboard');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
+  // ===================================================================================================
+  // SALVAR ABA ATUAL NO LOCALSTORAGE AO TROCAR
+  // ===================================================================================================
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab);
+    console.log(`💾 Aba salva: ${activeTab}`);
+  }, [activeTab]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [receitas, setReceitas] = useState<Receita[]>([]);
   const [restaurantes, setRestaurantes] = useState<RestauranteGrid[]>([]);
@@ -2785,7 +2828,7 @@ const fetchInsumos = async () => {
                   </svg>
                   <div>
                     <p className="text-sm font-medium text-blue-900">Código Automático</p>
-                    <p className="text-xs text-blue-600">Será gerado automaticamente (faixa 5000-5999)</p>
+                    <p className="text-xs text-blue-600">Será gerado automaticamente: 5000-5999</p>
                   </div>
                 </div>
               </div>
@@ -3655,7 +3698,7 @@ const fetchInsumos = async () => {
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-blue-900">Código Automático</p>
-                            <p className="text-xs text-blue-600">
+                            <p className="text-xs text-blue-600">Será gerado automaticamente:
                               Faixa 3000-3999 (Normal) ou 4000-4999 (Processada)
                             </p>
                           </div>
@@ -8453,7 +8496,7 @@ const cancelarExclusao = () => {
                         </svg>
                         <div>
                           <p className="text-sm font-semibold text-blue-900">Código Automático</p>
-                          <p className="text-xs text-blue-600">Gerado automaticamente (faixa 5000-5999)</p>
+                          <p className="text-xs text-blue-600">Será gerado automaticamente: 5000-5999</p>
                         </div>
                       </div>
                     </div>
@@ -8634,7 +8677,7 @@ const cancelarExclusao = () => {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-blue-900">Código Automático</p>
-                        <p className="text-xs text-blue-600">O sistema gerará automaticamente (faixa 5000-5999)</p>
+                        <p className="text-xs text-blue-600">Será gerado automaticamente: 5000-5999</p>
                       </div>
                     </div>
                   </div>
