@@ -2446,7 +2446,12 @@ const fetchInsumos = async () => {
             )}
             
             <button
-              onClick={() => setShowLogoutConfirm(true)}
+              onClick={() => {
+                console.log('🔴 BOTÃO LOGOUT CLICADO!');
+                console.log('🔴 showLogoutConfirm antes:', showLogoutConfirm);
+                setShowLogoutConfirm(true);
+                console.log('🔴 Chamou setShowLogoutConfirm(true)');
+              }}
               className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all text-white text-sm font-medium"
               title="Sair do sistema"
             >
@@ -2931,8 +2936,9 @@ const fetchInsumos = async () => {
                   </p>
                 )}
               </div>
-            </div>  {/* ← FECHA O grid-cols-2 AQUI */}
+            </div>  
 
+            {/* ← FECHA O grid-cols-2 AQUI */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Preço de Compra (R$) *</label>
               <input
@@ -5295,52 +5301,7 @@ const fetchInsumos = async () => {
             </div>
           </div>
         )}
-
-         {/* POPUP CONFIRMAÇÃO DE LOGOUT */}
-        {showLogoutConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-blue-50 p-2 rounded-full">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                  </svg>
-                </div>
-                <h3 className="text-lg font-bold text-gray-800">Confirmar Saída</h3>
-              </div>
-              
-              <div className="mb-6">
-                <p className="text-gray-600 mb-2">
-                  Deseja realmente sair do sistema?
-                </p>
-                {user && (
-                  <p className="text-sm text-gray-500">
-                    Você está logado como: <span className="font-semibold">{user.username}</span>
-                  </p>
-                )}
-              </div>
-              
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => {
-                    setShowLogoutConfirm(false);
-                    logout();
-                  }}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-colors"
-                >
-                  Confirmar Saída
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>   /* <--- Este é o fechamento do componente principal */
+      </div>   /* <--- Este é o fechamento do componente Insumos */
     );
   };
 
@@ -9139,6 +9100,56 @@ return (
         />
         {/* Popup de Estatísticas - Context API */}
         <PopupEstatisticasRestaurante />
+
+      {/* POPUP CONFIRMAÇÃO DE LOGOUT */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl">
+            {/* Header com gradiente IOGAR */}
+            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+              <div className="bg-gradient-to-r from-green-500 to-pink-500 p-2 rounded-lg">
+                <svg className="w-6 h-6 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">Confirmar Saída</h3>
+            </div>
+            
+            {/* Conteúdo */}
+            <div className="mb-6">
+              <p className="text-gray-600 mb-2">
+                Deseja realmente sair do sistema?
+              </p>
+              {user && (
+                <p className="text-sm text-gray-500">
+                  Você está logado como: <span className="font-semibold">{user.username}</span>
+                </p>
+              )}
+            </div>
+            
+            {/* Botões com gradiente IOGAR */}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  logout();
+                }}
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg"
+              >
+                Confirmar Saída
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       </div>
     </>
   );
