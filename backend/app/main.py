@@ -186,35 +186,46 @@ import os
 # ============================================================================
 # CONFIGURAÇÃO DE CORS - Desenvolvimento e Produção
 # ============================================================================
-# Configurar CORS para produção
+# Configuração de CORS com suporte para rede local (mobile)
 if os.getenv("ENVIRONMENT") == "production":
+    # Produção - apenas origens específicas
     allowed_origins = [
-        "https://food-cost-frontend.onrender.com",  # Frontend no Render
+        "https://food-cost-frontend.onrender.com",
     ]
-    # Adicionar origens extras se configuradas
     cors_extra = os.getenv("CORS_ORIGINS", "")
     if cors_extra:
         allowed_origins.extend([origin.strip() for origin in cors_extra.split(",") if origin.strip()])
 else:
-    # Desenvolvimento local
+    # Desenvolvimento - permitir localhost e rede local
     allowed_origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000", 
         "http://0.0.0.0:3000",
-        "http://localhost:5173",  # Vite dev server
+        "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
+    
+    # Adicionar automaticamente qualquer origem da rede local 192.168.x.x
+    # Isso permite acesso de dispositivos móveis na mesma rede
+    import socket
+    try:
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        if local_ip.startswith('192.168'):
+            allowed_origins.extend([
+                f"http://{local_ip}:3000",
+                f"http://{local_ip}:5173",
+            ])
+            print(f"📱 IP da rede local detectado: {local_ip}")
+    except Exception as e:
+        print(f"⚠️ Não foi possível detectar IP local: {e}")
 
 # Log das origens permitidas para debug
 print(f"🔒 CORS - Origens permitidas: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",           # Frontend local (Vite)
-        "http://localhost:3000",           # Frontend local (alternativo)
-        "https://food-cost-frontend.onrender.com"  
-    ],
+    allow_origins=allowed_origins,  # Usar a lista configurada dinamicamente
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

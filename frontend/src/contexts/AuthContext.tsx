@@ -49,11 +49,23 @@ interface AuthContextData {
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
-// ============================================================================
-// CONSTANTES
-// ============================================================================
+// Detectar ambiente e definir URL da API automaticamente
+const isProduction = window.location.hostname !== 'localhost' && 
+                     window.location.hostname !== '127.0.0.1';
 
-const API_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = isProduction
+  ? 'https://food-cost-backend.onrender.com'
+  : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
+
+const API_URL = `${API_BASE_URL}/api/v1`;
+
+// Log para debug (apenas em desenvolvimento)
+if (!isProduction) {
+  console.log('🔧 AuthContext - Ambiente: Desenvolvimento');
+  console.log('🔧 AuthContext - API URL:', API_URL);
+}
+
+// Constantes para localStorage
 const TOKEN_KEY = 'foodcost_access_token';
 const REFRESH_TOKEN_KEY = 'foodcost_refresh_token';
 const USER_KEY = 'foodcost_user';
