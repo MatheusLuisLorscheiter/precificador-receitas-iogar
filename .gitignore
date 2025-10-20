@@ -260,3 +260,8 @@ yarn-error.log
 # Logs
 *.log
 logs/
+
+# Scripts de teste com credenciais
+backend/testar_senha.py
+backend/criar_usuario_admin.py
+backend/listar_usuarios.py
