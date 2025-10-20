@@ -2,7 +2,7 @@
 # DEPENDENCIAS CONSOLIDADAS - FOOD COST SYSTEM
 # ============================================================================
 # Descrição: Dependências completas do backend Python/FastAPI + Sistema de IA
-# Data: 25/09/2025 - Autor: Will - IOGAR
+# Data: 20/10/2025 - Autor: Will - IOGAR
 # Deploy: Render.com compatível
 # ============================================================================
 
@@ -12,12 +12,14 @@
 fastapi==0.116.1
 uvicorn[standard]==0.35.0
 pydantic==2.11.7
+pydantic[email]==2.11.7
 python-multipart==0.0.6
+email-validator==2.1.0
 
 # ============================================================================
 # BANCO DE DADOS E ORM
 # ============================================================================
-# ATENCAO: psycopg2-binary==2.9.9 para compatibilidade com Python 3.13 e Rendergit 
+# ATENCAO: psycopg2-binary==2.9.9 para compatibilidade com Python 3.13 e Render
 SQLAlchemy==2.0.43
 psycopg2-binary==2.9.9
 alembic==1.13.3
@@ -55,8 +57,8 @@ orjson==3.10.7
 # ============================================================================
 # SEGURANCA E AUTENTICACAO
 # ============================================================================
-passlib==1.7.4
-python-jose==3.3.0
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
 bcrypt==4.2.0
 
 # ============================================================================
