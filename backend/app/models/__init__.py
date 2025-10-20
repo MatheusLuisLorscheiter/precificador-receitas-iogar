@@ -20,7 +20,7 @@ from .taxonomia_alias import TaxonomiaAlias
 # Importar modelos de receitas
 from .receita import Restaurante, Receita, ReceitaInsumo
 
-# Importar modelo de usuário (sistema de autenticação)
+# Importar modelo de usuários
 from .user import User, UserRole
 
 # Lista de todos os modelos para exportação
@@ -31,7 +31,6 @@ __all__ = [
     "FornecedorInsumo", 
     "Insumo",
     "Taxonomia",
-    "TaxonomiaAlias",
     "Restaurante",
     "Receita",
     "ReceitaInsumo",

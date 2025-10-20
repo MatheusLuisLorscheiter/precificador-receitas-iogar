@@ -1,7 +1,7 @@
 """add_users_table_for_authentication
 
 Revision ID: 50f866955790
-Revises: d6bb21dbdaa2
+Revises: a7cdaed17440
 Create Date: 2025-10-17 11:16:13.381928
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '50f866955790'
-down_revision: Union[str, Sequence[str], None] = 'd6bb21dbdaa2'
+down_revision: Union[str, Sequence[str], None] = 'a7cdaed17440'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
