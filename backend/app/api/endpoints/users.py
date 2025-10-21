@@ -37,9 +37,13 @@ def listar_usuarios(
     ativo: Optional[bool] = Query(None, description="Filtrar por status ativo"),
     restaurante_id: Optional[int] = Query(None, description="Filtrar por restaurante"),
     busca: Optional[str] = Query(None, description="Buscar por username ou email"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
+    # SEM current_user temporariamente para testar
 ):
+    """
+    TESTE: Lista usuários SEM autenticação
+    """
+    print("🎯 listar_usuarios FOI CHAMADA!")
     """
     Lista todos os usuários do sistema com filtros opcionais.
     

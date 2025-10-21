@@ -50,41 +50,22 @@ security = HTTPBearer()
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
     db: Session = Depends(get_db)
 ) -> User:
     """
-    Dependência que valida o token JWT e retorna o usuário autenticado.
-    
-    Como funciona:
-    1. Extrai o token do header Authorization: Bearer <token>
-    2. Decodifica e valida o token JWT
-    3. Verifica se é um access_token (não refresh_token)
-    4. Busca o usuário no banco de dados
-    5. Verifica se o usuário está ativo
-    6. Retorna o objeto User completo
-    
-    Args:
-        credentials: Credenciais Bearer extraídas do header
-        db: Sessão do banco de dados
-    
-    Returns:
-        User: Objeto do usuário autenticado
-    
-    Raises:
-        HTTPException 401: Token inválido, expirado ou usuário não encontrado
-        HTTPException 403: Usuário inativo
-    
-    Uso nas rotas:
-        @router.get("/protected")
-        def protected_route(current_user: User = Depends(get_current_user)):
-            return {"user_id": current_user.id}
+    Dependência que extrai e valida o usuário autenticado via JWT.
     """
-    # Extrair token do header
-    token = credentials.credentials
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de autenticação não fornecido",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     
-    # Decodificar e validar token
+    token = credentials.credentials
     payload = decode_token(token)
+    
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -92,25 +73,24 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Verificar se é um access_token (não refresh_token)
     if not verify_token_type(token, "access"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tipo de token inválido. Use um access token.",
+            detail="Token inválido - tipo incorreto",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Extrair user_id do payload
-    user_id: str = payload.get("sub")
-    if user_id is None:
+    user_id = payload.get("sub")
+    
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido: user_id não encontrado",
+            detail="Token inválido - user_id não encontrado",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Buscar usuário no banco de dados
     user = db.query(User).filter(User.id == int(user_id)).first()
+    
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -118,11 +98,10 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Verificar se usuário está ativo
     if not user.ativo:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário inativo. Entre em contato com o administrador.",
+            detail="Usuário inativo",
         )
     
     return user
@@ -194,21 +173,6 @@ def get_admin_user(
 ) -> User:
     """
     Dependência que valida se o usuário é ADMIN.
-    Atalho para require_role(UserRole.ADMIN).
-    
-    Args:
-        current_user: Usuário autenticado
-    
-    Returns:
-        User: Usuário com role ADMIN
-    
-    Raises:
-        HTTPException 403: Usuário não é ADMIN
-    
-    Uso:
-        @router.post("/users")
-        def create_user(admin: User = Depends(get_admin_user)):
-            return {"message": "User created"}
     """
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(

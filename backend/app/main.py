@@ -763,10 +763,13 @@ if HAS_AUTH:
     app.include_router(auth.router, prefix="/api/v1/auth", tags=["Autenticação"])
     print("[OK] Router de autenticação registrado: /api/v1/auth")
 
-# Router de gerenciamento de usuários (apenas ADMIN)
+# ============================================================================
+# REGISTRAR ROUTER DE USUÁRIOS
+# ============================================================================
 if HAS_USERS:
     app.include_router(users.router, prefix="/api/v1/users", tags=["Usuários"])
     print("[OK] Router de usuários registrado: /api/v1/users")
+    
 #   ===================================================================================================
 #   REGISTRAR ROUTERS - MÓDULOS DO SISTEMA
 #   ===================================================================================================
@@ -893,26 +896,18 @@ if HAS_FORNECEDOR_INSUMOS:
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """
-    Middleware para monitorar e facilitar o 
-    diagnóstico de problemas, mostrando no terminal 
-    cada acesso à API e quanto tempo levou para responder.
+    Middleware para monitorar requisições
     """
+    import time
     start_time = time.time()
     
-    # Log detalhado da requisição
-    print(f"🔍 REQUISIÇÃO: {request.method} {request.url}")
-    print(f"🔍 Headers: {dict(request.headers)}")
-    print(f"🔍 Origin: {request.headers.get('origin', 'N/A')}")
-    
-    # Processar requisição
     response = await call_next(request)
     
-    # Calcular tempo de processamento
     process_time = time.time() - start_time
     
-    # Log da resposta
-    print(f"📡 RESPOSTA: {request.method} {request.url.path} - {response.status_code} - {process_time:.2f}s")
-    print(f"📡 Response Headers: {dict(response.headers)}")
+    # Log simples apenas do tempo de resposta
+    if process_time > 1.0:  # Só loga se demorar mais de 1 segundo
+        print(f"⚠️  Requisição lenta: {request.method} {request.url.path} - {process_time:.2f}s")
     
     return response
 

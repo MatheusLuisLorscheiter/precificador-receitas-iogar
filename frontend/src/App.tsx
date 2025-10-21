@@ -1690,7 +1690,7 @@ export const useBlockBodyScroll = (isBlocked: boolean) => {
 // ============================================================================
 const FoodCostSystem: React.FC = () => {
   // Hook de autenticação
-  const { logout, user } = useAuth();
+  const { logout, user, token } = useAuth();
 
   // Estado para confirmação de logout
   const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
@@ -1719,6 +1719,21 @@ const FoodCostSystem: React.FC = () => {
     console.log(`🔄 Recarregando - Mantendo aba: ${abaSalva}`);
     return abaSalva;
   });
+
+  // ============================================================================
+  // ESTADO - CONTROLE DE ABAS DENTRO DE CONFIGURAÇÕES
+  // ============================================================================
+
+  // Estado para controlar qual sub-aba está ativa na página de Configurações
+  // Valores possíveis: 'geral' | 'usuarios'
+  const [activeConfigTab, setActiveConfigTab] = useState<'geral' | 'usuarios'>('geral');
+
+  // Resetar para aba 'geral' quando sair da página de configurações
+  useEffect(() => {
+    if (activeTab !== 'settings') {
+      setActiveConfigTab('geral');
+    }
+  }, [activeTab]);
 
   // ===================================================================================================
   // ATALHOS DE TECLADO
@@ -1768,6 +1783,56 @@ const FoodCostSystem: React.FC = () => {
     telefone: '',
     ativo: true
   });
+
+  // ============================================================================
+  // ESTADOS - GERENCIAMENTO DE USUÁRIOS (ADMIN)
+  // ============================================================================
+
+  // Interface para dados de usuários
+  interface Usuario {
+    id: number;
+    username: string;
+    email: string;
+    role: 'ADMIN' | 'CONSULTANT' | 'STORE';
+    restaurante_id: number | null;
+    ativo: boolean;
+    primeiro_acesso: boolean;
+    created_at: string;
+    updated_at: string;
+  }
+
+  // Interface para formulário de criação/edição de usuário
+  interface UsuarioForm {
+    username: string;
+    email: string;
+    password: string;
+    role: 'ADMIN' | 'CONSULTANT' | 'STORE';
+    restaurante_id: number | null;
+    ativo: boolean;
+  }
+
+  // Lista de usuários carregados do backend
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+
+  // Controle de loading e modal
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+  const [showUsuarioForm, setShowUsuarioForm] = useState(false);
+  const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
+
+  // Formulário de usuário
+  const [formUsuario, setFormUsuario] = useState<UsuarioForm>({
+    username: '',
+    email: '',
+    password: '',
+    role: 'STORE',
+    restaurante_id: null,
+    ativo: true
+  });
+
+  // Filtros da tabela de usuários
+  const [filtroRoleUsuario, setFiltroRoleUsuario] = useState<string>('');
+  const [filtroStatusUsuario, setFiltroStatusUsuario] = useState<string>('');
+  const [buscaUsuario, setBuscaUsuario] = useState<string>('');
 
   const [cnpjValido, setCnpjValido] = useState(true);
 
@@ -2097,6 +2162,439 @@ const fetchInsumos = async () => {
     }
   };
 
+  // ============================================================================
+  // FUNÇÃO: CARREGAR USUÁRIOS DO BACKEND
+  // ============================================================================
+
+  /**
+   * Carrega a lista de usuários do sistema (apenas ADMIN)
+   * Aplica filtros de role, status e busca por username/email
+   */
+  const fetchUsuarios = async () => {
+    setLoadingUsuarios(true);
+    try {
+      // Verificar se há token (vem do Context agora)
+      if (!token) {
+        showErrorPopup(
+          'Não Autenticado',
+          'Você precisa estar logado para acessar esta página'
+        );
+        setLoadingUsuarios(false);
+        return;
+      }
+
+      // Construir query params para filtros
+      const params = new URLSearchParams();
+      
+      if (filtroRoleUsuario) {
+        params.append('role', filtroRoleUsuario);
+      }
+      
+      if (filtroStatusUsuario) {
+        params.append('ativo', filtroStatusUsuario);
+      }
+      
+      if (buscaUsuario.trim()) {
+        params.append('busca', buscaUsuario.trim());
+      }
+      
+      // Fazer requisição ao endpoint de usuários
+      const queryString = params.toString();
+      const url = `${API_BASE_URL}/api/v1/users/${queryString ? `?${queryString}` : ''}`;
+      //                                        ^ ADICIONAR BARRA AQUI
+      
+      console.log('Buscando usuários:', url);
+      console.log('Token presente:', !!token);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Status da resposta:', response.status);
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          showErrorPopup(
+            'Acesso Negado',
+            'Você não tem permissão para acessar esta funcionalidade. Apenas administradores podem gerenciar usuários.'
+          );
+        } else if (response.status === 405) {
+          showErrorPopup(
+            'Erro de Configuração',
+            'O endpoint de usuários não está disponível. Verifique se o backend está rodando corretamente.'
+          );
+        } else {
+          throw new Error('Erro ao carregar usuários');
+        }
+        setLoadingUsuarios(false);
+        return;
+      }
+
+      const data = await response.json();
+      setUsuarios(data);
+      console.log('Usuários carregados:', data.length);
+      
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+      showErrorPopup(
+        'Erro ao Carregar',
+        'Não foi possível carregar a lista de usuários. Verifique se o backend está rodando e suas permissões.'
+      );
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
+  // ============================================================================
+  // FUNÇÃO: CRIAR NOVO USUÁRIO
+  // ============================================================================
+
+  /**
+   * Cria um novo usuário no sistema (apenas ADMIN)
+   * Valida campos obrigatórios e vinculação com restaurante
+   */
+  const criarUsuario = async () => {
+    // Validações básicas
+    if (!formUsuario.username.trim()) {
+      showErrorPopup('Campo Obrigatório', 'Username é obrigatório');
+      return;
+    }
+
+    if (!formUsuario.email.trim()) {
+      showErrorPopup('Campo Obrigatório', 'Email é obrigatório');
+      return;
+    }
+
+    if (!formUsuario.password.trim() || formUsuario.password.length < 8) {
+      showErrorPopup('Senha Inválida', 'A senha deve ter no mínimo 8 caracteres');
+      return;
+    }
+
+    // Validar restaurante para usuários STORE
+    if (formUsuario.role === 'STORE' && !formUsuario.restaurante_id) {
+      showErrorPopup('Campo Obrigatório', 'Usuários STORE devem ter um restaurante vinculado');
+      return;
+    }
+
+    // Usuários não-STORE não podem ter restaurante
+    if (formUsuario.role !== 'STORE' && formUsuario.restaurante_id) {
+      showErrorPopup('Erro de Validação', 'Apenas usuários STORE podem ter restaurante vinculado');
+      return;
+    }
+
+    setLoadingUsuarios(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formUsuario)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao criar usuário');
+      }
+
+      const novoUsuario = await response.json();
+      
+      showSuccessPopup(
+        'Usuário Criado',
+        `Usuário ${novoUsuario.username} criado com sucesso!`
+      );
+
+      // Limpar formulário e fechar modal
+      setFormUsuario({
+        username: '',
+        email: '',
+        password: '',
+        role: 'STORE',
+        restaurante_id: null,
+        ativo: true
+      });
+      setShowUsuarioForm(false);
+      
+      // Recarregar lista de usuários
+      await fetchUsuarios();
+      
+    } catch (error: any) {
+      console.error('Erro ao criar usuário:', error);
+      showErrorPopup(
+        'Erro ao Criar',
+        error.message || 'Não foi possível criar o usuário'
+      );
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
+  // ============================================================================
+  // FUNÇÃO: EDITAR USUÁRIO EXISTENTE
+  // ============================================================================
+
+  /**
+   * Atualiza dados de um usuário existente (apenas ADMIN)
+   * Não permite alterar senha por esta função
+   */
+  const editarUsuario = async () => {
+    if (!editingUsuario) return;
+
+    // Validações básicas
+    if (!formUsuario.username.trim()) {
+      showErrorPopup('Campo Obrigatório', 'Username é obrigatório');
+      return;
+    }
+
+    if (!formUsuario.email.trim()) {
+      showErrorPopup('Campo Obrigatório', 'Email é obrigatório');
+      return;
+    }
+
+    // Validar restaurante para usuários STORE
+    if (formUsuario.role === 'STORE' && !formUsuario.restaurante_id) {
+      showErrorPopup('Campo Obrigatório', 'Usuários STORE devem ter um restaurante vinculado');
+      return;
+    }
+
+    // Usuários não-STORE não podem ter restaurante
+    if (formUsuario.role !== 'STORE' && formUsuario.restaurante_id) {
+      showErrorPopup('Erro de Validação', 'Apenas usuários STORE podem ter restaurante vinculado');
+      return;
+    }
+
+    setLoadingUsuarios(true);
+    try {
+      // Criar payload sem senha (não alteramos senha nesta função)
+      const { password, ...payloadSemSenha } = formUsuario;
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${editingUsuario.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payloadSemSenha)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao editar usuário');
+      }
+
+      const usuarioAtualizado = await response.json();
+      
+      showSuccessPopup(
+        'Usuário Atualizado',
+        `Dados de ${usuarioAtualizado.username} atualizados com sucesso!`
+      );
+
+      // Limpar formulário e fechar modal
+      setFormUsuario({
+        username: '',
+        email: '',
+        password: '',
+        role: 'STORE',
+        restaurante_id: null,
+        ativo: true
+      });
+      setEditingUsuario(null);
+      setShowUsuarioForm(false);
+      
+      // Recarregar lista de usuários
+      await fetchUsuarios();
+      
+    } catch (error: any) {
+      console.error('Erro ao editar usuário:', error);
+      showErrorPopup(
+        'Erro ao Editar',
+        error.message || 'Não foi possível editar o usuário'
+      );
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
+  // ============================================================================
+  // FUNÇÃO: ALTERNAR STATUS DO USUÁRIO (ATIVAR/DESATIVAR)
+  // ============================================================================
+
+  /**
+   * Ativa ou desativa um usuário (soft delete)
+   * Não exclui do banco de dados
+   */
+  const toggleStatusUsuario = async (usuario: Usuario) => {
+    const novoStatus = !usuario.ativo;
+    const acao = novoStatus ? 'ativar' : 'desativar';
+
+    if (!confirm(`Deseja realmente ${acao} o usuário ${usuario.username}?`)) {
+      return;
+    }
+
+    setLoadingUsuarios(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${usuario.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ativo: novoStatus })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Erro ao ${acao} usuário`);
+      }
+
+      showSuccessPopup(
+        novoStatus ? 'Usuário Ativado' : 'Usuário Desativado',
+        `Usuário ${usuario.username} ${novoStatus ? 'ativado' : 'desativado'} com sucesso!`
+      );
+
+      // Recarregar lista de usuários
+      await fetchUsuarios();
+      
+    } catch (error: any) {
+      console.error(`Erro ao ${acao} usuário:`, error);
+      showErrorPopup(
+        'Erro',
+        error.message || `Não foi possível ${acao} o usuário`
+      );
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
+  // ============================================================================
+  // FUNÇÃO: RESETAR SENHA DO USUÁRIO
+  // ============================================================================
+
+  /**
+   * Reseta a senha do usuário para uma senha temporária
+   * Marca primeiro_acesso = true para forçar troca
+   */
+  const resetarSenhaUsuario = async (usuario: Usuario) => {
+    if (!confirm(`Deseja resetar a senha de ${usuario.username}?\n\nUma senha temporária será gerada e o usuário precisará trocá-la no próximo login.`)) {
+      return;
+    }
+
+    setLoadingUsuarios(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${usuario.id}/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao resetar senha');
+      }
+
+      const data = await response.json();
+      
+      showSuccessPopup(
+        'Senha Resetada',
+        `Senha temporária: ${data.senha_temporaria}\n\nO usuário deverá trocá-la no próximo login.`
+      );
+
+      // Recarregar lista de usuários
+      await fetchUsuarios();
+      
+    } catch (error: any) {
+      console.error('Erro ao resetar senha:', error);
+      showErrorPopup(
+        'Erro ao Resetar',
+        error.message || 'Não foi possível resetar a senha'
+      );
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
+  // ============================================================================
+  // FUNÇÕES AUXILIARES: CONTROLE DE FORMULÁRIOS DE USUÁRIO
+  // ============================================================================
+
+  /**
+   * Abre o formulário para criar um novo usuário
+   * Limpa todos os campos e reseta para valores padrão
+   */
+  const abrirFormNovoUsuario = () => {
+    setFormUsuario({
+      username: '',
+      email: '',
+      password: '',
+      role: 'STORE',
+      restaurante_id: null,
+      ativo: true
+    });
+    setEditingUsuario(null);
+    setShowUsuarioForm(true);
+  };
+
+  /**
+   * Abre o formulário para editar um usuário existente
+   * Preenche os campos com os dados atuais
+   */
+  const abrirEdicaoUsuario = (usuario: Usuario) => {
+    setFormUsuario({
+      username: usuario.username,
+      email: usuario.email,
+      password: '', // Senha não é preenchida ao editar
+      role: usuario.role,
+      restaurante_id: usuario.restaurante_id,
+      ativo: usuario.ativo
+    });
+    setEditingUsuario(usuario);
+    setShowUsuarioForm(true);
+  };
+
+  /**
+   * Fecha o formulário de usuário e limpa os dados
+   */
+  const fecharFormUsuario = () => {
+    setFormUsuario({
+      username: '',
+      email: '',
+      password: '',
+      role: 'STORE',
+      restaurante_id: null,
+      ativo: true
+    });
+    setEditingUsuario(null);
+    setShowUsuarioForm(false);
+  };
+
+  /**
+   * Manipula mudanças nos campos do formulário de usuário
+   */
+  const handleUsuarioFormChange = (campo: keyof UsuarioForm, valor: any) => {
+    setFormUsuario(prev => ({
+      ...prev,
+      [campo]: valor
+    }));
+  };
+
+  /**
+   * Submete o formulário (criar ou editar)
+   */
+  const submitUsuarioForm = async () => {
+    if (editingUsuario) {
+      await editarUsuario();
+    } else {
+      await criarUsuario();
+    }
+  };
+
   // Busca todas as receitas do backend
   const fetchReceitas = useCallback(async () => {
     // Verificação de segurança para evitar chamadas desnecessárias
@@ -2300,6 +2798,14 @@ const fetchInsumos = async () => {
             ]);
             console.log('✅ Dashboard recarregado');
             break;
+
+          case 'settings':
+            // Carregar usuários quando acessar a aba de usuários em configurações
+            if (activeConfigTab === 'usuarios') {
+              await fetchUsuarios();
+              console.log('✅ Usuários recarregados');
+            }
+            break;
             
           default:
             console.log(`ℹ️ Aba ${activeTab} não precisa de recarregamento`);
@@ -2314,6 +2820,17 @@ const fetchInsumos = async () => {
       recarregarDadosDaAba();
     }
   }, [activeTab]);
+
+  // ============================================================================
+  // EFEITO: CARREGAR USUÁRIOS AO ACESSAR ABA DE USUÁRIOS
+  // ============================================================================
+
+  useEffect(() => {
+    // Carregar usuários quando acessar a sub-aba de usuários em configurações
+    if (activeTab === 'settings' && activeConfigTab === 'usuarios') {
+      fetchUsuarios();
+    }
+  }, [activeTab, activeConfigTab, filtroRoleUsuario, filtroStatusUsuario, buscaUsuario]);
 
   // Funções para carregar dados do formulário
   const carregarFornecedoresDisponiveis = async () => {
@@ -9064,17 +9581,478 @@ return (
             </div>
           )}
           
-          {/* Páginas em desenvolvimento - Configurações */}
+          {/* ============================================================================ */}
+          {/* PÁGINA: CONFIGURAÇÕES DO SISTEMA */}
+          {/* ============================================================================ */}
           {activeTab === 'settings' && (
-            <div className="text-center py-20">
-              <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 max-w-md mx-auto">
-                <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-lg mb-6">
-                  <Settings className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+            <>
+              <div className="space-y-6">
+                {/* Header da página de configurações */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Configurações do Sistema</h2>
+                    <p className="text-gray-600 text-sm sm:text-base">
+                      Gerencie usuários e preferências do sistema
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">Configurações do Sistema</h3>
-                <p className="text-gray-500">Configurações avançadas em desenvolvimento...</p>
+
+                {/* Navegação por abas dentro de Configurações */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Abas de navegação */}
+                  <div className="border-b border-gray-200">
+                    <nav className="flex -mb-px">
+                      <button
+                        onClick={() => setActiveConfigTab('geral')}
+                        className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                          activeConfigTab === 'geral'
+                            ? 'border-green-500 text-green-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Settings className="w-4 h-4" />
+                          Geral
+                        </div>
+                      </button>
+                      
+                      <button
+                        onClick={() => setActiveConfigTab('usuarios')}
+                        className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                          activeConfigTab === 'usuarios'
+                            ? 'border-green-500 text-green-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          Usuários
+                        </div>
+                      </button>
+                    </nav>
+                  </div>
+
+                  {/* Conteúdo das abas */}
+                  <div className="p-6">
+                    {/* Aba Geral */}
+                    {activeConfigTab === 'geral' && (
+                      <div className="text-center py-12">
+                        <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-8 rounded-lg mb-4 max-w-md mx-auto">
+                          <Settings className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                          <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                            Configurações Gerais
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            Configurações gerais em desenvolvimento
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ============================================================================ */}
+                    {/* ABA USUÁRIOS - PAINEL ADMINISTRATIVO */}
+                    {/* ============================================================================ */}
+                    {activeConfigTab === 'usuarios' && (
+                      <div className="space-y-6">
+                        {/* Header com botão criar e filtros */}
+                        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                          <div className="flex-1 w-full lg:w-auto">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                              {/* Campo de busca */}
+                              <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-500 w-5 h-5" />
+                                <input
+                                  type="text"
+                                  placeholder="Buscar por username ou email..."
+                                  value={buscaUsuario}
+                                  onChange={(e) => setBuscaUsuario(e.target.value)}
+                                  className="w-full pl-10 pr-4 py-2 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-600 bg-white"
+                                />
+                              </div>
+
+                              {/* Filtro por Role */}
+                              <select
+                                value={filtroRoleUsuario}
+                                onChange={(e) => setFiltroRoleUsuario(e.target.value)}
+                                className="px-4 py-2 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-600 bg-white"
+                              >
+                                <option value="">Todos os perfis</option>
+                                <option value="ADMIN">Admin</option>
+                                <option value="CONSULTANT">Consultor 00</option>
+                                <option value="STORE">Loja</option>
+                              </select>
+
+                              {/* Filtro por Status */}
+                              <select
+                                value={filtroStatusUsuario}
+                                onChange={(e) => setFiltroStatusUsuario(e.target.value)}
+                                className="px-4 py-2 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-600 bg-white"
+                              >
+                                <option value="">Todos os status</option>
+                                <option value="true">Ativos</option>
+                                <option value="false">Inativos</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Botão criar novo usuário */}
+                          <button
+                            onClick={abrirFormNovoUsuario}
+                            className="w-full lg:w-auto bg-gradient-to-r from-green-500 to-pink-500 text-white px-6 py-2 rounded-lg flex items-center justify-center gap-2 hover:from-green-600 hover:to-pink-600 transition-all shadow-md"
+                          >
+                            <Plus className="w-5 h-5" />
+                            Novo Usuário
+                          </button>
+                        </div>
+
+                        {/* Tabela de usuários */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                          {loadingUsuarios ? (
+                            <div className="flex items-center justify-center py-12">
+                              <div className="text-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+                                <p className="text-gray-600">Carregando usuários...</p>
+                              </div>
+                            </div>
+                          ) : usuarios.length === 0 ? (
+                            <div className="text-center py-12">
+                              <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                              <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                                Nenhum usuário encontrado
+                              </h3>
+                              <p className="text-sm text-gray-500 mb-4">
+                                Clique em "Novo Usuário" para criar o primeiro usuário
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                  <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Usuário
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Email
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Perfil
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Restaurante
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Status
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Ações
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {usuarios.map((usuario) => {
+                                    const restauranteNome = usuario.restaurante_id
+                                      ? restaurantes.find(r => r.id === usuario.restaurante_id)?.nome || 'N/A'
+                                      : '-';
+
+                                    return (
+                                      <tr key={usuario.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                          <div className="flex items-center">
+                                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-r from-green-400 to-pink-400 flex items-center justify-center">
+                                              <span className="text-white font-semibold text-sm">
+                                                {usuario.username.substring(0, 2).toUpperCase()}
+                                              </span>
+                                            </div>
+                                            <div className="ml-4">
+                                              <div className="text-sm font-medium text-gray-900">
+                                                {usuario.username}
+                                              </div>
+                                              {usuario.primeiro_acesso && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                  Primeiro acesso
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                          <div className="text-sm text-gray-900">{usuario.email}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            usuario.role === 'ADMIN'
+                                              ? 'bg-purple-100 text-purple-800'
+                                              : usuario.role === 'CONSULTANT'
+                                              ? 'bg-blue-100 text-blue-800'
+                                              : 'bg-green-100 text-green-800'
+                                          }`}>
+                                            {usuario.role === 'ADMIN' ? 'Administrador' : usuario.role === 'CONSULTANT' ? 'Consultor' : 'Loja'}
+                                          </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                          <div className="text-sm text-gray-900">{restauranteNome}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            usuario.ativo
+                                              ? 'bg-green-100 text-green-800'
+                                              : 'bg-red-100 text-red-800'
+                                          }`}>
+                                            {usuario.ativo ? 'Ativo' : 'Inativo'}
+                                          </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              onClick={() => abrirEdicaoUsuario(usuario)}
+                                              className="text-blue-600 hover:text-blue-900 transition-colors"
+                                              title="Editar usuário"
+                                            >
+                                              <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              onClick={() => toggleStatusUsuario(usuario)}
+                                              className={`${
+                                                usuario.ativo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
+                                              } transition-colors`}
+                                              title={usuario.ativo ? 'Desativar usuário' : 'Ativar usuário'}
+                                            >
+                                              {usuario.ativo ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                                            </button>
+                                            <button
+                                              onClick={() => resetarSenhaUsuario(usuario)}
+                                              className="text-yellow-600 hover:text-yellow-900 transition-colors"
+                                              title="Resetar senha"
+                                            >
+                                              <Shield className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {!loadingUsuarios && usuarios.length > 0 && (
+                            <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
+                              <p className="text-sm text-gray-600">
+                                Total: <span className="font-semibold">{usuarios.length}</span> usuário{usuarios.length !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+
+              {/* ============================================================================ */}
+              {/* MODAL: FORMULÁRIO DE USUÁRIO (CRIAR/EDITAR) */}
+              {/* ============================================================================ */}
+              {showUsuarioForm && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <div className="bg-gradient-to-r from-green-500 to-pink-500 p-6 rounded-t-xl">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-2xl font-bold text-white">
+                          {editingUsuario ? 'Editar Usuário' : 'Novo Usuário'}
+                        </h3>
+                        <button
+                          onClick={fecharFormUsuario}
+                          className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                        >
+                          <X className="w-6 h-6" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Username <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formUsuario.username}
+                          onChange={(e) => handleUsuarioFormChange('username', e.target.value)}
+                          placeholder="Digite o username"
+                          className="w-full px-4 py-2 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-600 bg-white"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Username único para login no sistema
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Email <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          value={formUsuario.email}
+                          onChange={(e) => handleUsuarioFormChange('email', e.target.value)}
+                          placeholder="usuario@exemplo.com"
+                          className="w-full px-4 py-2 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-600 bg-white"
+                        />
+                      </div>
+
+                      {!editingUsuario && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Senha <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="password"
+                            value={formUsuario.password}
+                            onChange={(e) => handleUsuarioFormChange('password', e.target.value)}
+                            placeholder="Mínimo 8 caracteres"
+                            className="w-full px-4 py-2 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-600 bg-white"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Senha inicial do usuário. Mínimo de 8 caracteres.
+                          </p>
+                        </div>
+                      )}
+
+                      {editingUsuario && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex gap-3">
+                            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-yellow-800">
+                                Alteração de senha
+                              </p>
+                              <p className="text-xs text-yellow-700 mt-1">
+                                Para alterar a senha, use o botão "Resetar Senha" na lista de usuários.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Perfil <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={formUsuario.role}
+                          onChange={(e) => handleUsuarioFormChange('role', e.target.value as 'ADMIN' | 'CONSULTANT' | 'STORE')}
+                          className="w-full px-4 py-2 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-600 bg-white"
+                        >
+                          <option value="STORE">Loja - Acesso restrito ao seu restaurante</option>
+                          <option value="CONSULTANT">Consultor - Acesso a todos os restaurantes</option>
+                          <option value="ADMIN">Administrador - Acesso total ao sistema</option>
+                        </select>
+                        
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-700">
+                            {formUsuario.role === 'ADMIN' && (
+                              <>
+                                <strong>Administrador:</strong> Acesso total ao sistema, incluindo gerenciamento de usuários, 
+                                configurações globais e todos os módulos.
+                              </>
+                            )}
+                            {formUsuario.role === 'CONSULTANT' && (
+                              <>
+                                <strong>Consultor:</strong> Acesso completo a insumos, receitas, fornecedores e restaurantes. 
+                                Não pode gerenciar usuários ou acessar configurações do sistema.
+                              </>
+                            )}
+                            {formUsuario.role === 'STORE' && (
+                              <>
+                                <strong>Loja:</strong> Acesso apenas aos dados do restaurante vinculado. 
+                                Pode gerenciar receitas e visualizar insumos do seu restaurante.
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Restaurante {formUsuario.role === 'STORE' && <span className="text-red-500">*</span>}
+                        </label>
+                        <select
+                          value={formUsuario.restaurante_id || ''}
+                          onChange={(e) => handleUsuarioFormChange('restaurante_id', e.target.value ? parseInt(e.target.value) : null)}
+                          disabled={formUsuario.role !== 'STORE'}
+                          className={`w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-green-500 bg-white ${
+                            formUsuario.role !== 'STORE' 
+                              ? 'border-gray-300 opacity-50 cursor-not-allowed' 
+                              : 'border-green-500 focus:border-green-600'
+                          }`}
+                        >
+                          <option value="">
+                            {formUsuario.role === 'STORE' ? 'Selecione um restaurante' : 'Não aplicável'}
+                          </option>
+                          {restaurantes.map((rest) => (
+                            <option key={rest.id} value={rest.id}>
+                              {rest.nome}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formUsuario.role === 'STORE' 
+                            ? 'Obrigatório para usuários do tipo Loja'
+                            : 'Disponível apenas para usuários do tipo Loja'
+                          }
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formUsuario.ativo}
+                            onChange={(e) => handleUsuarioFormChange('ativo', e.target.checked)}
+                            className="w-5 h-5 text-green-500 border-gray-300 rounded focus:ring-green-500"
+                          />
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">
+                              Usuário ativo
+                            </span>
+                            <p className="text-xs text-gray-500">
+                              Usuários inativos não podem fazer login no sistema
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 px-6 py-4 rounded-b-xl flex justify-end gap-3">
+                      <button
+                        onClick={fecharFormUsuario}
+                        className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={submitUsuarioForm}
+                        disabled={loadingUsuarios}
+                        className="px-6 py-2 bg-gradient-to-r from-green-500 to-pink-500 text-white rounded-lg hover:from-green-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {loadingUsuarios ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            {editingUsuario ? 'Atualizar' : 'Criar Usuário'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
         
