@@ -56,6 +56,8 @@ def get_current_user(
     """
     Dependência que extrai e valida o usuário autenticado via JWT.
     """
+    print(f"\n🔑 get_current_user chamado")
+    print(f"   Credentials: {credentials is not None}")
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -64,6 +66,7 @@ def get_current_user(
         )
     
     token = credentials.credentials
+    print(f"   Token (20 chars): {token[:20]}...")
     payload = decode_token(token)
     
     if not payload:
@@ -174,11 +177,15 @@ def get_admin_user(
     """
     Dependência que valida se o usuário é ADMIN.
     """
+    print(f"🔐 get_admin_user chamado")
+    print(f"   User: {current_user.username if current_user else 'None'}")
+    print(f"   Role: {current_user.role if current_user else 'None'}")
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso restrito a administradores",
         )
+    print(f"✅ É ADMIN")
     return current_user
 
 

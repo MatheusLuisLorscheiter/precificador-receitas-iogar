@@ -2213,7 +2213,7 @@ const fetchInsumos = async () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       console.log('Status da resposta:', response.status);
 
       if (!response.ok) {
@@ -2286,9 +2286,15 @@ const fetchInsumos = async () => {
       return;
     }
 
+    console.log('🔐 Criando usuário com token:', token?.substring(0, 20) + '...');
+    console.log('🔐 Token completo disponível:', !!token);
+
+    console.log('🔐 Token do localStorage:', localStorage.getItem('foodcost_access_token')?.substring(0, 20) + '...');
+    console.log('🔐 Tokens são iguais?', token === localStorage.getItem('foodcost_access_token'));
+
     setLoadingUsuarios(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2299,7 +2305,27 @@ const fetchInsumos = async () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao criar usuário');
+        console.log('❌ Erro do backend:', errorData);
+        
+        // Extrair mensagem de erro
+        let errorMessage = 'Erro ao criar usuário';
+        
+        if (errorData.detail) {
+          // Se detail for string
+          if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail;
+          }
+          // Se detail for array (erros de validação do Pydantic)
+          else if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => 
+              `${err.loc[err.loc.length - 1]}: ${err.msg}`
+            ).join('\n');
+          }
+        }
+        
+        showErrorPopup('Erro de Validação', errorMessage);
+        setLoadingUsuarios(false);
+        return;
       }
 
       const novoUsuario = await response.json();
@@ -2373,7 +2399,7 @@ const fetchInsumos = async () => {
       // Criar payload sem senha (não alteramos senha nesta função)
       const { password, ...payloadSemSenha } = formUsuario;
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${editingUsuario.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${editingUsuario.id}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -2438,7 +2464,7 @@ const fetchInsumos = async () => {
 
     setLoadingUsuarios(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${usuario.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${usuario.id}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -2486,7 +2512,7 @@ const fetchInsumos = async () => {
 
     setLoadingUsuarios(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${usuario.id}/reset-password`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${usuario.id}/reset-password/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2496,7 +2522,25 @@ const fetchInsumos = async () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao resetar senha');
+        console.log('❌ Erro do backend:', errorData);
+        
+        // Extrair mensagem de erro
+        let errorMessage = 'Erro ao criar usuário';
+        
+        if (errorData.detail) {
+          // Se detail for string
+          if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail;
+          }
+          // Se detail for array (erros de validação do Pydantic)
+          else if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => 
+              `${err.loc.join('.')}: ${err.msg}`
+            ).join(', ');
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -9678,7 +9722,7 @@ return (
                               >
                                 <option value="">Todos os perfis</option>
                                 <option value="ADMIN">Admin</option>
-                                <option value="CONSULTANT">Consultor 00</option>
+                                <option value="CONSULTANT">Consultor</option>
                                 <option value="STORE">Loja</option>
                               </select>
 

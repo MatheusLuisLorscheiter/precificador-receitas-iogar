@@ -21,6 +21,7 @@ from app.schemas.user import (
 )
 from app.models.user import User, UserRole
 from app.core.security import get_password_hash
+from datetime import datetime
 
 # Criar router (apenas ADMIN tem acesso)
 router = APIRouter()
@@ -40,10 +41,6 @@ def listar_usuarios(
     db: Session = Depends(get_db)
     # SEM current_user temporariamente para testar
 ):
-    """
-    TESTE: Lista usuários SEM autenticação
-    """
-    print("🎯 listar_usuarios FOI CHAMADA!")
     """
     Lista todos os usuários do sistema com filtros opcionais.
     
@@ -140,6 +137,11 @@ def criar_usuario(
     
     O usuário é criado com primeiro_acesso=true para forçar troca de senha.
     """
+    print(f"\n✅ criar_usuario FOI CHAMADO!")
+    print(f"   Current user: {current_user.username}")
+    print(f"   Role: {current_user.role}")
+    print(f"   Novo usuário: {user_data.username}")
+    
     # Verificar se username já existe
     existing_username = db.query(User).filter(User.username == user_data.username).first()
     if existing_username:
@@ -180,6 +182,8 @@ def criar_usuario(
     password_hash = get_password_hash(user_data.password)
     
     # Criar objeto User
+    from datetime import datetime
+
     new_user = User(
         username=user_data.username,
         email=user_data.email,
@@ -187,7 +191,8 @@ def criar_usuario(
         role=user_data.role,
         restaurante_id=user_data.restaurante_id,
         ativo=user_data.ativo,
-        primeiro_acesso=True  # Sempre true para novos usuários
+        primeiro_acesso=True,  # Sempre true para novos usuários
+        updated_at=datetime.utcnow()  # FORÇAR updated_at manualmente
     )
     
     # Salvar no banco
