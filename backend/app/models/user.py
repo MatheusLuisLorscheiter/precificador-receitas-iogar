@@ -20,15 +20,44 @@ import enum
 
 class UserRole(str, enum.Enum):
     """
-    Perfis de usuário do sistema
+    Perfis de usuário do sistema com hierarquia de permissões
     
-    - ADMIN: Administrador com acesso total
-    - CONSULTANT: Consultor com acesso a todos os restaurantes
-    - STORE: Loja com acesso apenas ao seu restaurante
+    Hierarquia (do maior para menor privilégio):
+    1. ADMIN: Administrador do Sistema
+       - Controle total do sistema
+       - Gerencia usuários e permissões
+       - Acessa logs e monitoramento
+    
+    2. CONSULTANT: Consultor
+       - Acesso a todas as redes/lojas
+       - Gerencia insumos, receitas, fornecedores
+       - Sem acesso a configurações administrativas
+    
+    3. OWNER: Proprietário da Rede
+       - Dono de uma rede de restaurantes
+       - Gerencia todas as lojas da sua rede
+       - Acessa dados consolidados da rede
+       - Pode criar/editar receitas para todas lojas
+    
+    4. MANAGER: Gerente de Loja
+       - Gerente de uma loja específica
+       - Pode gerenciar receitas, insumos e relatórios da sua loja
+       - Não pode alterar configurações estruturais
+    
+    5. OPERATOR: Operador/Funcionário
+       - Funcionário operacional da loja
+       - Visualiza receitas e executa tarefas básicas
+       - Acesso somente leitura + ações limitadas
     """
     ADMIN = "ADMIN"
     CONSULTANT = "CONSULTANT"
+    OWNER = "OWNER"
+    MANAGER = "MANAGER"
+    OPERATOR = "OPERATOR"
+    
+    # Manter STORE para retrocompatibilidade (será migrado para MANAGER)
     STORE = "STORE"
+
 
 
 # ============================================================================

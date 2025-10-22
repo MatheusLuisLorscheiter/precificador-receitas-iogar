@@ -20,10 +20,21 @@ class UserRoleEnum(str, Enum):
     """
     Enum de perfis de usuário para validação Pydantic.
     Deve estar sincronizado com UserRole do modelo.
+    
+    Perfis disponíveis:
+    - ADMIN: Administrador do Sistema
+    - CONSULTANT: Consultor
+    - OWNER: Proprietário da Rede
+    - MANAGER: Gerente de Loja
+    - OPERATOR: Operador/Funcionário
+    - STORE: Loja (mantido para retrocompatibilidade, usar MANAGER)
     """
     ADMIN = "ADMIN"
     CONSULTANT = "CONSULTANT"
-    STORE = "STORE"
+    OWNER = "OWNER"
+    MANAGER = "MANAGER"
+    OPERATOR = "OPERATOR"
+    STORE = "STORE"  # Mantido para retrocompatibilidade
 
 
 # ============================================================================
@@ -38,16 +49,24 @@ class UserCreate(BaseModel):
         username: Nome de usuário único (3-50 caracteres)
         email: Email válido e único
         password: Senha inicial (será hasheada, mínimo 8 caracteres)
-        role: Perfil do usuário (ADMIN, CONSULTANT, STORE)
-        restaurante_id: ID do restaurante (obrigatório apenas para STORE)
+        role: Perfil do usuário (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR, STORE)
+        restaurante_id: ID do restaurante (obrigatório para OWNER, MANAGER, OPERATOR, STORE)
         ativo: Define se usuário começa ativo (padrão: True)
+    
+    Perfis e Restaurante:
+        - ADMIN: Sem restaurante (acesso total ao sistema)
+        - CONSULTANT: Sem restaurante (acesso a todas as redes)
+        - OWNER: Com restaurante (dono da rede, acessa todas as lojas da rede)
+        - MANAGER: Com restaurante (gerente da loja específica)
+        - OPERATOR: Com restaurante (funcionário da loja específica)
+        - STORE: Com restaurante (mantido para retrocompatibilidade, usar MANAGER)
     
     Validações:
         - Username único no sistema
         - Email válido e único
         - Senha com mínimo 8 caracteres, letra e número
-        - Se role = STORE, restaurante_id é obrigatório
-        - Se role != STORE, restaurante_id deve ser None
+        - Se role = OWNER/MANAGER/OPERATOR/STORE, restaurante_id é obrigatório
+        - Se role = ADMIN/CONSULTANT, restaurante_id deve ser None
     
     Exemplo:
         {
@@ -71,10 +90,13 @@ class UserCreate(BaseModel):
         min_length=8,
         description="Senha inicial (será hasheada)"
     )
-    role: UserRoleEnum = Field(..., description="Perfil do usuário")
+    role: UserRoleEnum = Field(
+        ..., 
+        description="Perfil do usuário (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR)"
+    )
     restaurante_id: Optional[int] = Field(
         None,
-        description="ID do restaurante (obrigatório para STORE)"
+        description="ID do restaurante (obrigatório para OWNER, MANAGER, OPERATOR, STORE)"
     )
     ativo: bool = Field(
         default=True,
@@ -99,17 +121,41 @@ class UserCreate(BaseModel):
     @field_validator('restaurante_id')
     @classmethod
     def validate_restaurante_for_store(cls, v, info):
-        """Valida que STORE deve ter restaurante_id"""
+        """
+        Valida restaurante_id baseado no role.
+        
+        Regras:
+        - OWNER, MANAGER, OPERATOR, STORE: restaurante_id obrigatório
+        - ADMIN, CONSULTANT: restaurante_id deve ser None
+        """
         if 'role' in info.data:
             role = info.data['role']
             
-            # Se é STORE, restaurante_id é obrigatório
-            if role == UserRoleEnum.STORE and v is None:
-                raise ValueError("Usuários STORE devem ter um restaurante vinculado")
+            # Perfis que PRECISAM de restaurante vinculado
+            roles_precisam_restaurante = [
+                UserRoleEnum.OWNER,
+                UserRoleEnum.MANAGER,
+                UserRoleEnum.OPERATOR,
+                UserRoleEnum.STORE
+            ]
             
-            # Se não é STORE, restaurante_id deve ser None
-            if role != UserRoleEnum.STORE and v is not None:
-                raise ValueError("Apenas usuários STORE podem ter restaurante vinculado")
+            # Perfis que NÃO DEVEM ter restaurante vinculado
+            roles_sem_restaurante = [
+                UserRoleEnum.ADMIN,
+                UserRoleEnum.CONSULTANT
+            ]
+            
+            # Se role precisa de restaurante mas não tem
+            if role in roles_precisam_restaurante and v is None:
+                raise ValueError(
+                    f"Usuários {role.value} devem ter um restaurante vinculado"
+                )
+            
+            # Se role não deve ter restaurante mas tem
+            if role in roles_sem_restaurante and v is not None:
+                raise ValueError(
+                    f"Usuários {role.value} não devem ter restaurante vinculado"
+                )
         
         return v
 
@@ -178,23 +224,96 @@ class UserUpdate(BaseModel):
     @field_validator('restaurante_id')
     @classmethod
     def validate_restaurante_for_role(cls, v, info):
-        """Valida restaurante_id baseado no role"""
+        """
+        Valida restaurante_id baseado no role.
+        
+        Regras:
+        - OWNER, MANAGER, OPERATOR, STORE: restaurante_id obrigatório
+        - ADMIN, CONSULTANT: restaurante_id deve ser None
+        """
         if 'role' in info.data and info.data['role'] is not None:
             role = info.data['role']
             
-            if role == UserRoleEnum.STORE and v is None:
-                raise ValueError("Usuários STORE devem ter um restaurante vinculado")
+            # Perfis que PRECISAM de restaurante vinculado
+            roles_precisam_restaurante = [
+                UserRoleEnum.OWNER,
+                UserRoleEnum.MANAGER,
+                UserRoleEnum.OPERATOR,
+                UserRoleEnum.STORE
+            ]
             
-            if role != UserRoleEnum.STORE and v is not None:
-                raise ValueError("Apenas usuários STORE podem ter restaurante vinculado")
+            # Perfis que NÃO DEVEM ter restaurante vinculado
+            roles_sem_restaurante = [
+                UserRoleEnum.ADMIN,
+                UserRoleEnum.CONSULTANT
+            ]
+            
+            # Se role precisa de restaurante mas não tem
+            if role in roles_precisam_restaurante and v is None:
+                raise ValueError(
+                    f"Usuários {role.value} devem ter um restaurante vinculado"
+                )
+            
+            # Se role não deve ter restaurante mas tem
+            if role in roles_sem_restaurante and v is not None:
+                raise ValueError(
+                    f"Usuários {role.value} não devem ter restaurante vinculado"
+                )
         
         return v
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "ativo": False
-            }
+            "examples": [
+                {
+                    "summary": "Criar Gerente de Loja",
+                    "description": "Exemplo de criação de gerente para uma loja específica",
+                    "value": {
+                        "username": "gerente_loja01",
+                        "email": "gerente@loja01.com",
+                        "password": "senha123",
+                        "role": "MANAGER",
+                        "restaurante_id": 1,
+                        "ativo": True
+                    }
+                },
+                {
+                    "summary": "Criar Proprietário de Rede",
+                    "description": "Exemplo de criação de proprietário de uma rede de restaurantes",
+                    "value": {
+                        "username": "dono_rede",
+                        "email": "dono@rede.com",
+                        "password": "senha123",
+                        "role": "OWNER",
+                        "restaurante_id": 1,
+                        "ativo": True
+                    }
+                },
+                {
+                    "summary": "Criar Operador",
+                    "description": "Exemplo de criação de funcionário operacional",
+                    "value": {
+                        "username": "operador_loja01",
+                        "email": "operador@loja01.com",
+                        "password": "senha123",
+                        "role": "OPERATOR",
+                        "restaurante_id": 1,
+                        "ativo": True
+                    }
+                },
+                {
+                    "summary": "Criar Consultor",
+                    "description": "Exemplo de criação de consultor (sem restaurante vinculado)",
+                    "value": {
+                        "username": "consultor01",
+                        "email": "consultor@empresa.com",
+                        "password": "senha123",
+                        "role": "CONSULTANT",
+                        "restaurante_id": None,
+                        "ativo": True
+                    }
+                }
+            ]
         }
 
 

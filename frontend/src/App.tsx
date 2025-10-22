@@ -30,6 +30,9 @@ import {
 import ClassificadorIA from './components/ClassificadorIA.tsx';
 import PopupClassificacaoIA from './components/PopupClassificacaoIA.tsx';
 
+// Importar gerenciador de permissões
+import PermissionsManager from './components/PermissionsManager.tsx';
+
 // Import de integração do Super Grid de Receitas
 import SuperGridReceitas from './components/SuperGridReceitas';
 
@@ -2961,6 +2964,7 @@ const fetchInsumos = async () => {
   // COMPONENTE SIDEBAR - NAVEGAÇÃO PRINCIPAL
   // ============================================================================
   const [sidebarAberta, setSidebarAberta] = useState(false);
+  const [mostrarPermissoes, setMostrarPermissoes] = useState(false);
   const Sidebar = ({ isAberta, onFechar }: { isAberta: boolean; onFechar: () => void }) => {
     // Itens do menu de navegação
     const menuItems = [
@@ -3248,9 +3252,15 @@ const fetchInsumos = async () => {
                 <Shield className="w-5 h-5 text-pink-600" />
                 <h4 className="font-medium text-gray-900">Controle de Usuários</h4>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mb-3">
                 Autenticação JWT e permissões
               </p>
+              <button
+                onClick={() => setMostrarPermissoes(true)}
+                className="w-full px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm"
+              >
+                Gerenciar
+              </button>
             </div>
           </div>
         </div>
@@ -7837,7 +7847,11 @@ const Receitas = React.memo(() => {
         onEdit={handleEditFromPopup}
         onDuplicate={handleDuplicateFromPopup}
         onDelete={handleDeleteFromPopup}
-      /> 
+      />
+      {/* Modal de Gerenciamento de Permissões */}
+      {mostrarPermissoes && (
+        <PermissionsManager onClose={() => setMostrarPermissoes(false)} />
+      )}
     </div>
   );
 }); // ← AQUI ESTÁ O FECHAMENTO DO React.memo

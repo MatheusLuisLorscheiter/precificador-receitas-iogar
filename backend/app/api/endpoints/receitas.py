@@ -7,15 +7,17 @@
 #   ===================================================================================================
 
 import time
-
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.api.deps import get_db
+from app.api.deps import get_db, get_current_user
 from app.models.receita import Receita, ReceitaInsumo
 from app.models.insumo import Insumo
+from app.models.user import User
+from app.models.permission import ResourceType, ActionType
+from app.utils.permissions import PermissionChecker, apply_data_scope_filter, can_access_resource
 
 from app.schemas.receita import (
     # Schemas de receitas
@@ -40,9 +42,45 @@ def list_receitas(
     restaurante_id: Optional[int] = Query(None, description="Filtrar por restaurante"),
     grupo: Optional[str] = Query(None, description="Filtrar por grupo"),
     ativo: Optional[bool] = Query(None, description="Filtrar por status ativo"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    data_scope = Depends(PermissionChecker(ResourceType.RECEITAS, ActionType.VISUALIZAR))
 ):
-    """Lista receitas com CMVs calculados automaticamente baseado nos insumos"""
+    """
+    Lista receitas com CMVs calculados automaticamente baseado nos insumos.
+    
+    Permissões:
+    - Requer permissão de VISUALIZAR RECEITAS
+    - Filtra automaticamente por escopo de dados do usuário:
+      * ADMIN/CONSULTANT: vê todas as receitas
+      * OWNER: vê receitas de toda a rede
+      * MANAGER/OPERATOR/STORE: vê receitas apenas da sua loja
+    """
+    
+    # Buscar receitas básicas com filtro de escopo
+    query = db.query(Receita)
+    
+    # Aplicar filtro de escopo de dados do usuário PRIMEIRO
+    query = apply_data_scope_filter(
+        query, 
+        current_user, 
+        data_scope, 
+        Receita.restaurante_id,
+        db=db
+    )
+    
+    # Aplicar filtros adicionais do usuário
+    if restaurante_id:
+        query = query.filter(Receita.restaurante_id == restaurante_id)
+    
+    if grupo:
+        query = query.filter(Receita.grupo == grupo)
+    
+    if ativo is not None:
+        query = query.filter(Receita.ativo == ativo)
+    
+    # Aplicar paginação
+    receitas = query.offset(skip).limit(limit).all()
     
     # Buscar receitas básicas
     receitas = crud_receita.get_receitas(
@@ -289,8 +327,82 @@ def calcular_custo_receita(db: Session, receita_id: int) -> dict:
 @router.post("/", summary="Criar ou atualizar receita")
 def create_receita_endpoint(
     receita_data: dict,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    data_scope = Depends(PermissionChecker(ResourceType.RECEITAS, ActionType.CRIAR))
 ):
+    """
+    Cria ou atualiza uma receita.
+    
+    Permissões:
+    - Requer permissão de CRIAR RECEITAS
+    - Validações por escopo:
+      * LOJA: só pode criar para seu restaurante
+      * REDE: pode criar para qualquer restaurante da rede
+      * TODOS: pode criar para qualquer restaurante
+    """
+    from app.utils.permissions import can_access_resource
+    from fastapi import HTTPException, status
+    from app.models.permission import DataScope
+    
+    # Extrair restaurante_id da receita
+    restaurante_id = receita_data.get('restaurante_id')
+    
+    if not restaurante_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="restaurante_id é obrigatório"
+        )
+    
+    # Validar se usuário pode criar receita para o restaurante especificado
+    if data_scope == DataScope.LOJA:
+        if restaurante_id != current_user.restaurante_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você só pode criar receitas para o seu restaurante"
+            )
+    
+    elif data_scope == DataScope.REDE:
+        # Verificar se restaurante está na mesma rede
+        from app.models.receita import Restaurante
+        
+        restaurante_target = db.query(Restaurante).filter(
+            Restaurante.id == restaurante_id
+        ).first()
+        
+        if not restaurante_target:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Restaurante não encontrado"
+            )
+        
+        restaurante_user = db.query(Restaurante).filter(
+            Restaurante.id == current_user.restaurante_id
+        ).first()
+        
+        # Verificar se estão na mesma rede
+        mesma_rede = False
+        
+        if restaurante_user and restaurante_target:
+            # Mesmo pai ou um é pai do outro
+            if (restaurante_user.restaurante_pai_id and 
+                restaurante_user.restaurante_pai_id == restaurante_target.restaurante_pai_id):
+                mesma_rede = True
+            elif (restaurante_user.eh_matriz and 
+                  restaurante_target.restaurante_pai_id == restaurante_user.id):
+                mesma_rede = True
+            elif (restaurante_user.restaurante_pai_id == restaurante_target.id and
+                  restaurante_target.eh_matriz):
+                mesma_rede = True
+            elif restaurante_user.id == restaurante_target.id:
+                mesma_rede = True
+        
+        if not mesma_rede:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você só pode criar receitas para restaurantes da sua rede"
+            )
+        
     # Caça ao dados de porções
     print("=" * 50)
     print("FUNÇÃO POST CHAMADA!")
@@ -633,12 +745,48 @@ def get_receita(receita_id: int, db: Session = Depends(get_db)):
 def update_receita(
     receita_id: int,
     receita_update: ReceitaUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    data_scope = Depends(PermissionChecker(ResourceType.RECEITAS, ActionType.EDITAR))
 ):
-    """Atualiza uma receita existente"""
+    """
+    Atualiza uma receita existente.
+    
+    Permissões:
+    - Requer permissão de EDITAR RECEITAS
+    - Validações por escopo:
+      * PROPRIOS: só pode editar receitas que criou
+      * LOJA: só pode editar receitas do seu restaurante
+      * REDE: só pode editar receitas da sua rede
+      * TODOS: pode editar qualquer receita
+    """
+    # Buscar receita antes de atualizar para validar permissões
+    db_receita = db.query(Receita).filter(Receita.id == receita_id).first()
+    
+    if db_receita is None:
+        raise HTTPException(status_code=404, detail="Receita não encontrada")
+    
+    # Verificar se usuário tem acesso a esta receita
+    created_by_id = getattr(db_receita, 'created_by', None)
+    
+    if not can_access_resource(
+        user=current_user,
+        resource_owner_id=created_by_id or 0,
+        resource_restaurante_id=db_receita.restaurante_id,
+        data_scope=data_scope,
+        db=db
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não tem permissão para editar esta receita"
+        )
+    
+    # Atualizar receita
     receita = crud_receita.update_receita(db, receita_id, receita_update)
+    
     if receita is None:
         raise HTTPException(status_code=404, detail="Receita não encontrada")
+    
     return receita
 
 # ===================================================================
@@ -979,9 +1127,48 @@ def clear_all_receitas(
         )
     
 @router.delete("/{receita_id}", summary="Deletar receita")
-def delete_receita(receita_id: int, db: Session = Depends(get_db)):
-    """Deleta uma receita"""
+def delete_receita(
+    receita_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    data_scope = Depends(PermissionChecker(ResourceType.RECEITAS, ActionType.DELETAR))
+):
+    """
+    Deleta uma receita.
+    
+    Permissões:
+    - Requer permissão de DELETAR RECEITAS
+    - Validações por escopo:
+      * PROPRIOS: só pode deletar receitas que criou
+      * LOJA: só pode deletar receitas do seu restaurante
+      * REDE: só pode deletar receitas da sua rede
+      * TODOS: pode deletar qualquer receita
+    """
+    # Buscar receita antes de deletar para validar permissões
+    db_receita = db.query(Receita).filter(Receita.id == receita_id).first()
+    
+    if db_receita is None:
+        raise HTTPException(status_code=404, detail="Receita não encontrada")
+    
+    # Verificar se usuário tem acesso a esta receita
+    created_by_id = getattr(db_receita, 'created_by', None)
+    
+    if not can_access_resource(
+        user=current_user,
+        resource_owner_id=created_by_id or 0,
+        resource_restaurante_id=db_receita.restaurante_id,
+        data_scope=data_scope,
+        db=db
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não tem permissão para deletar esta receita"
+        )
+    
+    # Deletar receita
     success = crud_receita.delete_receita(db, receita_id)
+    
     if not success:
         raise HTTPException(status_code=404, detail="Receita não encontrada")
+    
     return {"message": "Receita deletada com sucesso"}

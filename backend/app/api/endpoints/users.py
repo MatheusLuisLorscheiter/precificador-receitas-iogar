@@ -34,12 +34,15 @@ router = APIRouter()
 def listar_usuarios(
     skip: int = Query(0, ge=0, description="Número de registros a pular"),
     limit: int = Query(100, ge=1, le=500, description="Limite de registros"),
-    role: Optional[str] = Query(None, description="Filtrar por role (ADMIN, CONSULTANT, STORE)"),
+    role: Optional[str] = Query(
+        None, 
+        description="Filtrar por role (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR, STORE)"
+    ),
     ativo: Optional[bool] = Query(None, description="Filtrar por status ativo"),
     restaurante_id: Optional[int] = Query(None, description="Filtrar por restaurante"),
     busca: Optional[str] = Query(None, description="Buscar por username ou email"),
-    db: Session = Depends(get_db)
-    # SEM current_user temporariamente para testar
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
 ):
     """
     Lista todos os usuários do sistema com filtros opcionais.
@@ -47,7 +50,7 @@ def listar_usuarios(
     Acesso: Apenas ADMIN
     
     Filtros disponíveis:
-    - role: Filtrar por perfil (ADMIN, CONSULTANT, STORE)
+    - role: Filtrar por perfil (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR, STORE)
     - ativo: Filtrar por status (true/false)
     - restaurante_id: Filtrar usuários de um restaurante específico
     - busca: Buscar por username ou email (case-insensitive)
@@ -65,7 +68,7 @@ def listar_usuarios(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Role inválida. Use: ADMIN, CONSULTANT ou STORE"
+                detail=f"Role inválida. Use: ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR ou STORE"
             )
     
     if ativo is not None:

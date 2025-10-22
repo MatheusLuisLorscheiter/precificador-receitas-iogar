@@ -19,7 +19,7 @@ interface User {
   id: number;
   username: string;
   email: string;
-  role: 'ADMIN' | 'CONSULTANT' | 'STORE';
+  role: 'ADMIN' | 'CONSULTANT' | 'OWNER' | 'MANAGER' | 'OPERATOR' | 'STORE';
   restaurante_id: number | null;
   ativo: boolean;
   primeiro_acesso: boolean;

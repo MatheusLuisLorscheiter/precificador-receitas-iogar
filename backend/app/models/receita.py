@@ -100,6 +100,15 @@ class Restaurante(Base):
                  comment="Tipo: restaurante, bar, quiosque, lanchonete, etc.")
     tem_delivery = Column(Boolean, default=False, comment="Se oferece delivery")
     ativo = Column(Boolean, default=True, comment="Se o restaurante está ativo")
+
+    # Campo de rastreamento de criação
+    created_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID do usuário que criou o restaurante"
+    )
     
     # Campos para sistema de unidades/filiais
     eh_matriz = Column(Boolean, default=True, comment="Se é a unidade matriz")
@@ -201,6 +210,15 @@ class Receita(Base):
     subgrupo = Column(String(100), nullable=False, comment="Subcategoria da receita")
     codigo = Column(String(50), nullable=False, unique=True, comment="Código único da receita")
     nome = Column(String(255), nullable=False, comment="Nome da receita")
+
+    # Campo de rastreamento de criação
+    created_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID do usuário que criou a receita"
+    )
 
     # ===================================================================================================
     # Campos de unidade e quantidade (para receitas processadas)

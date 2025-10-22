@@ -6,7 +6,7 @@
 # Autor: Will
 # ============================================================================
 
-from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.models.base import Base
@@ -66,6 +66,15 @@ class Fornecedor(Base):
         String(100), 
         nullable=True,
         comment="Ramo de atividade do fornecedor"
+    )
+
+    # Campo de rastreamento de criação
+    created_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID do usuário que criou o fornecedor"
     )
     
     cidade = Column(

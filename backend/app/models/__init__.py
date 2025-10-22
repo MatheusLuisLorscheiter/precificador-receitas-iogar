@@ -23,6 +23,9 @@ from .receita import Restaurante, Receita, ReceitaInsumo
 # Importar modelo de usuários
 from .user import User, UserRole
 
+# Importar modelo de permissões
+from .permission import Permission, ResourceType, ActionType, DataScope
+
 # Lista de todos os modelos para exportação
 __all__ = [
     "Base", 
@@ -35,5 +38,9 @@ __all__ = [
     "Receita",
     "ReceitaInsumo",
     "User",
-    "UserRole"
+    "UserRole",
+    "Permission",
+    "ResourceType",
+    "ActionType",
+    "DataScope"
     ]

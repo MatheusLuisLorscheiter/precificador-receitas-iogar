@@ -67,6 +67,14 @@ class Insumo(BaseModel):
         comment="TRUE = aguardando classificação pela IA, FALSE = não precisa ou já classificado"
     )
 
+    # Campo de rastreamento de criação
+    created_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID do usuário que criou o insumo"
+    )
 
     #   ===================================================================================================
     #   Relacionamentos com outras tabelas

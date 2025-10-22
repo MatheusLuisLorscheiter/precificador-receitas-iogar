@@ -240,9 +240,12 @@ def filter_by_user_restaurant(
     """
     Dependência que retorna o restaurante_id para filtrar queries.
     
-    Regras:
-    - ADMIN e CONSULTANT: retorna None (veem todos os restaurantes)
-    - STORE: retorna o restaurante_id vinculado
+    Regras de escopo de dados por perfil:
+    - ADMIN e CONSULTANT: retorna None (veem todos os dados)
+    - OWNER: retorna None (vê toda a rede, filtro será por restaurante_pai_id)
+    - MANAGER: retorna restaurante_id vinculado (vê apenas sua loja)
+    - OPERATOR: retorna restaurante_id vinculado (vê apenas sua loja)
+    - STORE: retorna restaurante_id vinculado (retrocompatibilidade)
     
     Args:
         current_user: Usuário autenticado
@@ -265,5 +268,141 @@ def filter_by_user_restaurant(
     if current_user.role in [UserRole.ADMIN, UserRole.CONSULTANT]:
         return None
     
-    # STORE vê apenas seu restaurante
+    # OWNER vê toda a rede (será implementado filtro específico por rede)
+    if current_user.role == UserRole.OWNER:
+        return None
+    
+    # MANAGER, OPERATOR e STORE veem apenas sua loja
+    if current_user.role in [UserRole.MANAGER, UserRole.OPERATOR, UserRole.STORE]:
+        return current_user.restaurante_id
+    
+    # Fallback seguro: retorna restaurante_id se existir
     return current_user.restaurante_id
+
+def filter_by_user_network(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Optional[list[int]]:
+    """
+    Dependência que retorna lista de IDs de restaurantes da rede do usuário.
+    
+    Regras de escopo por perfil:
+    - ADMIN e CONSULTANT: retorna None (veem todos os dados)
+    - OWNER: retorna lista com IDs de todos os restaurantes da rede
+    - MANAGER, OPERATOR, STORE: retorna lista com apenas seu restaurante_id
+    
+    Esta dependência é útil para queries que precisam filtrar por múltiplos
+    restaurantes (ex: OWNER vendo todas as lojas da sua rede).
+    
+    Args:
+        current_user: Usuário autenticado
+        db: Sessão do banco de dados
+    
+    Returns:
+        Optional[list[int]]: Lista de IDs de restaurantes ou None
+    
+    Uso:
+        @router.get("/receitas")
+        def list_receitas(
+            db: Session = Depends(get_db),
+            network_filter: Optional[list[int]] = Depends(filter_by_user_network)
+        ):
+            query = db.query(Receita)
+            if network_filter:
+                query = query.filter(Receita.restaurante_id.in_(network_filter))
+            return query.all()
+    """
+    from app.models.restaurante import Restaurante
+    
+    # ADMIN e CONSULTANT veem tudo
+    if current_user.role in [UserRole.ADMIN, UserRole.CONSULTANT]:
+        return None
+    
+    # OWNER vê toda a rede
+    if current_user.role == UserRole.OWNER:
+        if not current_user.restaurante_id:
+            return []
+        
+        # Buscar o restaurante do owner
+        restaurante_owner = db.query(Restaurante).filter(
+            Restaurante.id == current_user.restaurante_id
+        ).first()
+        
+        if not restaurante_owner:
+            return []
+        
+        # Se o restaurante é matriz, buscar todas as unidades
+        if restaurante_owner.eh_matriz:
+            # Buscar matriz + todas as unidades
+            restaurantes_rede = db.query(Restaurante.id).filter(
+                (Restaurante.id == restaurante_owner.id) |
+                (Restaurante.restaurante_pai_id == restaurante_owner.id)
+            ).all()
+            
+            return [r.id for r in restaurantes_rede]
+        
+        # Se é unidade, buscar a matriz e todas as outras unidades
+        elif restaurante_owner.restaurante_pai_id:
+            matriz_id = restaurante_owner.restaurante_pai_id
+            
+            # Buscar matriz + todas as unidades
+            restaurantes_rede = db.query(Restaurante.id).filter(
+                (Restaurante.id == matriz_id) |
+                (Restaurante.restaurante_pai_id == matriz_id)
+            ).all()
+            
+            return [r.id for r in restaurantes_rede]
+        
+        # Restaurante sem rede, retorna só ele mesmo
+        return [current_user.restaurante_id]
+    
+    # MANAGER, OPERATOR e STORE veem apenas sua loja
+    if current_user.role in [UserRole.MANAGER, UserRole.OPERATOR, UserRole.STORE]:
+        if not current_user.restaurante_id:
+            return []
+        return [current_user.restaurante_id]
+    
+    # Fallback seguro
+    if current_user.restaurante_id:
+        return [current_user.restaurante_id]
+    
+    return []
+
+
+def get_user_data_scope(
+    current_user: User = Depends(get_current_user)
+) -> str:
+    """
+    Retorna o escopo de dados do usuário baseado no seu perfil.
+    
+    Útil para lógica condicional no backend e logging.
+    
+    Returns:
+        str: Escopo de dados (TODOS, REDE, LOJA, PROPRIOS)
+    
+    Uso:
+        @router.get("/relatorio")
+        def gerar_relatorio(
+            scope: str = Depends(get_user_data_scope)
+        ):
+            if scope == "TODOS":
+                # Relatório completo do sistema
+                pass
+            elif scope == "REDE":
+                # Relatório da rede
+                pass
+            elif scope == "LOJA":
+                # Relatório da loja
+                pass
+    """
+    # Mapeamento de perfil para escopo
+    scope_mapping = {
+        UserRole.ADMIN: "TODOS",
+        UserRole.CONSULTANT: "TODOS",
+        UserRole.OWNER: "REDE",
+        UserRole.MANAGER: "LOJA",
+        UserRole.OPERATOR: "LOJA",
+        UserRole.STORE: "LOJA"  # Retrocompatibilidade
+    }
+    
+    return scope_mapping.get(current_user.role, "LOJA")

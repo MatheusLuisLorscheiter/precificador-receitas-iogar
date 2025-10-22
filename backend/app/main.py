@@ -33,6 +33,15 @@ try:
     except ImportError as e:
         print(f"⚠️  Módulo users não encontrado: {e}")
         HAS_USERS = False
+
+    # Importar endpoint de gerenciamento de permissões (ADMIN)
+    try:
+        from app.api.endpoints import permissions
+        HAS_PERMISSIONS = True
+        print("[OK] Módulo permissions importado com sucesso")
+    except ImportError as e:
+        print(f"⚠️  Módulo permissions não encontrado: {e}")
+        HAS_PERMISSIONS = False
     
     # Importar endpoints de restaurantes
     try:
@@ -769,6 +778,11 @@ if HAS_AUTH:
 if HAS_USERS:
     app.include_router(users.router, prefix="/api/v1/users", tags=["Usuários"])
     print("[OK] Router de usuários registrado: /api/v1/users")
+
+# Router de gerenciamento de permissões (apenas ADMIN)
+if HAS_PERMISSIONS:
+    app.include_router(permissions.router, prefix="/api/v1/permissions", tags=["Permissões"])
+    print("[OK] Router de permissões registrado: /api/v1/permissions")
     
 #   ===================================================================================================
 #   REGISTRAR ROUTERS - MÓDULOS DO SISTEMA
