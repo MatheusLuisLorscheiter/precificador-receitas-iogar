@@ -6,17 +6,20 @@
 // Autor: Will - Empresa: IOGAR
 // ============================================================================
 
-// Detectar ambiente (usar variável de ambiente primeiro, fallback para hostname)
-const envFromVite = import.meta.env.VITE_ENVIRONMENT;
-const isProduction = envFromVite === 'production' || 
-                     (window.location.hostname !== 'localhost' && 
-                      window.location.hostname !== '127.0.0.1');
+// Detectar ambiente baseado no hostname
+const hostname = window.location.hostname;
+const isRenderProduction = hostname.includes('onrender.com');
+const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
 
-// URL base da API - prioridade para variável de ambiente
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 
-                            (isProduction 
-                              ? 'https://food-cost-backend.onrender.com'
-                              : 'http://localhost:8000');
+// Determinar ambiente
+const isProduction = isRenderProduction || !isLocalhost;
+
+// URL base da API - PRIORIDADE para produção detectada
+export const API_BASE_URL = isRenderProduction
+  ? 'https://food-cost-backend.onrender.com'  // Produção no Render
+  : isLocalhost
+    ? 'http://localhost:8000'  // Desenvolvimento local
+    : (import.meta.env.VITE_API_URL || 'http://localhost:8000');  // Fallback
 
 // Outras configurações
 export const ENVIRONMENT = isProduction ? 'production' : 'development';
@@ -24,12 +27,9 @@ export const IS_DEVELOPMENT = !isProduction;
 export const IS_PRODUCTION = isProduction;
 
 // Log para debug
-if (IS_DEVELOPMENT) {
-  console.log('🔧 Ambiente: Desenvolvimento');
-  console.log('🌐 API URL:', API_BASE_URL);
-  console.log('📦 VITE_API_URL:', import.meta.env.VITE_API_URL);
-  console.log('🏷️ VITE_ENVIRONMENT:', import.meta.env.VITE_ENVIRONMENT);
-} else {
-  console.log('🚀 Ambiente: Producao');
-  console.log('🌐 API URL:', API_BASE_URL);
-}
+console.log('🌐 CONFIGURAÇÃO DO SISTEMA:');
+console.log('  - Hostname:', hostname);
+console.log('  - É Render?', isRenderProduction);
+console.log('  - É Localhost?', isLocalhost);
+console.log('  - Ambiente:', ENVIRONMENT);
+console.log('  - API URL:', API_BASE_URL);
