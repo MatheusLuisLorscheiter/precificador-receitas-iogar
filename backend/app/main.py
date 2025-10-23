@@ -93,6 +93,7 @@ from app.models.base import Base
 from app.models import taxonomia, taxonomia_alias, insumo, fornecedor, fornecedor_insumo, receita
 
 # Imports para variáveis de ambiente
+from app.core.config import settings
 import os
 import time
 
@@ -135,12 +136,12 @@ async def lifespan(app: FastAPI):
     # Shutdown: Limpeza se necessário
     print("🛑 Finalizando Food Cost System...")
 
-#   ===================================================================================================
-#   Configuração da aplicação FastAPI
-#   ===================================================================================================
+# ============================================================================
+# INICIALIZAÇÃO DA APLICAÇÃO FASTAPI
+# ============================================================================
 
 app = FastAPI(
-    title="Food Cost System",
+    title=settings.PROJECT_NAME,
     description="""
     **Sistema de Controle de Custos para Restaurantes**
     
@@ -158,7 +159,7 @@ app = FastAPI(
     - Sistema de variações de receitas
     - Relacionamento receitas ↔ insumos
     """,
-    version="1.0.0",
+    version=settings.VERSION,
     contact={
         "name": "Will - Food Cost System",
         "email": "will@foodcost.com",
@@ -166,6 +167,10 @@ app = FastAPI(
     license_info={
         "name": "MIT",
     },
+    docs_url=f"{settings.API_V1_STR}/docs",
+    redoc_url=f"{settings.API_V1_STR}/redoc",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    debug=settings.DEBUG,
     lifespan=lifespan
 )
 
@@ -232,9 +237,26 @@ else:
 # Log das origens permitidas para debug
 print(f"🔒 CORS - Origens permitidas: {allowed_origins}")
 
+# ============================================================================
+# CONFIGURAÇÃO DE CORS - Suporte a múltiplos ambientes
+# ============================================================================
+# Em desenvolvimento: aceita localhost
+# Em produção: aceita apenas domínios permitidos da variável ALLOWED_ORIGINS
+# ============================================================================
+
+import os
+
+# Obter origens permitidas da variável de ambiente
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
+allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
+
+# ============================================================================
+# CONFIGURAÇÃO DE CORS - Suporte a múltiplos ambientes
+# ============================================================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,  # Usar a lista configurada dinamicamente
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -762,6 +784,51 @@ def fix_remover_coluna_cnpj():
             "error": str(e),
             "status": "failed"
         }
+    
+# ============================================================================
+# HEALTH CHECK ENDPOINT
+# ============================================================================
+# Endpoint usado pelo Render para verificar se o serviço está funcionando
+# Retorna status da API e conexão com banco de dados
+# ============================================================================
+
+from fastapi import status
+from sqlalchemy import text
+from app.database import SessionLocal
+
+@app.get(
+    "/api/v1/health",
+    status_code=status.HTTP_200_OK,
+    tags=["Health Check"]
+)
+async def health_check():
+    """
+    Endpoint de health check para monitoramento
+    
+    Verifica:
+    - Status da API
+    - Conexão com banco de dados
+    
+    Returns:
+        dict: Status da aplicação
+    """
+    # Verificar conexão com banco de dados
+    db_status = "unknown"
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy",
+        "service": "Food Cost API",
+        "environment": settings.ENVIRONMENT,
+        "database": db_status,
+        "version": "settings.VERSION"
+    }
 
 # ============================================================================
 # REGISTRAR ROUTERS - AUTENTICAÇÃO (PRIORIDADE)

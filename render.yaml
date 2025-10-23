@@ -1,7 +1,7 @@
 # ============================================================================
 # Descrição: Deploy do Food Cost System no Render
 # Backend (API Python/FastAPI) + Frontend (React/Vite)
-# Data: 20/10/2025
+# Data: 23/10/2025
 # Autor: Will - Empresa: IOGAR
 # ============================================================================
 
@@ -15,22 +15,40 @@ services:
     region: oregon
     plan: free
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    
+    # Build command com migrations automáticas
+    buildCommand: |
+      pip install -r requirements.txt &&
+      python -m spacy download pt_core_news_sm &&
+      python -m alembic upgrade head
+    
     startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
       - key: ENVIRONMENT
         value: production
+      - key: DEBUG
+        value: "False"
       - key: SECRET_KEY
         generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
       - key: DATABASE_URL
         fromDatabase:
           name: food-cost-db
           property: connectionString
-      - key: CORS_ORIGINS
-        value: https://food-cost-frontend.onrender.com
-    healthCheckPath: /docs
+      - key: ALLOWED_ORIGINS
+        value: https://food-cost-frontend.onrender.com,https://www.food-cost-frontend.onrender.com
+      - key: API_V1_STR
+        value: /api/v1
+      - key: PROJECT_NAME
+        value: "Food Cost System"
+    
+    healthCheckPath: /api/v1/health
 
   # ==========================================================================
   # FRONTEND - React/Vite (Static Site)
@@ -41,7 +59,12 @@ services:
     region: oregon
     plan: free
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    
+    # Build com variáveis de ambiente
+    buildCommand: |
+      npm ci &&
+      npm run build
+    
     staticPublishPath: ./dist
     
     # Configuração para SPA - redirecionar todas rotas para index.html
@@ -61,12 +84,20 @@ services:
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
+      - path: /*
+        name: X-XSS-Protection
+        value: "1; mode=block"
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000; includeSubDomains
     
     envVars:
       - key: VITE_API_URL
         value: https://food-cost-backend.onrender.com
       - key: VITE_ENVIRONMENT
         value: production
+      - key: GENERATE_SOURCEMAP
+        value: "false"
 
 # ==========================================================================
 # BANCO DE DADOS - PostgreSQL
@@ -79,31 +110,14 @@ databases:
     region: oregon
 
 # ============================================================================
-# EXPLICAÇÃO:
+# CHANGELOG:
 # ============================================================================
-# 1. Backend (Web Service):
-#    - Roda FastAPI na porta dinâmica do Render ($PORT)
-#    - Conecta ao banco PostgreSQL automaticamente
-#    - CORS configurado para aceitar o frontend
-#
-# 2. Frontend (Static Site):
-#    - Build do React/Vite é servido como site estático
-#    - Todas as rotas redirecionam para index.html (SPA)
-#    - Variável VITE_API_URL aponta para o backend
-#
-# 3. Banco de Dados:
-#    - PostgreSQL gratuito do Render
-#    - Conectado automaticamente ao backend via DATABASE_URL
-#
+# [23/10/2025] - Versão otimizada
+# - Adicionado migrations automáticas no build (alembic upgrade head)
+# - Alterado CORS_ORIGINS para ALLOWED_ORIGINS (padrão FastAPI)
+# - Adicionado healthCheckPath correto (/api/v1/health)
+# - Adicionado mais variáveis de ambiente (JWT, DEBUG, etc)
+# - Alterado npm install para npm ci (mais rápido e confiável)
+# - Adicionado headers de segurança adicionais (HSTS, XSS)
+# - Desabilitado source maps em produção (segurança)
 # ============================================================================
-# DEPLOY:
-# ============================================================================
-# 1. Faça commit deste arquivo na raiz do projeto
-# 2. Conecte o repositório no Render Dashboard
-# 3. O Render detectará automaticamente o render.yaml
-# 4. Os 3 serviços serão criados automaticamente
-#
-# URLs geradas:
-# - Backend: https://food-cost-backend.onrender.com
-# - Frontend: https://food-cost-frontend.onrender.com
-# - Docs: https://food-cost-backend.onrender.com/docs

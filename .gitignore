@@ -27,6 +27,7 @@ share/python-wheels/
 *.pyc
 *.pyo
 *.pyd
+*.sqlite
 *.sqlite3
 *.db
 
@@ -151,6 +152,14 @@ ENV/
 env.bak/
 venv.bak/
 
+# Arquivos de ambiente (NUNCA commitar!)
+.env.production
+.env.*.local
+*.env
+
+
+
+
 # Manter arquivos de ambiente versionados
 !.env.development
 !.env.qa
@@ -185,7 +194,7 @@ cython_debug/
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
+.idea/
 
 # Abstra
 # Abstra is an AI-powered process automation framework.
@@ -243,6 +252,26 @@ node_modules/
 npm-debug.log
 yarn-debug.log
 yarn-error.log
+pnpm-debug.log*
+.pnpm-store/
+.cache/
+
+# IDEs
+*.swp
+*.swo
+*~
+.DS_Store
+.~lock.*
+
+# Alembic
+alembic/versions/*.pyc
+
+# Sistema de IA
+backend/app/ai/logs/*.log
+backend/app/ai/models/*.pkl
+
+# Render
+.render/
 
 # Docker
 *.pid
@@ -260,6 +289,7 @@ yarn-error.log
 # Logs
 *.log
 logs/
+*.log.*
 
 # Scripts de teste com credenciais
 backend/testar_senha.py
