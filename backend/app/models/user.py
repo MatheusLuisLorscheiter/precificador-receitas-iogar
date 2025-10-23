@@ -2,7 +2,7 @@
 # MODELO USER - Sistema de Usuários e Autenticação
 # ============================================================================
 # Descrição: Modelo para gerenciamento de usuários do sistema
-# Roles: ADMIN (administrador), CONSULTANT (consultor), STORE (loja)
+# Roles: ADMIN (administrador), CONSULTANT (consultor)
 # Data: 20/10/2025
 # Autor: Will - Empresa: IOGAR
 # ============================================================================
@@ -54,11 +54,6 @@ class UserRole(str, enum.Enum):
     OWNER = "OWNER"
     MANAGER = "MANAGER"
     OPERATOR = "OPERATOR"
-    
-    # Manter STORE para retrocompatibilidade (será migrado para MANAGER)
-    STORE = "STORE"
-
-
 
 # ============================================================================
 # MODELO USER
@@ -71,16 +66,16 @@ class User(Base):
     Campos obrigatórios:
     - username: Nome de usuário único para login
     - password_hash: Senha criptografada com bcrypt
-    - role: Perfil do usuário (ADMIN, CONSULTANT, STORE)
+    - role: Perfil do usuário (ADMIN, CONSULTANT)
     
     Campos opcionais:
-    - restaurante_id: Restaurante vinculado (obrigatório para STORE)
+    - restaurante_id: Restaurante vinculado
     - email: Email do usuário (futuro)
     - ativo: Status do usuário (ativo/inativo)
     - primeiro_acesso: Flag para forçar troca de senha
     
     Relacionamentos:
-    - N users : 1 restaurante (para usuários STORE)
+    - N users : 1 restaurante
     """
     
     __tablename__ = "users"
@@ -126,15 +121,15 @@ class User(Base):
     role = Column(
         SQLEnum(UserRole),
         nullable=False,
-        default=UserRole.STORE,
-        comment="Perfil do usuário: ADMIN, CONSULTANT ou STORE"
+        default=UserRole.MANAGER,
+        comment="Perfil do usuário: ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR"
     )
     
     restaurante_id = Column(
         Integer,
         ForeignKey("restaurantes.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Restaurante vinculado (obrigatório para STORE, opcional para outros)"
+        comment="Restaurante vinculado (obrigatório para PROPRIETÁRIO, GERENTE E OPERADOR, opcional para outros)"
     )
 
     # ========================================================================
@@ -165,7 +160,7 @@ class User(Base):
     # RELACIONAMENTOS
     # ========================================================================
     
-    # Relacionamento com restaurante (para usuários STORE)
+    # Relacionamento com restaurante (para usuários PROPRIETARIO, GERENTE E OPERADOR)
     restaurante = relationship(
         "Restaurante",
         back_populates="usuarios",

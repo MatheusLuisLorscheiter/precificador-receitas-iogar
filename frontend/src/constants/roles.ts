@@ -42,12 +42,6 @@ export const ROLE_INFO = {
     description: 'Funcionário operacional da loja',
     color: 'gray',
     icon: '👨‍🍳'
-  },
-  STORE: {
-    label: 'Loja (legado)',
-    description: 'Perfil antigo - usar MANAGER',
-    color: 'gray',
-    icon: '🏪'
   }
 } as const;
 
@@ -68,7 +62,7 @@ export const getRoleColor = (role: UserRole): string => {
 
 // Verificar se perfil precisa de restaurante vinculado
 export const roleNeedsRestaurant = (role: UserRole): boolean => {
-  return ['OWNER', 'MANAGER', 'OPERATOR', 'STORE'].includes(role);
+  return ['OWNER', 'MANAGER', 'OPERATOR'].includes(role);
 };
 
 // Verificar se perfil tem acesso total

@@ -128,9 +128,12 @@ class Restaurante(Base):
     
     # Relacionamento com usuários vinculados ao restaurante
     # Um restaurante pode ter vários usuários do tipo STORE
+    # IMPORTANTE: Especificar foreign_keys explicitamente para evitar ambiguidade
+    # pois existem duas FKs entre User e Restaurante (restaurante_id e created_by)
     usuarios = relationship(
         "User",
         back_populates="restaurante",
+        foreign_keys="[User.restaurante_id]",
         lazy="select",
         cascade="all, delete-orphan"
     )

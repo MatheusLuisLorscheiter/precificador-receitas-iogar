@@ -54,7 +54,7 @@ def list_receitas(
     - Filtra automaticamente por escopo de dados do usuário:
       * ADMIN/CONSULTANT: vê todas as receitas
       * OWNER: vê receitas de toda a rede
-      * MANAGER/OPERATOR/STORE: vê receitas apenas da sua loja
+      * MANAGER/OPERATOR: vê receitas apenas da sua loja
     """
     
     # Buscar receitas básicas com filtro de escopo

@@ -36,7 +36,7 @@ def listar_usuarios(
     limit: int = Query(100, ge=1, le=500, description="Limite de registros"),
     role: Optional[str] = Query(
         None, 
-        description="Filtrar por role (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR, STORE)"
+        description="Filtrar por role (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR)"
     ),
     ativo: Optional[bool] = Query(None, description="Filtrar por status ativo"),
     restaurante_id: Optional[int] = Query(None, description="Filtrar por restaurante"),
@@ -50,7 +50,7 @@ def listar_usuarios(
     Acesso: Apenas ADMIN
     
     Filtros disponíveis:
-    - role: Filtrar por perfil (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR, STORE)
+    - role: Filtrar por perfil (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR)
     - ativo: Filtrar por status (true/false)
     - restaurante_id: Filtrar usuários de um restaurante específico
     - busca: Buscar por username ou email (case-insensitive)
@@ -68,7 +68,7 @@ def listar_usuarios(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Role inválida. Use: ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR ou STORE"
+                detail=f"Role inválida. Use: ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR"
             )
     
     if ativo is not None:
@@ -135,7 +135,7 @@ def criar_usuario(
     Validações:
     - Username deve ser único
     - Email deve ser único
-    - Se role = STORE, restaurante_id é obrigatório
+    - Se role = restaurante_id é obrigatório
     - Senha deve ter mínimo 8 caracteres, letra e número
     
     O usuário é criado com primeiro_acesso=true para forçar troca de senha.
@@ -161,12 +161,22 @@ def criar_usuario(
             detail=f"Email '{user_data.email}' já está em uso"
         )
     
-    # Validar restaurante_id para STORE
-    if user_data.role == UserRole.STORE:
+    # Validar restaurante_id para perfis que precisam de restaurante
+    roles_com_restaurante = [UserRole.OWNER, UserRole.MANAGER, UserRole.OPERATOR]
+    roles_sem_restaurante = [UserRole.ADMIN, UserRole.CONSULTANT]
+
+    if user_data.role in roles_com_restaurante:
         if not user_data.restaurante_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Usuários STORE devem ter um restaurante vinculado"
+                detail=f"Usuários {user_data.role.value} devem ter um restaurante vinculado"
+            )
+
+    if user_data.role in roles_sem_restaurante:
+        if user_data.restaurante_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Usuários {user_data.role.value} não devem ter restaurante vinculado"
             )
         
         # Verificar se restaurante existe
@@ -226,7 +236,7 @@ def atualizar_usuario(
     - username (se não estiver em uso)
     - email (se não estiver em uso)
     - role
-    - restaurante_id (obrigatório se role = STORE)
+    - restaurante_id
     - ativo
     
     Nota: Para trocar senha, use o endpoint /auth/change-password
@@ -285,13 +295,22 @@ def atualizar_usuario(
     
     # Atualizar restaurante_id (se fornecido)
     if user_data.restaurante_id is not None:
-        # Validar se role atual (ou nova) é STORE
+        # Validar se role requer restaurante
         role_final = user_data.role if user_data.role else user.role
         
-        if role_final == UserRole.STORE and user_data.restaurante_id is None:
+        roles_com_restaurante = [UserRole.OWNER, UserRole.MANAGER, UserRole.OPERATOR]
+        roles_sem_restaurante = [UserRole.ADMIN, UserRole.CONSULTANT]
+        
+        if role_final in roles_com_restaurante and user_data.restaurante_id is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Usuários STORE devem ter um restaurante vinculado"
+                detail=f"Usuários {role_final.value} devem ter um restaurante vinculado"
+            )
+        
+        if role_final in roles_sem_restaurante and user_data.restaurante_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Usuários {role_final.value} não devem ter restaurante vinculado"
             )
         
         user.restaurante_id = user_data.restaurante_id

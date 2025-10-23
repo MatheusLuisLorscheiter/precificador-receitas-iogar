@@ -56,6 +56,7 @@ interface PermissionsManagerProps {
 }
 
 const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
+  console.log('🚀 PermissionsManager renderizado!');
   const [perfilSelecionado, setPerfilSelecionado] = useState<string>('MANAGER');
   const [permissoes, setPermissoes] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,30 +64,58 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
   const [mensagem, setMensagem] = useState<{ tipo: 'success' | 'error', texto: string } | null>(null);
 
   // Perfis disponíveis (exceto ADMIN que tem tudo)
-  const perfisDisponiveis = ['CONSULTANT', 'OWNER', 'MANAGER', 'OPERATOR', 'STORE'];
+  const perfisDisponiveis = ['CONSULTANT', 'OWNER', 'MANAGER', 'OPERATOR'];
 
   // Carregar permissões do perfil selecionado
   useEffect(() => {
+    console.log('⚡ useEffect disparado! Perfil:', perfilSelecionado);
     carregarPermissoes();
   }, [perfilSelecionado]);
 
   const carregarPermissoes = async () => {
+    console.log('🔍 Iniciando carregamento de permissões para:', perfilSelecionado);
     setLoading(true);
+    setMensagem(null);
     try {
-      const response = await fetch(`/api/v1/permissions/role/${perfilSelecionado}`, {
+      const token = localStorage.getItem('foodcost_access_token');
+      console.log('🔑 Token encontrado:', token ? 'SIM' : 'NÃO');
+      
+      if (!token) {
+        console.log('❌ Token não encontrado!');
+        setMensagem({ tipo: 'error', texto: 'Token de autenticação não encontrado' });
+        setLoading(false);
+        return;
+      }
+
+      const url = `http://localhost:8000/api/v1/permissions/role/${perfilSelecionado}`;
+      console.log('📡 Fazendo requisição para:', url);
+
+      const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
+      console.log('📥 Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Dados recebidos:', data);
         setPermissoes(data);
+      } else if (response.status === 401 || response.status === 403) {
+        console.log('🚫 Sem permissão');
+        setMensagem({ tipo: 'error', texto: 'Sem permissão para acessar' });
+      } else {
+        const errorData = await response.json();
+        console.log('❌ Erro:', errorData);
+        setMensagem({ tipo: 'error', texto: errorData.detail || 'Erro ao carregar permissões' });
       }
     } catch (error) {
-      console.error('Erro ao carregar permissões:', error);
-      setMensagem({ tipo: 'error', texto: 'Erro ao carregar permissões' });
+      console.error('💥 Erro na requisição:', error);
+      setMensagem({ tipo: 'error', texto: 'Erro ao conectar com o servidor' });
     } finally {
+      console.log('🏁 Finalizando carregamento');
       setLoading(false);
     }
   };
@@ -112,7 +141,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
     try {
       // Atualizar cada permissão modificada
       for (const permissao of permissoes) {
-        await fetch(`/api/v1/permissions/${permissao.id}`, {
+        await fetch(`http://localhost:8000/api/v1/permissions/${permissao.id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -179,8 +208,9 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
           <select
             value={perfilSelecionado}
             onChange={(e) => setPerfilSelecionado(e.target.value)}
-            className="w-full max-w-md px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full max-w-md px-4 py-3 bg-white border-2 border-green-500 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-600"
           >
+            <option value="">Selecione o Perfil</option>
             {perfisDisponiveis.map(role => (
               <option key={role} value={role}>
                 {getRoleLabel(role as any)} - {ROLE_INFO[role as keyof typeof ROLE_INFO].description}
@@ -239,8 +269,8 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
                                 value={permissao.data_scope}
                                 onChange={(e) => alterarEscopo(permissao.id, e.target.value)}
                                 disabled={!permissao.enabled}
-                                className={`px-3 py-2 border rounded-lg text-sm ${
-                                  permissao.enabled ? 'border-gray-300' : 'border-gray-200 bg-gray-50 text-gray-400'
+                                className={`px-3 py-2 border-2 rounded-lg text-sm ${
+                                  permissao.enabled ? 'bg-white border-green-500' : 'border-gray-200 bg-gray-50 text-gray-400'
                                 }`}
                               >
                                 {ESCOPOS.map(escopo => (

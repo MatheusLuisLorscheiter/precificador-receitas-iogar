@@ -121,41 +121,30 @@ class UserCreate(BaseModel):
     @field_validator('restaurante_id')
     @classmethod
     def validate_restaurante_for_store(cls, v, info):
-        """
-        Valida restaurante_id baseado no role.
-        
-        Regras:
-        - OWNER, MANAGER, OPERATOR, STORE: restaurante_id obrigatório
-        - ADMIN, CONSULTANT: restaurante_id deve ser None
-        """
+        """Valida restaurante_id baseado no role"""
         if 'role' in info.data:
             role = info.data['role']
             
-            # Perfis que PRECISAM de restaurante vinculado
-            roles_precisam_restaurante = [
+            # Perfis que PRECISAM de restaurante
+            roles_com_restaurante = [
                 UserRoleEnum.OWNER,
                 UserRoleEnum.MANAGER,
-                UserRoleEnum.OPERATOR,
-                UserRoleEnum.STORE
+                UserRoleEnum.OPERATOR
             ]
             
-            # Perfis que NÃO DEVEM ter restaurante vinculado
+            # Perfis que NÃO DEVEM ter restaurante
             roles_sem_restaurante = [
                 UserRoleEnum.ADMIN,
                 UserRoleEnum.CONSULTANT
             ]
             
-            # Se role precisa de restaurante mas não tem
-            if role in roles_precisam_restaurante and v is None:
-                raise ValueError(
-                    f"Usuários {role.value} devem ter um restaurante vinculado"
-                )
+            # Validar se precisa de restaurante
+            if role in roles_com_restaurante and v is None:
+                raise ValueError(f"Usuários {role.value} devem ter um restaurante vinculado")
             
-            # Se role não deve ter restaurante mas tem
+            # Validar se não deve ter restaurante
             if role in roles_sem_restaurante and v is not None:
-                raise ValueError(
-                    f"Usuários {role.value} não devem ter restaurante vinculado"
-                )
+                raise ValueError(f"Usuários {role.value} não devem ter restaurante vinculado")
         
         return v
 
@@ -224,41 +213,30 @@ class UserUpdate(BaseModel):
     @field_validator('restaurante_id')
     @classmethod
     def validate_restaurante_for_role(cls, v, info):
-        """
-        Valida restaurante_id baseado no role.
-        
-        Regras:
-        - OWNER, MANAGER, OPERATOR, STORE: restaurante_id obrigatório
-        - ADMIN, CONSULTANT: restaurante_id deve ser None
-        """
+        """Valida restaurante_id baseado no role"""
         if 'role' in info.data and info.data['role'] is not None:
             role = info.data['role']
             
-            # Perfis que PRECISAM de restaurante vinculado
-            roles_precisam_restaurante = [
+            # Perfis que PRECISAM de restaurante
+            roles_com_restaurante = [
                 UserRoleEnum.OWNER,
                 UserRoleEnum.MANAGER,
-                UserRoleEnum.OPERATOR,
-                UserRoleEnum.STORE
+                UserRoleEnum.OPERATOR
             ]
             
-            # Perfis que NÃO DEVEM ter restaurante vinculado
+            # Perfis que NÃO DEVEM ter restaurante
             roles_sem_restaurante = [
                 UserRoleEnum.ADMIN,
                 UserRoleEnum.CONSULTANT
             ]
             
-            # Se role precisa de restaurante mas não tem
-            if role in roles_precisam_restaurante and v is None:
-                raise ValueError(
-                    f"Usuários {role.value} devem ter um restaurante vinculado"
-                )
+            # Validar se precisa de restaurante
+            if role in roles_com_restaurante and v is None:
+                raise ValueError(f"Usuários {role.value} devem ter um restaurante vinculado")
             
-            # Se role não deve ter restaurante mas tem
+            # Validar se não deve ter restaurante
             if role in roles_sem_restaurante and v is not None:
-                raise ValueError(
-                    f"Usuários {role.value} não devem ter restaurante vinculado"
-                )
+                raise ValueError(f"Usuários {role.value} não devem ter restaurante vinculado")
         
         return v
 

@@ -1723,6 +1723,18 @@ const FoodCostSystem: React.FC = () => {
     return abaSalva;
   });
 
+  // Helper para exibir nome dos perfis
+  const getRoleLabel = (role: string): string => {
+    const labels = {
+      'ADMIN': 'Administrador',
+      'CONSULTANT': 'Consultor',
+      'OWNER': 'Proprietário da Rede',
+      'MANAGER': 'Gerente de Loja',
+      'OPERATOR': 'Operador/Funcionário'
+    };
+    return labels[role as keyof typeof labels] || role;
+  }
+
   // ============================================================================
   // ESTADO - CONTROLE DE ABAS DENTRO DE CONFIGURAÇÕES
   // ============================================================================
@@ -1827,7 +1839,7 @@ const FoodCostSystem: React.FC = () => {
     username: '',
     email: '',
     password: '',
-    role: 'STORE',
+    role: 'MANAGER',
     restaurante_id: null,
     ativo: true
   });
@@ -2277,15 +2289,17 @@ const fetchInsumos = async () => {
       return;
     }
 
-    // Validar restaurante para usuários STORE
-    if (formUsuario.role === 'STORE' && !formUsuario.restaurante_id) {
-      showErrorPopup('Campo Obrigatório', 'Usuários STORE devem ter um restaurante vinculado');
+    // Validar restaurante para perfis que precisam
+    const rolesComRestaurante = ['OWNER', 'MANAGER', 'OPERATOR'];
+    if (rolesComRestaurante.includes(formUsuario.role) && !formUsuario.restaurante_id) {
+      showErrorPopup('Campo Obrigatório', `Usuários ${formUsuario.role} devem ter um restaurante vinculado`);
       return;
     }
 
-    // Usuários não-STORE não podem ter restaurante
-    if (formUsuario.role !== 'STORE' && formUsuario.restaurante_id) {
-      showErrorPopup('Erro de Validação', 'Apenas usuários STORE podem ter restaurante vinculado');
+    // Validar se role não deve ter restaurante
+    const rolesSemRestaurante = ['ADMIN', 'CONSULTANT'];
+    if (rolesSemRestaurante.includes(formUsuario.role) && formUsuario.restaurante_id) {
+      showErrorPopup('Erro de Validação', `Usuários ${formUsuario.role} não devem ter restaurante vinculado`);
       return;
     }
 
@@ -2343,7 +2357,7 @@ const fetchInsumos = async () => {
         username: '',
         email: '',
         password: '',
-        role: 'STORE',
+        role: 'MANAGER',
         restaurante_id: null,
         ativo: true
       });
@@ -2385,15 +2399,18 @@ const fetchInsumos = async () => {
       return;
     }
 
-    // Validar restaurante para usuários STORE
-    if (formUsuario.role === 'STORE' && !formUsuario.restaurante_id) {
-      showErrorPopup('Campo Obrigatório', 'Usuários STORE devem ter um restaurante vinculado');
+    // Validar restaurante para perfis que precisam
+    const rolesComRestaurante = ['OWNER', 'MANAGER', 'OPERATOR'];
+    const rolesSemRestaurante = ['ADMIN', 'CONSULTANT'];
+
+    if (rolesComRestaurante.includes(formUsuario.role) && !formUsuario.restaurante_id) {
+      showErrorPopup('Campo Obrigatório', `Usuários ${formUsuario.role} devem ter um restaurante vinculado`);
       return;
     }
 
-    // Usuários não-STORE não podem ter restaurante
-    if (formUsuario.role !== 'STORE' && formUsuario.restaurante_id) {
-      showErrorPopup('Erro de Validação', 'Apenas usuários STORE podem ter restaurante vinculado');
+    // Usuários ADMIN e CONSULTANT não podem ter restaurante
+    if (rolesSemRestaurante.includes(formUsuario.role) && formUsuario.restaurante_id) {
+      showErrorPopup('Erro de Validação', `Usuários ${formUsuario.role} não devem ter restaurante vinculado`);
       return;
     }
 
@@ -2402,7 +2419,7 @@ const fetchInsumos = async () => {
       // Criar payload sem senha (não alteramos senha nesta função)
       const { password, ...payloadSemSenha } = formUsuario;
 
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/${editingUsuario.id}/`, {
+      const response = await fetch(`http://localhost:8000/api/v1/users/${editingUsuario.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -2428,7 +2445,7 @@ const fetchInsumos = async () => {
         username: '',
         email: '',
         password: '',
-        role: 'STORE',
+        role: 'MANAGER',
         restaurante_id: null,
         ativo: true
       });
@@ -2448,6 +2465,52 @@ const fetchInsumos = async () => {
       setLoadingUsuarios(false);
     }
   };
+
+  // ============================================================================
+  // FUNÇÃO: EXCLUSÃO DO USUÁRIO 
+  // ============================================================================
+
+  const excluirUsuario = async (usuario: Usuario) => {
+    // Confirmação antes de excluir
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja excluir o usuário "${usuario.username}"?\n\nEsta ação não pode ser desfeita!`
+    );
+
+    if (!confirmacao) return;
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(`http://localhost:8000/api/v1/users/${usuario.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('foodcost_access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erro ao excluir usuário');
+      }
+
+      showSuccessPopup(
+        'Usuário Excluído',
+        `${usuario.username} foi excluído com sucesso!`
+      );
+
+      // Recarregar lista
+      await fetchUsuarios();
+
+    } catch (error: any) {
+      console.error('Erro ao excluir usuário:', error);
+      showErrorPopup('Erro ao Excluir', error.message || 'Não foi possível excluir o usuário');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   // ============================================================================
   // FUNÇÃO: ALTERNAR STATUS DO USUÁRIO (ATIVAR/DESATIVAR)
@@ -2580,7 +2643,7 @@ const fetchInsumos = async () => {
       username: '',
       email: '',
       password: '',
-      role: 'STORE',
+      role: 'MANAGER',
       restaurante_id: null,
       ativo: true
     });
@@ -2613,7 +2676,7 @@ const fetchInsumos = async () => {
       username: '',
       email: '',
       password: '',
-      role: 'STORE',
+      role: 'MANAGER',
       restaurante_id: null,
       ativo: true
     });
@@ -7848,10 +7911,6 @@ const Receitas = React.memo(() => {
         onDuplicate={handleDuplicateFromPopup}
         onDelete={handleDeleteFromPopup}
       />
-      {/* Modal de Gerenciamento de Permissões */}
-      {mostrarPermissoes && (
-        <PermissionsManager onClose={() => setMostrarPermissoes(false)} />
-      )}
     </div>
   );
 }); // ← AQUI ESTÁ O FECHAMENTO DO React.memo
@@ -9486,6 +9545,9 @@ return (
           {activeTab === 'receitas' && <Receitas />}
           {activeTab === 'fornecedores' && <Fornecedores />}
           {activeTab === 'ia' && <ClassificadorIA />}
+
+          {/* Página de Controle de Usuários */}
+          {activeTab === 'usuarios' && <Settings />}
           
           {/* Páginas em desenvolvimento - Automação */}
           {activeTab === 'automacao' && (
@@ -9582,12 +9644,17 @@ return (
                   <p className="text-gray-600 text-sm mb-4">
                     Autenticação JWT e permissões
                   </p>
-                  <button className="w-full py-2 px-4 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors">
+                  <button 
+                    onClick={() => {
+                      console.log('🔘 Abrindo modal de permissões');
+                      setMostrarPermissoes(true);
+                    }}
+                    className="w-full py-2 px-4 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100 transition-colors"
+                  >
                     Gerenciar
                   </button>
                 </div>
               </div>
-
               {/* Seção de estatísticas da automação */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -9737,7 +9804,9 @@ return (
                                 <option value="">Todos os perfis</option>
                                 <option value="ADMIN">Admin</option>
                                 <option value="CONSULTANT">Consultor</option>
-                                <option value="STORE">Loja</option>
+                                <option value="OWNER">Proprietário</option>
+                                <option value="MANAGER">Gerente de Loja</option>
+                                <option value="OPERATOR">Operador</option>
                               </select>
 
                               {/* Filtro por Status */}
@@ -9808,7 +9877,30 @@ return (
                                   </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                  {usuarios.map((usuario) => {
+                                  {usuarios
+                                    .filter(usuario => {
+                                      // Filtro por role
+                                      if (filtroRoleUsuario && usuario.role !== filtroRoleUsuario) {
+                                        return false;
+                                      }
+                                      
+                                      // Filtro por status
+                                      if (filtroStatusUsuario && usuario.ativo.toString() !== filtroStatusUsuario) {
+                                        return false;
+                                      }
+                                      
+                                      // Filtro por busca
+                                      if (buscaUsuario) {
+                                        const termo = buscaUsuario.toLowerCase();
+                                        if (!usuario.username.toLowerCase().includes(termo) && 
+                                            !usuario.email.toLowerCase().includes(termo)) {
+                                          return false;
+                                        }
+                                      }
+                                      
+                                      return true;
+                                    })
+                                    .map((usuario) => {
                                     const restauranteNome = usuario.restaurante_id
                                       ? restaurantes.find(r => r.id === usuario.restaurante_id)?.nome || 'N/A'
                                       : '-';
@@ -9845,7 +9937,7 @@ return (
                                               ? 'bg-blue-100 text-blue-800'
                                               : 'bg-green-100 text-green-800'
                                           }`}>
-                                            {usuario.role === 'ADMIN' ? 'Administrador' : usuario.role === 'CONSULTANT' ? 'Consultor' : 'Loja'}
+                                            {getRoleLabel(usuario.role)}
                                           </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -9870,13 +9962,11 @@ return (
                                               <Edit2 className="w-4 h-4" />
                                             </button>
                                             <button
-                                              onClick={() => toggleStatusUsuario(usuario)}
-                                              className={`${
-                                                usuario.ativo ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
-                                              } transition-colors`}
-                                              title={usuario.ativo ? 'Desativar usuário' : 'Ativar usuário'}
+                                              onClick={() => excluirUsuario(usuario)}
+                                              className="text-red-600 hover:text-red-900 transition-colors"
+                                              title="Excluir usuário"
                                             >
-                                              {usuario.ativo ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                                              <Trash2 className="w-4 h-4" />
                                             </button>
                                             <button
                                               onClick={() => resetarSenhaUsuario(usuario)}
@@ -9999,32 +10089,46 @@ return (
                         </label>
                         <select
                           value={formUsuario.role}
-                          onChange={(e) => handleUsuarioFormChange('role', e.target.value as 'ADMIN' | 'CONSULTANT' | 'STORE')}
+                          onChange={(e) => handleUsuarioFormChange('role', e.target.value as 'ADMIN' | 'CONSULTANT' | 'OWNER' | 'MANAGER' | 'OPERATOR')}
                           className="w-full px-4 py-2 border-2 border-green-500 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-600 bg-white"
                         >
-                          <option value="STORE">Loja - Acesso restrito ao seu restaurante</option>
-                          <option value="CONSULTANT">Consultor - Acesso a todos os restaurantes</option>
                           <option value="ADMIN">Administrador - Acesso total ao sistema</option>
+                          <option value="CONSULTANT">Consultor - Acesso a todos os restaurantes</option>
+                          <option value="OWNER">Proprietário da Rede - Dono da rede de restaurantes</option>
+                          <option value="MANAGER">Gerente de Loja - Gerencia uma loja específica</option>
+                          <option value="OPERATOR">Operador/Funcionário - Funcionário operacional</option>
                         </select>
                         
                         <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                           <p className="text-xs text-gray-700">
                             {formUsuario.role === 'ADMIN' && (
                               <>
-                                <strong>Administrador:</strong> Acesso total ao sistema, incluindo gerenciamento de usuários, 
-                                configurações globais e todos os módulos.
+                                <strong>Administrador:</strong> Controle total do sistema, gerencia usuários, 
+                                permissões, configurações e acessa logs de auditoria.
                               </>
                             )}
                             {formUsuario.role === 'CONSULTANT' && (
                               <>
-                                <strong>Consultor:</strong> Acesso completo a insumos, receitas, fornecedores e restaurantes. 
-                                Não pode gerenciar usuários ou acessar configurações do sistema.
+                                <strong>Consultor:</strong> Acesso a todas as redes e lojas. Gerencia insumos, 
+                                receitas, fornecedores e restaurantes. Sem acesso administrativo.
                               </>
                             )}
-                            {formUsuario.role === 'STORE' && (
+                            {formUsuario.role === 'OWNER' && (
                               <>
-                                <strong>Loja:</strong> Acesso apenas aos dados do restaurante vinculado. 
-                                Pode gerenciar receitas e visualizar insumos do seu restaurante.
+                                <strong>Proprietário da Rede:</strong> Dono de uma rede de restaurantes. 
+                                Acessa todas as lojas da sua rede e pode gerenciar receitas para toda a rede.
+                              </>
+                            )}
+                            {formUsuario.role === 'MANAGER' && (
+                              <>
+                                <strong>Gerente de Loja:</strong> Gerencia uma loja específica. 
+                                Pode criar/editar receitas e insumos, gerenciar relatórios da loja.
+                              </>
+                            )}
+                            {formUsuario.role === 'OPERATOR' && (
+                              <>
+                                <strong>Operador/Funcionário:</strong> Funcionário operacional da loja. 
+                                Visualiza receitas e executa tarefas básicas. Acesso somente leitura.
                               </>
                             )}
                           </p>
@@ -10033,35 +10137,37 @@ return (
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Restaurante {formUsuario.role === 'STORE' && <span className="text-red-500">*</span>}
+                          Restaurante {['OWNER', 'MANAGER', 'OPERATOR'].includes(formUsuario.role) && <span className="text-red-500">*</span>}
                         </label>
                         <select
                           value={formUsuario.restaurante_id || ''}
                           onChange={(e) => handleUsuarioFormChange('restaurante_id', e.target.value ? parseInt(e.target.value) : null)}
-                          disabled={formUsuario.role !== 'STORE'}
+                          disabled={!['OWNER', 'MANAGER', 'OPERATOR'].includes(formUsuario.role)}
                           className={`w-full px-4 py-2 border-2 rounded-lg focus:ring-2 focus:ring-green-500 bg-white ${
-                            formUsuario.role !== 'STORE' 
+                            !['OWNER', 'MANAGER', 'OPERATOR'].includes(formUsuario.role)
                               ? 'border-gray-300 opacity-50 cursor-not-allowed' 
                               : 'border-green-500 focus:border-green-600'
                           }`}
                         >
                           <option value="">
-                            {formUsuario.role === 'STORE' ? 'Selecione um restaurante' : 'Não aplicável'}
+                            {['OWNER', 'MANAGER', 'OPERATOR'].includes(formUsuario.role) 
+                              ? 'Selecione um restaurante' 
+                              : 'Não aplicável'
+                            }
                           </option>
                           {restaurantes.map((rest) => (
                             <option key={rest.id} value={rest.id}>
-                              {rest.nome}
+                              {rest.nome} {rest.eh_matriz ? '(Matriz)' : ''}
                             </option>
                           ))}
                         </select>
                         <p className="text-xs text-gray-500 mt-1">
-                          {formUsuario.role === 'STORE' 
-                            ? 'Obrigatório para usuários do tipo Loja'
-                            : 'Disponível apenas para usuários do tipo Loja'
+                          {['OWNER', 'MANAGER', 'OPERATOR'].includes(formUsuario.role)
+                            ? 'Obrigatório - Vincule o usuário a um restaurante/rede'
+                            : 'Disponível apenas para Proprietário, Gerente e Operador'
                           }
                         </p>
                       </div>
-
                       <div>
                         <label className="flex items-center gap-3 cursor-pointer">
                           <input
@@ -10184,7 +10290,11 @@ return (
           </div>
         </div>
       )}
-
+      {/* Modal de Gerenciamento de Permissões */}
+      {console.log('🎯 Estado mostrarPermissoes:', mostrarPermissoes)}
+      {mostrarPermissoes && (
+        <PermissionsManager onClose={() => setMostrarPermissoes(false)} />
+      )}
 
       </div>
     </>

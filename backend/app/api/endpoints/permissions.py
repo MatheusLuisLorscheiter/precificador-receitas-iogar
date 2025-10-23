@@ -106,7 +106,7 @@ def listar_permissoes(
     Acesso: Apenas ADMIN
     
     Filtros disponíveis:
-    - role: Filtrar por perfil (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR, STORE)
+    - role: Filtrar por perfil (ADMIN, CONSULTANT, OWNER, MANAGER, OPERATOR)
     - resource: Filtrar por recurso (DASHBOARD, INSUMOS, RECEITAS, etc)
     - action: Filtrar por ação (VISUALIZAR, CRIAR, EDITAR, DELETAR, GERENCIAR)
     - enabled: Filtrar por status (true/false)
