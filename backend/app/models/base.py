@@ -16,15 +16,10 @@ Base = declarative_base()
 class BaseModel(Base):
     """
     Modelo base com campos comuns para insumos e receitas.
-    
     Todos os outros modelos herdam desta classe.
     
-    ATENÇÃO: Campo 'fator' agora é Float para aceitar decimais (0.5, 0.75, 20.0)
-    
-    Sistema de conversão por fator:
-    - Peso: 1kg = fator 1.0, 500g = fator 0.5
-    - Volume: 1L = fator 1.0, 750ml = fator 0.75  
-    - Unidades: 1 caixa com 20 unidades = fator 20.0
+    NOTA: Campo 'fator' foi removido conforme nova regra de negócio.
+    Agora trabalhamos apenas com quantidade e unidade diretamente.
     """
     __abstract__ = True  # IMPORTANTE: Marca como classe abstrata
     
@@ -39,7 +34,7 @@ class BaseModel(Base):
     codigo = Column(String(50), unique=True, nullable=False, index=True)
     nome = Column(String(255), nullable=False)
     quantidade = Column(Integer, default=1)
-    fator = Column(Float, default=1.0)  # ✅ CORRIGIDO: Float em vez de Integer
+    # Campo fator removido - não é mais necessário
     unidade = Column(String(20), nullable=False) 
     preco_compra = Column(Integer, nullable=True, comment="Preço de compra em centavos (NULL = sem preço definido)")
 
