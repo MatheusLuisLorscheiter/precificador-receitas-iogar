@@ -846,6 +846,46 @@ if HAS_USERS:
     app.include_router(users.router, prefix="/api/v1/users", tags=["Usuários"])
     print("[OK] Router de usuários registrado: /api/v1/users")
 
+# ============================================================================
+# REGISTRAR ROUTER DE PERMISSÕES
+# ============================================================================
+
+# Importar router de permissions
+try:
+    from app.api.endpoints import permissions
+    HAS_PERMISSIONS = True
+    print("✅ Módulo permissions importado com sucesso")
+except ImportError as e:
+    HAS_PERMISSIONS = False
+    print(f"❌ Módulo permissions não encontrado: {e}")
+
+# Registrar router de permissions
+if HAS_PERMISSIONS:
+    try:
+        app.include_router(
+            permissions.router, 
+            prefix="/api/v1/permissions", 
+            tags=["Permissões"],
+            responses={
+                403: {"description": "Acesso negado - apenas ADMIN"},
+                404: {"description": "Permissão não encontrada"},
+                422: {"description": "Erro de validação"}
+            }
+        )
+        print("[OK] Router de permissões registrado: /api/v1/permissions")
+        
+        # Verificar se o router tem rotas registradas
+        print(f"   Rotas registradas no router permissions: {len(permissions.router.routes)}")
+        for route in permissions.router.routes:
+            print(f"   - {route.methods} {route.path}")
+    except Exception as e:
+        print(f"❌ ERRO ao registrar router permissions: {e}")
+        import traceback
+        traceback.print_exc()
+else:
+    print("❌ CRÍTICO: Router permissions NÃO foi registrado!")
+    print("   O gerenciamento de permissões NÃO funcionará!")
+
 # Router de limpeza de dados (apenas ADMIN)
 if HAS_LIMPEZA_DADOS:
     app.include_router(

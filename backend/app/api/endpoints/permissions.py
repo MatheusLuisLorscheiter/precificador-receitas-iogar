@@ -403,3 +403,181 @@ def resetar_permissoes_perfil(
         "message": f"Permissões do perfil {role} resetadas para o padrão",
         "role": role
     }
+
+# ============================================================================
+# ENDPOINT: GERAR TODAS AS PERMISSÕES PARA UM PERFIL
+# ============================================================================
+
+@router.post("/generate/{role}", status_code=status.HTTP_201_CREATED)
+def gerar_permissoes_completas(
+    role: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """
+    Gera todas as combinações de permissões possíveis para um perfil.
+    
+    Acesso: Apenas ADMIN
+    
+    Este endpoint cria registros para todas as combinações de:
+    - Recursos (DASHBOARD, INSUMOS, RECEITAS, etc)
+    - Ações (VISUALIZAR, CRIAR, EDITAR, DELETAR, GERENCIAR)
+    
+    As permissões serão criadas como desabilitadas (enabled=false) por padrão,
+    permitindo que o ADMIN habilite manualmente conforme necessário.
+    """
+    # Validar role
+    valid_roles = ["CONSULTANT", "OWNER", "MANAGER", "OPERATOR", "STORE"]
+    if role not in valid_roles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Perfil inválido. Use: {', '.join(valid_roles)}"
+        )
+    
+    # Definir todos os recursos disponíveis
+    recursos = [
+        'DASHBOARD',
+        'INSUMOS',
+        'RECEITAS',
+        'FORNECEDORES',
+        'RESTAURANTES',
+        'USUARIOS',
+        'IA_CLASSIFICACAO',
+        'RELATORIOS',
+        'CONFIGURACOES',
+        'MONITORAMENTO'
+    ]
+    
+    # Definir todas as ações disponíveis
+    acoes = ['VISUALIZAR', 'CRIAR', 'EDITAR', 'DELETAR', 'GERENCIAR']
+    
+    # Contador de permissões criadas
+    permissoes_criadas = 0
+    permissoes_existentes = 0
+    
+    # Criar todas as combinações
+    for recurso in recursos:
+        for acao in acoes:
+            # Verificar se já existe
+            existing = db.query(Permission).filter(
+                Permission.role == role,
+                Permission.resource == recurso,
+                Permission.action == acao
+            ).first()
+            
+            if not existing:
+                # Criar nova permissão desabilitada
+                nova_permissao = Permission(
+                    role=role,
+                    resource=recurso,
+                    action=acao,
+                    data_scope='LOJA',  # Escopo padrão
+                    enabled=False  # Desabilitada por padrão
+                )
+                db.add(nova_permissao)
+                permissoes_criadas += 1
+            else:
+                permissoes_existentes += 1
+    
+    # Commit das alterações
+    db.commit()
+    
+    return {
+        "message": f"Permissões geradas para o perfil {role}",
+        "role": role,
+        "permissoes_criadas": permissoes_criadas,
+        "permissoes_existentes": permissoes_existentes,
+        "total": permissoes_criadas + permissoes_existentes
+    }
+
+
+# ============================================================================
+# ENDPOINT: GERAR PERMISSÕES PARA TODOS OS PERFIS
+# ============================================================================
+
+@router.post("/generate-all", status_code=status.HTTP_201_CREATED)
+def gerar_todas_permissoes(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """
+    Gera todas as permissões possíveis para todos os perfis.
+    
+    Acesso: Apenas ADMIN
+    
+    Útil para inicialização do sistema ou para garantir que todos
+    os perfis tenham todas as opções de permissões disponíveis.
+    """
+    # Perfis a processar (exceto ADMIN que tem tudo)
+    perfis = ["CONSULTANT", "OWNER", "MANAGER", "OPERATOR", "STORE"]
+    
+    # Definir todos os recursos disponíveis
+    recursos = [
+        'DASHBOARD',
+        'INSUMOS',
+        'RECEITAS',
+        'FORNECEDORES',
+        'RESTAURANTES',
+        'USUARIOS',
+        'IA_CLASSIFICACAO',
+        'RELATORIOS',
+        'CONFIGURACOES',
+        'MONITORAMENTO'
+    ]
+    
+    # Definir todas as ações disponíveis
+    acoes = ['VISUALIZAR', 'CRIAR', 'EDITAR', 'DELETAR', 'GERENCIAR']
+    
+    resultados = []
+    
+    # Gerar para cada perfil
+    for role in perfis:
+        permissoes_criadas = 0
+        permissoes_existentes = 0
+        
+        # Criar todas as combinações
+        for recurso in recursos:
+            for acao in acoes:
+                # Verificar se já existe
+                existing = db.query(Permission).filter(
+                    Permission.role == role,
+                    Permission.resource == recurso,
+                    Permission.action == acao
+                ).first()
+                
+                if not existing:
+                    # Criar nova permissão desabilitada
+                    nova_permissao = Permission(
+                        role=role,
+                        resource=recurso,
+                        action=acao,
+                        data_scope='LOJA',
+                        enabled=False
+                    )
+                    db.add(nova_permissao)
+                    permissoes_criadas += 1
+                else:
+                    permissoes_existentes += 1
+        
+        resultados.append({
+            "role": role,
+            "permissoes_criadas": permissoes_criadas,
+            "permissoes_existentes": permissoes_existentes,
+            "total": permissoes_criadas + permissoes_existentes
+        })
+    
+    # Commit das alterações
+    db.commit()
+    
+    # Calcular totais
+    total_criadas = sum(r['permissoes_criadas'] for r in resultados)
+    total_existentes = sum(r['permissoes_existentes'] for r in resultados)
+    
+    return {
+        "message": "Permissões geradas para todos os perfis",
+        "perfis_processados": perfis,
+        "total_criadas": total_criadas,
+        "total_existentes": total_existentes,
+        "total_geral": total_criadas + total_existentes,
+        "detalhes": resultados
+    }

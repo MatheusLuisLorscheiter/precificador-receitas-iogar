@@ -64,6 +64,8 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState<{ tipo: 'success' | 'error', texto: string } | null>(null);
 
+  // Estado para modal de confirmação
+  const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   // Perfis disponíveis (exceto ADMIN que tem tudo)
   const perfisDisponiveis = ['CONSULTANT', 'OWNER', 'MANAGER', 'OPERATOR'];
 
@@ -117,6 +119,123 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
       setMensagem({ tipo: 'error', texto: 'Erro ao conectar com o servidor' });
     } finally {
       console.log('🏁 Finalizando carregamento');
+      setLoading(false);
+    }
+  };
+
+  // ========================================================================
+  // FUNÇÃO: GERAR PERMISSÕES AUTOMATICAMENTE
+  // ========================================================================
+  const gerarPermissoes = async () => {
+    if (!perfilSelecionado) {
+      setMensagem({ tipo: 'error', texto: 'Selecione um perfil primeiro' });
+      return;
+    }
+
+    // Mostrar modal de confirmação customizado
+    setMostrarConfirmacao(true);
+
+    setLoading(true);
+    setMensagem(null);
+    
+    try {
+      const token = localStorage.getItem('foodcost_access_token');
+      
+      if (!token) {
+        setMensagem({ tipo: 'error', texto: 'Token de autenticação não encontrado' });
+        setLoading(false);
+        return;
+      }
+
+      const url = `${API_BASE_URL}/api/v1/permissions/generate/${perfilSelecionado}`;
+      console.log('Gerando permissões para:', perfilSelecionado);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Permissões geradas:', data);
+        
+        setMensagem({ 
+          tipo: 'success', 
+          texto: `${data.permissoes_criadas} permissões criadas com sucesso!` 
+        });
+        
+        // Recarregar as permissões
+        setTimeout(() => {
+          carregarPermissoes();
+        }, 1500);
+      } else if (response.status === 401 || response.status === 403) {
+        setMensagem({ tipo: 'error', texto: 'Sem permissão para gerar permissões' });
+      } else {
+        const errorData = await response.json();
+        setMensagem({ tipo: 'error', texto: errorData.detail || 'Erro ao gerar permissões' });
+      }
+    } catch (error) {
+      console.error('Erro ao gerar permissões:', error);
+      setMensagem({ tipo: 'error', texto: 'Erro ao conectar com o servidor' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ========================================================================
+  // FUNÇÃO: EXECUTAR GERAÇÃO APÓS CONFIRMAÇÃO
+  // ========================================================================
+  const executarGeracao = async () => {
+    setMostrarConfirmacao(false);
+    setLoading(true);
+    setMensagem(null);
+    
+    try {
+      const token = localStorage.getItem('foodcost_access_token');
+      
+      if (!token) {
+        setMensagem({ tipo: 'error', texto: 'Token de autenticação não encontrado' });
+        setLoading(false);
+        return;
+      }
+
+      const url = `${API_BASE_URL}/api/v1/permissions/generate/${perfilSelecionado}`;
+      console.log('Gerando permissões para:', perfilSelecionado);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Permissões geradas:', data);
+        
+        setMensagem({ 
+          tipo: 'success', 
+          texto: `${data.permissoes_criadas} permissões criadas com sucesso!` 
+        });
+        
+        // Recarregar as permissões
+        setTimeout(() => {
+          carregarPermissoes();
+        }, 1500);
+      } else if (response.status === 401 || response.status === 403) {
+        setMensagem({ tipo: 'error', texto: 'Sem permissão para gerar permissões' });
+      } else {
+        const errorData = await response.json();
+        setMensagem({ tipo: 'error', texto: errorData.detail || 'Erro ao gerar permissões' });
+      }
+    } catch (error) {
+      console.error('Erro ao gerar permissões:', error);
+      setMensagem({ tipo: 'error', texto: 'Erro ao conectar com o servidor' });
+    } finally {
       setLoading(false);
     }
   };
@@ -228,6 +347,34 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
             </div>
           ) : (
             <div className="space-y-6">
+              {/* Alerta quando não há permissões */}
+              {permissoes.length === 0 && perfilSelecionado && (
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0">
+                      <AlertCircle className="w-8 h-8 text-yellow-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-yellow-900 mb-2">
+                        Nenhuma permissão cadastrada
+                      </h3>
+                      <p className="text-yellow-800 mb-4">
+                        O perfil <strong>{getRoleLabel(perfilSelecionado as any)}</strong> não possui 
+                        permissões cadastradas no sistema. Clique no botão abaixo para gerar 
+                        automaticamente todas as permissões disponíveis.
+                      </p>
+                      <button
+                        onClick={gerarPermissoes}
+                        className="px-6 py-3 bg-gradient-to-r from-green-600 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all font-medium flex items-center space-x-2"
+                      >
+                        <Shield className="w-5 h-5" />
+                        <span>Gerar Todas as Permissões</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {permissoesPorRecurso.map(({ recurso, label, permissoes: perms }) => (
                 <div key={recurso} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                   <div className="bg-gray-50 px-4 py-3 border-b">
@@ -235,8 +382,21 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
                   </div>
                   
                   {perms.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500 text-sm">
-                      Nenhuma permissão configurada
+                    <div className="p-6 text-center bg-gray-50">
+                      <div className="text-gray-400 mb-3">
+                        <Shield className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                        <p className="text-sm text-gray-500">
+                          Nenhuma permissão configurada para <strong>{label}</strong>
+                        </p>
+                      </div>
+                      <button
+                        onClick={gerarPermissoes}
+                        disabled={loading}
+                        className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:shadow-md transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Shield className="w-4 h-4" />
+                        <span>{loading ? 'Gerando...' : 'Gerar Permissões'}</span>
+                      </button>
                     </div>
                   ) : (
                     <div className="divide-y">
@@ -310,6 +470,53 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
           </button>
         </div>
       </div>
+    {/* Modal de Confirmação */}
+      {mostrarConfirmacao && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl">
+            {/* Header com gradiente IOGAR */}
+            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+              <div className="bg-gradient-to-r from-green-500 to-pink-500 p-2 rounded-lg">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">Gerar Permissões</h3>
+            </div>
+            
+            {/* Conteúdo */}
+            <div className="mb-6">
+              <p className="text-gray-600 mb-2">
+                Deseja gerar todas as permissões possíveis para o perfil:
+              </p>
+              <p className="font-semibold text-gray-800 mb-3">
+                {getRoleLabel(perfilSelecionado as any)}
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  ℹ️ As permissões serão criadas <strong>DESABILITADAS</strong> por padrão. 
+                  Você poderá habilitá-las manualmente depois.
+                </p>
+              </div>
+            </div>
+            
+            {/* Botões */}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setMostrarConfirmacao(false)}
+                className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executarGeracao}
+                className="px-4 py-2 bg-gradient-to-r from-green-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-medium flex items-center gap-2"
+              >
+                <Shield className="w-4 h-4" />
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
