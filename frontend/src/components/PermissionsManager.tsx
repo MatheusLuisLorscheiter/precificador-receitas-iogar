@@ -12,6 +12,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Save, X, AlertCircle, Check } from 'lucide-react';
 import { ROLE_INFO, getRoleLabel } from '../constants/roles';
+import { API_BASE_URL } from '../config';
 
 // Tipos de recursos e ações
 const RECURSOS = [
@@ -87,7 +88,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
         return;
       }
 
-      const url = `http://localhost:8000/api/v1/permissions/role/${perfilSelecionado}`;
+      const url = `${API_BASE_URL}/api/v1/permissions/role/${perfilSelecionado}`;
       console.log('📡 Fazendo requisição para:', url);
 
       const response = await fetch(url, {
@@ -141,10 +142,10 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
     try {
       // Atualizar cada permissão modificada
       for (const permissao of permissoes) {
-        await fetch(`http://localhost:8000/api/v1/permissions/${permissao.id}`, {
+        await fetch(`${API_BASE_URL}/api/v1/permissions/${permissao.id}`, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('foodcost_access_token')}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
