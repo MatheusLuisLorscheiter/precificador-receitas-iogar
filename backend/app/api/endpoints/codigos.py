@@ -6,7 +6,7 @@
 # Data: 15/10/2025
 # ============================================================================
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from sqlalchemy.orm import Session
 from typing import Dict, List
 
@@ -25,12 +25,18 @@ router = APIRouter()
 # ENDPOINT DE ESTATISTICAS GERAIS
 # ============================================================================
 
-@router.get("/estatisticas", summary="Estatísticas de todas as faixas")
+@router.get("/estatisticas", summary="Estatísticas de todas as faixas por restaurante")
 def obter_estatisticas_todas_faixas(
+    restaurante_id: int,
     db: Session = Depends(get_db)
 ):
     """
-    Retorna estatísticas de uso de todas as faixas de códigos.
+    Retorna estatísticas de uso de todas as faixas de códigos para um restaurante específico.
+    
+    **IMPORTANTE:** Cada restaurante possui suas próprias faixas de códigos independentes.
+    
+    **Parâmetros:**
+    - restaurante_id: ID do restaurante (obrigatório)
     
     **Informações retornadas:**
     - Total de códigos disponíveis por faixa
@@ -45,11 +51,18 @@ def obter_estatisticas_todas_faixas(
     - Alertas de faixas próximas do limite
     """
     try:
+        # Validar restaurante_id
+        if not restaurante_id or restaurante_id <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="restaurante_id é obrigatório e deve ser maior que zero"
+            )
+        
         estatisticas = {}
         
         # Obter estatisticas para cada tipo de codigo
         for tipo in TipoCodigo:
-            stats = obter_estatisticas_codigos(db, tipo)
+            stats = obter_estatisticas_codigos(db, tipo, restaurante_id)
             estatisticas[tipo.value] = stats
         
         # Calcular totais gerais
@@ -58,6 +71,7 @@ def obter_estatisticas_todas_faixas(
         disponiveis_geral = sum(s["disponiveis"] for s in estatisticas.values())
         
         return {
+            "restaurante_id": restaurante_id,
             "estatisticas_por_tipo": estatisticas,
             "totais_gerais": {
                 "total": total_geral,
@@ -68,6 +82,8 @@ def obter_estatisticas_todas_faixas(
             "alertas": _gerar_alertas(estatisticas)
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -78,23 +94,34 @@ def obter_estatisticas_todas_faixas(
 # ENDPOINT DE ESTATISTICAS POR TIPO
 # ============================================================================
 
-@router.get("/estatisticas/{tipo}", summary="Estatísticas de uma faixa específica")
+@router.get("/estatisticas/{tipo}", summary="Estatísticas de uma faixa específica por restaurante")
 def obter_estatisticas_tipo(
     tipo: str = Path(..., description="Tipo de código (receita_normal, receita_processada, insumo)"),
+    restaurante_id: int = Query(..., description="ID do restaurante"),
     db: Session = Depends(get_db)
 ):
     """
-    Retorna estatísticas detalhadas de uma faixa específica.
+    Retorna estatísticas detalhadas de uma faixa específica para um restaurante.
+    
+    **IMPORTANTE:** As estatísticas são específicas do restaurante informado.
     
     **Parâmetros:**
-    - tipo: receita_normal, receita_processada ou insumo
+    - tipo: receita_normal, receita_processada ou insumo (path)
+    - restaurante_id: ID do restaurante (query obrigatória)
     
     **Retorna:**
-    - Estatísticas detalhadas da faixa
-    - Histórico de uso (se disponível)
+    - Estatísticas detalhadas da faixa para o restaurante
+    - Nível de alerta (ok, atenção, crítico)
     - Projeções de esgotamento
     """
     try:
+        # Validar restaurante_id
+        if not restaurante_id or restaurante_id <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="restaurante_id é obrigatório e deve ser maior que zero"
+            )
+        
         # Validar tipo
         try:
             tipo_codigo = TipoCodigo(tipo)
@@ -104,8 +131,8 @@ def obter_estatisticas_tipo(
                 detail=f"Tipo inválido. Opções: {[t.value for t in TipoCodigo]}"
             )
         
-        # Obter estatisticas
-        stats = obter_estatisticas_codigos(db, tipo_codigo)
+        # Obter estatisticas para o restaurante específico
+        stats = obter_estatisticas_codigos(db, tipo_codigo, restaurante_id)
         
         # Adicionar informacoes extras
         stats["alerta"] = _verificar_alerta_individual(stats)
@@ -119,6 +146,91 @@ def obter_estatisticas_tipo(
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao obter estatísticas: {str(e)}"
+        )
+    
+# ============================================================================
+# ENDPOINT PARA OBTER PRÓXIMO CÓDIGO
+# ============================================================================
+
+@router.get("/proximo/{tipo}", summary="Obter próximo código disponível")
+def obter_proximo_codigo(
+    tipo: str = Path(..., description="Tipo de código (receita_normal, receita_processada, insumo)"),
+    restaurante_id: int = Query(..., description="ID do restaurante"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna o próximo código disponível para um tipo e restaurante específicos.
+    
+    **IMPORTANTE:** Não gera/reserva o código, apenas retorna qual seria o próximo.
+    O código é efetivamente gerado apenas ao criar a receita/insumo.
+    
+    **Parâmetros:**
+    - tipo: receita_normal, receita_processada ou insumo (path)
+    - restaurante_id: ID do restaurante (query obrigatória)
+    
+    **Retorna:**
+    - Próximo código disponível
+    - Informações sobre a faixa
+    - Status de disponibilidade
+    
+    **Uso:**
+    - Preview no frontend antes de salvar
+    - Validação de capacidade disponível
+    """
+    try:
+        # Validar restaurante_id
+        if not restaurante_id or restaurante_id <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="restaurante_id é obrigatório e deve ser maior que zero"
+            )
+        
+        # Validar tipo
+        try:
+            tipo_codigo = TipoCodigo(tipo)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tipo inválido. Opções: {[t.value for t in TipoCodigo]}"
+            )
+        
+        # Importar serviço de geração de código
+        from app.services.codigo_service import gerar_proximo_codigo
+        
+        # Obter próximo código (sem persistir)
+        try:
+            proximo_codigo = gerar_proximo_codigo(db, tipo_codigo, restaurante_id)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=str(e)
+            )
+        
+        # Obter estatísticas para contexto
+        stats = obter_estatisticas_codigos(db, tipo_codigo, restaurante_id)
+        
+        return {
+            "restaurante_id": restaurante_id,
+            "tipo": tipo,
+            "proximo_codigo": proximo_codigo,
+            "faixa": {
+                "inicio": stats["inicio"],
+                "fim": stats["fim"],
+                "descricao": stats["descricao"]
+            },
+            "disponibilidade": {
+                "codigos_disponiveis": stats["disponiveis"],
+                "percentual_uso": stats["percentual_uso"],
+                "pode_gerar": stats["disponiveis"] > 0
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao obter próximo código: {str(e)}"
         )
 
 # ============================================================================
