@@ -31,7 +31,16 @@ try:
         HAS_USERS = True
         print("[OK] Módulo users importado com sucesso")
     except ImportError as e:
-        print(f"⚠️  Módulo users não encontrado: {e}")
+        print(f"❌ ERRO CRÍTICO: Módulo users não encontrado: {e}")
+        print(f"   Traceback completo:")
+        import traceback
+        traceback.print_exc()
+        HAS_USERS = False
+    except Exception as e:
+        print(f"❌ ERRO CRÍTICO ao importar users: {type(e).__name__}: {e}")
+        print(f"   Traceback completo:")
+        import traceback
+        traceback.print_exc()
         HAS_USERS = False
 
     # Importar endpoint de gerenciamento de permissões (ADMIN)
@@ -842,9 +851,35 @@ if HAS_AUTH:
 # ============================================================================
 # REGISTRAR ROUTER DE USUÁRIOS
 # ============================================================================
+# Tentar forçar importação direta se a primeira falhou
+if not HAS_USERS:
+    print("⚠️ Tentando importação forçada do módulo users...")
+    try:
+        import app.api.endpoints.users as users_module
+        users = users_module
+        HAS_USERS = True
+        print("✅ Importação forçada bem-sucedida!")
+    except Exception as e:
+        print(f"❌ Importação forçada falhou: {e}")
+        import traceback
+        traceback.print_exc()
+
 if HAS_USERS:
-    app.include_router(users.router, prefix="/api/v1/users", tags=["Usuários"])
-    print("[OK] Router de usuários registrado: /api/v1/users")
+    try:
+        app.include_router(users.router, prefix="/api/v1/users", tags=["Usuários"])
+        print("[OK] Router de usuários registrado: /api/v1/users")
+        
+        # Verificar se o router tem rotas registradas
+        print(f"   Rotas registradas no router users: {len(users.router.routes)}")
+        for route in users.router.routes:
+            print(f"   - {route.methods} {route.path}")
+    except Exception as e:
+        print(f"❌ ERRO ao registrar router users: {e}")
+        import traceback
+        traceback.print_exc()
+else:
+    print("❌ CRÍTICO: Router users NÃO foi registrado!")
+    print("   A tela de gerenciamento de usuários NÃO funcionará!")
 
 # Router de gerenciamento de permissões (apenas ADMIN)
 if HAS_PERMISSIONS:
