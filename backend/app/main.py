@@ -31,7 +31,16 @@ try:
         HAS_USERS = True
         print("[OK] Módulo users importado com sucesso")
     except ImportError as e:
-        print(f"⚠️  Módulo users não encontrado: {e}")
+        print(f"❌ ERRO CRÍTICO: Módulo users não encontrado: {e}")
+        print(f"   Traceback completo:")
+        import traceback
+        traceback.print_exc()
+        HAS_USERS = False
+    except Exception as e:
+        print(f"❌ ERRO CRÍTICO ao importar users: {type(e).__name__}: {e}")
+        print(f"   Traceback completo:")
+        import traceback
+        traceback.print_exc()
         HAS_USERS = False
 
     # Importar endpoint de gerenciamento de permissões (ADMIN)
