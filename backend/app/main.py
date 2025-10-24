@@ -43,14 +43,14 @@ try:
         traceback.print_exc()
         HAS_USERS = False
 
-    # Importar endpoint de gerenciamento de permissões (ADMIN)
+    # Importar endpoint de limpeza de dados (ADMIN)
     try:
-        from app.api.endpoints import permissions
-        HAS_PERMISSIONS = True
-        print("[OK] Módulo permissions importado com sucesso")
+        from app.api.endpoints import limpeza_dados
+        HAS_LIMPEZA_DADOS = True
+        print("[OK] Módulo limpeza_dados importado com sucesso")
     except ImportError as e:
-        print(f"⚠️  Módulo permissions não encontrado: {e}")
-        HAS_PERMISSIONS = False
+        print(f"⚠️  Módulo limpeza_dados não encontrado: {e}")
+        HAS_LIMPEZA_DADOS = False
     
     # Importar endpoints de restaurantes
     try:
@@ -881,10 +881,18 @@ else:
     print("❌ CRÍTICO: Router users NÃO foi registrado!")
     print("   A tela de gerenciamento de usuários NÃO funcionará!")
 
-# Router de gerenciamento de permissões (apenas ADMIN)
-if HAS_PERMISSIONS:
-    app.include_router(permissions.router, prefix="/api/v1/permissions", tags=["Permissões"])
-    print("[OK] Router de permissões registrado: /api/v1/permissions")
+# Router de limpeza de dados (apenas ADMIN)
+if HAS_LIMPEZA_DADOS:
+    app.include_router(
+        limpeza_dados.router, 
+        prefix="/api/v1/limpeza-dados", 
+        tags=["Limpeza de Dados"],
+        responses={
+            403: {"description": "Acesso negado - apenas ADMIN"},
+            500: {"description": "Erro ao executar limpeza"}
+        }
+    )
+    print("[OK] Router de limpeza de dados registrado: /api/v1/limpeza-dados")
     
 #   ===================================================================================================
 #   REGISTRAR ROUTERS - MÓDULOS DO SISTEMA

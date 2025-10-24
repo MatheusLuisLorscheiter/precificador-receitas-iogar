@@ -48,6 +48,7 @@ import { API_BASE_URL } from './config';
 
 import { useAuth } from './contexts/AuthContext';
 import iogarLogo from './image/iogar_logo.png';
+import LimpezaDados from './components/LimpezaDados';
 
 // ============================================================================
 // INTERFACES E TIPOS DE DADOS
@@ -1741,7 +1742,7 @@ const FoodCostSystem: React.FC = () => {
 
   // Estado para controlar qual sub-aba está ativa na página de Configurações
   // Valores possíveis: 'geral' | 'usuarios'
-  const [activeConfigTab, setActiveConfigTab] = useState<'geral' | 'usuarios'>('geral');
+  const [activeConfigTab, setActiveConfigTab] = useState<'geral' | 'usuarios' | 'limpeza-dados'>('geral');
 
   // Resetar para aba 'geral' quando sair da página de configurações
   useEffect(() => {
@@ -9754,6 +9755,22 @@ return (
                           Perfis de Usuário
                         </div>
                       </button>
+                      {/* Aba Limpeza de Dados - Apenas ADMIN */}
+                      {user?.role === 'ADMIN' && (
+                        <button
+                          onClick={() => setActiveConfigTab('limpeza-dados')}
+                          className={`px-4 py-2 font-medium text-sm rounded-t-lg border-b-2 transition-colors ${
+                            activeConfigTab === 'limpeza-dados'
+                              ? 'border-red-500 text-red-600'
+                              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Database className="w-4 h-4" />
+                            Limpeza de Dados
+                          </div>
+                        </button>
+                      )}
                     </nav>
                   </div>
 
@@ -9994,6 +10011,12 @@ return (
                           )}
                         </div>
                       </div>
+                    )}
+                    {/* ============================================================================ */}
+                    {/* ABA LIMPEZA DE DADOS - APENAS ADMIN */}
+                    {/* ============================================================================ */}
+                    {activeConfigTab === 'limpeza-dados' && user?.role === 'ADMIN' && (
+                      <LimpezaDados />
                     )}
                   </div>
                 </div>
