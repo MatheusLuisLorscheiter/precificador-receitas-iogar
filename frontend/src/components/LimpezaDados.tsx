@@ -63,6 +63,11 @@ const LimpezaDados: React.FC = () => {
   const [mostrarConfirmacao, setMostrarConfirmacao] = useState(false);
   const [acaoSelecionada, setAcaoSelecionada] = useState<string>('');
   const [confirmacaoTexto, setConfirmacaoTexto] = useState('');
+
+  // Estado para modal de erro customizado
+  const [mostrarErro, setMostrarErro] = useState(false);
+  const [erroTitulo, setErroTitulo] = useState('');
+  const [erroMensagem, setErroMensagem] = useState('');
   
   // Filtros
   const [filtros, setFiltros] = useState<FiltroLimpeza>({});
@@ -106,7 +111,9 @@ const LimpezaDados: React.FC = () => {
   const confirmarLimpeza = async () => {
     // Validar confirmacao para limpeza total
     if (acaoSelecionada === 'limpar-tudo' && confirmacaoTexto !== 'CONFIRMAR LIMPEZA TOTAL') {
-      alert('Digite exatamente: CONFIRMAR LIMPEZA TOTAL');
+      setErroTitulo('Confirmação Incorreta');
+      setErroMensagem('Digite exatamente: CONFIRMAR LIMPEZA TOTAL');
+      setMostrarErro(true);
       return;
     }
 
@@ -138,7 +145,9 @@ const LimpezaDados: React.FC = () => {
       }
 
       if (response.error) {
-        alert(`Erro: ${response.error}`);
+        setErroTitulo('Erro na Limpeza');
+        setErroMensagem(response.error);
+        setMostrarErro(true);
         return;
       }
 
@@ -152,7 +161,9 @@ const LimpezaDados: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Erro ao executar limpeza:', error);
-      alert(error.message || 'Erro ao executar limpeza. Verifique o console.');
+      setErroTitulo('Erro de Conexão');
+      setErroMensagem(error.message || 'Erro ao executar limpeza. Verifique sua conexão com o servidor.');
+      setMostrarErro(true);
     } finally {
       setLoading(false);
     }
@@ -413,7 +424,38 @@ const LimpezaDados: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+      {/* Modal de Erro Customizado */}
+      {mostrarErro && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl">
+            {/* Header com gradiente IOGAR */}
+            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+              <div className="bg-gradient-to-r from-red-500 to-orange-500 p-2 rounded-lg">
+                <AlertTriangle className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">{erroTitulo}</h3>
+            </div>
+            
+            {/* Conteúdo */}
+            <div className="mb-6">
+              <p className="text-gray-600 whitespace-pre-line">
+                {erroMensagem}
+              </p>
+            </div>
+            
+            {/* Botão */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setMostrarErro(false)}
+                className="px-6 py-2 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>             /* ← Fecha o container principal do componente */
   );
 };
 

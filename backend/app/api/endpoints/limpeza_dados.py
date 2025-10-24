@@ -102,25 +102,42 @@ def limpar_receitas(
     Filtros disponíveis:
     - data_inicio/data_fim: Remove receitas criadas no período
     - restaurante_id: Remove apenas receitas de um restaurante
+    
+    IMPORTANTE: Remove primeiro os vínculos em receita_insumos,
+    depois as receitas, respeitando a ordem de dependência.
     """
     try:
-        # Query base
-        query = db.query(Receita)
+        # Query base para receitas
+        query_receitas = db.query(Receita)
         
         # Aplicar filtros
         if filtros:
             if filtros.data_inicio:
-                query = query.filter(Receita.created_at >= filtros.data_inicio)
+                query_receitas = query_receitas.filter(Receita.created_at >= filtros.data_inicio)
             if filtros.data_fim:
-                query = query.filter(Receita.created_at <= filtros.data_fim)
+                query_receitas = query_receitas.filter(Receita.created_at <= filtros.data_fim)
             if filtros.restaurante_id:
-                query = query.filter(Receita.restaurante_id == filtros.restaurante_id)
+                query_receitas = query_receitas.filter(Receita.restaurante_id == filtros.restaurante_id)
         
-        # Contar antes de deletar
-        total = query.count()
+        # Obter IDs das receitas que serão deletadas
+        receita_ids = [r.id for r in query_receitas.all()]
+        total = len(receita_ids)
         
-        # Deletar
-        query.delete(synchronize_session=False)
+        if total == 0:
+            return ResultadoLimpeza(
+                secao="receitas",
+                registros_removidos=0,
+                sucesso=True,
+                mensagem="Nenhuma receita encontrada com os filtros aplicados"
+            )
+        
+        # PASSO 1: Deletar vínculos em receita_insumos PRIMEIRO
+        db.query(ReceitaInsumo).filter(ReceitaInsumo.receita_id.in_(receita_ids)).delete(synchronize_session=False)
+        
+        # PASSO 2: Deletar as receitas
+        db.query(Receita).filter(Receita.id.in_(receita_ids)).delete(synchronize_session=False)
+        
+        # Commit das alterações
         db.commit()
         
         return ResultadoLimpeza(
@@ -152,26 +169,41 @@ def limpar_insumos(
     
     Acesso: Apenas ADMIN
     
-    ATENÇÃO: Remove também os vínculos com receitas (receita_insumos).
+    IMPORTANTE: Remove primeiro os vínculos em receita_insumos,
+    depois os insumos, respeitando a ordem de dependência.
     """
     try:
-        # Query base
-        query = db.query(Insumo)
+        # Query base para insumos
+        query_insumos = db.query(Insumo)
         
         # Aplicar filtros
         if filtros:
             if filtros.data_inicio:
-                query = query.filter(Insumo.created_at >= filtros.data_inicio)
+                query_insumos = query_insumos.filter(Insumo.created_at >= filtros.data_inicio)
             if filtros.data_fim:
-                query = query.filter(Insumo.created_at <= filtros.data_fim)
+                query_insumos = query_insumos.filter(Insumo.created_at <= filtros.data_fim)
             if filtros.restaurante_id:
-                query = query.filter(Insumo.restaurante_id == filtros.restaurante_id)
+                query_insumos = query_insumos.filter(Insumo.restaurante_id == filtros.restaurante_id)
         
-        # Contar antes de deletar
-        total = query.count()
+        # Obter IDs dos insumos que serão deletados
+        insumo_ids = [i.id for i in query_insumos.all()]
+        total = len(insumo_ids)
         
-        # Deletar (cascade vai remover receita_insumos automaticamente)
-        query.delete(synchronize_session=False)
+        if total == 0:
+            return ResultadoLimpeza(
+                secao="insumos",
+                registros_removidos=0,
+                sucesso=True,
+                mensagem="Nenhum insumo encontrado com os filtros aplicados"
+            )
+        
+        # PASSO 1: Deletar vínculos em receita_insumos PRIMEIRO
+        db.query(ReceitaInsumo).filter(ReceitaInsumo.insumo_id.in_(insumo_ids)).delete(synchronize_session=False)
+        
+        # PASSO 2: Deletar os insumos
+        db.query(Insumo).filter(Insumo.id.in_(insumo_ids)).delete(synchronize_session=False)
+        
+        # Commit das alterações
         db.commit()
         
         return ResultadoLimpeza(
@@ -244,31 +276,58 @@ def limpar_restaurantes(
     
     Acesso: Apenas ADMIN
     
-    ATENÇÃO: Ao remover restaurante, remove também:
-    - Todas as receitas do restaurante
-    - Todos os insumos do restaurante
-    - Códigos automáticos do restaurante
+    IMPORTANTE: Remove em cascata respeitando a ordem de dependência:
+    1. Vínculos receita_insumos das receitas do restaurante
+    2. Receitas do restaurante
+    3. Insumos do restaurante
+    4. Restaurante
     """
     try:
-        # Query base
-        query = db.query(Restaurante)
+        # Query base para restaurantes
+        query_restaurantes = db.query(Restaurante)
         
         # Opção de manter o primeiro restaurante
         if manter_primeiro:
-            query = query.filter(Restaurante.id != 1)
+            query_restaurantes = query_restaurantes.filter(Restaurante.id != 1)
         
-        # Contar antes de deletar
-        total = query.count()
+        # Obter IDs dos restaurantes que serão deletados
+        restaurante_ids = [r.id for r in query_restaurantes.all()]
+        total = len(restaurante_ids)
         
-        # Deletar
-        query.delete(synchronize_session=False)
+        if total == 0:
+            return ResultadoLimpeza(
+                secao="restaurantes",
+                registros_removidos=0,
+                sucesso=True,
+                mensagem="Nenhum restaurante encontrado para remover (ID 1 mantido)"
+            )
+        
+        # PASSO 1: Buscar IDs das receitas dos restaurantes
+        receita_ids = [r.id for r in db.query(Receita).filter(Receita.restaurante_id.in_(restaurante_ids)).all()]
+        
+        # PASSO 2: Deletar vínculos receita_insumos das receitas PRIMEIRO
+        if receita_ids:
+            db.query(ReceitaInsumo).filter(ReceitaInsumo.receita_id.in_(receita_ids)).delete(synchronize_session=False)
+        
+        # PASSO 3: Deletar receitas dos restaurantes
+        db.query(Receita).filter(Receita.restaurante_id.in_(restaurante_ids)).delete(synchronize_session=False)
+        
+        # PASSO 4: Deletar insumos dos restaurantes
+        db.query(Insumo).filter(Insumo.restaurante_id.in_(restaurante_ids)).delete(synchronize_session=False)
+        
+        # PASSO 5: Deletar os restaurantes
+        db.query(Restaurante).filter(Restaurante.id.in_(restaurante_ids)).delete(synchronize_session=False)
+        
+        # Commit das alterações
         db.commit()
+        
+        mensagem_extra = " (ID 1 mantido)" if manter_primeiro else ""
         
         return ResultadoLimpeza(
             secao="restaurantes",
             registros_removidos=total,
             sucesso=True,
-            mensagem=f"{total} restaurante(s) removido(s) com sucesso"
+            mensagem=f"{total} restaurante(s) removido(s) com sucesso{mensagem_extra}"
         )
         
     except Exception as e:
