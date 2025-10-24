@@ -80,10 +80,16 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = `${this.baseURL}${endpoint}`;
+      
+      // Obter token de autenticacao do localStorage
+      const token = localStorage.getItem('foodcost_access_token');
+      console.log('🔑 Token encontrado:', token ? 'SIM' : 'NÃO', token?.substring(0, 20) + '...'); // Ver se tem token
+      
       const config = {
         ...options,
         headers: {
           ...API_CONFIG.headers,
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           ...options.headers,
         },
       };
@@ -719,6 +725,57 @@ async updateReceita(id: number, receita: any): Promise<ApiResponse<any>> {
   async getEstadosBrasil(): Promise<ApiResponse<any[]>> {
     return this.request<any[]>('/api/v1/fornecedores/utils/estados');
   }
+
+  // ================================
+  // MÉTODOS PARA LIMPEZA DE DADOS (ADMIN)
+  // ================================
+
+  // Obter estatísticas de dados
+  async getEstatisticasLimpeza(): Promise<ApiResponse<any>> {
+    return this.request<any>('/api/v1/limpeza-dados/estatisticas', {
+      method: 'GET'
+    });
+  }
+
+  // Limpar receitas
+  async limparReceitas(filtros?: any): Promise<ApiResponse<any>> {
+    return this.request<any>('/api/v1/limpeza-dados/receitas', {
+      method: 'DELETE',
+      body: filtros ? JSON.stringify(filtros) : undefined
+    });
+  }
+
+  // Limpar insumos
+  async limparInsumos(filtros?: any): Promise<ApiResponse<any>> {
+    return this.request<any>('/api/v1/limpeza-dados/insumos', {
+      method: 'DELETE',
+      body: filtros ? JSON.stringify(filtros) : undefined
+    });
+  }
+
+  // Limpar fornecedores
+  async limparFornecedores(): Promise<ApiResponse<any>> {
+    return this.request<any>('/api/v1/limpeza-dados/fornecedores', {
+      method: 'DELETE'
+    });
+  }
+
+  // Limpar restaurantes
+  async limparRestaurantes(manterPrimeiro: boolean = true): Promise<ApiResponse<any>> {
+    return this.request<any>(
+      `/api/v1/limpeza-dados/restaurantes?manter_primeiro=${manterPrimeiro}`,
+      { method: 'DELETE' }
+    );
+  }
+
+  // Limpar tudo (reset completo)
+  async limparTudo(confirmacao: string): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>(
+      `/api/v1/limpeza-dados/limpar-tudo?confirmacao=${encodeURIComponent(confirmacao)}`,
+      { method: 'DELETE' }
+    );
+  }
+
 
 } // ← ESTA CHAVE FECHA A CLASSE ApiService
 
