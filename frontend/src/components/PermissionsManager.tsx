@@ -177,12 +177,12 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-green-600 to-pink-600 text-white p-6 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Shield className="w-8 h-8" />
             <div>
               <h2 className="text-2xl font-bold">Gerenciador de Permissões</h2>
-              <p className="text-purple-100 text-sm">Configure permissões por perfil de usuário</p>
+              <p className="text-green-100 text-sm">Configure permissões por perfil de usuário</p>
             </div>
           </div>
           <button
@@ -224,7 +224,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
             </div>
           ) : (
             <div className="space-y-6">
@@ -303,7 +303,7 @@ const PermissionsManager: React.FC<PermissionsManagerProps> = ({ onClose }) => {
           <button
             onClick={salvarPermissoes}
             disabled={salvando}
-            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all font-medium flex items-center space-x-2 disabled:opacity-50"
+            className="px-6 py-3 bg-gradient-to-r from-green-600 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all font-medium flex items-center space-x-2 disabled:opacity-50"
           >
             <Save className="w-5 h-5" />
             <span>{salvando ? 'Salvando...' : 'Salvar Permissões'}</span>
