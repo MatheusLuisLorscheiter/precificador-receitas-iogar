@@ -18,13 +18,14 @@ class InsumoBase(BaseModel):
     """
     Schema base com campos comuns dos insumos.
     Usado como base para criação e atualização.
+    Campo fator removido conforme nova regra de negócio.
     """
     grupo: str = Field(..., min_length=1, max_length=100, description="Grupo de insumo")
     subgrupo: str = Field(..., min_length=1, max_length=100, description="Subgrupo do insumo")
     codigo: Optional[str] = Field(default=None, description="Código único (gerado automaticamente se não fornecido)")
     nome: str = Field(..., min_length=1, max_length=255, description="Nome do produto")
     quantidade: int = Field(default=1, ge=1, description="Quantidade padrão")
-    fator: float = Field(default=1.0, gt=0, description="Fator de conversão (aceita decimais)")
+    # Campo fator removido - não é mais necessário
     unidade: str = Field(..., description="Unidade de medida")
     preco_compra_real: Optional[float] = Field(None, ge=0, description="Preço de compra em reais")
     valor_compra_por_kg: Optional[float] = Field(None, ge=0, description="Valor de compra por Kg", example=85.0)
@@ -174,45 +175,23 @@ class InsumoUpdate(BaseModel):
     """
     Schema para atualização de insumo.
     Todos os campos são opcionais.
+    Campo fator removido conforme nova regra de negócio.
     """
     grupo: Optional[str] = Field(None, min_length=1, max_length=100)
     subgrupo: Optional[str] = Field(None, min_length=1, max_length=100)
     codigo: Optional[str] = Field(None, min_length=1, max_length=50)
     nome: Optional[str] = Field(None, min_length=2, max_length=255)
     quantidade: Optional[int] = Field(None, ge=1)
-    fator: Optional[float] = Field(None, gt=0)
+    # Campo fator removido - não é mais necessário
     unidade: Optional[str] = None
     preco_compra_real: Optional[float] = Field(None, ge=0)
     aguardando_classificacao: Optional[bool] = Field(default=None, description="Se está aguardando classificação")
 
-#   ============================================================================
-#   CAMPOS PARA COMPARAÇÃO DE PREÇOS COM FORNECEDORES
-#   ============================================================================
-
-    valor_compra_por_kg: Optional[float] = Field(
-        None, 
-        ge=0, 
-        description="Valor de compra por Kg em reais",
-        example=10.50
-    )
-
-    total_comprado: Optional[float] = Field(
-        None,
-        ge=0,
-        description="Total comprado (quantidade * valor_compra_por_kg)",
-        example=52.50
-    )
-
-    # Campos para vinculação com fornecedor (para comparação)
-    fornecedor_insumo_id: Optional[int] = Field(
-        None,
-        description="ID do insumo no catálogo do fornecedor para comparação de preços"
-    )
-
-    eh_fornecedor_anonimo: Optional[bool] = Field(
-        None,
-        description="Se o insumo é de fornecedor anônimo (sem vinculação)"
-    )
+    # Campos para comparação de preços com fornecedores
+    valor_compra_por_kg: Optional[float] = Field(None, ge=0, description="Valor de compra por Kg em reais", example=10.50)
+    total_comprado: Optional[float] = Field(None, ge=0, description="Total comprado (quantidade * valor_compra_por_kg)", example=52.50)
+    fornecedor_insumo_id: Optional[int] = Field(None, description="ID do insumo no catálogo do fornecedor para comparação de preços")
+    eh_fornecedor_anonimo: Optional[bool] = Field(None, description="Se o insumo é de fornecedor anônimo (sem vinculação)")
 
     # Validador para garantir valores positivos
     @field_validator('valor_compra_por_kg')
@@ -299,62 +278,23 @@ class InsumoResponse(InsumoBase):
     """
     Schema para resposta da API.
     Inclui campos adicionais como ID e timestamps.
-    
-    ADICIONADO: Campos para comparação de preços com fornecedores
+    ADICIONADO: Campos para comparação de preços com fornecedores.
+    Campo fator herdado do InsumoBase foi removido.
     """
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
     preco_compra_centavos: Optional[int] = Field(None, description="Preço em centavos")
 
-    # ============================================================================
-    # CAMPOS PARA COMPARAÇÃO DE PREÇOS
-    # ============================================================================
-    
-    # Preço por unidade calculado automaticamente
-    preco_por_unidade: Optional[float] = Field(
-        None, 
-        description="Preço por unidade calculado (preco_compra * quantidade)"
-    )
-    
-    # Comparação com fornecedor
-    fornecedor_insumo_id: Optional[int] = Field(
-        None,
-        description="ID do insumo no catálogo do fornecedor"
-    )
-    
-    eh_fornecedor_anonimo: Optional[bool] = Field(
-        None,
-        description="Se o insumo é de fornecedor anônimo"
-    )
-    
-    # Dados da comparação (calculados pelo backend)
-    fornecedor_preco_unidade: Optional[float] = Field(
-        None,
-        description="Preço por unidade do fornecedor (para comparação)"
-    )
-    
-    diferenca_percentual: Optional[float] = Field(
-        None,
-        description="Diferença percentual com o fornecedor (+ = mais caro, - = mais barato)"
-    )
-    
-    eh_mais_barato: Optional[bool] = Field(
-        None,
-        description="Se o insumo do sistema é mais barato que o do fornecedor"
-    )
-
-    # Relacionamento com fornecedor (opcional - mantido para compatibilidade)
-    fornecedor_id: Optional[int] = Field(
-        None, 
-        description="ID do fornecedor deste insumo"
-    )
-
-    # Relacionamento com taxonomia (sistema novo de padronização)
-    taxonomia_id: Optional[int] = Field(
-        None,
-        description="ID da taxonomia hierárquica master"
-    )
+    # Campos para comparação de preços
+    preco_por_unidade: Optional[float] = Field(None, description="Preço por unidade calculado (preco_compra * quantidade)")
+    fornecedor_insumo_id: Optional[int] = Field(None, description="ID do insumo no catálogo do fornecedor")
+    eh_fornecedor_anonimo: Optional[bool] = Field(None, description="Se o insumo é de fornecedor anônimo")
+    fornecedor_preco_unidade: Optional[float] = Field(None, description="Preço por unidade do fornecedor (para comparação)")
+    diferenca_percentual: Optional[float] = Field(None, description="Diferença percentual com o fornecedor (+ = mais caro, - = mais barato)")
+    eh_mais_barato: Optional[bool] = Field(None, description="Se o insumo do sistema é mais barato que o do fornecedor")
+    fornecedor_id: Optional[int] = Field(None, description="ID do fornecedor deste insumo")
+    taxonomia_id: Optional[int] = Field(None, description="ID da taxonomia hierárquica master")
 
     class Config:
         """

@@ -3033,12 +3033,12 @@ const fetchInsumos = async () => {
     // Itens do menu de navegação
     const menuItems = [
       { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-      { id: 'fornecedores', label: 'Fornecedores', icon: Package },
-      { id: 'insumos', label: 'Insumos', icon: Package },
       { id: 'restaurantes', label: 'Restaurantes', icon: Users },
+      { id: 'insumos', label: 'Insumos', icon: Package },
       { id: 'receitas', label: 'Receitas', icon: ChefHat },
+      { id: 'fornecedores', label: 'Fornecedores', icon: Package },
       { id: 'ia', label: 'Sistema de IA', icon: Brain },
-      { id: 'automacao', label: 'Automação IOGAR', icon: Zap },
+      { id: 'automacao', label: 'Automações', icon: Zap },
       { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
       { id: 'settings', label: 'Configurações', icon: Settings }
     ];
