@@ -172,8 +172,20 @@ class ApiService {
     }
     
     // ============================================================================
-    // MAPEAR EXATAMENTE PARA O SCHEMA InsumoCreate DO BACKEND
+    // OBTER RESTAURANTE_ID DO USUARIO LOGADO
     // ============================================================================
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const restaurante_id = user.restaurante_id || null;
+    
+    console.log('DEBUG RESTAURANTE:', { 
+      user_role: user.role, 
+      restaurante_id: restaurante_id 
+    });
+    
+    // Para ADMIN/CONSULTANT sem restaurante, usar restaurante padrao (ID 1)
+    // Para outros perfis, usar o restaurante vinculado
+    const restauranteIdFinal = restaurante_id || 1;
+    
     const dadosBackend = {
       grupo: String(insumo.grupo || 'Geral').trim(),
       subgrupo: String(insumo.subgrupo || 'Geral').trim(),
@@ -183,7 +195,8 @@ class ApiService {
       unidade: String(insumo.unidade || 'kg').trim(),
       preco_compra_real: insumo.preco_compra_real || insumo.preco_compra_total || null,
       fornecedor_id: insumo.fornecedor_id || null,
-      fornecedor_insumo_id: insumo.fornecedor_insumo_id || null
+      fornecedor_insumo_id: insumo.fornecedor_insumo_id || null,
+      restaurante_id: restauranteIdFinal  // Campo obrigatorio adicionado
     };
 
     console.log('📦 Dados MAPEADOS para backend:', dadosBackend);
