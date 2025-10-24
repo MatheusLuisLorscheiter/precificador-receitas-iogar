@@ -144,6 +144,10 @@ def criar_usuario(
     print(f"   Current user: {current_user.username}")
     print(f"   Role: {current_user.role}")
     print(f"   Novo usuário: {user_data.username}")
+    print(f"   Email: {user_data.email}")
+    print(f"   Role do novo usuário: {user_data.role}")
+    print(f"   Restaurante ID: {user_data.restaurante_id}")
+    print(f"   Ativo: {user_data.ativo}")
     
     # Verificar se username já existe
     existing_username = db.query(User).filter(User.username == user_data.username).first()
@@ -161,22 +165,18 @@ def criar_usuario(
             detail=f"Email '{user_data.email}' já está em uso"
         )
     
-    # Validar restaurante_id para perfis que precisam de restaurante
+    # ============================================================================
+    # VALIDAR RESTAURANTE_ID CONFORME ROLE
+    # ============================================================================
     roles_com_restaurante = [UserRole.OWNER, UserRole.MANAGER, UserRole.OPERATOR]
     roles_sem_restaurante = [UserRole.ADMIN, UserRole.CONSULTANT]
 
+    # Validação para roles que PRECISAM de restaurante
     if user_data.role in roles_com_restaurante:
         if not user_data.restaurante_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Usuários {user_data.role.value} devem ter um restaurante vinculado"
-            )
-
-    if user_data.role in roles_sem_restaurante:
-        if user_data.restaurante_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Usuários {user_data.role.value} não devem ter restaurante vinculado"
             )
         
         # Verificar se restaurante existe
@@ -189,6 +189,14 @@ def criar_usuario(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Restaurante com ID {user_data.restaurante_id} não encontrado"
+            )
+
+    # Validação para roles que NÃO DEVEM ter restaurante
+    if user_data.role in roles_sem_restaurante:
+        if user_data.restaurante_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Usuários {user_data.role.value} não devem ter restaurante vinculado"
             )
     
     # Criar hash da senha
@@ -212,6 +220,12 @@ def criar_usuario(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    
+    print(f"✅ Usuário criado com sucesso!")
+    print(f"   ID: {new_user.id}")
+    print(f"   Username: {new_user.username}")
+    print(f"   Email: {new_user.email}")
+    print(f"   Role: {new_user.role}")
     
     return new_user
 
