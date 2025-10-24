@@ -144,23 +144,63 @@ class Restaurante(Base):
     
     # Relacionamento com receitas (1 para N)
     receitas = relationship("Receita", back_populates="restaurante", cascade="all, delete-orphan")
-    
+
     # Relacionamento para unidades/filiais
     # Para matriz: lista todas as filiais
     unidades = relationship("Restaurante", 
-                       foreign_keys=[restaurante_pai_id],
-                       back_populates="restaurante_pai",
-                       cascade="all, delete-orphan")
+                    foreign_keys=[restaurante_pai_id],
+                    back_populates="restaurante_pai",
+                    cascade="all, delete-orphan")
 
     # Para filial: referência à matriz
     restaurante_pai = relationship("Restaurante", 
-                              back_populates="unidades",
-                              remote_side=[id])
+                            back_populates="unidades",
+                            remote_side=[id])
 
-    def __repr__(self):
-        """Representação em string do objeto para debug"""
-        tipo_unidade = "Matriz" if self.eh_matriz else "Filial"
-        return f"<Restaurante(id={self.id}, nome='{self.nome}', tipo='{tipo_unidade}')>"
+    # Relacionamento com códigos automáticos (1 para N)
+    # Um restaurante possui múltiplos códigos (receitas, receitas processadas e insumos)
+    codigos = relationship(
+        "CodigoDisponivel",
+        back_populates="restaurante",
+        cascade="all, delete-orphan",
+        lazy="select",
+        doc="Códigos automáticos gerados para este restaurante"
+    )
+
+    # Relacionamento com receitas (1 para N)
+    receitas = relationship("Receita", back_populates="restaurante", cascade="all, delete-orphan")
+
+    # Relacionamento para unidades/filiais
+    # Para matriz: lista todas as filiais
+    unidades = relationship("Restaurante", 
+                    foreign_keys=[restaurante_pai_id],
+                    back_populates="restaurante_pai",
+                    cascade="all, delete-orphan")
+
+    # Para filial: referência à matriz
+    restaurante_pai = relationship("Restaurante", 
+                            back_populates="unidades",
+                            remote_side=[id])
+
+    # Relacionamento com códigos automáticos (1 para N)
+    # Um restaurante possui múltiplos códigos (receitas, receitas processadas e insumos)
+    codigos = relationship(
+        "CodigoDisponivel",
+        back_populates="restaurante",
+        cascade="all, delete-orphan",
+        lazy="select",
+        doc="Códigos automáticos gerados para este restaurante"
+    )
+
+    # Relacionamento com insumos (1 para N)
+    # Cada restaurante possui seus próprios insumos de gestão
+    insumos = relationship(
+        "Insumo",
+        back_populates="restaurante",
+        cascade="all, delete-orphan",
+        lazy="select",
+        doc="Insumos de gestão deste restaurante"
+    )
     
     @property
     def quantidade_unidades(self) -> int:

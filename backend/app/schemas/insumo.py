@@ -129,7 +129,13 @@ class InsumoCreate(InsumoBase):
     """
     Schema para criação de insumo.
     Herda todos os campos do InsumoBase.
+    
+    IMPORTANTE: restaurante_id é obrigatório pois cada insumo pertence a um restaurante específico.
     """
+    restaurante_id: int = Field(
+        ...,
+        description="ID do restaurante proprietário do insumo (obrigatório)"
+    )
     fornecedor_id: Optional[int] = Field(
         None,
         description="ID do fornecedor deste insumo (opcional)"

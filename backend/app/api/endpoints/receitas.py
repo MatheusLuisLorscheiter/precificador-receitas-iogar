@@ -585,6 +585,11 @@ def create_receita_endpoint(
             from app.services.codigo_service import gerar_proximo_codigo
             from app.config.codigo_config import TipoCodigo
             
+            # Obter restaurante_id
+            restaurante_id = int(receita_data.get('restaurante_id', 0))
+            if not restaurante_id:
+                raise HTTPException(status_code=400, detail="Restaurante é obrigatório para gerar código")
+            
             # Determinar tipo de receita para geracao de codigo
             is_processada = receita_data.get('is_processada', False) or receita_data.get('processada', False)
             tipo_codigo = (
@@ -593,10 +598,10 @@ def create_receita_endpoint(
                 else TipoCodigo.RECEITA_NORMAL
             )
             
-            # Gerar codigo automaticamente
+            # Gerar codigo automaticamente PARA O RESTAURANTE ESPECÍFICO
             try:
-                codigo_gerado = gerar_proximo_codigo(db, tipo_codigo)
-                print(f"✅ Código gerado automaticamente: {codigo_gerado}")
+                codigo_gerado = gerar_proximo_codigo(db, tipo_codigo, restaurante_id)
+                print(f"✅ Código gerado automaticamente para restaurante {restaurante_id}: {codigo_gerado}")
             except ValueError as e:
                 # Faixa esgotada
                 raise HTTPException(

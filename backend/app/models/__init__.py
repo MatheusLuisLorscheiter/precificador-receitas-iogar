@@ -20,6 +20,9 @@ from .taxonomia_alias import TaxonomiaAlias
 # Importar modelos de receitas
 from .receita import Restaurante, Receita, ReceitaInsumo
 
+# Importar modelo de códigos automáticos
+from .codigo_disponivel import CodigoDisponivel
+
 # Importar modelo de usuários
 from .user import User, UserRole
 
@@ -37,6 +40,7 @@ __all__ = [
     "Restaurante",
     "Receita",
     "ReceitaInsumo",
+    "CodigoDisponivel",
     "User",
     "UserRole",
     "Permission",

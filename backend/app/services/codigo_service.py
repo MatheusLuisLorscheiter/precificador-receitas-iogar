@@ -23,29 +23,37 @@ logger = logging.getLogger(__name__)
 # FUNCAO PRINCIPAL DE GERACAO
 # ============================================================================
 
-def gerar_proximo_codigo(db: Session, tipo: TipoCodigo) -> str:
+def gerar_proximo_codigo(db: Session, tipo: TipoCodigo, restaurante_id: int) -> str:
     """
-    Gera o proximo codigo disponivel para o tipo especificado
+    Gera o proximo codigo disponivel para o tipo especificado dentro do restaurante
+    
+    IMPORTANTE: Cada restaurante possui sua própria sequência de códigos independente.
+    O mesmo número de código pode existir em restaurantes diferentes.
     
     Args:
         db: Sessao do banco de dados
         tipo: Tipo de codigo a gerar (TipoCodigo enum)
+        restaurante_id: ID do restaurante para o qual gerar o código
         
     Returns:
         Codigo gerado no formato "PREFIXO-NUMERO" (ex: "REC-3045")
         
     Raises:
-        ValueError: Se a faixa estiver esgotada
+        ValueError: Se a faixa estiver esgotada ou restaurante_id inválido
         Exception: Erros de banco de dados
     """
     try:
+        # Validar restaurante_id
+        if not restaurante_id or restaurante_id <= 0:
+            raise ValueError("restaurante_id é obrigatório e deve ser maior que zero")
+        
         # Obter configuracao da faixa
         faixa = obter_faixa(tipo)
         inicio = faixa["inicio"]
         fim = faixa["fim"]
         
-        # Buscar ultimo codigo usado conforme o tipo
-        ultimo_numero = _buscar_ultimo_codigo_usado(db, tipo)
+        # Buscar ultimo codigo usado conforme o tipo e restaurante
+        ultimo_numero = _buscar_ultimo_codigo_usado(db, tipo, restaurante_id)
         
         # Se nao existe nenhum codigo, comecar do inicio da faixa
         if ultimo_numero is None:
@@ -64,25 +72,33 @@ def gerar_proximo_codigo(db: Session, tipo: TipoCodigo) -> str:
         # Formatar e retornar o codigo
         codigo_gerado = formatar_codigo(proximo_numero, tipo)
         
-        logger.info(f"Codigo gerado: {codigo_gerado} (tipo: {tipo})")
+        logger.info(
+            f"Codigo gerado: {codigo_gerado} (tipo: {tipo}, restaurante_id: {restaurante_id})"
+        )
         
         return codigo_gerado
         
     except Exception as e:
-        logger.error(f"Erro ao gerar codigo para tipo {tipo}: {str(e)}")
+        logger.error(
+            f"Erro ao gerar codigo para tipo {tipo} e restaurante {restaurante_id}: {str(e)}"
+        )
         raise
 
 # ============================================================================
 # FUNCOES AUXILIARES
 # ============================================================================
 
-def _buscar_ultimo_codigo_usado(db: Session, tipo: TipoCodigo) -> Optional[int]:
+def _buscar_ultimo_codigo_usado(db: Session, tipo: TipoCodigo, restaurante_id: int) -> Optional[int]:
     """
-    Busca o ultimo numero de codigo usado para um tipo especifico
+    Busca o ultimo numero de codigo usado para um tipo especifico dentro de um restaurante
+    
+    IMPORTANTE: A busca é restrita ao restaurante especificado, garantindo que
+    cada restaurante tenha sua própria sequência independente de códigos.
     
     Args:
         db: Sessao do banco de dados
         tipo: Tipo de codigo
+        restaurante_id: ID do restaurante
         
     Returns:
         Ultimo numero usado ou None se nao existir nenhum
@@ -92,27 +108,28 @@ def _buscar_ultimo_codigo_usado(db: Session, tipo: TipoCodigo) -> Optional[int]:
     fim = faixa["fim"]
     
     try:
-        # ===================================================================================================
-        # CORREÇÃO: Usar campo 'processada' ao invés de 'is_processada'
-        # ===================================================================================================
-        # Determinar qual tabela consultar
+        # Determinar qual tabela consultar e adicionar filtro de restaurante
         if tipo == TipoCodigo.RECEITA_NORMAL:
-            # Buscar em receitas normais (processada = False)
+            # Buscar em receitas normais (processada = False) do restaurante específico
             query = db.query(Receita).filter(
+                Receita.restaurante_id == restaurante_id,
                 Receita.processada == False,
                 Receita.codigo.isnot(None)
             )
             
         elif tipo == TipoCodigo.RECEITA_PROCESSADA:
-            # Buscar em receitas processadas (processada = True)
+            # Buscar em receitas processadas (processada = True) do restaurante específico
             query = db.query(Receita).filter(
+                Receita.restaurante_id == restaurante_id,
                 Receita.processada == True,
                 Receita.codigo.isnot(None)
             )
             
         elif tipo == TipoCodigo.INSUMO:
-            # Buscar em insumos
+            # Buscar em insumos do restaurante específico
+            # NOTA: Verificar se insumos têm restaurante_id. Se não tiverem, ajustar lógica
             query = db.query(Insumo).filter(
+                Insumo.restaurante_id == restaurante_id,
                 Insumo.codigo.isnot(None)
             )
         else:
@@ -143,57 +160,79 @@ def _buscar_ultimo_codigo_usado(db: Session, tipo: TipoCodigo) -> Optional[int]:
         return None
         
     except Exception as e:
-        logger.error(f"Erro ao buscar ultimo codigo: {str(e)}")
+        logger.error(
+            f"Erro ao buscar ultimo codigo (tipo: {tipo}, restaurante: {restaurante_id}): {str(e)}"
+        )
         return None
 
-def verificar_codigo_disponivel(db: Session, codigo: str, tipo: TipoCodigo) -> bool:
+def verificar_codigo_disponivel(db: Session, codigo: str, tipo: TipoCodigo, restaurante_id: int) -> bool:
     """
-    Verifica se um codigo especifico esta disponivel
+    Verifica se um codigo especifico esta disponivel dentro de um restaurante
+    
+    IMPORTANTE: A verificação é feita apenas dentro do contexto do restaurante.
+    O mesmo código pode estar em uso em outro restaurante sem conflito.
     
     Args:
         db: Sessao do banco de dados
         codigo: Codigo a verificar
         tipo: Tipo de codigo
+        restaurante_id: ID do restaurante
         
     Returns:
-        True se disponivel, False se ja existe
+        True se disponivel no restaurante, False se ja existe
     """
     try:
         # Validar formato do codigo
         if not validar_codigo_na_faixa(codigo, tipo):
             return False
         
-        # Verificar se ja existe no banco
+        # Verificar se ja existe no banco para este restaurante especifico
         if tipo in [TipoCodigo.RECEITA_NORMAL, TipoCodigo.RECEITA_PROCESSADA]:
-            existe = db.query(Receita).filter(Receita.codigo == codigo).first()
+            existe = db.query(Receita).filter(
+                Receita.codigo == codigo,
+                Receita.restaurante_id == restaurante_id
+            ).first()
         elif tipo == TipoCodigo.INSUMO:
-            existe = db.query(Insumo).filter(Insumo.codigo == codigo).first()
+            existe = db.query(Insumo).filter(
+                Insumo.codigo == codigo,
+                Insumo.restaurante_id == restaurante_id
+            ).first()
         else:
             return False
         
         return existe is None
         
     except Exception as e:
-        logger.error(f"Erro ao verificar disponibilidade do codigo: {str(e)}")
+        logger.error(
+            f"Erro ao verificar disponibilidade do codigo (restaurante: {restaurante_id}): {str(e)}"
+        )
         return False
 
-def obter_estatisticas_codigos(db: Session, tipo: TipoCodigo) -> dict:
+def obter_estatisticas_codigos(db: Session, tipo: TipoCodigo, restaurante_id: int) -> dict:
     """
-    Retorna estatisticas de uso da faixa de codigos
+    Retorna estatisticas de uso da faixa de codigos para um restaurante especifico
+    
+    IMPORTANTE: As estatísticas são calculadas apenas para o restaurante informado.
+    Cada restaurante tem sua própria sequência e estatísticas independentes.
     
     Args:
         db: Sessao do banco de dados
         tipo: Tipo de codigo
+        restaurante_id: ID do restaurante
         
     Returns:
-        Dicionario com estatisticas (usados, disponiveis, percentual)
+        Dicionario com estatisticas (usados, disponiveis, percentual, restaurante)
     """
     try:
+        # Validar restaurante_id
+        if not restaurante_id or restaurante_id <= 0:
+            raise ValueError("restaurante_id é obrigatório e deve ser maior que zero")
+        
         faixa = obter_faixa(tipo)
         total_faixa = faixa["fim"] - faixa["inicio"] + 1
         
-        # Contar codigos usados
-        ultimo_numero = _buscar_ultimo_codigo_usado(db, tipo)
+        # Contar codigos usados para este restaurante
+        ultimo_numero = _buscar_ultimo_codigo_usado(db, tipo, restaurante_id)
         
         if ultimo_numero is None:
             codigos_usados = 0
@@ -204,6 +243,7 @@ def obter_estatisticas_codigos(db: Session, tipo: TipoCodigo) -> dict:
         percentual_uso = (codigos_usados / total_faixa) * 100
         
         return {
+            "restaurante_id": restaurante_id,
             "tipo": tipo,
             "descricao": faixa["descricao"],
             "inicio": faixa["inicio"],
@@ -219,5 +259,7 @@ def obter_estatisticas_codigos(db: Session, tipo: TipoCodigo) -> dict:
         }
         
     except Exception as e:
-        logger.error(f"Erro ao obter estatisticas: {str(e)}")
+        logger.error(
+            f"Erro ao obter estatisticas (tipo: {tipo}, restaurante: {restaurante_id}): {str(e)}"
+        )
         raise

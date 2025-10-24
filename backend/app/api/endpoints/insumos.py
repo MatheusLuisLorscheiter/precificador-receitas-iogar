@@ -297,10 +297,20 @@ def criar_insumo(
         from app.services.codigo_service import gerar_proximo_codigo
         from app.config.codigo_config import TipoCodigo
         
-        # Gerar codigo automaticamente
+        # Obter restaurante_id do insumo
+        # IMPORTANTE: O schema InsumoCreate agora deve ter o campo restaurante_id
+        restaurante_id = getattr(insumo, 'restaurante_id', None)
+        
+        if not restaurante_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Campo restaurante_id é obrigatório para criar insumo"
+            )
+        
+        # Gerar codigo automaticamente PARA O RESTAURANTE ESPECÍFICO
         try:
-            codigo_gerado = gerar_proximo_codigo(db, TipoCodigo.INSUMO)
-            print(f"✅ Código gerado automaticamente para insumo: {codigo_gerado}")
+            codigo_gerado = gerar_proximo_codigo(db, TipoCodigo.INSUMO, restaurante_id)
+            print(f"✅ Código gerado automaticamente para insumo (restaurante {restaurante_id}): {codigo_gerado}")
         except ValueError as e:
             # Faixa esgotada
             raise HTTPException(

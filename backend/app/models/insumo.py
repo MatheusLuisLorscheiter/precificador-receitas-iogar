@@ -32,6 +32,18 @@ class Insumo(BaseModel):
     __tablename__ = "insumos"
 
     #   ===================================================================================================
+    #   VINCULAÇÃO COM RESTAURANTE - CAMPO OBRIGATÓRIO
+    #   ===================================================================================================
+
+    restaurante_id = Column(
+        Integer,
+        ForeignKey("restaurantes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="ID do restaurante proprietário do insumo"
+    )
+
+    #   ===================================================================================================
     #   CHAVE ESTRANGEIRA PARA FORNECEDOR
     #   ===================================================================================================
 
@@ -79,6 +91,15 @@ class Insumo(BaseModel):
     #   ===================================================================================================
     #   Relacionamentos com outras tabelas
     #   ===================================================================================================
+
+    # Relacionamento com restaurante (N para 1)
+    # Cada insumo pertence a um restaurante específico
+    restaurante = relationship(
+        "Restaurante",
+        back_populates="insumos",
+        lazy="select",
+        doc="Restaurante proprietário deste insumo"
+    )
 
     # Relacionamento com receitas
     receitas = relationship("ReceitaInsumo", back_populates="insumo")
