@@ -76,14 +76,6 @@ class InsumoBase(BaseModel):
         
         return v.upper()
 
-    @field_validator('fator')
-    @classmethod
-    def validar_fator(cls, v):
-        """Valida que fator é sempre positivo (aceita decimais)"""
-        if v <= 0:
-            raise ValueError('Fator deve ser um número positivo')
-        return round(v, 4)  # Máximo 4 casas decimais
-
     @field_validator('preco_compra_real')
     @classmethod
     def validar_preco(cls, v):
@@ -161,9 +153,9 @@ class InsumoCreate(InsumoBase):
                 "codigo": "VER001",
                 "nome": "Tomate maduro",
                 "quantidade": 1,
-                "fator": 1.0,
                 "unidade": "kg",
-                "preco_compra_real": 3.50
+                "preco_compra_real": 3.50,
+                "restaurante_id": 1
             }
         }
 
@@ -227,16 +219,6 @@ class InsumoUpdate(BaseModel):
         if not codigo_limpo.isalnum():
             raise ValueError('Código deve conter apenas letras, números, hífen ou underscore')
         return v.upper()
-    
-    @field_validator('fator')
-    @classmethod
-    def validar_fator(cls, v):
-        """Valida fator se fornecido"""
-        if v is None:
-            return v
-        if v <= 0:
-            raise ValueError('Fator deve ser um número positivo')
-        return round(v, 4)
     
     @field_validator('preco_compra_real')
     @classmethod
@@ -311,7 +293,6 @@ class InsumoResponse(InsumoBase):
                 "codigo": "VER001", 
                 "nome": "Tomate Maduro",
                 "quantidade": 1,
-                "fator": 1.0, 
                 "unidade": "kg",
                 "preco_compra_real": 3.50,
                 "preco_compra_centavos": 350,
@@ -338,9 +319,9 @@ class InsumoResponse(InsumoBase):
 class InsumoListResponse(BaseModel):
     """
     Schema simplificado para resposta de listagem de insumos.
-    
     Usado no endpoint GET /api/v1/insumos/ para exibir listas.
     Inclui campos essenciais incluindo taxonomia_id e aguardando_classificacao.
+    Campo fator removido conforme nova regra de negócio.
     """
     id: int = Field(description="ID único do insumo")
     codigo: str = Field(description="Código do insumo")
@@ -348,7 +329,6 @@ class InsumoListResponse(BaseModel):
     grupo: str = Field(description="Grupo do insumo")
     subgrupo: str = Field(description="Subgrupo do insumo")
     unidade: str = Field(description="Unidade de medida")
-    fator: float = Field(description="Fator de conversão")
     preco_compra_real: Optional[float] = Field(description="Preço de compra em reais")
     quantidade: int = Field(description="Quantidade")
     
