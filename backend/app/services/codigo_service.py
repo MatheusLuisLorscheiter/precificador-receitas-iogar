@@ -44,8 +44,10 @@ def gerar_proximo_codigo(db: Session, tipo: TipoCodigo, restaurante_id: int) -> 
     """
     try:
         # Validar restaurante_id
-        if not restaurante_id or restaurante_id <= 0:
-            raise ValueError("restaurante_id é obrigatório e deve ser maior que zero")
+        # ATENÇÃO: restaurante_id = 0 é permitido para insumos globais
+        # restaurante_id = None ou < 0 não é permitido
+        if restaurante_id is None or restaurante_id < -1:
+            raise ValueError("restaurante_id é obrigatório e não pode ser menor que -1")
         
         # Obter configuracao da faixa
         faixa = obter_faixa(tipo)

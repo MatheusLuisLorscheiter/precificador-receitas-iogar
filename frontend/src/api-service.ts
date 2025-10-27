@@ -178,31 +178,37 @@ class ApiService {
     }
     
     // ============================================================================
-    // OBTER RESTAURANTE_ID DO USUARIO LOGADO
+    // USAR RESTAURANTE_ID DO FORMULÁRIO OU DO USUÁRIO LOGADO
     // ============================================================================
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const restaurante_id = user.restaurante_id || null;
+    // PRIORIDADE:
+    // 1. Se veio do formulário (insumo.restaurante_id), usar esse valor (pode ser null para global)
+    // 2. Se não veio do formulário, usar o do usuário logado
+    // 3. Se usuário não tem restaurante, usar null (insumo global)
     
-    console.log('DEBUG RESTAURANTE:', { 
-      user_role: user.role, 
-      restaurante_id: restaurante_id 
-    });
+    let restauranteIdFinal;
     
-    // Para ADMIN/CONSULTANT sem restaurante, usar restaurante padrao (ID 1)
-    // Para outros perfis, usar o restaurante vinculado
-    const restauranteIdFinal = restaurante_id || 1;
+    if (insumo.restaurante_id !== undefined) {
+      // Veio do formulário - usar exatamente esse valor (null ou ID)
+      restauranteIdFinal = insumo.restaurante_id;
+      console.log('🔍 Usando restaurante_id do FORMULÁRIO:', restauranteIdFinal);
+    } else {
+      // Não veio do formulário - buscar do usuário logado
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      restauranteIdFinal = user.restaurante_id || null;
+      console.log('🔍 Usando restaurante_id do USUÁRIO:', restauranteIdFinal);
+    }
     
     const dadosBackend = {
       grupo: String(insumo.grupo || 'Geral').trim(),
       subgrupo: String(insumo.subgrupo || 'Geral').trim(),
       nome: String(insumo.nome || '').trim(),
       quantidade: Number(insumo.quantidade) || 1,
-      fator: Number(insumo.fator) || 1.0,
       unidade: String(insumo.unidade || 'kg').trim(),
       preco_compra_real: insumo.preco_compra_real || insumo.preco_compra_total || null,
       fornecedor_id: insumo.fornecedor_id || null,
       fornecedor_insumo_id: insumo.fornecedor_insumo_id || null,
-      restaurante_id: restauranteIdFinal  // Campo obrigatorio adicionado
+      // Usar o valor final determinado acima (null para global, ID para específico)
+      restaurante_id: restauranteIdFinal
     };
 
     console.log('📦 Dados MAPEADOS para backend:', dadosBackend);

@@ -187,6 +187,8 @@ const FormularioInsumoIsolado = React.memo(({
   onClose, 
   onSave, 
   loading,
+  // Prop com lista de restaurantes disponíveis
+  restaurantes,
   // Props para fornecedores
   ehFornecedorAnonimo,
   setEhFornecedorAnonimo,
@@ -210,27 +212,39 @@ const FormularioInsumoIsolado = React.memo(({
   isLoading
 }) => {
 
-// Estado local do formulário
+// Estado local do formulário - campo fator removido
 const [formData, setFormData] = useState(() => {
   const initialData = {
     nome: editingInsumo?.nome || '',
     unidade: editingInsumo?.unidade || 'kg',
-    fator: editingInsumo?.fator || 1,
-    quantidade: editingInsumo?.quantidade || 1, // Padrão 1 para facilitar cálculo
+    // Campo fator removido - não é mais necessário
+    quantidade: editingInsumo?.quantidade || 1,
     grupo: editingInsumo?.grupo || '',
     subgrupo: editingInsumo?.subgrupo || '',
     descricao: editingInsumo?.descricao || '',
-  preco_compra_total: editingInsumo?.preco_compra_total || 
+    preco_compra_total: editingInsumo?.preco_compra_total || 
                         (editingInsumo?.preco_compra_real && editingInsumo?.quantidade ? 
                         editingInsumo.preco_compra_real * editingInsumo.quantidade : 0),
-  
-  preco_compra_real: 0,
-  eh_fornecedor_anonimo: editingInsumo?.eh_fornecedor_anonimo !== undefined ? editingInsumo.eh_fornecedor_anonimo : true,
-  fornecedor_insumo_id: editingInsumo?.fornecedor_insumo_id || null
-};
+    preco_compra_real: 0,
+    eh_fornecedor_anonimo: editingInsumo?.eh_fornecedor_anonimo !== undefined ? editingInsumo.eh_fornecedor_anonimo : true,
+    fornecedor_insumo_id: editingInsumo?.fornecedor_insumo_id || null
+  };
 
-console.log('🔄 FormData INICIALIZADO com:', initialData);
+  console.log('🔄 FormData INICIALIZADO com:', initialData);
   return initialData;
+});
+
+// ADICIONAR ESTE NOVO ESTADO LOGO APÓS O formData:
+// Estado para controlar se o insumo é global ou específico de um restaurante
+const [insumoGlobal, setInsumoGlobal] = useState(() => {
+  // Se estiver editando, verificar se tem restaurante_id
+  // Se não tiver restaurante_id, é global
+  return editingInsumo ? !editingInsumo.restaurante_id : true;
+});
+
+// Estado para armazenar o restaurante selecionado
+const [restauranteSelecionado, setRestauranteSelecionado] = useState(() => {
+  return editingInsumo?.restaurante_id || null;
 });
 
   // 🔧 FUNÇÃO OTIMIZADA para atualizar campos
@@ -277,7 +291,6 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
         nome: insumoFornecedorSelecionado.nome,
         codigo: insumoFornecedorSelecionado.codigo,
         unidade: insumoFornecedorSelecionado.unidade,
-        fator: insumoFornecedorSelecionado.fator || 1, // ✅ PREENCHIMENTO AUTOMÁTICO
         preco_compra_real: insumoFornecedorSelecionado.preco_unitario || 0
       }));
     }
@@ -329,28 +342,26 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
     }
   }, []);
 
-  // 🔧 FUNÇÃO para reset do formulário
-  const resetForm = useCallback(() => {
-    setFormData({
-      nome: '',
-      codigo: '',
-      unidade: 'kg',
-      fator: 1,
-      quantidade: 1, // Padrão 1 para evitar divisão por zero
-      grupo: '',
-      subgrupo: '',
-      descricao: '',
-      // ========================================================================
-      // 🆕 NOVOS CAMPOS DE PREÇO
-      // ========================================================================
-      preco_compra_total: 0,
-      preco_compra_real: 0
-    });
-    setEhFornecedorAnonimo(true);
-    setFornecedorSelecionadoForm(null);
-    setInsumosDoFornecedor([]);
-    setInsumoFornecedorSelecionado(null);
-  }, [setEhFornecedorAnonimo, setFornecedorSelecionadoForm, setInsumosDoFornecedor, setInsumoFornecedorSelecionado])
+  // Função para reset do formulário - campo fator removido
+const resetForm = useCallback(() => {
+  setFormData({
+    nome: '',
+    codigo: '',
+    unidade: 'kg',
+    // Campo fator removido - não é mais necessário
+    quantidade: 1, // Padrão 1 para evitar divisão por zero
+    grupo: '',
+    subgrupo: '',
+    descricao: '',
+    // Campos de preço
+    preco_compra_total: 0,
+    preco_compra_real: 0
+  });
+  setEhFornecedorAnonimo(true);
+  setFornecedorSelecionadoForm(null);
+  setInsumosDoFornecedor([]);
+  setInsumoFornecedorSelecionado(null);
+}, [setEhFornecedorAnonimo, setFornecedorSelecionadoForm, setInsumosDoFornecedor, setInsumoFornecedorSelecionado])
 
   // 🔧 FUNÇÃO para submissão
   const handleSubmit = useCallback(() => {
@@ -369,6 +380,17 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
 
     if (!formData.quantidade || formData.quantidade <= 0) {
       showErrorPopup('Campo obrigatório', 'A quantidade deve ser maior que zero.');
+      return;
+    }
+
+    // ========================================================================
+    // VALIDAÇÃO: Restaurante obrigatório se não for global
+    // ========================================================================
+    if (!insumoGlobal && !restauranteSelecionado) {
+      showErrorPopup(
+        'Restaurante Obrigatório', 
+        'Selecione um restaurante ou marque o insumo como global.'
+      );
       return;
     }
 
@@ -407,10 +429,14 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
       // ====================================================================
       preco_compra_real: parseFloat(precoCalculadoPorUnidade.toFixed(2)),
       
-      fator: parseFloat(formData.fator) || 1.0,
       quantidade: parseInt(formData.quantidade) || 1,
       grupo: formData.grupo?.trim() || 'Geral',
       subgrupo: formData.subgrupo?.trim() || 'Geral',
+      
+      // ====================================================================
+      // 🆕 VÍNCULO COM RESTAURANTE - NULL para global, ID para específico
+      // ====================================================================
+      restaurante_id: insumoGlobal ? null : restauranteSelecionado,
       
       // ====================================================================
       // CAMPOS PARA COMPARAÇÃO DE PREÇOS
@@ -434,7 +460,9 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
     ehFornecedorAnonimo, 
     insumoFornecedorSelecionado, 
     onSave, 
-    fornecedorSelecionadoForm
+    fornecedorSelecionadoForm,
+    insumoGlobal,
+    restauranteSelecionado
   ]);
 
   // 🔧 FUNÇÃO para fechar
@@ -728,23 +756,6 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
                   />
                 </div>
 
-                {/* Fator */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-900">Fator</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={formData.fator}
-                    onChange={(e) => updateField('fator', parseFloat(e.target.value) || 1)}
-                    disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                    className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
-                      (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'
-                    }`}
-                    placeholder="1.0"
-                  />
-                </div>
-
                 {/* Preço de Compra Total */}
                 <div className="space-y-2">
                   <label className="flex items-center text-sm font-medium text-gray-900">
@@ -780,6 +791,86 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
                   />
                 </div>
               </div>
+            </div>
+
+            {/* ============================================================================ */}
+            {/* SEÇÃO 2.5: VÍNCULO COM RESTAURANTE (Global vs Específico) */}
+            {/* ============================================================================ */}
+            
+            <div className="space-y-6">
+              {/* Header da seção */}
+              <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">2.5</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Vínculo com Restaurante</h3>
+                  <p className="text-sm text-gray-500">Defina se o insumo é global ou específico de um restaurante</p>
+                </div>
+              </div>
+
+              {/* Toggle: Global vs Específico */}
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-6">
+                <div className="flex items-start space-x-4">
+                  <div className="flex items-center h-6 mt-1">
+                    <input
+                      type="checkbox"
+                      checked={insumoGlobal}
+                      onChange={(e) => {
+                        setInsumoGlobal(e.target.checked);
+                        // Se marcar como global, limpar restaurante selecionado
+                        if (e.target.checked) {
+                          setRestauranteSelecionado(null);
+                        }
+                      }}
+                      className="w-5 h-5 text-purple-600 bg-white border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 transition-all duration-200"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-base font-semibold text-gray-900 cursor-pointer">
+                      Marcar como Insumo Global
+                    </label>
+                    <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+                      Insumos globais podem ser utilizados por qualquer restaurante do sistema. 
+                      Ideal para ingredientes comuns que não pertencem a uma unidade específica.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dropdown de seleção de restaurante (só aparece se não for global) */}
+              {!insumoGlobal && (
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Selecione o Restaurante *
+                  </label>
+                  <select
+                    value={restauranteSelecionado || ''}
+                    onChange={(e) => setRestauranteSelecionado(e.target.value ? parseInt(e.target.value) : null)}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                    required={!insumoGlobal}
+                  >
+                    <option value="">Selecione um restaurante...</option>
+                    {restaurantes?.map((rest) => (
+                      <option key={rest.id} value={rest.id}>
+                        {rest.nome} {rest.cnpj ? `- CNPJ: ${rest.cnpj}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {/* Mensagem de aviso se não houver restaurantes */}
+                  {(!restaurantes || restaurantes.length === 0) && (
+                    <div className="mt-3 flex items-start space-x-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-amber-800">
+                        <strong>Atenção:</strong> Nenhum restaurante cadastrado. 
+                        Cadastre um restaurante antes de criar insumos específicos, 
+                        ou marque como "Insumo Global".
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ============================================================================ */}
@@ -1914,11 +2005,10 @@ const FoodCostSystem: React.FC = () => {
   const [novoInsumo, setNovoInsumo] = useState(() => ({
     nome: '',
     unidade: 'kg',
-    preco_compra_real: 0, // ✅ Campo correto para o backend
-    fator: 1.0,
+    preco_compra_real: 0,
     quantidade: 1,
-    grupo: 'Geral', // ✅ Campo obrigatório
-    subgrupo: 'Geral' // ✅ Campo obrigatório
+    grupo: 'Geral',
+    subgrupo: 'Geral'
   }));
   
   // Estados para formulário de receita
@@ -3549,27 +3639,6 @@ const fetchInsumos = async () => {
                   <option value="pacote">Pacote</option>
                   <option value="caixa">Caixa</option>
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fator {formData.eh_processado && <span className="text-amber-600 text-xs">(Fixo em 1.0 para processadas)</span>}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.fator}
-                  onChange={(e) => handleChange('fator', parseFloat(e.target.value) || 1)}
-                  disabled={formData.eh_processado}
-                  className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 ${
-                    formData.eh_processado ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'
-                  }`}
-                />
-                {formData.eh_processado && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    Receitas processadas sempre têm fator 1.0
-                  </p>
-                )}
               </div>
             </div>  
 
@@ -5262,14 +5331,22 @@ const fetchInsumos = async () => {
       try {
         setLoading(true);
         console.log('📤 Iniciando salvamento do insumo com nova lógica:', dadosInsumo);
+        console.log('🔍 DEBUG - restaurante_id recebido:', dadosInsumo.restaurante_id);
+        console.log('🔍 DEBUG - tipo de restaurante_id:', typeof dadosInsumo.restaurante_id);
 
         // Preparar dados com nova estrutura
         const dadosParaEnvio = {
           nome: dadosInsumo.nome || '',
           unidade: dadosInsumo.unidade || 'kg',
           preco_compra_real: dadosInsumo.preco_compra_real || null,
-          fator: dadosInsumo.fator || 1.0,
           quantidade: dadosInsumo.quantidade || 0,
+          
+          // ================================================================
+          // VÍNCULO COM RESTAURANTE - Usa exatamente o valor do formulário
+          // Se dadosInsumo.restaurante_id === null, manter null (insumo global)
+          // Se dadosInsumo.restaurante_id === ID, manter ID (insumo específico)
+          // ================================================================
+          restaurante_id: dadosInsumo.restaurante_id !== undefined ? dadosInsumo.restaurante_id : null,
           
           // Novos campos para fornecedor
           eh_fornecedor_anonimo: ehFornecedorAnonimo,
@@ -5277,8 +5354,9 @@ const fetchInsumos = async () => {
           grupo: dadosInsumo.grupo || 'Geral',
           subgrupo: dadosInsumo.subgrupo || ''
         };
-
         console.log('📦 Dados preparados para envio:', dadosParaEnvio);
+        console.log('🔍 DEBUG dadosParaEnvio - restaurante_id:', dadosParaEnvio.restaurante_id);
+        console.log('🔍 DEBUG dadosParaEnvio - tipo:', typeof dadosParaEnvio.restaurante_id);
 
         // 🆕 Log de mudança de preço (se insumo do fornecedor selecionado)
         if (insumoFornecedorSelecionado && dadosInsumo.preco_compra_real !== insumoFornecedorSelecionado.preco_unitario) {
@@ -5873,6 +5951,8 @@ const fetchInsumos = async () => {
           }}
           onSave={handleSaveInsumo}
           loading={loading}
+          // Lista de restaurantes disponíveis
+          restaurantes={restaurantes}
           // Props para fornecedores
           ehFornecedorAnonimo={ehFornecedorAnonimo}
           setEhFornecedorAnonimo={setEhFornecedorAnonimo}
@@ -7941,8 +8021,7 @@ Receitas.displayName = 'Receitas';
       descricao: '',
       unidade: 'kg',
       preco_compra_real: 0,
-      quantidade: 1,
-      fator: 1.0
+      quantidade: 1
     });
 
     const [showPopupFornecedor, setShowPopupFornecedor] = useState(false);
@@ -8092,8 +8171,7 @@ Receitas.displayName = 'Receitas';
         descricao: insumo.descricao || '',
         unidade: insumo.unidade || 'kg',
         preco_compra_real: insumo.preco_unitario || 0,
-        quantidade: insumo.quantidade || 1,
-        fator: insumo.fator || 1.0
+        quantidade: insumo.quantidade || 1
       });
       setShowPopupEditarInsumo(true);
     };
@@ -8118,7 +8196,6 @@ Receitas.displayName = 'Receitas';
           unidade: novoInsumo.unidade,
           preco_unitario: novoInsumo.preco_compra_real,
           quantidade: novoInsumo.quantidade || 1,
-          fator: novoInsumo.fator || 1.0
         };
 
         console.log('📤 Atualizando insumo:', dadosParaAtualizar);
@@ -8307,13 +8384,11 @@ const cancelarExclusao = () => {
         
         // Mapear dados para schema correto do backend (SEM codigo)
         const insumoData = {
-          // codigo removido - será gerado automaticamente pelo backend
           nome: String(novoInsumo.nome || '').trim(), 
           unidade: String(novoInsumo.unidade || 'kg').trim(),
           preco_unitario: Number(novoInsumo.preco_compra_real) || 0,
           descricao: String(novoInsumo.descricao || '').trim(),
-          quantidade: Number(novoInsumo.quantidade) || 1,
-          fator: Number(novoInsumo.fator) || 1.0
+          quantidade: Number(novoInsumo.quantidade) || 1
         };
 
         console.log('🎯 Dados do insumo do fornecedor (sem código):', insumoData);
@@ -8334,13 +8409,11 @@ const cancelarExclusao = () => {
           
           // Limpa formulário e fecha popup (SEM codigo)
           setNovoInsumo({
-            // codigo removido
             nome: '',
             descricao: '',
             unidade: 'kg',
             preco_compra_real: 0,
-            quantidade: 1,
-            fator: 1.0
+            quantidade: 1
           });
           setShowPopupInsumo(false);
           
@@ -9205,18 +9278,6 @@ const cancelarExclusao = () => {
                       className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                     />
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fator</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0.1"
-                      value={novoInsumo.fator}
-                      onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value) || 1.0})}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    />
-                  </div>
                 </div>
 
                 <div>
@@ -9418,24 +9479,6 @@ const cancelarExclusao = () => {
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Quantas unidades estão sendo vendidas
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fator <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={novoInsumo.fator}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value) || 0})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="1.0"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Valor fechado (ex: 0.75 para 750ml, 20.0 para caixa 20un)
                   </p>
                 </div>
 

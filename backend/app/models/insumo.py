@@ -5,7 +5,7 @@
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
-from sqlalchemy import Column, Float, ForeignKey, Integer, Boolean
+from sqlalchemy import Column, Float, ForeignKey, Integer, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 
@@ -22,16 +22,28 @@ class Insumo(BaseModel):
     """
     __tablename__ = "insumos"
 
+    # ========================================================================
+    # CONSTRAINT DE UNICIDADE: Código único por restaurante
+    # ========================================================================
+    __table_args__ = (
+        UniqueConstraint(
+            'restaurante_id',
+            'codigo',
+            name='uq_insumo_restaurante_codigo'
+        ),
+    )
+
     #   ===================================================================================================
     #   VINCULAÇÃO COM RESTAURANTE - CAMPO OBRIGATÓRIO
     #   ===================================================================================================
 
+    # Vinculação com restaurante - campo opcional para suportar insumos globais
     restaurante_id = Column(
         Integer,
         ForeignKey("restaurantes.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,  # NULL = insumo global, ID = insumo específico do restaurante
         index=True,
-        comment="ID do restaurante proprietário do insumo"
+        comment="ID do restaurante proprietário do insumo (NULL = insumo global)"
     )
 
     #   ===================================================================================================
