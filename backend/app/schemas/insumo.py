@@ -333,6 +333,7 @@ class InsumoListResponse(BaseModel):
     unidade: str = Field(description="Unidade de medida")
     preco_compra_real: Optional[float] = Field(description="Preço de compra em reais")
     quantidade: int = Field(description="Quantidade")
+    restaurante_id: Optional[int] = None
     
     # Campo importante para taxonomias
     taxonomia_id: Optional[int] = Field(

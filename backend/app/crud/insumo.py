@@ -258,7 +258,9 @@ def get_insumos(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    filters: Optional[InsumoFilter] = None
+    filters: Optional[InsumoFilter] = None,
+    restaurante_id: Optional[int] = None,
+    incluir_globais: bool = False
 ) -> List[Insumo]:
     """
     Lista insumos com paginação e filtros opcionais.
@@ -268,12 +270,42 @@ def get_insumos(
         skip (int): Número de registros para pular (paginação)
         limit (int): Limite de registros a retornar
         filters (InsumoFilter): Filtros de busca
+        restaurante_id (int, opcional): ID do restaurante para filtrar insumos específicos
+        incluir_globais (bool): Se True, inclui insumos globais junto com os do restaurante
         
     Returns:
         List[Insumo]: Lista de insumos
+        
+    Regras de Filtro por Restaurante:
+        - Se restaurante_id = None: retorna APENAS insumos globais (restaurante_id IS NULL)
+        - Se restaurante_id fornecido e incluir_globais = False: retorna APENAS insumos daquele restaurante
+        - Se restaurante_id fornecido e incluir_globais = True: retorna insumos do restaurante + globais
     """
     query = db.query(Insumo)
 
+    # ===================================================================================================
+    # FILTROS DE RESTAURANTE - CONTROLE DE INSUMOS GLOBAIS E ESPECÍFICOS
+    # ===================================================================================================
+    if restaurante_id is None:
+        # Sem restaurante selecionado: mostrar APENAS insumos globais
+        query = query.filter(Insumo.restaurante_id.is_(None))
+    else:
+        # Com restaurante selecionado
+        if incluir_globais:
+            # Incluir insumos globais + insumos do restaurante específico
+            query = query.filter(
+                or_(
+                    Insumo.restaurante_id == restaurante_id,
+                    Insumo.restaurante_id.is_(None)
+                )
+            )
+        else:
+            # Apenas insumos do restaurante específico (sem globais)
+            query = query.filter(Insumo.restaurante_id == restaurante_id)
+
+    # ===================================================================================================
+    # FILTROS TRADICIONAIS (GRUPO, NOME, PREÇO, ETC)
+    # ===================================================================================================
     # Aplicar filtros fornecidos
     if filters:
         # filtro por grupo
@@ -412,6 +444,37 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
     Raises:
         ValueError: Se código já existir
     """
+
+    # ========================================================================
+    # GERAÇÃO AUTOMÁTICA DE CÓDIGO (SE NÃO FORNECIDO)
+    # ========================================================================
+    print(f"🔍 DEBUG - Tentando criar insumo:")
+    print(f"  📦 model_dump: {insumo.model_dump()}")
+    print(f"  🔑 codigo attr: '{insumo.codigo}'")
+    print(f"  📝 nome attr: '{insumo.nome}'")
+    print("=" * 80)
+    
+    # Gerar código automaticamente se não fornecido ou vazio
+    if not insumo.codigo or insumo.codigo.strip() == '':
+        # Importar função de geração de código
+        from app.services.codigo_service import gerar_proximo_codigo, TipoCodigo
+        
+        # Garantir que restaurante_id existe
+        if insumo.restaurante_id is None:
+            raise ValueError("restaurante_id é obrigatório para gerar código automático")
+        
+        # Gerar próximo código disponível para este restaurante
+        codigo_gerado = gerar_proximo_codigo(
+            db,
+            TipoCodigo.INSUMO,
+            restaurante_id=insumo.restaurante_id
+        )
+        
+        # Atualizar o objeto insumo com o código gerado
+        insumo.codigo = codigo_gerado
+        
+        print(f"✅ Código gerado automaticamente para insumo restaurante {insumo.restaurante_id}: {codigo_gerado}")
+
     # ========================================================================
     # VALIDAÇÃO: Verificar se código já existe NO MESMO RESTAURANTE
     # ========================================================================

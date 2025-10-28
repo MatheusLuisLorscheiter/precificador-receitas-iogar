@@ -139,10 +139,25 @@ class ApiService {
   // MÉTODOS PARA INSUMOS - AJUSTADOS PARA SEU BACKEND
   // ================================
 
-  // Listar todos os insumos
-  async getInsumos(): Promise<ApiResponse<any[]>> {
-    // Aumentar limit para 1000 para garantir que todos os insumos sejam carregados
-    return this.request<any[]>('/api/v1/insumos/?limit=1000');
+  // Listar todos os insumos com filtros opcionais
+  async getInsumos(params: { restaurante_id?: number; incluir_globais?: boolean } = {}): Promise<ApiResponse<any[]>> {
+    // Construir query string com parâmetros
+    const queryParams = new URLSearchParams({ limit: '1000' });
+    
+    // Adicionar restaurante_id se fornecido
+    if (params.restaurante_id) {
+      queryParams.append('restaurante_id', params.restaurante_id.toString());
+    }
+    
+    // Adicionar incluir_globais se fornecido
+    if (params.incluir_globais !== undefined) {
+      queryParams.append('incluir_globais', params.incluir_globais.toString());
+    }
+    
+    const url = `/api/v1/insumos/?${queryParams.toString()}`;
+    console.log('📡 API getInsumos:', url);
+    
+    return this.request<any[]>(url);
   }
 
   // Buscar insumos disponíveis (inclui receitas processadas)

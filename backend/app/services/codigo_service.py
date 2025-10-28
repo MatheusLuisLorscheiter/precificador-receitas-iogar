@@ -144,13 +144,28 @@ def _buscar_ultimo_codigo_usado(db: Session, tipo: TipoCodigo, restaurante_id: i
         numeros_validos = []
         for registro in registros:
             try:
-                # Extrair numero do codigo (formato: "PREFIXO-NUMERO")
-                partes = registro.codigo.split("-")
-                if len(partes) == 2:
-                    numero = int(partes[1])
-                    # Verificar se esta na faixa correta
+                codigo_str = str(registro.codigo).strip()
+                
+                # Tentar extrair número do código
+                # Aceita formatos: "5000", "INS-5000", "5000-EXTRA"
+                if "-" in codigo_str:
+                    # Formato com hífen: pegar a parte numérica
+                    partes = codigo_str.split("-")
+                    # Tentar cada parte para ver qual é número
+                    for parte in partes:
+                        try:
+                            numero = int(parte.strip())
+                            if inicio <= numero <= fim:
+                                numeros_validos.append(numero)
+                                break  # Encontrou o número, sair do loop
+                        except ValueError:
+                            continue
+                else:
+                    # Formato sem hífen: código direto (ex: "5000")
+                    numero = int(codigo_str)
                     if inicio <= numero <= fim:
                         numeros_validos.append(numero)
+                        
             except (ValueError, AttributeError, IndexError):
                 # Ignorar codigos com formato invalido
                 continue

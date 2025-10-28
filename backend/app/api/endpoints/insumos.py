@@ -44,6 +44,12 @@ def listar_insumos(
     unidade:   Optional[str] = Query(None, description="Fltrar opor unidade"),
     preco_min: Optional[float] = Query(None, ge=0, description="Preço mínimo"),
     preco_max: Optional[float] = Query(None, ge=0, description="Preço máximo"),
+    
+    # ===================================================================================================
+    # FILTROS DE RESTAURANTE - CONTROLE DE INSUMOS GLOBAIS E ESPECÍFICOS
+    # ===================================================================================================
+    restaurante_id: Optional[int] = Query(None, description="Filtrar por restaurante específico"),
+    incluir_globais: bool = Query(False, description="Incluir insumos globais junto com insumos do restaurante (apenas ADMIN/CONSULTANT)"),
 
     # Denpedencia do banco de dados
     db: Session = Depends(get_db)
@@ -77,8 +83,18 @@ def listar_insumos(
         limit=limit
     )
 
-    # Buscar insumos no banco
-    insumos = crud_insumo.get_insumos(db=db, skip=skip, limit=limit, filters=filters)
+    # ===================================================================================================
+    # BUSCAR INSUMOS COM FILTROS DE RESTAURANTE
+    # ===================================================================================================
+    # Passar os novos parâmetros de filtro por restaurante para o CRUD
+    insumos = crud_insumo.get_insumos(
+        db=db, 
+        skip=skip, 
+        limit=limit, 
+        filters=filters,
+        restaurante_id=restaurante_id,
+        incluir_globais=incluir_globais
+    )
 
     # Converter preços para reais e retornar
     for insumo in insumos:

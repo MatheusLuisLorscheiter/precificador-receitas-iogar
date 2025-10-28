@@ -1869,6 +1869,7 @@ const FoodCostSystem: React.FC = () => {
     console.log(`💾 Aba salva: ${activeTab}`);
   }, [activeTab]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
+  const [incluirInsumosGlobais, setIncluirInsumosGlobais] = useState(false);
   const [receitas, setReceitas] = useState<Receita[]>([]);
   const [restaurantes, setRestaurantes] = useState<RestauranteGrid[]>([]);
   const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
@@ -2149,14 +2150,29 @@ const fetchInsumos = async () => {
     // ========================================================================
     // BUSCAR INSUMOS DA TABELA PRINCIPAL
     // ========================================================================
-    const response = await apiService.getInsumos();
+    const params: any = {};
+
+    // Adicionar filtro de restaurante se houver um selecionado
+    if (selectedRestaurante) {
+      params.restaurante_id = selectedRestaurante.id;
+      
+      // Adicionar flag de incluir globais se checkbox marcado (apenas ADMIN/CONSULTANT)
+      if (incluirInsumosGlobais && ['ADMIN', 'CONSULTANT'].includes(user?.role || '')) {
+        params.incluir_globais = true;
+      }
+    }
+
+    console.log('🔍 Buscando insumos com parâmetros:', params);
+
+    const response = await apiService.getInsumos(params);
     let insumosPrincipais = [];
     
     if (response.data) {
       insumosPrincipais = response.data.map(insumo => ({
         ...insumo,
         tipo_origem: 'sistema', // Identificar como insumo do sistema
-        tem_fornecedor: false
+        tem_fornecedor: false,
+        restaurante_id: insumo.restaurante_id
       }));
     } else if (response.error) {
       console.error('Erro ao buscar insumos principais:', response.error);
@@ -2193,6 +2209,7 @@ const fetchInsumos = async () => {
                 subgrupo: null,
                 descricao: insumo.descricao,
                 // Campos específicos para identificar origem
+                restaurante_id: null,
                 tipo_origem: 'fornecedor',
                 tem_fornecedor: true,
                 fornecedor_id: insumo.fornecedor_id,
@@ -2958,8 +2975,17 @@ const fetchInsumos = async () => {
       }
     };
 
-    initializeApp();
+   initializeApp();
   }, []); // IMPORTANTE: Array vazio para executar apenas uma vez
+
+  // ===================================================================================================
+    // EFEITO: RECARREGAR INSUMOS AO MUDAR RESTAURANTE OU CHECKBOX DE GLOBAIS
+    // ===================================================================================================
+    useEffect(() => {
+      if (activeTab === 'insumos') {
+        fetchInsumos();
+      }
+    }, [selectedRestaurante, incluirInsumosGlobais]);
 
   // Carregar estatísticas quando um restaurante é selecionado na aba restaurantes
   // useEffect(() => {
@@ -5548,6 +5574,24 @@ const fetchInsumos = async () => {
         {/* Barra de busca - COMPONENTE ISOLADO */}
         <SearchInput onSearch={handleSearchChange} />
 
+        {/* ===================================================================================================
+            CHECKBOX: INCLUIR INSUMOS GLOBAIS (DINÂMICO)
+            =================================================================================================== */}
+        {selectedRestaurante && ['ADMIN', 'CONSULTANT'].includes(user?.role || '') && (
+          <div className="flex items-center gap-3 p-4 rounded-lg border-2 border-green-200 bg-green-50 hover:bg-green-100 transition-all">
+            <input
+              type="checkbox"
+              id="incluir_insumos_globais"
+              checked={incluirInsumosGlobais}
+              onChange={(e) => setIncluirInsumosGlobais(e.target.checked)}
+              className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2 checked:bg-green-500 checked:border-green-500 cursor-pointer"
+            />
+            <label htmlFor="incluir_insumos_globais" className="text-sm font-medium text-gray-700 cursor-pointer select-none flex-1">
+              ✨ Incluir insumos globais (serão mesclados aos insumos do restaurante)
+            </label>
+          </div>
+        )}
+
         {/* Tabela de insumos */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {insumos.length === 0 ? (
@@ -5666,6 +5710,15 @@ const fetchInsumos = async () => {
                               </div>
                             )}
                             <span>{insumo.nome}</span>
+                            {/* Badge "Global" APENAS para insumos SEM restaurante */}
+                            {(insumo.restaurante_id === null || 
+                              insumo.restaurante_id === undefined || 
+                              insumo.restaurante_id === '' ||
+                              String(insumo.restaurante_id).toLowerCase() === 'null') && (
+                              <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full font-medium">
+                                Global
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
@@ -5758,7 +5811,18 @@ const fetchInsumos = async () => {
                             F
                           </div>
                         )}
-                        <h3 className="font-semibold text-gray-900 text-base">{insumo.nome}</h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-gray-900 text-base">{insumo.nome}</h3>
+                          {/* Badge "Global" APENAS para insumos SEM restaurante */}
+                          {(insumo.restaurante_id === null || 
+                            insumo.restaurante_id === undefined || 
+                            insumo.restaurante_id === '' ||
+                            String(insumo.restaurante_id).toLowerCase() === 'null') && (
+                            <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full font-medium">
+                              Global
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
