@@ -2882,6 +2882,80 @@ const fetchInsumos = async () => {
     }
   };
 
+  // ===================================================================================================
+  // FUNÇÃO: BUSCAR DETALHES COMPLETOS DOS INSUMOS DE UMA RECEITA
+  // ===================================================================================================
+  // Descrição: Carrega os dados completos (nome, código, unidade) dos insumos e receitas
+  //            processadas de uma receita específica para popular os selects corretamente
+  // ===================================================================================================
+  const fetchInsumosDetalhesReceita = async (receitaInsumos: any[]) => {
+    if (!receitaInsumos || receitaInsumos.length === 0) {
+      console.log('📭 Nenhum insumo para carregar');
+      return [];
+    }
+
+    console.log(`🔍 Carregando detalhes de ${receitaInsumos.length} insumos...`);
+
+    const insumosComDetalhes = receitaInsumos.map((ri) => {
+      try {
+        const insumoId = ri.insumo_id;
+        const receitaProcessadaId = ri.receita_processada_id;
+
+        // ============================================================================
+        // CASO 1: É uma receita processada
+        // ============================================================================
+        if (receitaProcessadaId) {
+          console.log(`  🔄 Buscando receita processada ID: ${receitaProcessadaId}`);
+          
+          const receitaProcessada = receitas?.find(r => r.id === receitaProcessadaId);
+
+          if (receitaProcessada) {
+            return {
+              ...ri,
+              _detalhes: {
+                nome: receitaProcessada.nome,
+                codigo: receitaProcessada.codigo,
+                unidade: receitaProcessada.unidade,
+                tipo: 'receita_processada'
+              }
+            };
+          }
+        }
+
+        // ============================================================================
+        // CASO 2: É um insumo normal
+        // ============================================================================
+        if (insumoId) {
+          console.log(`  📦 Buscando insumo ID: ${insumoId}`);
+          
+          const insumo = insumos.find(i => i.id === insumoId || i.id_original === insumoId);
+
+          if (insumo) {
+            return {
+              ...ri,
+              _detalhes: {
+                nome: insumo.nome,
+                codigo: insumo.codigo,
+                unidade: insumo.unidade,
+                tipo: 'insumo'
+              }
+            };
+          }
+        }
+
+        console.warn(`⚠️ Não encontrou detalhes para insumo_id=${insumoId}, receita_processada_id=${receitaProcessadaId}`);
+        return ri;
+
+      } catch (error) {
+        console.error(`❌ Erro ao buscar detalhes:`, error);
+        return ri;
+      }
+    });
+
+    console.log('✅ Detalhes dos insumos carregados:', insumosComDetalhes);
+    return insumosComDetalhes;
+  };
+
   // Carrega restaurantes com fallback para diferentes endpoints
   const carregarRestaurantes = async () => {
     try {
@@ -3849,42 +3923,76 @@ const fetchInsumos = async () => {
       const [receitaInsumos, setReceitaInsumos] = useState([]);
 
       useEffect(() => {
+        // ============================================================================
+        // CARREGAR INSUMOS DA RECEITA EM EDIÇÃO COM DETALHES COMPLETOS
+        // ============================================================================
+        const carregarInsumosComDetalhes = async () => {
+          if (editingReceita && editingReceita.receita_insumos) {
+            console.log('🔄 Carregando insumos da receita em edição:', editingReceita.receita_insumos);
+            
+            // Buscar detalhes completos dos insumos
+            const insumosComDetalhes = await fetchInsumosDetalhesReceita(editingReceita.receita_insumos);
+            
+            const insumosComQuantidade = insumosComDetalhes.map((ri: any) => {
+              const quantidade = ri.quantidade_necessaria || ri.quantidade || 1;
+              
+              // ============================================================================
+              // UNIDADE DE MEDIDA - GARANTIR QUE SEMPRE TENHA UM VALOR VÁLIDO
+              // ============================================================================
+              let unidadeFinal;
+              
+              // Prioridade 1: unidade_medida do relacionamento receita_insumo
+              if (ri.unidade_medida) {
+                unidadeFinal = ri.unidade_medida;
+                console.log(`✅ Usando unidade_medida do relacionamento: ${unidadeFinal}`);
+              }
+              // Prioridade 2: unidade dos detalhes carregados
+              else if (ri._detalhes?.unidade) {
+                unidadeFinal = ri._detalhes.unidade;
+                console.log(`✅ Usando unidade dos detalhes: ${unidadeFinal}`);
+              }
+              // Prioridade 3: Buscar do insumo original
+              else {
+                const insumoOriginal = insumos.find(i => 
+                  i.id === ri.insumo_id || i.id_original === ri.insumo_id
+                );
+                
+                if (insumoOriginal?.unidade) {
+                  unidadeFinal = insumoOriginal.unidade;
+                  console.log(`✅ Usando unidade do insumo original: ${unidadeFinal}`);
+                } else {
+                  // Fallback: unidade padrão
+                  unidadeFinal = 'un';
+                  console.warn(`⚠️ Nenhuma unidade encontrada, usando padrão: ${unidadeFinal}`);
+                }
+              }
+              
+              console.log(`📊 Insumo ${ri.insumo_id || ri.receita_processada_id}: qtd=${quantidade}, unidade=${unidadeFinal}`);
+              
+              return {
+                insumo_id: ri.insumo_id || ri.receita_processada_id,
+                quantidade: quantidade,
+                unidade_medida: unidadeFinal,
+                _detalhes: ri._detalhes // Preservar os detalhes carregados
+              };
+            });
+            
+            console.log('✅ ========== INSUMOS CARREGADOS FINAL ==========');
+            console.log('📦 Array completo:', insumosComQuantidade);
+            insumosComQuantidade.forEach((insumo, idx) => {
+              console.log(`   [${idx}] insumo_id: ${insumo.insumo_id}, qtd: ${insumo.quantidade}, unidade: ${insumo.unidade_medida}, nome: ${insumo._detalhes?.nome}`);
+            });
+            console.log('✅ ==============================================');
+            
+            setReceitaInsumos(insumosComQuantidade);
+          } else if (!editingReceita) {
+            // Limpar insumos quando não está editando
+            console.log('🧹 Limpando insumos (sem receita em edição)');
+            setReceitaInsumos([]);
+          }
+        };
         
-        if (editingReceita?.receita_insumos && editingReceita.receita_insumos.length > 0) {
-          
-          const insumosComQuantidade = editingReceita.receita_insumos.map(ri => {
-            const quantidade = ri.quantidade_necessaria || ri.quantidade || 1;
-            
-            // PRIORIDADE: usar unidade_medida do backend primeiro
-            const unidadeBackend = ri.unidade_medida;
-            
-            // Buscar insumo para pegar a unidade como fallback
-            const insumoEncontrado = insumos.find(i => i.id === ri.insumo_id);
-            const unidadeFallback = insumoEncontrado?.unidade || 'un';
-            
-            // Usar unidade do backend se existir, senão usar do insumo
-            const unidadeFinal = unidadeBackend || unidadeFallback;
-           
-            return {
-              insumo_id: ri.insumo_id,
-              quantidade: quantidade,
-              unidade_medida: unidadeFinal
-            };
-          });
-          
-          console.log('✅ ========== INSUMOS CARREGADOS FINAL ==========');
-          console.log('📦 Array completo:', insumosComQuantidade);
-          insumosComQuantidade.forEach((insumo, idx) => {
-            console.log(`   [${idx}] insumo_id: ${insumo.insumo_id}, qtd: ${insumo.quantidade}, unidade: ${insumo.unidade_medida}`);
-          });
-          console.log('✅ ==============================================');
-          
-          setReceitaInsumos(insumosComQuantidade);
-        } else if (!editingReceita) {
-          // Limpar insumos quando não está editando
-          console.log('🧹 Limpando insumos (sem receita em edição)');
-          setReceitaInsumos([]);
-        }
+        carregarInsumosComDetalhes();
       }, [editingReceita, insumos]);
 
       // ============================================================================
@@ -4824,7 +4932,7 @@ const fetchInsumos = async () => {
                                 );
                                 
                                 if (insumoFornecedor) {
-                                  return insumoFornecedor.id; // Retorna "fornecedor_123"
+                                  return insumoFornecedor.id;
                                 }
                                 
                                 // Se não for receita nem fornecedor, é insumo normal
@@ -4841,52 +4949,76 @@ const fetchInsumos = async () => {
                                 // ============================================================================
                                 if (typeof valorSelecionado === 'string') {
                                   if (valorSelecionado.startsWith('insumo_')) {
-                                    // Remover prefixo "insumo_" e converter para número
                                     insumoId = parseInt(valorSelecionado.replace('insumo_', ''));
-                                    console.log('✅ Insumo normal detectado - ID:', insumoId);
-                                  } 
-                                  else if (valorSelecionado.startsWith('receita_')) {
-                                    // Remover prefixo "receita_" e converter para número
+                                  } else if (valorSelecionado.startsWith('receita_')) {
                                     insumoId = parseInt(valorSelecionado.replace('receita_', ''));
-                                    console.log('✅ Receita processada detectada - ID:', insumoId);
-                                  } 
-                                  else if (valorSelecionado.startsWith('fornecedor_')) {
-                                    // Manter compatibilidade com insumos de fornecedor (se existir)
-                                    const insumoFornecedor = insumos.find(i => i.id === valorSelecionado);
-                                    insumoId = insumoFornecedor?.id_original;
-                                    console.log('✅ Insumo de fornecedor detectado - ID original:', insumoId, 'ID display:', valorSelecionado);
-                                  } 
-                                  else {
-                                    // Fallback: tentar converter diretamente
+                                  } else if (valorSelecionado.startsWith('fornecedor_')) {
+                                    const idOriginal = parseInt(valorSelecionado.replace('fornecedor_', ''));
+                                    const insumoForn = insumos.find(i => i.id === valorSelecionado);
+                                    insumoId = insumoForn?.id_original || idOriginal;
+                                  } else {
                                     insumoId = parseInt(valorSelecionado);
                                   }
                                 } else {
                                   insumoId = parseInt(valorSelecionado);
                                 }
                                 
+                                console.log('📝 ID convertido:', insumoId);
+                                
+                                // Atualizar o insumo_id
                                 updateReceitaInsumo(index, 'insumo_id', insumoId);
+                                
+                                // ============================================================================
+                                // BUSCAR UNIDADE DO INSUMO/RECEITA SELECIONADO
+                                // ============================================================================
+                                let unidadeEncontrada = null;
+                                
+                                if (valorSelecionado.toString().startsWith('receita_')) {
+                                  const receitaProc = receitas?.find(r => r.id === insumoId);
+                                  unidadeEncontrada = receitaProc?.unidade;
+                                } else {
+                                  const insumoEncontrado = insumos.find(i => 
+                                    i.id === valorSelecionado || 
+                                    i.id_original === insumoId ||
+                                    i.id === `insumo_${insumoId}` ||
+                                    i.id === `fornecedor_${insumoId}`
+                                  );
+                                  unidadeEncontrada = insumoEncontrado?.unidade;
+                                }
+                                
+                                if (unidadeEncontrada) {
+                                  console.log('✅ Unidade encontrada:', unidadeEncontrada);
+                                  updateReceitaInsumo(index, 'unidade_medida', unidadeEncontrada);
+                                }
                               }}
-                              className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                              disabled={!insumos || insumos.length === 0}
+                              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700"
                             >
-                              {!insumos || insumos.length === 0 ? (
+                              {loading ? (
                                 <option value={0}>Carregando insumos...</option>
                               ) : (
                                 <>
-                                  <option value={0}>Selecione um insumo...</option>
+                                  {/* ============================================================================
+                                      OPÇÃO PADRÃO - MOSTRAR DETALHES SE DISPONÍVEL
+                                      ============================================================================ */}
+                                  {receitaInsumo._detalhes ? (
+                                    <option value={0} disabled>
+                                      {receitaInsumo._detalhes.codigo ? `${receitaInsumo._detalhes.codigo} - ` : ''}
+                                      {receitaInsumo._detalhes.nome} ({receitaInsumo._detalhes.unidade})
+                                      {receitaInsumo._detalhes.tipo === 'receita_processada' ? ' 🔄' : ''}
+                                    </option>
+                                  ) : (
+                                    <option value={0}>Selecione um insumo...</option>
+                                  )}
                                   
-                                  {/* ===================================================================================================
+                                  {/* ============================================================================
                                       INSUMOS NORMAIS (SISTEMA + FORNECEDORES)
-                                      =================================================================================================== */}
+                                      ============================================================================ */}
                                   {insumos.map(insumo => {
-                                    // Determinar o value correto baseado no tipo de insumo
                                     let valorOption;
                                     
                                     if (insumo.tipo_origem === 'fornecedor') {
-                                      // Insumo de fornecedor: usar ID original sem prefixo adicional
-                                      valorOption = insumo.id; // Já vem como "fornecedor_123"
+                                      valorOption = insumo.id;
                                     } else {
-                                      // Insumo normal: adicionar prefixo "insumo_"
                                       valorOption = `insumo_${insumo.id}`;
                                     }
                                     
@@ -4899,9 +5031,9 @@ const fetchInsumos = async () => {
                                     );
                                   })}
                                   
-                                  {/* ===================================================================================================
+                                  {/* ============================================================================
                                       RECEITAS PROCESSADAS DO RESTAURANTE ATUAL
-                                      =================================================================================================== */}
+                                      ============================================================================ */}
                                   {receitas && receitas
                                     .filter(r => r.processada && r.restaurante_id === selectedRestaurante?.id)
                                     .map(receita => (
@@ -4911,7 +5043,7 @@ const fetchInsumos = async () => {
                                         className="bg-purple-50"
                                       >
                                         🔄 {receita.codigo ? `${receita.codigo} - ` : ''}
-                                        {receita.nome} ({receita.unidade || 'un'}) - R$ {(receita.cmv_real || 0).toFixed(2)} [PROCESSADA]
+                                        {receita.nome} ({receita.unidade}) - R$ {(receita.cmv_real || 0).toFixed(2)}
                                       </option>
                                     ))
                                   }
