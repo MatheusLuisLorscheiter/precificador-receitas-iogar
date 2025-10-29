@@ -100,6 +100,47 @@ class ApiService {
       
       if (!response.ok) {
         // ============================================================================
+        // 🔐 INTERCEPTOR: ERRO 401 - TOKEN EXPIRADO
+        // ============================================================================
+        if (response.status === 401) {
+          console.warn('⚠️ Token expirado (401), tentando renovar...');
+          
+          // Tentar renovar o token
+          const newToken = await this.refreshAccessToken();
+          
+          if (newToken) {
+            console.log('✅ Token renovado, repetindo requisição original...');
+            
+            // Repetir a requisição original com o novo token
+            const retryConfig = {
+              ...options,
+              headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${newToken}`,
+                ...options.headers,
+              },
+            };
+            
+            const retryResponse = await fetch(url, retryConfig);
+            
+            if (retryResponse.ok) {
+              const retryData = await retryResponse.json();
+              console.log('✅ Requisição repetida com sucesso');
+              return { data: retryData };
+            }
+          }
+          
+          // Se não conseguiu renovar ou retry falhou, redirecionar para login
+          console.error('❌ Não foi possível renovar token, redirecionando para login');
+          localStorage.removeItem('foodcost_access_token');
+          localStorage.removeItem('foodcost_refresh_token');
+          localStorage.removeItem('foodcost_user');
+          window.location.href = '/login';
+          
+          return { error: 'Sessão expirada. Faça login novamente.' };
+        }
+        
+        // ============================================================================
         // 🔍 CAPTURAR DETALHES DO ERRO 422 (VALIDAÇÃO)
         // ============================================================================
         let errorDetails = {};
@@ -134,6 +175,63 @@ class ApiService {
       };
     }
   }
+
+  // ============================================================================
+// RENOVAR TOKEN (REFRESH)
+// ============================================================================
+/**
+ * Renova o access token usando o refresh token
+ * Chamado automaticamente quando o access token expira
+ */
+async refreshAccessToken(): Promise<string | null> {
+  console.log('🔄 Renovando access token...');
+  
+  try {
+    const refreshToken = localStorage.getItem('foodcost_refresh_token');
+    
+    if (!refreshToken) {
+      console.error('❌ Refresh token não encontrado');
+      return null;
+    }
+
+    const response = await fetch(`${this.baseURL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken
+      })
+    });
+
+    if (!response.ok) {
+      console.error('❌ Erro ao renovar token:', response.status);
+      
+      // Se refresh token expirou, limpar tudo e redirecionar
+      localStorage.removeItem('foodcost_access_token');
+      localStorage.removeItem('foodcost_refresh_token');
+      localStorage.removeItem('foodcost_user');
+      window.location.href = '/login';
+      
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (data.access_token) {
+      // Salvar novo access token
+      localStorage.setItem('foodcost_access_token', data.access_token);
+      console.log('✅ Access token renovado com sucesso');
+      
+      return data.access_token;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ Erro ao renovar token:', error);
+    return null;
+  }
+}
 
   // ================================
   // MÉTODOS PARA INSUMOS - AJUSTADOS PARA SEU BACKEND

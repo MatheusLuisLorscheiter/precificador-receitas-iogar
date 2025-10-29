@@ -70,8 +70,8 @@ const TOKEN_KEY = 'foodcost_access_token';
 const REFRESH_TOKEN_KEY = 'foodcost_refresh_token';
 const USER_KEY = 'foodcost_user';
 
-// Tempo para refresh automático (25 minutos - 5min antes de expirar)
-const AUTO_REFRESH_TIME = 25 * 60 * 1000;
+// Tempo para refresh automático (50 minutos - 10min antes de expirar do access token de 1h)
+const AUTO_REFRESH_TIME = 50 * 60 * 1000;
 
 // ============================================================================
 // PROVIDER COMPONENT
@@ -228,20 +228,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [loadStoredData]);
 
   // ============================================================================
-  // EFFECT: AUTO-REFRESH DO TOKEN
-  // ============================================================================
+// EFFECT: AUTO-REFRESH DO TOKEN
+// ============================================================================
 
-  useEffect(() => {
-    if (!token || !refreshTokenValue) return;
+useEffect(() => {
+  if (!token || !refreshTokenValue) return;
 
-    // Configurar refresh automático
-    const intervalId = setInterval(() => {
-      console.log('🔄 Auto-refresh do token...');
-      refreshToken();
-    }, AUTO_REFRESH_TIME);
+  console.log('⏰ Configurando auto-refresh do token a cada 50 minutos');
 
-    return () => clearInterval(intervalId);
-  }, [token, refreshTokenValue, refreshToken]);
+  // Configurar refresh automático (50 minutos = 3000000 ms)
+  const intervalId = setInterval(() => {
+    console.log('🔄 Auto-refresh periódico do token (50 min)...');
+    refreshToken();
+  }, 50 * 60 * 1000); // 50 minutos
+
+  return () => {
+    console.log('🛑 Limpando intervalo de auto-refresh');
+    clearInterval(intervalId);
+  };
+}, [token, refreshTokenValue, refreshToken]);
 
   // ============================================================================
   // EFFECT: VALIDAR TOKEN AO CARREGAR
