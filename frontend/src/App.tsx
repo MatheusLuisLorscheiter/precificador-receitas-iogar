@@ -3235,13 +3235,14 @@ const fetchInsumos = async () => {
 
     return (
       <div className={`
-        w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen z-40 transition-transform duration-300
+        w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen z-40 transition-transform duration-300 overflow-hidden
         ${isAberta ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0
       `}>
-        <div className="p-6 relative">
+        {/* Header fixo do Sidebar com logo e usuário */}
+        <div className="p-6 relative flex-shrink-0 border-b border-slate-800">
           {/* Logo IOGAR */}
-          <div className="flex flex-col items-center gap-2 mb-8">
+          <div className="flex flex-col items-center gap-2 mb-4">
             <img
               src={iogarLogo}
               alt="Logo IOGAR"
@@ -3305,8 +3306,8 @@ const fetchInsumos = async () => {
           </div>
         </div>
 
-        {/* Menu de navegação */}
-        <nav className="flex-1 px-6">
+        {/* Menu de navegação com scroll */}
+        <nav className="flex-1 px-6 overflow-y-auto overflow-x-hidden">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
