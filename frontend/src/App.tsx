@@ -20,10 +20,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PopupPortalContainer, { showSuccessPopup, showErrorPopup } from './components/PopupPortal';
 import {
   ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
-  Users, ChefHat, Utensils, Plus, Search, Edit2, Edit3, Trash2, Save,
+  Users, ChefHat, Utensils, Plus, Search, Edit, Edit2, Edit3, Trash, Trash2, Save,
   X, Check, AlertCircle, BarChart3, Settings, Zap, FileText,
   Upload, Activity, Brain, Monitor, Shield, Database, LinkIcon,
-  Target, Eye, ChevronDown, ChevronRight, Copy, AlertTriangle, Store
+  Target, Eye, ChevronDown, ChevronRight, Copy, AlertTriangle, Store, FileSpreadsheet
 } from 'lucide-react';
 
 // Importar componente da IA
@@ -49,6 +49,7 @@ import { API_BASE_URL } from './config';
 import { useAuth } from './contexts/AuthContext';
 import iogarLogo from './image/iogar_logo.png';
 import LimpezaDados from './components/LimpezaDados';
+import ImportacaoInsumos from './components/ImportacaoInsumos';
 
 // ============================================================================
 // INTERFACES E TIPOS DE DADOS
@@ -1891,6 +1892,8 @@ const FoodCostSystem: React.FC = () => {
     telefone: '',
     ativo: true
   });
+
+  const [mostrarImportacao, setMostrarImportacao] = useState(false);
 
   // ============================================================================
   // ESTADOS - GERENCIAMENTO DE USUÁRIOS (ADMIN)
@@ -4482,7 +4485,7 @@ const fetchInsumos = async () => {
         proceedWithSave(insumosValidos);
       };
       
-      //INICIO RETURN
+      //INICIO RETURN FORMULARIO RECEITA
       return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -8854,7 +8857,7 @@ const cancelarExclusao = () => {
       }
     };
 
-    // INICIO 
+    // INICIO RETURN FORNECEDORES
     return (
       <div className="p-6">
         {/* Cabeçalho da seção */}
@@ -9752,7 +9755,7 @@ const cancelarExclusao = () => {
   // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
   // ============================================================================
 
-return (
+return (  //RETORN DO COMPONENTE PRINCIPAL
     <>
       {/* Barra de Navegação Mobile - Visível apenas em mobile/tablet */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-green-500 to-pink-500 shadow-lg">
@@ -9838,7 +9841,9 @@ return (
                   <p className="text-gray-600 text-sm mb-4">
                     Importação de arquivos CSV/SQL
                   </p>
-                  <button className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
+                  <button 
+                  onClick={() => setMostrarImportacao(true)}
+                  className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
                     Configurar
                   </button>
                 </div>
@@ -10577,14 +10582,21 @@ return (
         </div>
       )}
       {/* Modal de Gerenciamento de Permissões */}
-      {console.log('🎯 Estado mostrarPermissoes:', mostrarPermissoes)}
       {mostrarPermissoes && (
         <PermissionsManager onClose={() => setMostrarPermissoes(false)} />
       )}
 
-      </div>
+      {/* Modal de Importação de Insumos */}
+      {mostrarImportacao && (
+        <ImportacaoInsumos
+          restauranteId={selectedRestaurante?.id || 1}  // ✅ CORRETO
+          onClose={() => setMostrarImportacao(false)}
+          onSuccess={() => setMostrarImportacao(false)}
+        />
+      )}
+    </div>
     </>
   );
 };
-// Exportação do componente principal
+// FINAL DO RETURN DO COMPONENTE PRINCIPAL
 export default FoodCostSystem;

@@ -166,6 +166,21 @@ class User(Base):
         back_populates="usuarios",
         foreign_keys=[restaurante_id]
     )
+    
+    # ========================================================================
+    # RELACIONAMENTO COM IMPORTAÇÕES DE INSUMOS
+    # ========================================================================
+    
+    # Relacionamento com importações de insumos realizadas pelo usuário (1 para N)
+    # Rastreia qual usuário realizou cada importação
+    importacoes_insumos = relationship(
+        "ImportacaoInsumo",
+        back_populates="usuario",
+        cascade="all, delete-orphan",
+        lazy="select",
+        order_by="desc(ImportacaoInsumo.created_at)",
+        doc="Histórico de importações de insumos realizadas por este usuário"
+    )
 
     # ========================================================================
     # MÉTODOS ÚTEIS

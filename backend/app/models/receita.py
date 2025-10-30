@@ -202,6 +202,21 @@ class Restaurante(Base):
         doc="Insumos de gestão deste restaurante"
     )
     
+    # ========================================================================
+    # RELACIONAMENTO COM IMPORTAÇÕES DE INSUMOS
+    # ========================================================================
+    
+    # Relacionamento com importações de insumos (1 para N)
+    # Um restaurante pode ter múltiplas importações de insumos
+    importacoes_insumos = relationship(
+        "ImportacaoInsumo",
+        back_populates="restaurante",
+        cascade="all, delete-orphan",
+        lazy="select",
+        order_by="desc(ImportacaoInsumo.created_at)",
+        doc="Histórico de importações de insumos via Excel/TOTVS"
+    )
+    
     @property
     def quantidade_unidades(self) -> int:
         """Retorna quantidade total de unidades (matriz + filiais)"""

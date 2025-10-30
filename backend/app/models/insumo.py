@@ -92,6 +92,19 @@ class Insumo(BaseModel):
     )
 
     #   ===================================================================================================
+    #   IMPORTAÇÃO DE DADOS
+    #   ===================================================================================================
+
+    # FK para rastreamento de importação via Excel/TOTVS
+    importacao_id = Column(
+        Integer,
+        ForeignKey("importacoes_insumos.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID da importação que criou este insumo (NULL = cadastro manual)"
+    )
+
+    #   ===================================================================================================
     #   Relacionamentos com outras tabelas
     #   ===================================================================================================
 
@@ -117,6 +130,15 @@ class Insumo(BaseModel):
     taxonomia = relationship(
         "Taxonomia",
         back_populates="insumos"
+    )
+    
+    # Relacionamento com ImportacaoInsumo (N para 1)
+    # Rastreia se este insumo foi criado via importação ou manualmente
+    importacao = relationship(
+        "ImportacaoInsumo",
+        back_populates="insumos",
+        lazy="select",
+        doc="Importação que criou este insumo (None = cadastro manual)"
     )
 
     def __repr__(self):

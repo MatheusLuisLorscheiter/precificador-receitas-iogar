@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 
 # Imports dos routers/endpoints das APIs
 try:
-    from app.api.endpoints import insumos, receitas, fornecedores, taxonomias
+    from app.api.endpoints import insumos, receitas, fornecedores, taxonomias, ia, importacoes
 
      # Importar endpoint de autenticação
     try:
@@ -59,6 +59,15 @@ try:
     except ImportError:
         print("⚠️  Módulo fornecedor_insumos não encontrado, pulando...")
         HAS_FORNECEDOR_INSUMOS = False
+
+    # Tentar importar o módulo importacoes
+    try:
+        from app.api.endpoints import importacoes
+        HAS_IMPORTACOES = True
+        print("[OK] Módulo importacoes importado com sucesso")
+    except ImportError as e:
+        print(f"⚠️  Módulo importacoes não encontrado: {e}")
+        HAS_IMPORTACOES = False
     
     # Tentar importar o módulo taxonomia_aliases
     try:
@@ -77,6 +86,15 @@ try:
     except ImportError as e:
         print(f"⚠️  Módulo codigos não encontrado: {e}")
         HAS_CODIGOS = False
+
+    # Tentar importar o módulo importacoes
+    try:
+        from app.api.endpoints import importacoes
+        HAS_IMPORTACOES = True
+        print("[OK] Módulo importacoes importado com sucesso")
+    except ImportError as e:
+        print(f"⚠️  Módulo importacoes não encontrado: {e}")
+        HAS_IMPORTACOES = False
         
 except ImportError as e:
     print(f"❌ Erro ao importar endpoints: {e}")
@@ -1016,7 +1034,39 @@ if HAS_FORNECEDOR_INSUMOS:
         }
     )
 
+# Router para importação de insumos via Excel/TOTVS (Sistema de Automação)
+if HAS_IMPORTACOES:
+    app.include_router(
+        importacoes.router,
+        prefix="/api/v1/importacoes",
+        tags=["importacoes"],
+        responses={
+            404: {"description": "Importação não encontrada"},
+            422: {"description": "Erro de validação"},
+            400: {"description": "Requisição inválida"},
+            500: {"description": "Erro interno do servidor"}
+        }
+    )
+    print("✅ Router importacoes incluído com sucesso")
+else:
+    print("[AVISO] Router importacoes não incluído (módulo não disponível)")
 
+# Router para importação de insumos via Excel/TOTVS (Sistema de Automação)
+if HAS_IMPORTACOES:
+    app.include_router(
+        importacoes.router,
+        prefix="/api/v1/importacoes",
+        tags=["importacoes"],
+        responses={
+            404: {"description": "Importação não encontrada"},
+            422: {"description": "Erro de validação"},
+            400: {"description": "Requisição inválida"},
+            500: {"description": "Erro interno do servidor"}
+        }
+    )
+    print("✅ Router importacoes incluído com sucesso")
+else:
+    print("[AVISO] Router importacoes não incluído (módulo não disponível)")
 
 #   ===================================================================================================
 #   Middleware para logging de requisições

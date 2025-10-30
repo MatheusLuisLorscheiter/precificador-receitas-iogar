@@ -17,5 +17,13 @@ export default defineConfig({
   server: {
     port: 3000,
     historyApiFallback: true,
+    // PROXY: Redireciona chamadas /api para o backend
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   }
 })
