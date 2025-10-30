@@ -272,6 +272,7 @@ class ReceitaBase(BaseModel):
     variacao_nome: Optional[str] = Field(None, description="Nome da variação")
     descricao: Optional[str] = Field(None, description="Descrição da receita")
     modo_preparo: Optional[str] = Field(None, description="Modo de preparo")
+    responsavel: Optional[str] = Field(None, description="Nome do cozinheiro ou responsável pela receita")
     tempo_preparo_minutos: Optional[int] = Field(None, ge=0, description="Tempo de preparo em minutos")
     rendimento_porcoes: Optional[float] = Field(None, gt=0, description="Quantidade de porções (até 3 casas decimais)")
     ativo: bool = Field(True, description="Se a receita está ativa")

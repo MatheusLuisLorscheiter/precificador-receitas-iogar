@@ -4681,6 +4681,25 @@ const fetchInsumos = async () => {
                       />
                     </div>
 
+                    {/* Campo Responsavel */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Responsável pela Receita
+                        <span className="text-gray-500 text-xs ml-1">(Opcional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.responsavel || ''}
+                        onChange={(e) => setFormData({ ...formData, responsavel: e.target.value })}
+                        placeholder="Nome do cozinheiro ou chef"
+                        maxLength={200}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Digite o nome do cozinheiro ou pessoa responsável por esta receita
+                      </p>
+                    </div>
+
                     {/* Fator */}
                     <div className="space-y-2">
                       <label className="flex items-center text-sm font-medium text-gray-900">
@@ -7464,6 +7483,8 @@ const fetchInsumos = async () => {
     console.log('🔄 Convertendo receitas do backend:', receitasBackend.length, 'receitas');
     
     return receitasBackend.map(receita => {
+      // TESTE RESPONSAVEL
+      console.log('🔴 CAMPO RESPONSAVEL:', receita.responsavel);
       // Debug dos dados recebidos do backend
       console.log('📊 Dados da receita do backend:', {
         id: receita.id,
@@ -7533,6 +7554,7 @@ const fetchInsumos = async () => {
         grupo: receita.grupo,
         subgrupo: receita.subgrupo,
         descricao: receita.descricao || '',
+        responsavel: receita.responsavel || null,
       
       // CMV real = custo POR PORÇÃO
       cmv_real: custoPorPorcao,

@@ -308,6 +308,7 @@ class Receita(Base):
     
     descricao = Column(Text, nullable=True, comment="Descrição detalhada da receita")
     modo_preparo = Column(Text, nullable=True, comment="Modo de preparo da receita")
+    responsavel = Column(String(200), nullable=True, comment="Nome do cozinheiro ou pessoa responsável pela receita")
     tempo_preparo_minutos = Column(Integer, nullable=True, comment="Tempo de preparo em minutos")
     rendimento_porcoes = Column(Numeric(precision=10, scale=3), nullable=True, comment="Rendimento em porções (até 3 casas decimais)")
     ativo = Column(Boolean, default=True, comment="Se a receita está ativa no cardápio")

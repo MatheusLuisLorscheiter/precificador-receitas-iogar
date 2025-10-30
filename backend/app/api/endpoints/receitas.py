@@ -204,6 +204,7 @@ def list_receitas(
             'codigo': receita.codigo,
             'grupo': receita.grupo,
             'subgrupo': receita.subgrupo,
+            'responsavel': receita.responsavel if hasattr(receita, 'responsavel') else None,
             'preco_compra': preco_compra,
             'cmv_real': preco_compra,
             'cmv_20_porcento': cmv_20,
