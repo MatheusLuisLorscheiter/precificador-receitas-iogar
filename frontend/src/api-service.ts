@@ -518,6 +518,7 @@ async refreshAccessToken(): Promise<string | null> {
       
       nome: receita.nome,
       descricao: receita.descricao || '',
+      responsavel: receita.responsavel || null,
       categoria: receita.categoria || 'Geral',
       grupo: receita.categoria || 'Geral',
       subgrupo: receita.categoria || 'Geral', 

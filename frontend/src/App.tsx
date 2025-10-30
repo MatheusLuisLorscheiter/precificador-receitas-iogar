@@ -4331,6 +4331,7 @@ const fetchInsumos = async () => {
           // Campos obrigatórios básicos
           nome: String(formData.nome || '').trim(),
           descricao: String(formData.descricao || '').trim(),
+          responsavel: formData.responsavel ? String(formData.responsavel).trim() : null,
           sugestao_valor: parseFloat(formData.sugestao_valor) || 0,
           
           // Campos de categoria (ajustar conforme backend)

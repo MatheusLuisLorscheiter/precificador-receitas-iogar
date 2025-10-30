@@ -832,6 +832,11 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
                           )}
                         </div>
                       </th>
+
+                      {/* ADICIONAR ESTA NOVA COLUNA */}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Responsável
+                      </th>
                       
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
