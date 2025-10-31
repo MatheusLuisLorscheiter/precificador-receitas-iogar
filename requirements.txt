@@ -97,12 +97,10 @@ pytest-asyncio==0.24.0
 
 # Processamento de arquivos Excel
 openpyxl==3.1.2
-```
 
----
 
 ### **📋 Saída esperada da instalação:**
-```
+
 Collecting openpyxl
   Downloading openpyxl-3.1.2-py2.py3-none-any.whl (249 kB)
 Collecting et-xmlfile
