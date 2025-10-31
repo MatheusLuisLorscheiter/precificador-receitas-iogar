@@ -1797,24 +1797,15 @@ const FoodCostSystem: React.FC = () => {
   
   // Estado da navegação - controla qual aba está ativa
   // ===================================================================================================
-  // SISTEMA INTELIGENTE DE ABA INICIAL
-  // F5 = mantém aba atual | Ctrl+Alt+R = Dashboard | Ctrl+F5 = Dashboard | Primeira vez = Dashboard
+  // SISTEMA INTELIGENTE DE ABA INICIAL - SEMPRE INICIA NA DASHBOARD
   // ===================================================================================================
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    // Verificar se é primeira vez (não tem aba salva)
-    const abaSalva = localStorage.getItem('activeTab');
-    
-    if (!abaSalva) {
-      // Primeira vez - vai para Dashboard
-      console.log('🏠 Primeira vez - Iniciando no Dashboard');
-      localStorage.setItem('activeTab', 'dashboard');
-      return 'dashboard';
-    }
-    
-    // F5 normal - mantém aba atual
-    console.log(`🔄 Recarregando - Mantendo aba: ${abaSalva}`);
-    return abaSalva;
-  });
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  // useEffect para definir aba inicial apenas uma vez
+  useEffect(() => {
+    console.log('🏠 Sistema iniciado - Dashboard como aba padrão');
+    localStorage.setItem('activeTab', 'dashboard');
+  }, []); // Array vazio = executa apenas uma vez na montagem
 
   // Helper para exibir nome dos perfis
   const getRoleLabel = (role: string): string => {
@@ -3265,36 +3256,36 @@ const fetchInsumos = async () => {
             />
             <p className="text-xs text-gray-400 text-center">Food Cost System</p>
           </div>
-          {/* Botão de Logout e info do usuário */}
-          <div className="flex items-center gap-3">
-            {user && (
-              <div className="hidden md:flex items-center gap-2 text-white text-sm">
-                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center font-semibold">
+          {/* Informações do usuário e botão de logout */}
+          {user && (
+            <div className="space-y-3 mb-4">
+              {/* Card com info do usuário */}
+              <div className="flex items-center gap-3 p-3 bg-white/10 rounded-lg">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-lg">
                   {user.username.charAt(0).toUpperCase()}
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-medium">{user.username}</span>
-                  <span className="text-xs opacity-80">{user.role}</span>
+                <div className="flex flex-col flex-1">
+                  <span className="font-medium text-white text-sm">{user.username}</span>
+                  <span className="text-xs text-gray-300">{user.role}</span>
                 </div>
               </div>
-            )}
-            
-            <button
-              onClick={() => {
-                console.log('🔴 BOTÃO LOGOUT CLICADO!');
-                console.log('🔴 showLogoutConfirm antes:', showLogoutConfirm);
-                setShowLogoutConfirm(true);
-                console.log('🔴 Chamou setShowLogoutConfirm(true)');
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all text-white text-sm font-medium"
-              title="Sair do sistema"
-            >
-              <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-              </svg>
-              <span className="hidden sm:inline">Sair</span>
-            </button>
-          </div>
+              
+              {/* Botão Sair */}
+              <button
+                onClick={() => {
+                  console.log('🔴 BOTÃO LOGOUT CLICADO!');
+                  setShowLogoutConfirm(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500/90 hover:bg-red-600 rounded-lg transition-all text-white text-sm font-medium shadow-md"
+                title="Sair do sistema"
+              >
+                <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+                <span>Sair</span>
+              </button>
+            </div>
+          )}
 
           {/* Seleção de restaurante */}
           <div className="mb-6">
