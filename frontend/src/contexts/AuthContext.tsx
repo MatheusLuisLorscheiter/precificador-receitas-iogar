@@ -10,6 +10,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import LoadingScreen from '../components/LoadingScreen';
 
 // ============================================================================
 // TIPOS E INTERFACES
@@ -286,6 +287,11 @@ useEffect(() => {
   // ============================================================================
   // RENDER PROVIDER
   // ============================================================================
+
+  // Exibir LoadingScreen enquanto carrega dados iniciais
+  if (isLoading) {
+    return <LoadingScreen message="Iniciando sistema..." />;
+  }
 
   return (
     <AuthContext.Provider
