@@ -96,6 +96,17 @@ def check_user_permission(
         if not has_perm:
             raise HTTPException(403, "Sem permissão")
     """
+    # ========================================================================
+    # BYPASS AUTOMÁTICO PARA ADMIN
+    # ========================================================================
+    # ADMIN tem acesso total a todos os recursos e ações, sem precisar de
+    # permissões cadastradas no banco de dados
+    if user.role.value == "ADMIN":
+        return True, DataScope.TODOS
+    
+    # ========================================================================
+    # USUÁRIOS NÃO-ADMIN: Verificar permissões no banco de dados
+    # ========================================================================
     # Buscar permissões do usuário
     permissions = _get_user_permissions(db, user)
     

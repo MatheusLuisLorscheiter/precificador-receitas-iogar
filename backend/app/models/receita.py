@@ -202,6 +202,21 @@ class Restaurante(Base):
         doc="Insumos de gestão deste restaurante"
     )
     
+    # ========================================================================
+    # RELACIONAMENTO COM IMPORTAÇÕES DE INSUMOS
+    # ========================================================================
+    
+    # Relacionamento com importações de insumos (1 para N)
+    # Um restaurante pode ter múltiplas importações de insumos
+    importacoes_insumos = relationship(
+        "ImportacaoInsumo",
+        back_populates="restaurante",
+        cascade="all, delete-orphan",
+        lazy="select",
+        order_by="desc(ImportacaoInsumo.created_at)",
+        doc="Histórico de importações de insumos via Excel/TOTVS"
+    )
+    
     @property
     def quantidade_unidades(self) -> int:
         """Retorna quantidade total de unidades (matriz + filiais)"""
@@ -308,6 +323,7 @@ class Receita(Base):
     
     descricao = Column(Text, nullable=True, comment="Descrição detalhada da receita")
     modo_preparo = Column(Text, nullable=True, comment="Modo de preparo da receita")
+    responsavel = Column(String(200), nullable=True, comment="Nome do cozinheiro ou pessoa responsável pela receita")
     tempo_preparo_minutos = Column(Integer, nullable=True, comment="Tempo de preparo em minutos")
     rendimento_porcoes = Column(Numeric(precision=10, scale=3), nullable=True, comment="Rendimento em porções (até 3 casas decimais)")
     ativo = Column(Boolean, default=True, comment="Se a receita está ativa no cardápio")

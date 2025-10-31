@@ -44,6 +44,12 @@ def listar_insumos(
     unidade:   Optional[str] = Query(None, description="Fltrar opor unidade"),
     preco_min: Optional[float] = Query(None, ge=0, description="Preço mínimo"),
     preco_max: Optional[float] = Query(None, ge=0, description="Preço máximo"),
+    
+    # ===================================================================================================
+    # FILTROS DE RESTAURANTE - CONTROLE DE INSUMOS GLOBAIS E ESPECÍFICOS
+    # ===================================================================================================
+    restaurante_id: Optional[int] = Query(None, description="Filtrar por restaurante específico"),
+    incluir_globais: bool = Query(False, description="Incluir insumos globais junto com insumos do restaurante (apenas ADMIN/CONSULTANT)"),
 
     # Denpedencia do banco de dados
     db: Session = Depends(get_db)
@@ -77,8 +83,18 @@ def listar_insumos(
         limit=limit
     )
 
-    # Buscar insumos no banco
-    insumos = crud_insumo.get_insumos(db=db, skip=skip, limit=limit, filters=filters)
+    # ===================================================================================================
+    # BUSCAR INSUMOS COM FILTROS DE RESTAURANTE
+    # ===================================================================================================
+    # Passar os novos parâmetros de filtro por restaurante para o CRUD
+    insumos = crud_insumo.get_insumos(
+        db=db, 
+        skip=skip, 
+        limit=limit, 
+        filters=filters,
+        restaurante_id=restaurante_id,
+        incluir_globais=incluir_globais
+    )
 
     # Converter preços para reais e retornar
     for insumo in insumos:
@@ -297,20 +313,35 @@ def criar_insumo(
         from app.services.codigo_service import gerar_proximo_codigo
         from app.config.codigo_config import TipoCodigo
         
-        # Obter restaurante_id do insumo
-        # IMPORTANTE: O schema InsumoCreate agora deve ter o campo restaurante_id
+        # Obter restaurante_id do insumo (pode ser NULL para insumos globais)
+        # NULL = insumo global, ID = insumo específico de um restaurante
         restaurante_id = getattr(insumo, 'restaurante_id', None)
         
-        if not restaurante_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Campo restaurante_id é obrigatório para criar insumo"
-            )
+        # ====================================================================
+        # VALIDAÇÃO: Se não for global, restaurante_id é obrigatório
+        # ====================================================================
+        # Se restaurante_id não é None, validar se existe
+        if restaurante_id is not None:
+            from app.models.receita import Restaurante
+            restaurante_existe = db.query(Restaurante).filter(
+                Restaurante.id == restaurante_id
+            ).first()
+            
+            if not restaurante_existe:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Restaurante com ID {restaurante_id} não encontrado"
+                )
         
-        # Gerar codigo automaticamente PARA O RESTAURANTE ESPECÍFICO
+        # Gerar codigo automaticamente
+        # Se restaurante_id = NULL (global), usar ID 0 ou sistema de código global
         try:
-            codigo_gerado = gerar_proximo_codigo(db, TipoCodigo.INSUMO, restaurante_id)
-            print(f"✅ Código gerado automaticamente para insumo (restaurante {restaurante_id}): {codigo_gerado}")
+            # Para insumos globais, usar restaurante_id = 0 (convenção para global)
+            rest_id_para_codigo = restaurante_id if restaurante_id is not None else -1
+            codigo_gerado = gerar_proximo_codigo(db, TipoCodigo.INSUMO, rest_id_para_codigo)
+            
+            tipo_insumo = "global" if restaurante_id is None else f"restaurante {restaurante_id}"
+            print(f"✅ Código gerado automaticamente para insumo {tipo_insumo}: {codigo_gerado}")
         except ValueError as e:
             # Faixa esgotada
             raise HTTPException(

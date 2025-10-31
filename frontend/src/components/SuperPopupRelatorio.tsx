@@ -372,6 +372,16 @@ const calcularCustoPorPorcao = () => {
               </div>
               {getStatusBadge(receita.status)}
             </div>
+
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span className="text-xs text-gray-500 font-medium">RESPONSÁVEL</span>
+              </div>
+              <p className="font-bold text-gray-900">{receita.responsavel || 'Não informado'}</p>
+            </div>
           </div>
         </div>
 

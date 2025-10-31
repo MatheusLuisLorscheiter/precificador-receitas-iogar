@@ -100,6 +100,47 @@ class ApiService {
       
       if (!response.ok) {
         // ============================================================================
+        // 🔐 INTERCEPTOR: ERRO 401 - TOKEN EXPIRADO
+        // ============================================================================
+        if (response.status === 401) {
+          console.warn('⚠️ Token expirado (401), tentando renovar...');
+          
+          // Tentar renovar o token
+          const newToken = await this.refreshAccessToken();
+          
+          if (newToken) {
+            console.log('✅ Token renovado, repetindo requisição original...');
+            
+            // Repetir a requisição original com o novo token
+            const retryConfig = {
+              ...options,
+              headers: {
+                ...API_CONFIG.headers,
+                'Authorization': `Bearer ${newToken}`,
+                ...options.headers,
+              },
+            };
+            
+            const retryResponse = await fetch(url, retryConfig);
+            
+            if (retryResponse.ok) {
+              const retryData = await retryResponse.json();
+              console.log('✅ Requisição repetida com sucesso');
+              return { data: retryData };
+            }
+          }
+          
+          // Se não conseguiu renovar ou retry falhou, redirecionar para login
+          console.error('❌ Não foi possível renovar token, redirecionando para login');
+          localStorage.removeItem('foodcost_access_token');
+          localStorage.removeItem('foodcost_refresh_token');
+          localStorage.removeItem('foodcost_user');
+          window.location.href = '/login';
+          
+          return { error: 'Sessão expirada. Faça login novamente.' };
+        }
+        
+        // ============================================================================
         // 🔍 CAPTURAR DETALHES DO ERRO 422 (VALIDAÇÃO)
         // ============================================================================
         let errorDetails = {};
@@ -135,14 +176,86 @@ class ApiService {
     }
   }
 
+  // ============================================================================
+// RENOVAR TOKEN (REFRESH)
+// ============================================================================
+/**
+ * Renova o access token usando o refresh token
+ * Chamado automaticamente quando o access token expira
+ */
+async refreshAccessToken(): Promise<string | null> {
+  console.log('🔄 Renovando access token...');
+  
+  try {
+    const refreshToken = localStorage.getItem('foodcost_refresh_token');
+    
+    if (!refreshToken) {
+      console.error('❌ Refresh token não encontrado');
+      return null;
+    }
+
+    const response = await fetch(`${this.baseURL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken
+      })
+    });
+
+    if (!response.ok) {
+      console.error('❌ Erro ao renovar token:', response.status);
+      
+      // Se refresh token expirou, limpar tudo e redirecionar
+      localStorage.removeItem('foodcost_access_token');
+      localStorage.removeItem('foodcost_refresh_token');
+      localStorage.removeItem('foodcost_user');
+      window.location.href = '/login';
+      
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (data.access_token) {
+      // Salvar novo access token
+      localStorage.setItem('foodcost_access_token', data.access_token);
+      console.log('✅ Access token renovado com sucesso');
+      
+      return data.access_token;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ Erro ao renovar token:', error);
+    return null;
+  }
+}
+
   // ================================
   // MÉTODOS PARA INSUMOS - AJUSTADOS PARA SEU BACKEND
   // ================================
 
-  // Listar todos os insumos
-  async getInsumos(): Promise<ApiResponse<any[]>> {
-    // Aumentar limit para 1000 para garantir que todos os insumos sejam carregados
-    return this.request<any[]>('/api/v1/insumos/?limit=1000');
+  // Listar todos os insumos com filtros opcionais
+  async getInsumos(params: { restaurante_id?: number; incluir_globais?: boolean } = {}): Promise<ApiResponse<any[]>> {
+    // Construir query string com parâmetros
+    const queryParams = new URLSearchParams({ limit: '1000' });
+    
+    // Adicionar restaurante_id se fornecido
+    if (params.restaurante_id) {
+      queryParams.append('restaurante_id', params.restaurante_id.toString());
+    }
+    
+    // Adicionar incluir_globais se fornecido
+    if (params.incluir_globais !== undefined) {
+      queryParams.append('incluir_globais', params.incluir_globais.toString());
+    }
+    
+    const url = `/api/v1/insumos/?${queryParams.toString()}`;
+    console.log('📡 API getInsumos:', url);
+    
+    return this.request<any[]>(url);
   }
 
   // Buscar insumos disponíveis (inclui receitas processadas)
@@ -178,31 +291,37 @@ class ApiService {
     }
     
     // ============================================================================
-    // OBTER RESTAURANTE_ID DO USUARIO LOGADO
+    // USAR RESTAURANTE_ID DO FORMULÁRIO OU DO USUÁRIO LOGADO
     // ============================================================================
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const restaurante_id = user.restaurante_id || null;
+    // PRIORIDADE:
+    // 1. Se veio do formulário (insumo.restaurante_id), usar esse valor (pode ser null para global)
+    // 2. Se não veio do formulário, usar o do usuário logado
+    // 3. Se usuário não tem restaurante, usar null (insumo global)
     
-    console.log('DEBUG RESTAURANTE:', { 
-      user_role: user.role, 
-      restaurante_id: restaurante_id 
-    });
+    let restauranteIdFinal;
     
-    // Para ADMIN/CONSULTANT sem restaurante, usar restaurante padrao (ID 1)
-    // Para outros perfis, usar o restaurante vinculado
-    const restauranteIdFinal = restaurante_id || 1;
+    if (insumo.restaurante_id !== undefined) {
+      // Veio do formulário - usar exatamente esse valor (null ou ID)
+      restauranteIdFinal = insumo.restaurante_id;
+      console.log('🔍 Usando restaurante_id do FORMULÁRIO:', restauranteIdFinal);
+    } else {
+      // Não veio do formulário - buscar do usuário logado
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      restauranteIdFinal = user.restaurante_id || null;
+      console.log('🔍 Usando restaurante_id do USUÁRIO:', restauranteIdFinal);
+    }
     
     const dadosBackend = {
       grupo: String(insumo.grupo || 'Geral').trim(),
       subgrupo: String(insumo.subgrupo || 'Geral').trim(),
       nome: String(insumo.nome || '').trim(),
       quantidade: Number(insumo.quantidade) || 1,
-      fator: Number(insumo.fator) || 1.0,
       unidade: String(insumo.unidade || 'kg').trim(),
       preco_compra_real: insumo.preco_compra_real || insumo.preco_compra_total || null,
       fornecedor_id: insumo.fornecedor_id || null,
       fornecedor_insumo_id: insumo.fornecedor_insumo_id || null,
-      restaurante_id: restauranteIdFinal  // Campo obrigatorio adicionado
+      // Usar o valor final determinado acima (null para global, ID para específico)
+      restaurante_id: restauranteIdFinal
     };
 
     console.log('📦 Dados MAPEADOS para backend:', dadosBackend);
@@ -399,6 +518,7 @@ class ApiService {
       
       nome: receita.nome,
       descricao: receita.descricao || '',
+      responsavel: receita.responsavel || null,
       categoria: receita.categoria || 'Geral',
       grupo: receita.categoria || 'Geral',
       subgrupo: receita.categoria || 'Geral', 

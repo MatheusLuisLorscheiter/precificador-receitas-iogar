@@ -123,11 +123,13 @@ class InsumoCreate(InsumoBase):
     Schema para criação de insumo.
     Herda todos os campos do InsumoBase.
     
-    IMPORTANTE: restaurante_id é obrigatório pois cada insumo pertence a um restaurante específico.
+    IMPORTANTE: restaurante_id é opcional.
+    - Se NULL: insumo global (pode ser usado por qualquer restaurante)
+    - Se preenchido: insumo específico daquele restaurante
     """
-    restaurante_id: int = Field(
-        ...,
-        description="ID do restaurante proprietário do insumo (obrigatório)"
+    restaurante_id: Optional[int] = Field(
+        None,
+        description="ID do restaurante proprietário do insumo (NULL = insumo global)"
     )
     fornecedor_id: Optional[int] = Field(
         None,
@@ -331,6 +333,7 @@ class InsumoListResponse(BaseModel):
     unidade: str = Field(description="Unidade de medida")
     preco_compra_real: Optional[float] = Field(description="Preço de compra em reais")
     quantidade: int = Field(description="Quantidade")
+    restaurante_id: Optional[int] = None
     
     # Campo importante para taxonomias
     taxonomia_id: Optional[int] = Field(

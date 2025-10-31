@@ -31,7 +31,7 @@ class BaseModel(Base):
     # Campos comuns para insumos e receitas
     grupo = Column(String(100), nullable=False, index=True)
     subgrupo = Column(String(100), nullable=False, index=True)
-    codigo = Column(String(50), unique=True, nullable=False, index=True)
+    codigo = Column(String(50), nullable=False, index=True)
     nome = Column(String(255), nullable=False)
     quantidade = Column(Integer, default=1)
     # Campo fator removido - não é mais necessário

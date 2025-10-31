@@ -204,6 +204,7 @@ def list_receitas(
             'codigo': receita.codigo,
             'grupo': receita.grupo,
             'subgrupo': receita.subgrupo,
+            'responsavel': receita.responsavel if hasattr(receita, 'responsavel') else None,
             'preco_compra': preco_compra,
             'cmv_real': preco_compra,
             'cmv_20_porcento': cmv_20,
@@ -331,6 +332,11 @@ def create_receita_endpoint(
     current_user: User = Depends(get_current_user),
     data_scope = Depends(PermissionChecker(ResourceType.RECEITAS, ActionType.CRIAR))
 ):
+    # Rollback de qualquer transacao travada
+    try:
+        db.rollback()
+    except:
+        pass
     """
     Cria ou atualiza uma receita.
     
@@ -629,6 +635,7 @@ def create_receita_endpoint(
             # Campos opcionais seguros
             campos_opcionais = {
                 'descricao': receita_data.get('descricao', ''),
+                'responsavel': receita_data.get('responsavel'),
                 'grupo': receita_data.get('grupo', 'Geral'),
                 'subgrupo': receita_data.get('subgrupo', 'Geral'),
                 'rendimento_porcoes': receita_data.get('rendimento_porcoes') or receita_data.get('rendimento', 1),

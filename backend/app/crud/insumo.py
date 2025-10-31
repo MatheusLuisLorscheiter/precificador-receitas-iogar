@@ -258,7 +258,9 @@ def get_insumos(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    filters: Optional[InsumoFilter] = None
+    filters: Optional[InsumoFilter] = None,
+    restaurante_id: Optional[int] = None,
+    incluir_globais: bool = False
 ) -> List[Insumo]:
     """
     Lista insumos com paginação e filtros opcionais.
@@ -268,12 +270,42 @@ def get_insumos(
         skip (int): Número de registros para pular (paginação)
         limit (int): Limite de registros a retornar
         filters (InsumoFilter): Filtros de busca
+        restaurante_id (int, opcional): ID do restaurante para filtrar insumos específicos
+        incluir_globais (bool): Se True, inclui insumos globais junto com os do restaurante
         
     Returns:
         List[Insumo]: Lista de insumos
+        
+    Regras de Filtro por Restaurante:
+        - Se restaurante_id = None: retorna APENAS insumos globais (restaurante_id IS NULL)
+        - Se restaurante_id fornecido e incluir_globais = False: retorna APENAS insumos daquele restaurante
+        - Se restaurante_id fornecido e incluir_globais = True: retorna insumos do restaurante + globais
     """
     query = db.query(Insumo)
 
+    # ===================================================================================================
+    # FILTROS DE RESTAURANTE - CONTROLE DE INSUMOS GLOBAIS E ESPECÍFICOS
+    # ===================================================================================================
+    if restaurante_id is None:
+        # Sem restaurante selecionado: mostrar APENAS insumos globais
+        query = query.filter(Insumo.restaurante_id.is_(None))
+    else:
+        # Com restaurante selecionado
+        if incluir_globais:
+            # Incluir insumos globais + insumos do restaurante específico
+            query = query.filter(
+                or_(
+                    Insumo.restaurante_id == restaurante_id,
+                    Insumo.restaurante_id.is_(None)
+                )
+            )
+        else:
+            # Apenas insumos do restaurante específico (sem globais)
+            query = query.filter(Insumo.restaurante_id == restaurante_id)
+
+    # ===================================================================================================
+    # FILTROS TRADICIONAIS (GRUPO, NOME, PREÇO, ETC)
+    # ===================================================================================================
     # Aplicar filtros fornecidos
     if filters:
         # filtro por grupo
@@ -412,11 +444,67 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
     Raises:
         ValueError: Se código já existir
     """
-    # Verificar se código já existe antes de tentar criar (apenas se fornecido)
+
+    # ========================================================================
+    # GERAÇÃO AUTOMÁTICA DE CÓDIGO (SE NÃO FORNECIDO)
+    # ========================================================================
+    print(f"🔍 DEBUG - Tentando criar insumo:")
+    print(f"  📦 model_dump: {insumo.model_dump()}")
+    print(f"  🔑 codigo attr: '{insumo.codigo}'")
+    print(f"  📝 nome attr: '{insumo.nome}'")
+    print("=" * 80)
+    
+    # Gerar código automaticamente se não fornecido ou vazio
+    if not insumo.codigo or insumo.codigo.strip() == '':
+        # Importar função de geração de código
+        from app.services.codigo_service import gerar_proximo_codigo, TipoCodigo
+        
+        # Garantir que restaurante_id existe
+        if insumo.restaurante_id is None:
+            raise ValueError("restaurante_id é obrigatório para gerar código automático")
+        
+        # Gerar próximo código disponível para este restaurante
+        codigo_gerado = gerar_proximo_codigo(
+            db,
+            TipoCodigo.INSUMO,
+            restaurante_id=insumo.restaurante_id
+        )
+        
+        # Atualizar o objeto insumo com o código gerado
+        insumo.codigo = codigo_gerado
+        
+        print(f"✅ Código gerado automaticamente para insumo restaurante {insumo.restaurante_id}: {codigo_gerado}")
+
+    # ========================================================================
+    # VALIDAÇÃO: Verificar se código já existe NO MESMO RESTAURANTE
+    # ========================================================================
+    # Um código pode se repetir em restaurantes diferentes, mas não no mesmo
+    # ATENÇÃO: Tratamento especial para NULL (insumos globais)
     if insumo.codigo and insumo.codigo.strip():
-        existing_insumo = get_insumo_by_codigo(db, insumo.codigo.upper())
+        if insumo.restaurante_id is None:
+            # Para insumos globais (NULL), usar IS NULL
+            existing_insumo = db.query(Insumo).filter(
+                Insumo.codigo == insumo.codigo.upper(),
+                Insumo.restaurante_id.is_(None)
+            ).first()
+        else:
+            # Para restaurantes específicos, usar ==
+            existing_insumo = db.query(Insumo).filter(
+                Insumo.codigo == insumo.codigo.upper(),
+                Insumo.restaurante_id == insumo.restaurante_id
+            ).first()
+        
         if existing_insumo:
-            raise ValueError(f"O código '{insumo.codigo.upper()}' já está cadastrado. Por favor, escolha um código diferente.")
+            if insumo.restaurante_id:
+                raise ValueError(
+                    f"O código '{insumo.codigo.upper()}' já está cadastrado no restaurante ID {insumo.restaurante_id}. "
+                    f"Por favor, escolha um código diferente."
+                )
+            else:
+                raise ValueError(
+                    f"O código '{insumo.codigo.upper()}' já está cadastrado como insumo global. "
+                    f"Por favor, escolha um código diferente."
+                )
     
     # Converter preço de reais para centavos
     preco_centavos = None
@@ -426,46 +514,26 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
     # ============================================================================
     # CORRIGIR FATOR: Copiar automaticamente do fornecedor_insumo se fornecido
     # ============================================================================
-    fator_final = insumo.fator
-    fornecedor_insumo_id_final = None
-    
-    # 🔍 DEBUG: Logs para identificar o problema
+    # Vincular ao fornecedor_insumo se fornecido
+    fornecedor_insumo_id_final = insumo.fornecedor_insumo_id if insumo.fornecedor_insumo_id else None
+
+    # DEBUG: Logs para identificar vinculação com fornecedor
     print(f"🔍 DEBUG - Dados recebidos:")
-    print(f"   fator original: {insumo.fator}")
     print(f"   fornecedor_insumo_id: {insumo.fornecedor_insumo_id}")
-    
-    if insumo.fornecedor_insumo_id:
-        print(f"🔍 DEBUG - Buscando fornecedor_insumo com ID: {insumo.fornecedor_insumo_id}")
-        
-        # Buscar o insumo do fornecedor para copiar o fator correto
-        fornecedor_insumo = db.query(FornecedorInsumo).filter(
-            FornecedorInsumo.id == insumo.fornecedor_insumo_id
-        ).first()
-        
-        if fornecedor_insumo:
-            print(f"🔍 DEBUG - Fornecedor_insumo encontrado:")
-            print(f"   fator do fornecedor: {fornecedor_insumo.fator}")
-            fator_final = fornecedor_insumo.fator  # Copiar fator do fornecedor
-            fornecedor_insumo_id_final = insumo.fornecedor_insumo_id
-            print(f"🔍 DEBUG - Fator final definido: {fator_final}")
-        else:
-            print(f"❌ DEBUG - Fornecedor_insumo NÃO encontrado!")
-    else:
-        print(f"🔍 DEBUG - fornecedor_insumo_id é None, mantendo fator original")
-    
-    print(f"🔍 DEBUG - Criando insumo com fator: {fator_final}")
-    
-    # Criar objeto do modelo
+    print(f"   restaurante_id: {insumo.restaurante_id}")
+
+    # Criar objeto do modelo - campo fator removido
     db_insumo = Insumo(
         grupo=insumo.grupo,
         subgrupo=insumo.subgrupo,
         codigo=insumo.codigo.upper() if insumo.codigo else None,
         nome=insumo.nome,
         quantidade=insumo.quantidade,
-        fator=fator_final,  # Usar fator corrigido
+        # Campo fator removido - não é mais necessário
         unidade=insumo.unidade,
         preco_compra=preco_centavos,
-        fornecedor_insumo_id=fornecedor_insumo_id_final,  # Vincular ao fornecedor_insumo
+        restaurante_id=insumo.restaurante_id,  # Campo obrigatório
+        fornecedor_insumo_id=fornecedor_insumo_id_final,
         eh_fornecedor_anonimo=False if fornecedor_insumo_id_final else True
     )
 
@@ -478,10 +546,24 @@ def create_insumo(db: Session, insumo: InsumoCreate) -> Insumo:
         
     except Exception as e:
         db.rollback()
-        # Se por acaso ainda der erro de código duplicado, capturar aqui também
-        if "ix_insumos_codigo" in str(e) or "UniqueViolation" in str(e):
-            raise ValueError(f"O código '{insumo.codigo.upper()}' já está cadastrado. Por favor, escolha um código diferente.")
+        
+        # Verificar se é erro de constraint UNIQUE
+        error_str = str(e)
+        
+        if "uq_insumo_restaurante_codigo" in error_str or "UniqueViolation" in error_str:
+            # Erro de código duplicado no mesmo restaurante
+            if insumo.restaurante_id:
+                raise ValueError(
+                    f"O código '{insumo.codigo.upper()}' já está em uso no restaurante ID {insumo.restaurante_id}. "
+                    f"Erro interno: {error_str}"
+                )
+            else:
+                raise ValueError(
+                    f"O código '{insumo.codigo.upper()}' já está em uso como insumo global. "
+                    f"Erro interno: {error_str}"
+                )
         else:
+            # Outro tipo de erro
             raise ValueError(f"Erro ao salvar insumo: {str(e)}")
 
 def create_insumos(db: Session, insumos: List[InsumoCreate]) -> List[Insumo]:

@@ -34,6 +34,7 @@ interface Receita {
   id: number;
   codigo: string;
   nome: string;
+  responsavel?: string;
   categoria: string;
   porcoes: number;
   tempo_preparo: number;
@@ -85,6 +86,10 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
   onViewReceita,
   onCreateReceita
 }) => {
+
+  // TESTE - verificar dados
+  console.log('RECEITAS:', receitas);
+  
   
   const [dropdownPosition, setDropdownPosition] = useState<{ top?: number; bottom?: number } | null>(null);
   
@@ -354,6 +359,16 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
           <span className="text-sm text-gray-500">{receita.categoria}</span>
           {getStatusBadge(receita.status, receita.tem_insumos_sem_preco)}
         </div>
+
+        {/* Informacao do responsavel pela receita */}
+        {receita.responsavel && (
+          <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-600">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span>{receita.responsavel}</span>
+          </div>
+        )}
       </div>
 
       {/* Métricas principais */}
@@ -435,6 +450,15 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
       
       <td className="px-6 py-4 whitespace-nowrap">
         <span className="text-sm text-gray-900">{receita.categoria}</span>
+      </td>
+      
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <span className="text-sm text-gray-600">{receita.responsavel || '-'}</span>
+        </div>
       </td>
       
       <td className="px-6 py-4 whitespace-nowrap">
@@ -808,6 +832,11 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
                           )}
                         </div>
                       </th>
+
+                      {/* ADICIONAR ESTA NOVA COLUNA */}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Responsável
+                      </th>
                       
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
@@ -944,5 +973,6 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
     </div>
   );
 };
+
 
 export default SuperGridReceitas;

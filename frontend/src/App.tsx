@@ -20,10 +20,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PopupPortalContainer, { showSuccessPopup, showErrorPopup } from './components/PopupPortal';
 import {
   ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
-  Users, ChefHat, Utensils, Plus, Search, Edit2, Edit3, Trash2, Save,
+  Users, ChefHat, Utensils, Plus, Search, Edit, Edit2, Edit3, Trash, Trash2, Save,
   X, Check, AlertCircle, BarChart3, Settings, Zap, FileText,
   Upload, Activity, Brain, Monitor, Shield, Database, LinkIcon,
-  Target, Eye, ChevronDown, ChevronRight, Copy, AlertTriangle, Store
+  Target, Eye, ChevronDown, ChevronRight, Copy, AlertTriangle, Store, FileSpreadsheet
 } from 'lucide-react';
 
 // Importar componente da IA
@@ -49,6 +49,7 @@ import { API_BASE_URL } from './config';
 import { useAuth } from './contexts/AuthContext';
 import iogarLogo from './image/iogar_logo.png';
 import LimpezaDados from './components/LimpezaDados';
+import ImportacaoInsumos from './components/ImportacaoInsumos';
 
 // ============================================================================
 // INTERFACES E TIPOS DE DADOS
@@ -187,6 +188,8 @@ const FormularioInsumoIsolado = React.memo(({
   onClose, 
   onSave, 
   loading,
+  // Prop com lista de restaurantes disponíveis
+  restaurantes,
   // Props para fornecedores
   ehFornecedorAnonimo,
   setEhFornecedorAnonimo,
@@ -210,27 +213,39 @@ const FormularioInsumoIsolado = React.memo(({
   isLoading
 }) => {
 
-// Estado local do formulário
+// Estado local do formulário - campo fator removido
 const [formData, setFormData] = useState(() => {
   const initialData = {
     nome: editingInsumo?.nome || '',
     unidade: editingInsumo?.unidade || 'kg',
-    fator: editingInsumo?.fator || 1,
-    quantidade: editingInsumo?.quantidade || 1, // Padrão 1 para facilitar cálculo
+    // Campo fator removido - não é mais necessário
+    quantidade: editingInsumo?.quantidade || 1,
     grupo: editingInsumo?.grupo || '',
     subgrupo: editingInsumo?.subgrupo || '',
     descricao: editingInsumo?.descricao || '',
-  preco_compra_total: editingInsumo?.preco_compra_total || 
+    preco_compra_total: editingInsumo?.preco_compra_total || 
                         (editingInsumo?.preco_compra_real && editingInsumo?.quantidade ? 
                         editingInsumo.preco_compra_real * editingInsumo.quantidade : 0),
-  
-  preco_compra_real: 0,
-  eh_fornecedor_anonimo: editingInsumo?.eh_fornecedor_anonimo !== undefined ? editingInsumo.eh_fornecedor_anonimo : true,
-  fornecedor_insumo_id: editingInsumo?.fornecedor_insumo_id || null
-};
+    preco_compra_real: 0,
+    eh_fornecedor_anonimo: editingInsumo?.eh_fornecedor_anonimo !== undefined ? editingInsumo.eh_fornecedor_anonimo : true,
+    fornecedor_insumo_id: editingInsumo?.fornecedor_insumo_id || null
+  };
 
-console.log('🔄 FormData INICIALIZADO com:', initialData);
+  console.log('🔄 FormData INICIALIZADO com:', initialData);
   return initialData;
+});
+
+// ADICIONAR ESTE NOVO ESTADO LOGO APÓS O formData:
+// Estado para controlar se o insumo é global ou específico de um restaurante
+const [insumoGlobal, setInsumoGlobal] = useState(() => {
+  // Se estiver editando, verificar se tem restaurante_id
+  // Se não tiver restaurante_id, é global
+  return editingInsumo ? !editingInsumo.restaurante_id : true;
+});
+
+// Estado para armazenar o restaurante selecionado
+const [restauranteSelecionado, setRestauranteSelecionado] = useState(() => {
+  return editingInsumo?.restaurante_id || null;
 });
 
   // 🔧 FUNÇÃO OTIMIZADA para atualizar campos
@@ -277,7 +292,6 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
         nome: insumoFornecedorSelecionado.nome,
         codigo: insumoFornecedorSelecionado.codigo,
         unidade: insumoFornecedorSelecionado.unidade,
-        fator: insumoFornecedorSelecionado.fator || 1, // ✅ PREENCHIMENTO AUTOMÁTICO
         preco_compra_real: insumoFornecedorSelecionado.preco_unitario || 0
       }));
     }
@@ -329,28 +343,26 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
     }
   }, []);
 
-  // 🔧 FUNÇÃO para reset do formulário
-  const resetForm = useCallback(() => {
-    setFormData({
-      nome: '',
-      codigo: '',
-      unidade: 'kg',
-      fator: 1,
-      quantidade: 1, // Padrão 1 para evitar divisão por zero
-      grupo: '',
-      subgrupo: '',
-      descricao: '',
-      // ========================================================================
-      // 🆕 NOVOS CAMPOS DE PREÇO
-      // ========================================================================
-      preco_compra_total: 0,
-      preco_compra_real: 0
-    });
-    setEhFornecedorAnonimo(true);
-    setFornecedorSelecionadoForm(null);
-    setInsumosDoFornecedor([]);
-    setInsumoFornecedorSelecionado(null);
-  }, [setEhFornecedorAnonimo, setFornecedorSelecionadoForm, setInsumosDoFornecedor, setInsumoFornecedorSelecionado])
+  // Função para reset do formulário - campo fator removido
+const resetForm = useCallback(() => {
+  setFormData({
+    nome: '',
+    codigo: '',
+    unidade: 'kg',
+    // Campo fator removido - não é mais necessário
+    quantidade: 1, // Padrão 1 para evitar divisão por zero
+    grupo: '',
+    subgrupo: '',
+    descricao: '',
+    // Campos de preço
+    preco_compra_total: 0,
+    preco_compra_real: 0
+  });
+  setEhFornecedorAnonimo(true);
+  setFornecedorSelecionadoForm(null);
+  setInsumosDoFornecedor([]);
+  setInsumoFornecedorSelecionado(null);
+}, [setEhFornecedorAnonimo, setFornecedorSelecionadoForm, setInsumosDoFornecedor, setInsumoFornecedorSelecionado])
 
   // 🔧 FUNÇÃO para submissão
   const handleSubmit = useCallback(() => {
@@ -369,6 +381,17 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
 
     if (!formData.quantidade || formData.quantidade <= 0) {
       showErrorPopup('Campo obrigatório', 'A quantidade deve ser maior que zero.');
+      return;
+    }
+
+    // ========================================================================
+    // VALIDAÇÃO: Restaurante obrigatório se não for global
+    // ========================================================================
+    if (!insumoGlobal && !restauranteSelecionado) {
+      showErrorPopup(
+        'Restaurante Obrigatório', 
+        'Selecione um restaurante ou marque o insumo como global.'
+      );
       return;
     }
 
@@ -407,10 +430,14 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
       // ====================================================================
       preco_compra_real: parseFloat(precoCalculadoPorUnidade.toFixed(2)),
       
-      fator: parseFloat(formData.fator) || 1.0,
       quantidade: parseInt(formData.quantidade) || 1,
       grupo: formData.grupo?.trim() || 'Geral',
       subgrupo: formData.subgrupo?.trim() || 'Geral',
+      
+      // ====================================================================
+      // 🆕 VÍNCULO COM RESTAURANTE - NULL para global, ID para específico
+      // ====================================================================
+      restaurante_id: insumoGlobal ? null : restauranteSelecionado,
       
       // ====================================================================
       // CAMPOS PARA COMPARAÇÃO DE PREÇOS
@@ -434,7 +461,9 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
     ehFornecedorAnonimo, 
     insumoFornecedorSelecionado, 
     onSave, 
-    fornecedorSelecionadoForm
+    fornecedorSelecionadoForm,
+    insumoGlobal,
+    restauranteSelecionado
   ]);
 
   // 🔧 FUNÇÃO para fechar
@@ -728,23 +757,6 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
                   />
                 </div>
 
-                {/* Fator */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-900">Fator</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={formData.fator}
-                    onChange={(e) => updateField('fator', parseFloat(e.target.value) || 1)}
-                    disabled={!ehFornecedorAnonimo && insumoFornecedorSelecionado}
-                    className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
-                      (!ehFornecedorAnonimo && insumoFornecedorSelecionado) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white text-gray-900'
-                    }`}
-                    placeholder="1.0"
-                  />
-                </div>
-
                 {/* Preço de Compra Total */}
                 <div className="space-y-2">
                   <label className="flex items-center text-sm font-medium text-gray-900">
@@ -780,6 +792,86 @@ console.log('🔄 FormData INICIALIZADO com:', initialData);
                   />
                 </div>
               </div>
+            </div>
+
+            {/* ============================================================================ */}
+            {/* SEÇÃO 2.5: VÍNCULO COM RESTAURANTE (Global vs Específico) */}
+            {/* ============================================================================ */}
+            
+            <div className="space-y-6">
+              {/* Header da seção */}
+              <div className="flex items-center space-x-3 border-b border-gray-200 pb-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">2.5</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Vínculo com Restaurante</h3>
+                  <p className="text-sm text-gray-500">Defina se o insumo é global ou específico de um restaurante</p>
+                </div>
+              </div>
+
+              {/* Toggle: Global vs Específico */}
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-6">
+                <div className="flex items-start space-x-4">
+                  <div className="flex items-center h-6 mt-1">
+                    <input
+                      type="checkbox"
+                      checked={insumoGlobal}
+                      onChange={(e) => {
+                        setInsumoGlobal(e.target.checked);
+                        // Se marcar como global, limpar restaurante selecionado
+                        if (e.target.checked) {
+                          setRestauranteSelecionado(null);
+                        }
+                      }}
+                      className="w-5 h-5 text-purple-600 bg-white border-2 border-gray-300 rounded focus:ring-purple-500 focus:ring-2 transition-all duration-200"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-base font-semibold text-gray-900 cursor-pointer">
+                      Marcar como Insumo Global
+                    </label>
+                    <p className="text-sm text-gray-700 mt-2 leading-relaxed">
+                      Insumos globais podem ser utilizados por qualquer restaurante do sistema. 
+                      Ideal para ingredientes comuns que não pertencem a uma unidade específica.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dropdown de seleção de restaurante (só aparece se não for global) */}
+              {!insumoGlobal && (
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Selecione o Restaurante *
+                  </label>
+                  <select
+                    value={restauranteSelecionado || ''}
+                    onChange={(e) => setRestauranteSelecionado(e.target.value ? parseInt(e.target.value) : null)}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                    required={!insumoGlobal}
+                  >
+                    <option value="">Selecione um restaurante...</option>
+                    {restaurantes?.map((rest) => (
+                      <option key={rest.id} value={rest.id}>
+                        {rest.nome} {rest.cnpj ? `- CNPJ: ${rest.cnpj}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {/* Mensagem de aviso se não houver restaurantes */}
+                  {(!restaurantes || restaurantes.length === 0) && (
+                    <div className="mt-3 flex items-start space-x-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-amber-800">
+                        <strong>Atenção:</strong> Nenhum restaurante cadastrado. 
+                        Cadastre um restaurante antes de criar insumos específicos, 
+                        ou marque como "Insumo Global".
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ============================================================================ */}
@@ -1705,24 +1797,15 @@ const FoodCostSystem: React.FC = () => {
   
   // Estado da navegação - controla qual aba está ativa
   // ===================================================================================================
-  // SISTEMA INTELIGENTE DE ABA INICIAL
-  // F5 = mantém aba atual | Ctrl+Alt+R = Dashboard | Ctrl+F5 = Dashboard | Primeira vez = Dashboard
+  // SISTEMA INTELIGENTE DE ABA INICIAL - SEMPRE INICIA NA DASHBOARD
   // ===================================================================================================
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    // Verificar se é primeira vez (não tem aba salva)
-    const abaSalva = localStorage.getItem('activeTab');
-    
-    if (!abaSalva) {
-      // Primeira vez - vai para Dashboard
-      console.log('🏠 Primeira vez - Iniciando no Dashboard');
-      localStorage.setItem('activeTab', 'dashboard');
-      return 'dashboard';
-    }
-    
-    // F5 normal - mantém aba atual
-    console.log(`🔄 Recarregando - Mantendo aba: ${abaSalva}`);
-    return abaSalva;
-  });
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  // useEffect para definir aba inicial apenas uma vez
+  useEffect(() => {
+    console.log('🏠 Sistema iniciado - Dashboard como aba padrão');
+    localStorage.setItem('activeTab', 'dashboard');
+  }, []); // Array vazio = executa apenas uma vez na montagem
 
   // Helper para exibir nome dos perfis
   const getRoleLabel = (role: string): string => {
@@ -1778,6 +1861,7 @@ const FoodCostSystem: React.FC = () => {
     console.log(`💾 Aba salva: ${activeTab}`);
   }, [activeTab]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
+  const [incluirInsumosGlobais, setIncluirInsumosGlobais] = useState(false);
   const [receitas, setReceitas] = useState<Receita[]>([]);
   const [restaurantes, setRestaurantes] = useState<RestauranteGrid[]>([]);
   const [restaurantesExpandidos, setRestaurantesExpandidos] = useState<Set<number>>(new Set());
@@ -1799,6 +1883,8 @@ const FoodCostSystem: React.FC = () => {
     telefone: '',
     ativo: true
   });
+
+  const [mostrarImportacao, setMostrarImportacao] = useState(false);
 
   // ============================================================================
   // ESTADOS - GERENCIAMENTO DE USUÁRIOS (ADMIN)
@@ -1914,11 +2000,10 @@ const FoodCostSystem: React.FC = () => {
   const [novoInsumo, setNovoInsumo] = useState(() => ({
     nome: '',
     unidade: 'kg',
-    preco_compra_real: 0, // ✅ Campo correto para o backend
-    fator: 1.0,
+    preco_compra_real: 0,
     quantidade: 1,
-    grupo: 'Geral', // ✅ Campo obrigatório
-    subgrupo: 'Geral' // ✅ Campo obrigatório
+    grupo: 'Geral',
+    subgrupo: 'Geral'
   }));
   
   // Estados para formulário de receita
@@ -1948,6 +2033,17 @@ const FoodCostSystem: React.FC = () => {
     cidade: '',
     estado: ''
   });
+
+  // ===================================================================================================
+  // RECARREGAR INSUMOS QUANDO SELECIONAR UM RESTAURANTE
+  // ===================================================================================================
+  useEffect(() => {
+    if (selectedRestaurante && selectedRestaurante.id) {
+      console.log(`🔄 Restaurante selecionado: ${selectedRestaurante.nome} (ID: ${selectedRestaurante.id})`);
+      console.log('📦 Recarregando insumos do restaurante...');
+      fetchInsumos();
+    }
+  }, [selectedRestaurante]);
 
   const handleCriarRestaurante = async (dadosRestaurante) => {
     if (!dadosRestaurante.nome.trim() || !dadosRestaurante.cnpj.trim()) {
@@ -2059,14 +2155,29 @@ const fetchInsumos = async () => {
     // ========================================================================
     // BUSCAR INSUMOS DA TABELA PRINCIPAL
     // ========================================================================
-    const response = await apiService.getInsumos();
+    const params: any = {};
+
+    // Adicionar filtro de restaurante se houver um selecionado
+    if (selectedRestaurante) {
+      params.restaurante_id = selectedRestaurante.id;
+      
+      // Adicionar flag de incluir globais se checkbox marcado (apenas ADMIN/CONSULTANT)
+      if (incluirInsumosGlobais && ['ADMIN', 'CONSULTANT'].includes(user?.role || '')) {
+        params.incluir_globais = true;
+      }
+    }
+
+    console.log('🔍 Buscando insumos com parâmetros:', params);
+
+    const response = await apiService.getInsumos(params);
     let insumosPrincipais = [];
     
     if (response.data) {
       insumosPrincipais = response.data.map(insumo => ({
         ...insumo,
         tipo_origem: 'sistema', // Identificar como insumo do sistema
-        tem_fornecedor: false
+        tem_fornecedor: false,
+        restaurante_id: insumo.restaurante_id
       }));
     } else if (response.error) {
       console.error('Erro ao buscar insumos principais:', response.error);
@@ -2103,6 +2214,7 @@ const fetchInsumos = async () => {
                 subgrupo: null,
                 descricao: insumo.descricao,
                 // Campos específicos para identificar origem
+                restaurante_id: null,
                 tipo_origem: 'fornecedor',
                 tem_fornecedor: true,
                 fornecedor_id: insumo.fornecedor_id,
@@ -2775,6 +2887,80 @@ const fetchInsumos = async () => {
     }
   };
 
+  // ===================================================================================================
+  // FUNÇÃO: BUSCAR DETALHES COMPLETOS DOS INSUMOS DE UMA RECEITA
+  // ===================================================================================================
+  // Descrição: Carrega os dados completos (nome, código, unidade) dos insumos e receitas
+  //            processadas de uma receita específica para popular os selects corretamente
+  // ===================================================================================================
+  const fetchInsumosDetalhesReceita = async (receitaInsumos: any[]) => {
+    if (!receitaInsumos || receitaInsumos.length === 0) {
+      console.log('📭 Nenhum insumo para carregar');
+      return [];
+    }
+
+    console.log(`🔍 Carregando detalhes de ${receitaInsumos.length} insumos...`);
+
+    const insumosComDetalhes = receitaInsumos.map((ri) => {
+      try {
+        const insumoId = ri.insumo_id;
+        const receitaProcessadaId = ri.receita_processada_id;
+
+        // ============================================================================
+        // CASO 1: É uma receita processada
+        // ============================================================================
+        if (receitaProcessadaId) {
+          console.log(`  🔄 Buscando receita processada ID: ${receitaProcessadaId}`);
+          
+          const receitaProcessada = receitas?.find(r => r.id === receitaProcessadaId);
+
+          if (receitaProcessada) {
+            return {
+              ...ri,
+              _detalhes: {
+                nome: receitaProcessada.nome,
+                codigo: receitaProcessada.codigo,
+                unidade: receitaProcessada.unidade,
+                tipo: 'receita_processada'
+              }
+            };
+          }
+        }
+
+        // ============================================================================
+        // CASO 2: É um insumo normal
+        // ============================================================================
+        if (insumoId) {
+          console.log(`  📦 Buscando insumo ID: ${insumoId}`);
+          
+          const insumo = insumos.find(i => i.id === insumoId || i.id_original === insumoId);
+
+          if (insumo) {
+            return {
+              ...ri,
+              _detalhes: {
+                nome: insumo.nome,
+                codigo: insumo.codigo,
+                unidade: insumo.unidade,
+                tipo: 'insumo'
+              }
+            };
+          }
+        }
+
+        console.warn(`⚠️ Não encontrou detalhes para insumo_id=${insumoId}, receita_processada_id=${receitaProcessadaId}`);
+        return ri;
+
+      } catch (error) {
+        console.error(`❌ Erro ao buscar detalhes:`, error);
+        return ri;
+      }
+    });
+
+    console.log('✅ Detalhes dos insumos carregados:', insumosComDetalhes);
+    return insumosComDetalhes;
+  };
+
   // Carrega restaurantes com fallback para diferentes endpoints
   const carregarRestaurantes = async () => {
     try {
@@ -2868,8 +3054,17 @@ const fetchInsumos = async () => {
       }
     };
 
-    initializeApp();
+   initializeApp();
   }, []); // IMPORTANTE: Array vazio para executar apenas uma vez
+
+  // ===================================================================================================
+    // EFEITO: RECARREGAR INSUMOS AO MUDAR RESTAURANTE OU CHECKBOX DE GLOBAIS
+    // ===================================================================================================
+    useEffect(() => {
+      if (activeTab === 'insumos') {
+        fetchInsumos();
+      }
+    }, [selectedRestaurante, incluirInsumosGlobais]);
 
   // Carregar estatísticas quando um restaurante é selecionado na aba restaurantes
   // useEffect(() => {
@@ -3045,13 +3240,14 @@ const fetchInsumos = async () => {
 
     return (
       <div className={`
-        w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen z-40 transition-transform duration-300
+        w-64 bg-slate-900 text-white flex flex-col fixed top-0 left-0 h-screen z-40 transition-transform duration-300 overflow-hidden
         ${isAberta ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0
       `}>
-        <div className="p-6 relative">
+        {/* Header fixo do Sidebar com logo e usuário */}
+        <div className="p-6 relative flex-shrink-0 border-b border-slate-800">
           {/* Logo IOGAR */}
-          <div className="flex flex-col items-center gap-2 mb-8">
+          <div className="flex flex-col items-center gap-2 mb-4">
             <img
               src={iogarLogo}
               alt="Logo IOGAR"
@@ -3060,36 +3256,36 @@ const fetchInsumos = async () => {
             />
             <p className="text-xs text-gray-400 text-center">Food Cost System</p>
           </div>
-          {/* Botão de Logout e info do usuário */}
-          <div className="flex items-center gap-3">
-            {user && (
-              <div className="hidden md:flex items-center gap-2 text-white text-sm">
-                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center font-semibold">
+          {/* Informações do usuário e botão de logout */}
+          {user && (
+            <div className="space-y-3 mb-4">
+              {/* Card com info do usuário */}
+              <div className="flex items-center gap-3 p-3 bg-white/10 rounded-lg">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-lg">
                   {user.username.charAt(0).toUpperCase()}
                 </div>
-                <div className="flex flex-col">
-                  <span className="font-medium">{user.username}</span>
-                  <span className="text-xs opacity-80">{user.role}</span>
+                <div className="flex flex-col flex-1">
+                  <span className="font-medium text-white text-sm">{user.username}</span>
+                  <span className="text-xs text-gray-300">{user.role}</span>
                 </div>
               </div>
-            )}
-            
-            <button
-              onClick={() => {
-                console.log('🔴 BOTÃO LOGOUT CLICADO!');
-                console.log('🔴 showLogoutConfirm antes:', showLogoutConfirm);
-                setShowLogoutConfirm(true);
-                console.log('🔴 Chamou setShowLogoutConfirm(true)');
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-all text-white text-sm font-medium"
-              title="Sair do sistema"
-            >
-              <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-              </svg>
-              <span className="hidden sm:inline">Sair</span>
-            </button>
-          </div>
+              
+              {/* Botão Sair */}
+              <button
+                onClick={() => {
+                  console.log('🔴 BOTÃO LOGOUT CLICADO!');
+                  setShowLogoutConfirm(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500/90 hover:bg-red-600 rounded-lg transition-all text-white text-sm font-medium shadow-md"
+                title="Sair do sistema"
+              >
+                <svg className="w-5 h-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                  <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                </svg>
+                <span>Sair</span>
+              </button>
+            </div>
+          )}
 
           {/* Seleção de restaurante */}
           <div className="mb-6">
@@ -3115,8 +3311,8 @@ const fetchInsumos = async () => {
           </div>
         </div>
 
-        {/* Menu de navegação */}
-        <nav className="flex-1 px-6">
+        {/* Menu de navegação com scroll */}
+        <nav className="flex-1 px-6 overflow-y-auto overflow-x-hidden">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -3550,27 +3746,6 @@ const fetchInsumos = async () => {
                   <option value="caixa">Caixa</option>
                 </select>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fator {formData.eh_processado && <span className="text-amber-600 text-xs">(Fixo em 1.0 para processadas)</span>}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.fator}
-                  onChange={(e) => handleChange('fator', parseFloat(e.target.value) || 1)}
-                  disabled={formData.eh_processado}
-                  className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 ${
-                    formData.eh_processado ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'
-                  }`}
-                />
-                {formData.eh_processado && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    Receitas processadas sempre têm fator 1.0
-                  </p>
-                )}
-              </div>
             </div>  
 
             {/* ← FECHA O grid-cols-2 AQUI */}
@@ -3754,42 +3929,76 @@ const fetchInsumos = async () => {
       const [receitaInsumos, setReceitaInsumos] = useState([]);
 
       useEffect(() => {
+        // ============================================================================
+        // CARREGAR INSUMOS DA RECEITA EM EDIÇÃO COM DETALHES COMPLETOS
+        // ============================================================================
+        const carregarInsumosComDetalhes = async () => {
+          if (editingReceita && editingReceita.receita_insumos) {
+            console.log('🔄 Carregando insumos da receita em edição:', editingReceita.receita_insumos);
+            
+            // Buscar detalhes completos dos insumos
+            const insumosComDetalhes = await fetchInsumosDetalhesReceita(editingReceita.receita_insumos);
+            
+            const insumosComQuantidade = insumosComDetalhes.map((ri: any) => {
+              const quantidade = ri.quantidade_necessaria || ri.quantidade || 1;
+              
+              // ============================================================================
+              // UNIDADE DE MEDIDA - GARANTIR QUE SEMPRE TENHA UM VALOR VÁLIDO
+              // ============================================================================
+              let unidadeFinal;
+              
+              // Prioridade 1: unidade_medida do relacionamento receita_insumo
+              if (ri.unidade_medida) {
+                unidadeFinal = ri.unidade_medida;
+                console.log(`✅ Usando unidade_medida do relacionamento: ${unidadeFinal}`);
+              }
+              // Prioridade 2: unidade dos detalhes carregados
+              else if (ri._detalhes?.unidade) {
+                unidadeFinal = ri._detalhes.unidade;
+                console.log(`✅ Usando unidade dos detalhes: ${unidadeFinal}`);
+              }
+              // Prioridade 3: Buscar do insumo original
+              else {
+                const insumoOriginal = insumos.find(i => 
+                  i.id === ri.insumo_id || i.id_original === ri.insumo_id
+                );
+                
+                if (insumoOriginal?.unidade) {
+                  unidadeFinal = insumoOriginal.unidade;
+                  console.log(`✅ Usando unidade do insumo original: ${unidadeFinal}`);
+                } else {
+                  // Fallback: unidade padrão
+                  unidadeFinal = 'un';
+                  console.warn(`⚠️ Nenhuma unidade encontrada, usando padrão: ${unidadeFinal}`);
+                }
+              }
+              
+              console.log(`📊 Insumo ${ri.insumo_id || ri.receita_processada_id}: qtd=${quantidade}, unidade=${unidadeFinal}`);
+              
+              return {
+                insumo_id: ri.insumo_id || ri.receita_processada_id,
+                quantidade: quantidade,
+                unidade_medida: unidadeFinal,
+                _detalhes: ri._detalhes // Preservar os detalhes carregados
+              };
+            });
+            
+            console.log('✅ ========== INSUMOS CARREGADOS FINAL ==========');
+            console.log('📦 Array completo:', insumosComQuantidade);
+            insumosComQuantidade.forEach((insumo, idx) => {
+              console.log(`   [${idx}] insumo_id: ${insumo.insumo_id}, qtd: ${insumo.quantidade}, unidade: ${insumo.unidade_medida}, nome: ${insumo._detalhes?.nome}`);
+            });
+            console.log('✅ ==============================================');
+            
+            setReceitaInsumos(insumosComQuantidade);
+          } else if (!editingReceita) {
+            // Limpar insumos quando não está editando
+            console.log('🧹 Limpando insumos (sem receita em edição)');
+            setReceitaInsumos([]);
+          }
+        };
         
-        if (editingReceita?.receita_insumos && editingReceita.receita_insumos.length > 0) {
-          
-          const insumosComQuantidade = editingReceita.receita_insumos.map(ri => {
-            const quantidade = ri.quantidade_necessaria || ri.quantidade || 1;
-            
-            // PRIORIDADE: usar unidade_medida do backend primeiro
-            const unidadeBackend = ri.unidade_medida;
-            
-            // Buscar insumo para pegar a unidade como fallback
-            const insumoEncontrado = insumos.find(i => i.id === ri.insumo_id);
-            const unidadeFallback = insumoEncontrado?.unidade || 'un';
-            
-            // Usar unidade do backend se existir, senão usar do insumo
-            const unidadeFinal = unidadeBackend || unidadeFallback;
-           
-            return {
-              insumo_id: ri.insumo_id,
-              quantidade: quantidade,
-              unidade_medida: unidadeFinal
-            };
-          });
-          
-          console.log('✅ ========== INSUMOS CARREGADOS FINAL ==========');
-          console.log('📦 Array completo:', insumosComQuantidade);
-          insumosComQuantidade.forEach((insumo, idx) => {
-            console.log(`   [${idx}] insumo_id: ${insumo.insumo_id}, qtd: ${insumo.quantidade}, unidade: ${insumo.unidade_medida}`);
-          });
-          console.log('✅ ==============================================');
-          
-          setReceitaInsumos(insumosComQuantidade);
-        } else if (!editingReceita) {
-          // Limpar insumos quando não está editando
-          console.log('🧹 Limpando insumos (sem receita em edição)');
-          setReceitaInsumos([]);
-        }
+        carregarInsumosComDetalhes();
       }, [editingReceita, insumos]);
 
       // ============================================================================
@@ -4127,6 +4336,7 @@ const fetchInsumos = async () => {
           // Campos obrigatórios básicos
           nome: String(formData.nome || '').trim(),
           descricao: String(formData.descricao || '').trim(),
+          responsavel: formData.responsavel ? String(formData.responsavel).trim() : null,
           sugestao_valor: parseFloat(formData.sugestao_valor) || 0,
           
           // Campos de categoria (ajustar conforme backend)
@@ -4277,7 +4487,7 @@ const fetchInsumos = async () => {
         proceedWithSave(insumosValidos);
       };
       
-      //INICIO RETURN
+      //INICIO RETURN FORMULARIO RECEITA
       return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -4477,6 +4687,25 @@ const fetchInsumos = async () => {
                       />
                     </div>
 
+                    {/* Campo Responsavel */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Responsável pela Receita
+                        <span className="text-gray-500 text-xs ml-1">(Opcional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.responsavel || ''}
+                        onChange={(e) => setFormData({ ...formData, responsavel: e.target.value })}
+                        placeholder="Nome do cozinheiro ou chef"
+                        maxLength={200}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Digite o nome do cozinheiro ou pessoa responsável por esta receita
+                      </p>
+                    </div>
+
                     {/* Fator */}
                     <div className="space-y-2">
                       <label className="flex items-center text-sm font-medium text-gray-900">
@@ -4600,18 +4829,19 @@ const fetchInsumos = async () => {
                       Buscar Insumos Disponíveis
                     </label>
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                       <input
                         type="text"
                         value={buscaInsumo}
                         onChange={(e) => setBuscaInsumo(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
                         placeholder="Digite o nome do insumo para buscar..."
+                        autoComplete="off"
                       />
                     </div>
                     
                     {/* Lista de insumos filtrados */}
-                    {buscaInsumo && (
+                    {buscaInsumo.trim() && (
                       <div className="mt-3 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded-lg">
                         {insumosFiltrados.map((insumo) => (
                           <button
@@ -4729,7 +4959,7 @@ const fetchInsumos = async () => {
                                 );
                                 
                                 if (insumoFornecedor) {
-                                  return insumoFornecedor.id; // Retorna "fornecedor_123"
+                                  return insumoFornecedor.id;
                                 }
                                 
                                 // Se não for receita nem fornecedor, é insumo normal
@@ -4746,52 +4976,76 @@ const fetchInsumos = async () => {
                                 // ============================================================================
                                 if (typeof valorSelecionado === 'string') {
                                   if (valorSelecionado.startsWith('insumo_')) {
-                                    // Remover prefixo "insumo_" e converter para número
                                     insumoId = parseInt(valorSelecionado.replace('insumo_', ''));
-                                    console.log('✅ Insumo normal detectado - ID:', insumoId);
-                                  } 
-                                  else if (valorSelecionado.startsWith('receita_')) {
-                                    // Remover prefixo "receita_" e converter para número
+                                  } else if (valorSelecionado.startsWith('receita_')) {
                                     insumoId = parseInt(valorSelecionado.replace('receita_', ''));
-                                    console.log('✅ Receita processada detectada - ID:', insumoId);
-                                  } 
-                                  else if (valorSelecionado.startsWith('fornecedor_')) {
-                                    // Manter compatibilidade com insumos de fornecedor (se existir)
-                                    const insumoFornecedor = insumos.find(i => i.id === valorSelecionado);
-                                    insumoId = insumoFornecedor?.id_original;
-                                    console.log('✅ Insumo de fornecedor detectado - ID original:', insumoId, 'ID display:', valorSelecionado);
-                                  } 
-                                  else {
-                                    // Fallback: tentar converter diretamente
+                                  } else if (valorSelecionado.startsWith('fornecedor_')) {
+                                    const idOriginal = parseInt(valorSelecionado.replace('fornecedor_', ''));
+                                    const insumoForn = insumos.find(i => i.id === valorSelecionado);
+                                    insumoId = insumoForn?.id_original || idOriginal;
+                                  } else {
                                     insumoId = parseInt(valorSelecionado);
                                   }
                                 } else {
                                   insumoId = parseInt(valorSelecionado);
                                 }
                                 
+                                console.log('📝 ID convertido:', insumoId);
+                                
+                                // Atualizar o insumo_id
                                 updateReceitaInsumo(index, 'insumo_id', insumoId);
+                                
+                                // ============================================================================
+                                // BUSCAR UNIDADE DO INSUMO/RECEITA SELECIONADO
+                                // ============================================================================
+                                let unidadeEncontrada = null;
+                                
+                                if (valorSelecionado.toString().startsWith('receita_')) {
+                                  const receitaProc = receitas?.find(r => r.id === insumoId);
+                                  unidadeEncontrada = receitaProc?.unidade;
+                                } else {
+                                  const insumoEncontrado = insumos.find(i => 
+                                    i.id === valorSelecionado || 
+                                    i.id_original === insumoId ||
+                                    i.id === `insumo_${insumoId}` ||
+                                    i.id === `fornecedor_${insumoId}`
+                                  );
+                                  unidadeEncontrada = insumoEncontrado?.unidade;
+                                }
+                                
+                                if (unidadeEncontrada) {
+                                  console.log('✅ Unidade encontrada:', unidadeEncontrada);
+                                  updateReceitaInsumo(index, 'unidade_medida', unidadeEncontrada);
+                                }
                               }}
-                              className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                              disabled={!insumos || insumos.length === 0}
+                              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-700"
                             >
-                              {!insumos || insumos.length === 0 ? (
+                              {loading ? (
                                 <option value={0}>Carregando insumos...</option>
                               ) : (
                                 <>
-                                  <option value={0}>Selecione um insumo...</option>
+                                  {/* ============================================================================
+                                      OPÇÃO PADRÃO - MOSTRAR DETALHES SE DISPONÍVEL
+                                      ============================================================================ */}
+                                  {receitaInsumo._detalhes ? (
+                                    <option value={0} disabled>
+                                      {receitaInsumo._detalhes.codigo ? `${receitaInsumo._detalhes.codigo} - ` : ''}
+                                      {receitaInsumo._detalhes.nome} ({receitaInsumo._detalhes.unidade})
+                                      {receitaInsumo._detalhes.tipo === 'receita_processada' ? ' 🔄' : ''}
+                                    </option>
+                                  ) : (
+                                    <option value={0}>Selecione um insumo...</option>
+                                  )}
                                   
-                                  {/* ===================================================================================================
+                                  {/* ============================================================================
                                       INSUMOS NORMAIS (SISTEMA + FORNECEDORES)
-                                      =================================================================================================== */}
+                                      ============================================================================ */}
                                   {insumos.map(insumo => {
-                                    // Determinar o value correto baseado no tipo de insumo
                                     let valorOption;
                                     
                                     if (insumo.tipo_origem === 'fornecedor') {
-                                      // Insumo de fornecedor: usar ID original sem prefixo adicional
-                                      valorOption = insumo.id; // Já vem como "fornecedor_123"
+                                      valorOption = insumo.id;
                                     } else {
-                                      // Insumo normal: adicionar prefixo "insumo_"
                                       valorOption = `insumo_${insumo.id}`;
                                     }
                                     
@@ -4804,9 +5058,9 @@ const fetchInsumos = async () => {
                                     );
                                   })}
                                   
-                                  {/* ===================================================================================================
+                                  {/* ============================================================================
                                       RECEITAS PROCESSADAS DO RESTAURANTE ATUAL
-                                      =================================================================================================== */}
+                                      ============================================================================ */}
                                   {receitas && receitas
                                     .filter(r => r.processada && r.restaurante_id === selectedRestaurante?.id)
                                     .map(receita => (
@@ -4816,7 +5070,7 @@ const fetchInsumos = async () => {
                                         className="bg-purple-50"
                                       >
                                         🔄 {receita.codigo ? `${receita.codigo} - ` : ''}
-                                        {receita.nome} ({receita.unidade || 'un'}) - R$ {(receita.cmv_real || 0).toFixed(2)} [PROCESSADA]
+                                        {receita.nome} ({receita.unidade}) - R$ {(receita.cmv_real || 0).toFixed(2)}
                                       </option>
                                     ))
                                   }
@@ -4915,12 +5169,13 @@ const fetchInsumos = async () => {
                           </label>
                           <input
                             type="number"
-                            min="0.001"
+                            inputMode="decimal"
                             step="0.001"
+                            min="0.001"
                             value={formData.quantidade_porcao}
                             onChange={(e) => {
                               const valor = e.target.value;
-                              handleChange('quantidade_porcao', valor === '' ? '' : parseFloat(valor));
+                              handleChange('quantidade_porcao', valor === '' ? '' : parseFloat(valor) || 0);
                             }}
                             className="w-full p-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white text-gray-900"
                             placeholder="Ex: 10.000"
@@ -5262,14 +5517,22 @@ const fetchInsumos = async () => {
       try {
         setLoading(true);
         console.log('📤 Iniciando salvamento do insumo com nova lógica:', dadosInsumo);
+        console.log('🔍 DEBUG - restaurante_id recebido:', dadosInsumo.restaurante_id);
+        console.log('🔍 DEBUG - tipo de restaurante_id:', typeof dadosInsumo.restaurante_id);
 
         // Preparar dados com nova estrutura
         const dadosParaEnvio = {
           nome: dadosInsumo.nome || '',
           unidade: dadosInsumo.unidade || 'kg',
           preco_compra_real: dadosInsumo.preco_compra_real || null,
-          fator: dadosInsumo.fator || 1.0,
           quantidade: dadosInsumo.quantidade || 0,
+          
+          // ================================================================
+          // VÍNCULO COM RESTAURANTE - Usa exatamente o valor do formulário
+          // Se dadosInsumo.restaurante_id === null, manter null (insumo global)
+          // Se dadosInsumo.restaurante_id === ID, manter ID (insumo específico)
+          // ================================================================
+          restaurante_id: dadosInsumo.restaurante_id !== undefined ? dadosInsumo.restaurante_id : null,
           
           // Novos campos para fornecedor
           eh_fornecedor_anonimo: ehFornecedorAnonimo,
@@ -5277,8 +5540,9 @@ const fetchInsumos = async () => {
           grupo: dadosInsumo.grupo || 'Geral',
           subgrupo: dadosInsumo.subgrupo || ''
         };
-
         console.log('📦 Dados preparados para envio:', dadosParaEnvio);
+        console.log('🔍 DEBUG dadosParaEnvio - restaurante_id:', dadosParaEnvio.restaurante_id);
+        console.log('🔍 DEBUG dadosParaEnvio - tipo:', typeof dadosParaEnvio.restaurante_id);
 
         // 🆕 Log de mudança de preço (se insumo do fornecedor selecionado)
         if (insumoFornecedorSelecionado && dadosInsumo.preco_compra_real !== insumoFornecedorSelecionado.preco_unitario) {
@@ -5470,6 +5734,24 @@ const fetchInsumos = async () => {
         {/* Barra de busca - COMPONENTE ISOLADO */}
         <SearchInput onSearch={handleSearchChange} />
 
+        {/* ===================================================================================================
+            CHECKBOX: INCLUIR INSUMOS GLOBAIS (DINÂMICO)
+            =================================================================================================== */}
+        {selectedRestaurante && ['ADMIN', 'CONSULTANT'].includes(user?.role || '') && (
+          <div className="flex items-center gap-3 p-4 rounded-lg border-2 border-green-200 bg-green-50 hover:bg-green-100 transition-all">
+            <input
+              type="checkbox"
+              id="incluir_insumos_globais"
+              checked={incluirInsumosGlobais}
+              onChange={(e) => setIncluirInsumosGlobais(e.target.checked)}
+              className="w-5 h-5 text-green-600 bg-white border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2 checked:bg-green-500 checked:border-green-500 cursor-pointer"
+            />
+            <label htmlFor="incluir_insumos_globais" className="text-sm font-medium text-gray-700 cursor-pointer select-none flex-1">
+              ✨ Incluir insumos globais (serão mesclados aos insumos do restaurante)
+            </label>
+          </div>
+        )}
+
         {/* Tabela de insumos */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {insumos.length === 0 ? (
@@ -5588,6 +5870,15 @@ const fetchInsumos = async () => {
                               </div>
                             )}
                             <span>{insumo.nome}</span>
+                            {/* Badge "Global" APENAS para insumos SEM restaurante */}
+                            {(insumo.restaurante_id === null || 
+                              insumo.restaurante_id === undefined || 
+                              insumo.restaurante_id === '' ||
+                              String(insumo.restaurante_id).toLowerCase() === 'null') && (
+                              <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full font-medium">
+                                Global
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
@@ -5680,7 +5971,18 @@ const fetchInsumos = async () => {
                             F
                           </div>
                         )}
-                        <h3 className="font-semibold text-gray-900 text-base">{insumo.nome}</h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-gray-900 text-base">{insumo.nome}</h3>
+                          {/* Badge "Global" APENAS para insumos SEM restaurante */}
+                          {(insumo.restaurante_id === null || 
+                            insumo.restaurante_id === undefined || 
+                            insumo.restaurante_id === '' ||
+                            String(insumo.restaurante_id).toLowerCase() === 'null') && (
+                            <span className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full font-medium">
+                              Global
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -5873,6 +6175,8 @@ const fetchInsumos = async () => {
           }}
           onSave={handleSaveInsumo}
           loading={loading}
+          // Lista de restaurantes disponíveis
+          restaurantes={restaurantes}
           // Props para fornecedores
           ehFornecedorAnonimo={ehFornecedorAnonimo}
           setEhFornecedorAnonimo={setEhFornecedorAnonimo}
@@ -7187,6 +7491,8 @@ const fetchInsumos = async () => {
     console.log('🔄 Convertendo receitas do backend:', receitasBackend.length, 'receitas');
     
     return receitasBackend.map(receita => {
+      // TESTE RESPONSAVEL
+      console.log('🔴 CAMPO RESPONSAVEL:', receita.responsavel);
       // Debug dos dados recebidos do backend
       console.log('📊 Dados da receita do backend:', {
         id: receita.id,
@@ -7256,6 +7562,7 @@ const fetchInsumos = async () => {
         grupo: receita.grupo,
         subgrupo: receita.subgrupo,
         descricao: receita.descricao || '',
+        responsavel: receita.responsavel || null,
       
       // CMV real = custo POR PORÇÃO
       cmv_real: custoPorPorcao,
@@ -7941,8 +8248,7 @@ Receitas.displayName = 'Receitas';
       descricao: '',
       unidade: 'kg',
       preco_compra_real: 0,
-      quantidade: 1,
-      fator: 1.0
+      quantidade: 1
     });
 
     const [showPopupFornecedor, setShowPopupFornecedor] = useState(false);
@@ -8092,8 +8398,7 @@ Receitas.displayName = 'Receitas';
         descricao: insumo.descricao || '',
         unidade: insumo.unidade || 'kg',
         preco_compra_real: insumo.preco_unitario || 0,
-        quantidade: insumo.quantidade || 1,
-        fator: insumo.fator || 1.0
+        quantidade: insumo.quantidade || 1
       });
       setShowPopupEditarInsumo(true);
     };
@@ -8118,7 +8423,6 @@ Receitas.displayName = 'Receitas';
           unidade: novoInsumo.unidade,
           preco_unitario: novoInsumo.preco_compra_real,
           quantidade: novoInsumo.quantidade || 1,
-          fator: novoInsumo.fator || 1.0
         };
 
         console.log('📤 Atualizando insumo:', dadosParaAtualizar);
@@ -8307,13 +8611,11 @@ const cancelarExclusao = () => {
         
         // Mapear dados para schema correto do backend (SEM codigo)
         const insumoData = {
-          // codigo removido - será gerado automaticamente pelo backend
           nome: String(novoInsumo.nome || '').trim(), 
           unidade: String(novoInsumo.unidade || 'kg').trim(),
           preco_unitario: Number(novoInsumo.preco_compra_real) || 0,
           descricao: String(novoInsumo.descricao || '').trim(),
-          quantidade: Number(novoInsumo.quantidade) || 1,
-          fator: Number(novoInsumo.fator) || 1.0
+          quantidade: Number(novoInsumo.quantidade) || 1
         };
 
         console.log('🎯 Dados do insumo do fornecedor (sem código):', insumoData);
@@ -8334,13 +8636,11 @@ const cancelarExclusao = () => {
           
           // Limpa formulário e fecha popup (SEM codigo)
           setNovoInsumo({
-            // codigo removido
             nome: '',
             descricao: '',
             unidade: 'kg',
             preco_compra_real: 0,
-            quantidade: 1,
-            fator: 1.0
+            quantidade: 1
           });
           setShowPopupInsumo(false);
           
@@ -8561,7 +8861,7 @@ const cancelarExclusao = () => {
       }
     };
 
-    // INICIO 
+    // INICIO RETURN FORNECEDORES
     return (
       <div className="p-6">
         {/* Cabeçalho da seção */}
@@ -9205,18 +9505,6 @@ const cancelarExclusao = () => {
                       className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
                     />
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fator</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0.1"
-                      value={novoInsumo.fator}
-                      onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value) || 1.0})}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    />
-                  </div>
                 </div>
 
                 <div>
@@ -9421,24 +9709,6 @@ const cancelarExclusao = () => {
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fator <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={novoInsumo.fator}
-                    onChange={(e) => setNovoInsumo({...novoInsumo, fator: parseFloat(e.target.value) || 0})}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none transition-colors bg-white"
-                    placeholder="1.0"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Valor fechado (ex: 0.75 para 750ml, 20.0 para caixa 20un)
-                  </p>
-                </div>
-
                 {/* Campo de cálculo em tempo real */}
                 <div className="col-span-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <h5 className="font-medium text-blue-800 mb-2">Valor unitário</h5>
@@ -9489,7 +9759,7 @@ const cancelarExclusao = () => {
   // RENDERIZAÇÃO PRINCIPAL DO COMPONENTE
   // ============================================================================
 
-return (
+return (  //RETORN DO COMPONENTE PRINCIPAL
     <>
       {/* Barra de Navegação Mobile - Visível apenas em mobile/tablet */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-green-500 to-pink-500 shadow-lg">
@@ -9575,7 +9845,9 @@ return (
                   <p className="text-gray-600 text-sm mb-4">
                     Importação de arquivos CSV/SQL
                   </p>
-                  <button className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
+                  <button 
+                  onClick={() => setMostrarImportacao(true)}
+                  className="w-full py-2 px-4 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
                     Configurar
                   </button>
                 </div>
@@ -10314,14 +10586,21 @@ return (
         </div>
       )}
       {/* Modal de Gerenciamento de Permissões */}
-      {console.log('🎯 Estado mostrarPermissoes:', mostrarPermissoes)}
       {mostrarPermissoes && (
         <PermissionsManager onClose={() => setMostrarPermissoes(false)} />
       )}
 
-      </div>
+      {/* Modal de Importação de Insumos */}
+      {mostrarImportacao && (
+        <ImportacaoInsumos
+          restauranteId={selectedRestaurante?.id || 1}  // ✅ CORRETO
+          onClose={() => setMostrarImportacao(false)}
+          onSuccess={() => setMostrarImportacao(false)}
+        />
+      )}
+    </div>
     </>
   );
 };
-// Exportação do componente principal
+// FINAL DO RETURN DO COMPONENTE PRINCIPAL
 export default FoodCostSystem;

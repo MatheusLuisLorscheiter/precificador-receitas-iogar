@@ -5,7 +5,7 @@
 #   Autor: Will - Empresa: IOGAR
 #   ===================================================================================================
 
-from sqlalchemy import Column, Float, ForeignKey, Integer, Boolean
+from sqlalchemy import Column, Float, ForeignKey, Integer, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 
@@ -22,16 +22,28 @@ class Insumo(BaseModel):
     """
     __tablename__ = "insumos"
 
+    # ========================================================================
+    # CONSTRAINT DE UNICIDADE: Código único por restaurante
+    # ========================================================================
+    __table_args__ = (
+        UniqueConstraint(
+            'restaurante_id',
+            'codigo',
+            name='uq_insumo_restaurante_codigo'
+        ),
+    )
+
     #   ===================================================================================================
     #   VINCULAÇÃO COM RESTAURANTE - CAMPO OBRIGATÓRIO
     #   ===================================================================================================
 
+    # Vinculação com restaurante - campo opcional para suportar insumos globais
     restaurante_id = Column(
         Integer,
         ForeignKey("restaurantes.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,  # NULL = insumo global, ID = insumo específico do restaurante
         index=True,
-        comment="ID do restaurante proprietário do insumo"
+        comment="ID do restaurante proprietário do insumo (NULL = insumo global)"
     )
 
     #   ===================================================================================================
@@ -80,6 +92,19 @@ class Insumo(BaseModel):
     )
 
     #   ===================================================================================================
+    #   IMPORTAÇÃO DE DADOS
+    #   ===================================================================================================
+
+    # FK para rastreamento de importação via Excel/TOTVS
+    importacao_id = Column(
+        Integer,
+        ForeignKey("importacoes_insumos.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID da importação que criou este insumo (NULL = cadastro manual)"
+    )
+
+    #   ===================================================================================================
     #   Relacionamentos com outras tabelas
     #   ===================================================================================================
 
@@ -105,6 +130,15 @@ class Insumo(BaseModel):
     taxonomia = relationship(
         "Taxonomia",
         back_populates="insumos"
+    )
+    
+    # Relacionamento com ImportacaoInsumo (N para 1)
+    # Rastreia se este insumo foi criado via importação ou manualmente
+    importacao = relationship(
+        "ImportacaoInsumo",
+        back_populates="insumos",
+        lazy="select",
+        doc="Importação que criou este insumo (None = cadastro manual)"
     )
 
     def __repr__(self):
