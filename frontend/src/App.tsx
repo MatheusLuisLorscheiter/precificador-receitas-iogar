@@ -2043,6 +2043,17 @@ const FoodCostSystem: React.FC = () => {
     estado: ''
   });
 
+  // ===================================================================================================
+  // RECARREGAR INSUMOS QUANDO SELECIONAR UM RESTAURANTE
+  // ===================================================================================================
+  useEffect(() => {
+    if (selectedRestaurante && selectedRestaurante.id) {
+      console.log(`🔄 Restaurante selecionado: ${selectedRestaurante.nome} (ID: ${selectedRestaurante.id})`);
+      console.log('📦 Recarregando insumos do restaurante...');
+      fetchInsumos();
+    }
+  }, [selectedRestaurante]);
+
   const handleCriarRestaurante = async (dadosRestaurante) => {
     if (!dadosRestaurante.nome.trim() || !dadosRestaurante.cnpj.trim()) {
       showErrorPopup(
@@ -4827,18 +4838,19 @@ const fetchInsumos = async () => {
                       Buscar Insumos Disponíveis
                     </label>
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                       <input
                         type="text"
                         value={buscaInsumo}
                         onChange={(e) => setBuscaInsumo(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white text-gray-900"
                         placeholder="Digite o nome do insumo para buscar..."
+                        autoComplete="off"
                       />
                     </div>
                     
                     {/* Lista de insumos filtrados */}
-                    {buscaInsumo && (
+                    {buscaInsumo.trim() && (
                       <div className="mt-3 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded-lg">
                         {insumosFiltrados.map((insumo) => (
                           <button
@@ -5166,12 +5178,13 @@ const fetchInsumos = async () => {
                           </label>
                           <input
                             type="number"
-                            min="0.001"
+                            inputMode="decimal"
                             step="0.001"
+                            min="0.001"
                             value={formData.quantidade_porcao}
                             onChange={(e) => {
                               const valor = e.target.value;
-                              handleChange('quantidade_porcao', valor === '' ? '' : parseFloat(valor));
+                              handleChange('quantidade_porcao', valor === '' ? '' : parseFloat(valor) || 0);
                             }}
                             className="w-full p-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white text-gray-900"
                             placeholder="Ex: 10.000"
