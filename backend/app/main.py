@@ -281,13 +281,20 @@ allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
 # CONFIGURAÇÃO DE CORS - Suporte a múltiplos ambientes
 # ============================================================================
 
+from fastapi.middleware.cors import CORSMiddleware
+
+# Adicionar middleware CORS usando configurações centralizadas
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=settings.ALLOWED_ORIGINS,  # Lista de origens do config.py
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# Log das origens permitidas para debug
+print(f"🔒 CORS configurado com origens: {settings.ALLOWED_ORIGINS}")
 
 @app.get("/test-cors", summary="Testar CORS")
 def test_cors():
