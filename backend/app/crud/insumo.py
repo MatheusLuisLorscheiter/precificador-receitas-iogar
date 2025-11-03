@@ -258,9 +258,7 @@ def get_insumos(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    filters: Optional[InsumoFilter] = None,
-    restaurante_id: Optional[int] = None,
-    incluir_globais: bool = False
+    filters: Optional[InsumoFilter] = None
 ) -> List[Insumo]:
     """
     Lista insumos com paginação e filtros opcionais.
@@ -281,7 +279,7 @@ def get_insumos(
         - Se restaurante_id fornecido e incluir_globais = False: retorna APENAS insumos daquele restaurante
         - Se restaurante_id fornecido e incluir_globais = True: retorna insumos do restaurante + globais
     """
-    query = db.query(Insumo)
+    query = db.query(Insumo).filter(Insumo.restaurante_id.isnot(None))
 
     # ===================================================================================================
     # FILTROS DE RESTAURANTE - CONTROLE DE INSUMOS GLOBAIS E ESPECÍFICOS
@@ -374,8 +372,10 @@ def count_insumos(db: Session, filters: Optional[InsumoFilter] = None) -> int:
         
     Returns:
         int: Número total de insumos
+        
+    IMPORTANTE: Conta apenas insumos com restaurante_id válido.
     """
-    query = db.query(Insumo)
+    query = db.query(Insumo).filter(Insumo.restaurante_id.isnot(None))
 
     # Aplicar os mesmos filtros da função get_insumos
     if filters:

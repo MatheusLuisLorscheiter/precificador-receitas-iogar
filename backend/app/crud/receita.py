@@ -395,8 +395,18 @@ def get_receitas(
     # ===================================================================================================
     # CORREÇÃO: Adicionar joinedload para carregar receita_insumos com relacionamentos
     # ===================================================================================================
-    """Lista receitas com filtros opcionais"""
-    query = db.query(Receita).options(
+    """
+    Lista receitas com filtros opcionais.
+    
+    IMPORTANTE: Filtra apenas receitas com restaurante_id válido
+    para evitar erros com registros órfãos em produção.
+    """
+    # ============================================================================
+    # Filtro base: apenas receitas com restaurante_id válido
+    # ============================================================================
+    query = db.query(Receita).filter(
+        Receita.restaurante_id.isnot(None)
+    ).options(
         joinedload(Receita.restaurante),
         joinedload(Receita.receita_insumos).joinedload(ReceitaInsumo.insumo),
         joinedload(Receita.receita_insumos).joinedload(ReceitaInsumo.receita_processada)
