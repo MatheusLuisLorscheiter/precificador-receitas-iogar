@@ -10,6 +10,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, FileSpreadsheet, X, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 
 // ============================================================================
+// Importar configuração da API
+// ============================================================================
+import { API_BASE_URL } from '../config';
+
+// ============================================================================
 // INTERFACES E TIPOS
 // ============================================================================
 
@@ -147,20 +152,41 @@ return () => {
       formData.append('file', arquivo);
       formData.append('restaurante_id', restauranteId.toString());
 
-      const response = await fetch('/api/v1/importacoes/upload', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/importacoes/upload`, {
         method: 'POST',
         body: formData,
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-      });
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao fazer upload');
-      }
+    console.log('Status da resposta:', response.status);
+    console.log('Headers:', response.headers);
 
-      const data = await response.json();
+    // ============================================================================
+    // Verificar se a resposta é JSON antes de tentar parsear
+    // ============================================================================
+    const contentType = response.headers.get('content-type');
+
+    if (!response.ok) {
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Erro ao fazer upload');
+        } else {
+          const textError = await response.text();
+          console.error('Erro não-JSON:', textError);
+          throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        }
+    }
+
+    // Verificar se resposta é JSON válido
+    if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text();
+        console.error('Resposta não é JSON:', textResponse);
+        throw new Error('Servidor retornou resposta inválida. Verifique os logs do backend.');
+    }
+
+    const data = await response.json();
       setImportacaoId(data.importacao_id);
       setPreview(data.preview);
       setEtapa('preview');
@@ -182,24 +208,45 @@ return () => {
     setErro(null);
 
     try {
-        const response = await fetch('/api/v1/importacoes/processar', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-            importacao_id: importacaoId,
-            confirmar: true
-        })
-        });
+        const response = await fetch(`${API_BASE_URL}/api/v1/importacoes/processar`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+              importacao_id: importacaoId,
+              confirmar: true
+          })
+      });
 
-        if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao processar importação');
-        }
+      console.log('Status da resposta (processar):', response.status);
+      console.log('Headers:', response.headers);
 
-        const data = await response.json();
+      // ============================================================================
+      // Verificar se a resposta é JSON antes de tentar parsear
+      // ============================================================================
+      const contentType = response.headers.get('content-type');
+
+      if (!response.ok) {
+          if (contentType && contentType.includes('application/json')) {
+              const errorData = await response.json();
+              throw new Error(errorData.detail || 'Erro ao processar importação');
+          } else {
+              const textError = await response.text();
+              console.error('Erro não-JSON:', textError);
+              throw new Error(`Erro ${response.status}: ${response.statusText}`);
+          }
+      }
+
+      // Verificar se resposta é JSON válido
+      if (!contentType || !contentType.includes('application/json')) {
+          const textResponse = await response.text();
+          console.error('Resposta não é JSON:', textResponse);
+          throw new Error('Servidor retornou resposta inválida. Verifique os logs do backend.');
+      }
+
+      const data = await response.json();
         setResultado(data);
         setEtapa('concluido');
         setContador(60); // Resetar contador
