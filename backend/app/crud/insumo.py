@@ -258,7 +258,9 @@ def get_insumos(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    filters: Optional[InsumoFilter] = None
+    filters: Optional[InsumoFilter] = None,
+    restaurante_id: Optional[int] = None,
+    incluir_globais: bool = False
 ) -> List[Insumo]:
     """
     Lista insumos com paginação e filtros opcionais.
@@ -279,7 +281,7 @@ def get_insumos(
         - Se restaurante_id fornecido e incluir_globais = False: retorna APENAS insumos daquele restaurante
         - Se restaurante_id fornecido e incluir_globais = True: retorna insumos do restaurante + globais
     """
-    query = db.query(Insumo).filter(Insumo.restaurante_id.isnot(None))
+    query = db.query(Insumo)
 
     # ===================================================================================================
     # FILTROS DE RESTAURANTE - CONTROLE DE INSUMOS GLOBAIS E ESPECÍFICOS
@@ -411,10 +413,17 @@ def search_insumos(db: Session, termo_busca: str, limit: int = 20) -> List[Insum
         
     Returns:
         List[Insumo]: Lista de insumos encontrados (com dados de comparação)
+        
+    IMPORTANTE: Busca apenas insumos com restaurante_id válido.
     """
     # Normalizar termo de busca com wildcards para filtro ILIKE
     termo = f"%{termo_busca.strip()}%"
+    
+    # ============================================================================
+    # Filtro base: apenas insumos com restaurante_id válido
+    # ============================================================================
     insumos = db.query(Insumo).filter(
+        Insumo.restaurante_id.isnot(None),
         or_(
             Insumo.nome.ilike(termo),
             Insumo.codigo.ilike(termo),
