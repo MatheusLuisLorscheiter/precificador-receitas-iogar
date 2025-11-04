@@ -20,7 +20,7 @@ import {
   Search, Filter, MoreVertical, Edit3, Copy, Trash2, Eye, 
   ChefHat, TrendingUp, DollarSign, Clock, Users, 
   ChevronLeft, ChevronRight,  Grid  , List, SortAsc, SortDesc,
-  Plus, Download, Upload, Utensils, Package, CheckCircle
+  Plus, ChevronDown, FileText, FileSpreadsheet, Download, Upload, Utensils, Package, CheckCircle
 } from 'lucide-react';
 import SkeletonLoader from './SkeletonLoader';
 import EmptyState from './EmptyState';
@@ -111,6 +111,14 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
   const [itensPorPagina] = useState(12);
   const [receitaSelecionada, setReceitaSelecionada] = useState<number | null>(null);
   const [showDropdown, setShowDropdown] = useState<number | null>(null);
+  // Estado para controlar dropdown de exportação
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  // Estado para controlar modal de exportacao PDF
+  const [showModalExportacaoPDF, setShowModalExportacaoPDF] = useState(false);
+  
+  // URL da API (ajustar conforme ambiente)
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   // ===================================================================================================
   // LÓGICA DE FILTRAGEM E ORDENAÇÃO
@@ -587,6 +595,158 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
   );
 
   // ===================================================================================================
+  // FUNCOES DE EXPORTACAO
+  // ===================================================================================================
+
+  const handleExportarPDF = () => {
+    // Abrir modal de opcoes de exportacao PDF
+    setShowModalExportacaoPDF(true);
+  };
+
+  const handleExportarExcel = () => {
+    // TODO: Implementar exportacao para Excel
+    console.log('Exportar para Excel');
+    alert('Funcionalidade de exportação para Excel será implementada em breve!');
+  };
+
+  const handleExportarCSV = () => {
+    // TODO: Implementar exportacao para CSV
+    console.log('Exportar para CSV');
+    alert('Funcionalidade de exportação para CSV será implementada em breve!');
+  };
+
+  const exportarReceitaPDF = async (receitaId: number) => {
+    try {
+      setIsExporting(true);
+      
+      const response = await fetch(`${API_URL}/api/v1/receitas/${receitaId}/pdf`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao gerar PDF');
+      }
+
+      // Fazer download do PDF
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receita_${receitaId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error);
+      alert('Erro ao gerar PDF. Tente novamente.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportarReceitasLotePDF = async (receitaIds: number[]) => {
+    try {
+      setIsExporting(true);
+      
+      const response = await fetch(`${API_URL}/api/v1/receitas/pdf/lote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ receita_ids: receitaIds }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao gerar PDFs');
+      }
+
+      // Fazer download do ZIP
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Obter nome do arquivo do header ou usar padrao
+      const contentDisposition = response.headers.get('content-disposition');
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+        : `receitas_${new Date().getTime()}.zip`;
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      // Mostrar resumo
+      const totalGerado = response.headers.get('x-total-generated');
+      const totalSolicitado = response.headers.get('x-total-requested');
+      
+      if (totalGerado && totalSolicitado) {
+        alert(`PDFs gerados com sucesso!\n${totalGerado} de ${totalSolicitado} receitas exportadas.`);
+      }
+      
+    } catch (error) {
+      console.error('Erro ao exportar PDFs em lote:', error);
+      alert('Erro ao gerar PDFs. Tente novamente.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleConfirmarExportacaoPDF = async (opcao: 'individual' | 'filtradas' | 'todas') => {
+    let receitasParaExportar: number[] = [];
+    
+    switch (opcao) {
+      case 'individual':
+        // Exportar apenas a receita selecionada
+        if (receitaSelecionada) {
+          await exportarReceitaPDF(receitaSelecionada);
+        } else {
+          alert('Selecione uma receita primeiro.');
+          return;
+        }
+        break;
+        
+      case 'filtradas':
+        // Exportar receitas filtradas
+        receitasParaExportar = receitasFiltradas.map(r => r.id);
+        if (receitasParaExportar.length === 0) {
+          alert('Nenhuma receita encontrada com os filtros aplicados.');
+          return;
+        }
+        if (receitasParaExportar.length > 50) {
+          alert('Máximo de 50 receitas por exportação. Por favor, aplique filtros para reduzir a quantidade.');
+          return;
+        }
+        await exportarReceitasLotePDF(receitasParaExportar);
+        break;
+        
+      case 'todas':
+        // Exportar todas as receitas
+        receitasParaExportar = receitas.map(r => r.id);
+        if (receitasParaExportar.length === 0) {
+          alert('Nenhuma receita cadastrada no sistema.');
+          return;
+        }
+        if (receitasParaExportar.length > 50) {
+          alert('Máximo de 50 receitas por exportação. Use os filtros para exportar em lotes menores.');
+          return;
+        }
+        await exportarReceitasLotePDF(receitasParaExportar);
+        break;
+    }
+    
+    setShowModalExportacaoPDF(false);
+  };
+
+  // ===================================================================================================
   // RENDER PRINCIPAL
   // ===================================================================================================
 
@@ -631,12 +791,57 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             {/* Grupo de botões Exportar e Importar */}
             <div className="flex items-center gap-3">
-              <Tooltip content="Exportar receitas para arquivo Excel ou CSV">
-                <button className="flex items-center justify-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 hover:shadow-sm transition-all duration-200 flex-1 sm:flex-initial active:scale-95">
-                  <Download className="w-4 h-4" />
-                  Exportar
-                </button>
-              </Tooltip>
+              {/* Dropdown de Exportação */}
+              <div className="relative">
+                <Tooltip content="Exportar receitas em diferentes formatos">
+                  <button
+                    onClick={() => setShowExportDropdown(!showExportDropdown)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 hover:shadow-sm transition-all duration-200 flex-1 sm:flex-initial active:scale-95"
+                  >
+                    <Download className="w-4 h-4" />
+                    Exportar
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showExportDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                </Tooltip>
+                
+                {/* Dropdown de opções de exportação */}
+                {showExportDropdown && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          handleExportarPDF();
+                          setShowExportDropdown(false);
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <FileText className="w-4 h-4 text-red-500" />
+                        <span>Exportar para PDF</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleExportarExcel();
+                          setShowExportDropdown(false);
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <FileSpreadsheet className="w-4 h-4 text-green-500" />
+                        <span>Exportar para Excel</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleExportarCSV();
+                          setShowExportDropdown(false);
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <FileSpreadsheet className="w-4 h-4 text-blue-500" />
+                        <span>Exportar para CSV</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               
               <Tooltip content="Importar receitas a partir de arquivo Excel ou CSV">
                 <button className="flex items-center justify-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 hover:shadow-sm transition-all duration-200 flex-1 sm:flex-initial active:scale-95">

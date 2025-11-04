@@ -564,3 +564,76 @@ class ReceitaFilter(BaseModel):
 
 # Rebuild para resolver referências circulares
 ReceitaResponse.model_rebuild()
+
+# ============================================================================
+# SCHEMAS PARA EXPORTACAO PDF
+# ============================================================================
+
+class PDFLoteRequest(BaseModel):
+    """
+    Schema para requisicao de geracao de PDFs em lote.
+    
+    Usado no endpoint POST /api/v1/receitas/pdf/lote para validar
+    a lista de IDs de receitas que devem ter PDFs gerados.
+    """
+    
+    receita_ids: List[int] = Field(
+        description="Lista de IDs das receitas para gerar PDF",
+        min_items=1,
+        max_items=50,
+        example=[1, 2, 3, 4, 5]
+    )
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "receita_ids": [1, 2, 3, 4, 5]
+                },
+                {
+                    "receita_ids": [10, 20, 30]
+                }
+            ]
+        }
+    }
+
+
+class PDFLoteResponse(BaseModel):
+    """
+    Schema para resposta da geracao de PDFs em lote.
+    
+    Retorna informacoes sobre o processamento dos PDFs,
+    incluindo sucessos e falhas.
+    """
+    
+    total_solicitado: int = Field(
+        description="Total de receitas solicitadas"
+    )
+    total_gerado: int = Field(
+        description="Total de PDFs gerados com sucesso"
+    )
+    nao_encontradas: List[int] = Field(
+        default=[],
+        description="IDs das receitas nao encontradas no banco"
+    )
+    sem_permissao: List[int] = Field(
+        default=[],
+        description="IDs das receitas sem permissao de acesso"
+    )
+    arquivo_zip: str = Field(
+        description="Nome do arquivo ZIP gerado"
+    )
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "total_solicitado": 10,
+                    "total_gerado": 8,
+                    "nao_encontradas": [99],
+                    "sem_permissao": [100],
+                    "arquivo_zip": "receitas_20251104_153045.zip"
+                }
+            ]
+        }
+    }

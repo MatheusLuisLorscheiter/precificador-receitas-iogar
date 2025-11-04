@@ -235,6 +235,8 @@ else:
         "http://0.0.0.0:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
     ]
     
     # Adicionar automaticamente qualquer origem da rede local 192.168.x.x
