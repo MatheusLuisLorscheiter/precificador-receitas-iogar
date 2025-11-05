@@ -1,6 +1,6 @@
 {
   "versao": "2.0.0",
-  "created_at": "2025-10-06T14:17:18.848466",
+  "created_at": "2025-11-05T16:58:15.314153",
   "descricao": "Logs de feedback do sistema de IA integrado",
   "logs": [
     {
@@ -643,6 +643,63 @@
       "taxonomia_correta": {
         "categoria": "Bebidas",
         "subcategoria": "Aguardente",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-11-05T16:24:03.742686",
+      "nome_produto": "QUEIJO CABRA KG",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Laticínios",
+        "subcategoria": "Queijo",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-11-05T16:57:01.089776",
+      "nome_produto": "KETCHUP KG",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Molhos",
+        "subcategoria": "Tomate",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-11-05T16:58:15.298462",
+      "nome_produto": "CREAM CHEESE KG",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Laticínios",
+        "subcategoria": "Queijo",
         "especificacao": null,
         "variante": null
       },

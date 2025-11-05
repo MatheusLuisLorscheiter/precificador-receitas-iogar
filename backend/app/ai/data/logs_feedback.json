@@ -1,9 +1,64 @@
 {
-  "versao": "1.0.0",
-  "logs": [],
-  "metadata": {
-    "sistema": "Food Cost System",
-    "tipo": "logs_feedback",
-    "criado_em": "2025-09-10T11:51:51.403544"
-  }
+  "versao": "2.0.0",
+  "created_at": "2025-11-05T15:56:21.868006",
+  "descricao": "Logs de feedback do sistema de IA integrado",
+  "logs": [
+    {
+      "timestamp": "2025-11-05T15:53:49.061760",
+      "nome_produto": "SAL REFINADO KG",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Temperos",
+        "subcategoria": "Sal",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-11-05T15:54:34.794703",
+      "nome_produto": "QUEIJO MINAS KG",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Laticínios",
+        "subcategoria": "Queijo",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-11-05T15:56:21.855213",
+      "nome_produto": "QUEIJO GORGONZOLA KG",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Laticínios",
+        "subcategoria": "Queijo",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    }
+  ]
 }

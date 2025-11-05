@@ -79,6 +79,7 @@ interface EstatisticasIA {
 
 const InsumosSemClassificacao: React.FC = () => {
   const [insumosSemClassificacao, setInsumosSemClassificacao] = useState<any[]>([]);
+  const [totalInsumosSemClassificacao, setTotalInsumosSemClassificacao] = useState(0);
   const [carregandoInsumos, setCarregandoInsumos] = useState(false);
 
   // Função para carregar insumos sem classificação
@@ -91,6 +92,15 @@ const InsumosSemClassificacao: React.FC = () => {
         const insumos = await response.json();
         console.log('✅ Insumos sem classificacao carregados:', insumos.length);
         setInsumosSemClassificacao(insumos);
+        
+        // Buscar total real de insumos sem classificação
+        const countResponse = await fetch(`${API_BASE_URL}/api/v1/insumos/sem-classificacao/count`);
+        if (countResponse.ok) {
+          const countData = await countResponse.json();
+          setTotalInsumosSemClassificacao(countData.total || insumos.length);
+        } else {
+          setTotalInsumosSemClassificacao(insumos.length);
+        }
       } else {
         console.error('❌ Erro na resposta:', response.status, response.statusText);
         const errorText = await response.text();
@@ -169,7 +179,18 @@ const InsumosSemClassificacao: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="text-sm text-gray-600 mb-4">
-        {insumosSemClassificacao.length} insumo(s) aguardando classificação
+        {totalInsumosSemClassificacao > 0 ? (
+          <>
+            <span className="font-semibold text-orange-600">{totalInsumosSemClassificacao}</span> insumo(s) aguardando classificação
+            {insumosSemClassificacao.length < totalInsumosSemClassificacao && (
+              <span className="text-xs text-gray-500 ml-2">
+                (mostrando {insumosSemClassificacao.length} primeiros)
+              </span>
+            )}
+          </>
+        ) : (
+          <span>{insumosSemClassificacao.length} insumo(s) aguardando classificação</span>
+        )}
       </div>
       
       <div className="overflow-x-auto">

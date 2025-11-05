@@ -216,6 +216,25 @@ def listar_insumos_sem_classificacao(
         for insumo in insumos
     ]
 
+@router.get("/sem-classificacao/count", response_model=dict, summary="Contar insumos sem classificação")
+def contar_insumos_sem_classificacao(
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna o total de insumos que ainda não possuem taxonomia associada.
+    
+    **Funcionalidades:**
+    - Conta insumos com taxonomia_id = NULL ou aguardando_classificacao = True
+    - Útil para mostrar contador real no sistema de IA
+    - Não aplica limite de paginação
+    
+    **Retorna:**
+    - total: Número total de insumos sem classificação
+    """
+    total = crud_insumo.count_insumos_sem_taxonomia(db=db)
+    
+    return {"total": total}
+
 
 @router.get("/{insumo_id}", response_model=InsumoListResponse, summary="Buscar insumo por ID")
 def obter_insumo(
