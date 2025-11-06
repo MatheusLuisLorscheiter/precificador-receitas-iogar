@@ -1128,73 +1128,69 @@ def gerar_pdf_receita(
     import tempfile
     import os
     
-    # Buscar receita com validação de permissões
-    receita = db.query(Receita).filter(Receita.id == receita_id).first()
-    
-    if not receita:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Receita com ID {receita_id} não encontrada"
-        )
-    
-    # Verificar permissão de acesso ao restaurante da receita
-    # if not can_access_resource(current_user, receita.restaurante_id, ResourceType.RECEITAS):
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="Você não tem permissão para acessar esta receita"
-    #     )
-    
-    # Buscar insumos da receita
-    receita_insumos = db.query(ReceitaInsumo).filter(
-        ReceitaInsumo.receita_id == receita_id
-    ).all()
-    
-    # Preparar dados dos ingredientes
-    ingredientes = []
-    for ri in receita_insumos:
-        insumo = db.query(Insumo).filter(Insumo.id == ri.insumo_id).first()
-        if insumo:
-            preco_unitario = insumo.preco_compra_real or 0
-            custo_total = ri.quantidade_necessaria * preco_unitario
-            
-            ingredientes.append({
-                'nome': insumo.nome,
-                'quantidade': float(ri.quantidade_necessaria),
-                'unidade': insumo.unidade,
-                'preco_unitario': float(preco_unitario),
-                'custo_total': float(custo_total)
-            })
-    
-    # Calcular CMV total
-    cmv_total = sum(ing['custo_total'] for ing in ingredientes)
-    cmv_unitario = cmv_total / receita.rendimento if receita.rendimento and receita.rendimento > 0 else 0
-    
-    # Calcular precificação com margem de 65%
-    margem_sugerida = 65.0
-    preco_sugerido = cmv_unitario / (1 - margem_sugerida / 100) if margem_sugerida < 100 else 0
-    
-    # Preparar dados completos da receita
-    receita_data = {
-        'codigo': receita.codigo,
-        'nome': receita.nome,
-        'categoria': receita.grupo or 'Sem categoria',
-        'status': 'Ativo' if receita.ativo else 'Inativo',
-        'rendimento': float(receita.rendimento_porcoes) if receita.rendimento_porcoes else 0,
-        'unidade_rendimento': 'porções',
-        'tempo_preparo': receita.tempo_preparo_minutos if receita.tempo_preparo_minutos else 0,
-        'responsavel': receita.responsavel or 'Não informado',
-        'ingredientes': ingredientes,
-        'precificacao': {
-            'cmv': float(cmv_total),
-            'cmv_unitario': float(cmv_unitario),
-            'margem_sugerida': margem_sugerida,
-            'preco_sugerido': float(preco_sugerido),
-            'preco_venda_atual': float(receita.preco_venda) if receita.preco_venda else None
-        }
-    }
-    
-    # Gerar PDF usando o serviço
     try:
+        print(f"🎨 === GERANDO PDF DA RECEITA {receita_id} ===")
+        
+        # Buscar receita com validação de permissões
+        print(f"🔍 Buscando receita ID {receita_id}...")
+        receita = db.query(Receita).filter(Receita.id == receita_id).first()
+        
+        if not receita:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Receita com ID {receita_id} não encontrada"
+            )
+        
+        # Buscar insumos da receita
+        receita_insumos = db.query(ReceitaInsumo).filter(
+            ReceitaInsumo.receita_id == receita_id
+        ).all()
+        
+        # Preparar dados dos ingredientes
+        ingredientes = []
+        for ri in receita_insumos:
+            insumo = db.query(Insumo).filter(Insumo.id == ri.insumo_id).first()
+            if insumo:
+                preco_unitario = insumo.preco_compra_real or 0
+                custo_total = ri.quantidade_necessaria * preco_unitario
+                
+                ingredientes.append({
+                    'nome': insumo.nome,
+                    'quantidade': float(ri.quantidade_necessaria),
+                    'unidade': insumo.unidade,
+                    'preco_unitario': float(preco_unitario),
+                    'custo_total': float(custo_total)
+                })
+        
+        # Calcular CMV total
+        cmv_total = sum(ing['custo_total'] for ing in ingredientes)
+        cmv_unitario = cmv_total / receita.rendimento_porcoes if receita.rendimento_porcoes and receita.rendimento_porcoes > 0 else 0
+        
+        # Calcular precificação com margem de 65%
+        margem_sugerida = 65.0
+        preco_sugerido = cmv_unitario / (1 - margem_sugerida / 100) if margem_sugerida < 100 else 0
+        
+        # Preparar dados completos da receita
+        receita_data = {
+            'codigo': receita.codigo,
+            'nome': receita.nome,
+            'categoria': receita.grupo or 'Sem categoria',
+            'status': 'Ativo' if receita.ativo else 'Inativo',
+            'rendimento': float(receita.rendimento_porcoes) if receita.rendimento_porcoes else 0,
+            'unidade_rendimento': 'porções',
+            'tempo_preparo': receita.tempo_preparo_minutos if receita.tempo_preparo_minutos else 0,
+            'responsavel': receita.responsavel or 'Não informado',
+            'ingredientes': ingredientes,
+            'precificacao': {
+                'cmv': float(cmv_total),
+                'cmv_unitario': float(cmv_unitario),
+                'margem_sugerida': margem_sugerida,
+                'preco_sugerido': float(preco_sugerido),
+                'preco_venda_atual': float(receita.preco_venda) if receita.preco_venda else None
+            }
+        }
+        
+        # Gerar PDF usando o serviço
         pdf_service = obter_pdf_service()
         
         # Criar arquivo temporário para o PDF
@@ -1203,10 +1199,13 @@ def gerar_pdf_receita(
         output_path = os.path.join(temp_dir, output_filename)
         
         # Gerar PDF
+        print(f"📄 Gerando arquivo PDF em: {output_path}")
         pdf_path = pdf_service.gerar_pdf_receita(
             receita_data=receita_data,
             output_path=output_path
         )
+        
+        print(f"✅ PDF gerado com sucesso para receita {receita_id}")
         
         # Retornar arquivo PDF com headers corretos para download
         return FileResponse(
@@ -1219,7 +1218,16 @@ def gerar_pdf_receita(
             }
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        print(f"❌ ERRO ao gerar PDF da receita {receita_id}:")
+        print(f"   Tipo: {type(e).__name__}")
+        print(f"   Mensagem: {str(e)}")
+        print(f"   Traceback completo:")
+        traceback.print_exc()
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao gerar PDF: {str(e)}"

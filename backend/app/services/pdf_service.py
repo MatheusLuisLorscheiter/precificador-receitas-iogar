@@ -122,7 +122,7 @@ class PDFService:
             'Subtitulo',
             parent=getSampleStyleSheet()['Normal'],
             fontSize=14,
-            textColor=self.COR_VERDE_IOGAR,
+            textColor=self.COR_VERDE_BARRA,
             fontName='Helvetica-Bold',
             alignment=TA_LEFT,
             spaceAfter=6
@@ -167,7 +167,7 @@ class PDFService:
             'ValorMonetario',
             parent=getSampleStyleSheet()['Normal'],
             fontSize=16,
-            textColor=self.COR_VERDE_IOGAR,
+            textColor=self.COR_VERDE_BARRA,
             fontName='Helvetica-Bold',
             alignment=TA_RIGHT,
             leading=20
@@ -334,6 +334,92 @@ class PDFService:
         )
         
         return card_completo
+    
+    def _desenhar_fundo_com_marca_dagua(self, canvas, doc):
+        """
+        Desenha o fundo da página com:
+        - Gradiente escuro (azul marinho para preto)
+        - Logo IOGAR em marca d'agua (translúcido) nos cantos
+        
+        Este método é chamado automaticamente para cada página.
+        """
+        from reportlab.lib.utils import ImageReader
+        import os
+        
+        # Obter dimensões da página
+        page_width = doc.pagesize[0]
+        page_height = doc.pagesize[1]
+        
+        # ===================================================================
+        # DESENHAR GRADIENTE DE FUNDO
+        # ===================================================================
+        # ReportLab não tem gradiente nativo, então vamos simular com retângulos
+        # graduais de cores entre azul marinho escuro e preto azulado
+        
+        num_faixas = 50  # Número de faixas para simular gradiente suave
+        altura_faixa = page_height / num_faixas
+        
+        for i in range(num_faixas):
+            # Interpolar entre cor inicial e final
+            ratio = i / num_faixas
+            
+            # Interpolar RGB
+            r1, g1, b1 = 10/255, 14/255, 39/255   # #0a0e27 (início)
+            r2, g2, b2 = 26/255, 26/255, 46/255   # #1a1a2e (fim)
+            
+            r = r1 + (r2 - r1) * ratio
+            g = g1 + (g2 - g1) * ratio
+            b = b1 + (b2 - b1) * ratio
+            
+            canvas.setFillColorRGB(r, g, b)
+            canvas.rect(0, page_height - (i + 1) * altura_faixa, page_width, altura_faixa, fill=True, stroke=False)
+        
+        # ===================================================================
+        # DESENHAR LOGOS EM MARCA D'AGUA
+        # ===================================================================
+        logo_path = os.path.join(
+            os.path.dirname(__file__),
+            'templates', 'pdf', 'assets', 'iogar_logo.png'
+        )
+        
+        if os.path.exists(logo_path):
+            try:
+                # Carregar imagem
+                img = ImageReader(logo_path)
+                img_width, img_height = img.getSize()
+                
+                # Calcular dimensões da marca d'agua (20% do tamanho da página)
+                marca_width = page_width * 0.2
+                marca_height = (img_height / img_width) * marca_width
+                
+                # Salvar estado do canvas
+                canvas.saveState()
+                
+                # Aplicar opacidade (translúcido - 15%)
+                canvas.setFillAlpha(0.15)
+                canvas.setStrokeAlpha(0.15)
+                
+                # Logo no canto superior direito
+                x_superior = page_width - marca_width - 2*cm
+                y_superior = page_height - marca_height - 2*cm
+                canvas.drawImage(logo_path, x_superior, y_superior, 
+                               width=marca_width, height=marca_height, 
+                               mask='auto', preserveAspectRatio=True)
+                
+                # Logo no canto inferior esquerdo
+                x_inferior = 2*cm
+                y_inferior = 2*cm
+                canvas.drawImage(logo_path, x_inferior, y_inferior, 
+                               width=marca_width, height=marca_height, 
+                               mask='auto', preserveAspectRatio=True)
+                
+                # Restaurar estado do canvas
+                canvas.restoreState()
+                
+            except Exception as e:
+                print(f"⚠️ Aviso: Não foi possível carregar logo para marca d'agua: {e}")
+        else:
+            print(f"⚠️ Aviso: Logo não encontrado em: {logo_path}")
     
     def _desenhar_fundo_com_marca_dagua(self, canvas, doc):
         """
@@ -834,7 +920,7 @@ class PDFService:
             output_path,
             pagesize=A4,
             rightMargin=self.MARGEM,
-            leftMargin=self.MARGEM + self.LARGURA_BARRA_LATERAL,
+            leftMargin=self.MARGEM,
             topMargin=self.MARGEM,
             bottomMargin=self.MARGEM,
             title=f"Receita - {receita_data.get('codigo', 'SEM-CODIGO')}"
@@ -844,123 +930,97 @@ class PDFService:
         elementos = []
         
         # ===================================================================
-        # SECAO 1: CABECALHO COM FUNDO ESCURO
+        # SECAO 1: CABECALHO - Título principal
         # ===================================================================
         
-        # Titulo "FICHA TÉCNICA"
-        titulo_ficha = Paragraph(
-            '<b>RELATÓRIO COMPLETO</b>',
+        # Como o fundo já tem gradiente escuro, apenas adicionar espaço inicial
+        elementos.append(Spacer(1, 1*cm))
+        
+        # Titulo "RELATÓRIO COMPLETO" centralizado em branco sobre o fundo escuro
+        titulo_principal = Paragraph(
+            '<para alignment="center">'
+            '<font size="28" color="white"><b>RELATÓRIO COMPLETO</b></font>'
+            '</para>',
             self.estilos['titulo_principal']
         )
-        
-        # Tabela de cabecalho com fundo escuro
-        cabecalho_data = [[titulo_ficha]]
-        tabela_cabecalho = Table(
-            cabecalho_data,
-            colWidths=[doc.width],
-            style=[
-                ('BACKGROUND', (0, 0), (-1, -1), self.COR_FUNDO_ESCURO),
-                ('LEFTPADDING', (0, 0), (-1, -1), 20),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 20),
-                ('TOPPADDING', (0, 0), (-1, -1), 15),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
-            ]
-        )
-        elementos.append(tabela_cabecalho)
-        elementos.append(Spacer(1, self.ESPACAMENTO_SECAO))
+        elementos.append(titulo_principal)
+        elementos.append(Spacer(1, 1*cm))
         
         # ===================================================================
-        # SECAO 2: NOME DA RECEITA E CODIGO
+        # SECAO 2: NOME DA RECEITA E CODIGO (Card com barra lateral)
         # ===================================================================
         
-        # Card com nome da receita
         nome_receita = receita_data.get('nome', 'Sem nome').upper()
         codigo_receita = receita_data.get('codigo', 'SEM-CODIGO')
-        
-        nome_formatado = Paragraph(
-            f'<b>NOME:</b><br/><br/>'
-            f'<font size="16" color="#0f172a"><b>{nome_receita}</b></font><br/><br/>'
-            f'<font size="11" color="#16a34a"><b>Código: {codigo_receita}</b></font>',
-            self.estilos['texto_card']
-        )
-        
-        tabela_nome = Table(
-            [[nome_formatado]],
-            colWidths=[doc.width],
-            style=[
-                ('BACKGROUND', (0, 0), (-1, -1), self.COR_CINZA_CLARO),
-                ('LEFTPADDING', (0, 0), (-1, -1), 15),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 15),
-                ('TOPPADDING', (0, 0), (-1, -1), 18),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 18),
-                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
-            ]
-        )
-        elementos.append(tabela_nome)
-        elementos.append(Spacer(1, self.ESPACAMENTO_SECAO))
-        
-        # ===================================================================
-        # SECAO 3: ESPACO PARA FOTO DA RECEITA
-        # ===================================================================
-        
-        placeholder_foto = self._criar_placeholder_foto(
-            largura=doc.width,
-            altura=self.ALTURA_FOTO_RECEITA,
-            texto="FOTO DA RECEITA"
-        )
-        elementos.append(placeholder_foto)
-        elementos.append(Spacer(1, self.ESPACAMENTO_SECAO))
-
-        # ===================================================================
-        # SECAO 4: INFORMACOES DA RECEITA (Cards lado a lado)
-        # ===================================================================
-        
         categoria = receita_data.get('categoria', 'Sem categoria')
         status = receita_data.get('status', 'ativo')
+        
+        # Extrair informações adicionais
         rendimento = receita_data.get('rendimento', 0)
         tempo_preparo = receita_data.get('tempo_preparo', 0)
         responsavel = receita_data.get('responsavel', 'Não informado')
         
-        # Criar 3 cards de informacao
-        info_col1 = Paragraph(
-            f'<b>CATEGORIA</b><br/>'
-            f'<font color="#475569">{categoria}</font><br/><br/>'
-            f'<b>STATUS</b><br/>'
-            f'<font color="#22c55e"><b>● {status.upper()}</b></font>',
+        # Conteúdo do card de nome
+        conteudo_nome = []
+        
+        # Título NOME em negrito
+        conteudo_nome.append(Paragraph(
+            '<b><font size="12">NOME:</font></b>',
+            self.estilos['texto_destaque']
+        ))
+        conteudo_nome.append(Spacer(1, 0.3*cm))
+        
+        # Nome da receita em destaque
+        conteudo_nome.append(Paragraph(
+            f'<font size="18" color="#1f2937"><b>{nome_receita}</b></font>',
+            self.estilos['texto_card']
+        ))
+        conteudo_nome.append(Spacer(1, 0.5*cm))
+        
+        # Espaço para foto da receita
+        foto_receita = self._criar_placeholder_foto(
+            largura=doc.width - self.LARGURA_BARRA_LATERAL - 2*cm,
+            altura=6*cm,
+            texto="FOTO DA RECEITA"
+        )
+        conteudo_nome.append(foto_receita)
+        conteudo_nome.append(Spacer(1, 0.5*cm))
+        
+        # Informações em lista (sem tags bullet, usando caractere direto)
+        info_detalhes = Paragraph(
+            f'• <b>Código:</b> <font color="#047857">{codigo_receita}</font><br/>'
+            f'• <b>Categoria:</b> {categoria}<br/>'
+            f'• <b>Status:</b> <font color="#047857">● {status.upper()}</font><br/>'
+            f'• <b>Rendimento:</b> {rendimento} porções<br/>'
+            f'• <b>Tempo de Preparo:</b> {tempo_preparo} minutos<br/>'
+            f'• <b>Responsável:</b> {responsavel}',
             self.estilos['texto_card']
         )
+        conteudo_nome.append(info_detalhes)
         
-        info_col2 = Paragraph(
-            f'<b>RENDIMENTO</b><br/>'
-            f'<font color="#475569">{rendimento} porções</font><br/><br/>'
-            f'<b>TEMPO DE PREPARO</b><br/>'
-            f'<font color="#475569">{tempo_preparo} minutos</font>',
-            self.estilos['texto_card']
-        )
-        
-        info_col3 = Paragraph(
-            f'<b>RESPONSÁVEL</b><br/>'
-            f'<font color="#475569">{responsavel}</font>',
-            self.estilos['texto_card']
-        )
-        
-        # Tabela com 3 colunas de informacoes
-        largura_col = (doc.width - 20) / 3
-        tabela_info = Table(
-            [[info_col1, info_col2, info_col3]],
-            colWidths=[largura_col, largura_col, largura_col],
+        # Criar tabela para organizar o conteúdo interno
+        tabela_conteudo_nome = Table(
+            [[item] for item in conteudo_nome],
+            colWidths=[doc.width - self.LARGURA_BARRA_LATERAL - 1*cm],
             style=[
-                ('BACKGROUND', (0, 0), (-1, -1), self.COR_CINZA_CLARO),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 10),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-                ('TOPPADDING', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
             ]
         )
-        elementos.append(tabela_info)
-        elementos.append(Spacer(1, self.ESPACAMENTO_SECAO * 1.5))
+        
+        # Criar card com barra lateral verde
+        card_nome = self._criar_card_com_barra_lateral(
+            conteudo=tabela_conteudo_nome,
+            largura=doc.width,
+            altura_minima=3*cm,
+            cor_barra=self.COR_VERDE_BARRA,
+            texto_barra='NOME'
+        )
+        
+        elementos.append(card_nome)
+        elementos.append(Spacer(1, self.ESPACAMENTO_SECAO))
         
         # ===================================================================
         # QUEBRA DE PÁGINA - Ingredientes sempre em nova página
@@ -969,59 +1029,46 @@ class PDFService:
         elementos.append(PageBreak())
         
         # ===================================================================
-        # SECAO 5: INGREDIENTES (com barra lateral verde)
+        # SECAO 5: INGREDIENTES (Card com barra lateral verde)
         # ===================================================================
         
-        # Titulo da secao com fundo verde
-        titulo_ingredientes = Paragraph(
-            '<b>INGREDIENTES</b>',
-            self.estilos['titulo_secao']
-        )
-        
-        tabela_titulo_ing = Table(
-            [[titulo_ingredientes]],
-            colWidths=[doc.width],
-            style=[
-                ('BACKGROUND', (0, 0), (-1, -1), self.COR_VERDE_IOGAR),
-                ('LEFTPADDING', (0, 0), (-1, -1), 15),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 15),
-                ('TOPPADDING', (0, 0), (-1, -1), 8),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ]
-        )
-        elementos.append(tabela_titulo_ing)
-        elementos.append(Spacer(1, 0.3 * cm))
-        
-        # Tabela de ingredientes
         ingredientes = receita_data.get('ingredientes', [])
+        conteudo_ingredientes = []
+        
+        # Título "INSUMOS" em negrito no topo
+        conteudo_ingredientes.append(Paragraph(
+            '<b><font size="12">INSUMOS</font></b>',
+            self.estilos['texto_destaque']
+        ))
+        conteudo_ingredientes.append(Spacer(1, 0.4*cm))
         
         if ingredientes:
-            # Cabecalho da tabela
+            # Criar dados da tabela de ingredientes
             dados_ingredientes = [[
                 Paragraph('<b>Nº</b>', self.estilos['texto_destaque']),
                 Paragraph('<b>INGREDIENTE</b>', self.estilos['texto_destaque']),
                 Paragraph('<b>FOTO</b>', self.estilos['texto_destaque']),
-                Paragraph('<b>QTD</b>', self.estilos['texto_destaque']),
-                Paragraph('<b>UNID</b>', self.estilos['texto_destaque']),
+                Paragraph('<b>QUANTIDADE</b>', self.estilos['texto_destaque']),
+                Paragraph('<b>UNIDADE</b>', self.estilos['texto_destaque']),
                 Paragraph('<b>CUSTO</b>', self.estilos['texto_destaque']),
             ]]
             
-            # Linhas de ingredientes
+            # Adicionar cada ingrediente
             for idx, ing in enumerate(ingredientes, 1):
                 nome_ing = ing.get('nome', 'Sem nome')
                 qtd = ing.get('quantidade', 0)
                 unidade = ing.get('unidade', '')
                 custo = ing.get('custo_total', 0)
                 
-                # Placeholder para foto do insumo (pequeno)
+                # Placeholder mini para foto do insumo
                 foto_insumo = self._criar_placeholder_foto(
-                    largura=2*cm,
-                    altura=1.5*cm,
+                    largura=1.8*cm,
+                    altura=1.3*cm,
                     texto="📷"
                 )
                 
                 dados_ingredientes.append([
-                    Paragraph(f'{idx:02d}', self.estilos['texto_card']),
+                    Paragraph(f'<b>{idx:02d}</b>', self.estilos['texto_card']),
                     Paragraph(nome_ing, self.estilos['texto_card']),
                     foto_insumo,
                     Paragraph(f'{qtd:.3f}', self.estilos['texto_card']),
@@ -1029,85 +1076,104 @@ class PDFService:
                     Paragraph(f'R$ {custo:.2f}', self.estilos['texto_card']),
                 ])
             
+            # Largura disponível para a tabela (descontando barra lateral e margens)
+            largura_tabela = doc.width - self.LARGURA_BARRA_LATERAL - 2*cm
+            
             # Criar tabela de ingredientes
             tabela_ingredientes = Table(
                 dados_ingredientes,
-                colWidths=[1*cm, 5*cm, 2.5*cm, 2*cm, 1.5*cm, 2.5*cm],
+                colWidths=[
+                    0.8*cm,                           # Nº
+                    largura_tabela * 0.35,           # INGREDIENTE
+                    2*cm,                             # FOTO
+                    largura_tabela * 0.20,           # QUANTIDADE
+                    largura_tabela * 0.15,           # UNIDADE
+                    largura_tabela * 0.20,           # CUSTO
+                ],
                 style=[
-                    # Cabecalho
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e2e8f0')),
+                    # Cabeçalho com fundo cinza claro
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
                     ('TEXTCOLOR', (0, 0), (-1, 0), self.COR_TEXTO_ESCURO),
                     
                     # Linhas alternadas
-                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [self.COR_BRANCO, colors.HexColor('#f8fafc')]),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), 
+                     [colors.white, colors.HexColor('#fafafa')]),
                     
-                    # Bordas
-                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
-                    ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#94a3b8')),
+                    # Bordas suaves
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+                    ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#d1d5db')),
                     
                     # Alinhamento
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # Numero centralizado
-                    ('ALIGN', (2, 0), (2, -1), 'CENTER'),  # Foto centralizada
-                    ('ALIGN', (3, 0), (3, -1), 'RIGHT'),   # Quantidade a direita
-                    ('ALIGN', (5, 0), (5, -1), 'RIGHT'),   # Custo a direita
+                    ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # Nº
+                    ('ALIGN', (2, 0), (2, -1), 'CENTER'),  # FOTO
+                    ('ALIGN', (3, 0), (3, -1), 'RIGHT'),   # QUANTIDADE
+                    ('ALIGN', (4, 0), (4, -1), 'CENTER'),  # UNIDADE
+                    ('ALIGN', (5, 0), (5, -1), 'RIGHT'),   # CUSTO
                     
                     # Padding
-                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 6),
                     ('TOPPADDING', (0, 0), (-1, -1), 8),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
                 ]
             )
-            # Configurar tabela para evitar quebra de linha deixando apenas 1 ingrediente
-            # Se houver mais de 3 ingredientes, permitir quebra; caso contrario, manter junto
+            
+            # Configurar controle de quebra
             if len(ingredientes) > 3:
-                tabela_ingredientes.hAlign = 'LEFT'
-                tabela_ingredientes.keepWithNext = False
-                # Aplicar splitByRow para controle de quebra
                 tabela_ingredientes.splitByRow = True
-                # Minimo de 3 linhas (cabecalho + 2 ingredientes) antes de quebrar
                 tabela_ingredientes._splitRowIndex = 3
             else:
-                # Para poucas linhas, manter tudo junto na mesma pagina
                 tabela_ingredientes.keepWithNext = True
-            elementos.append(tabela_ingredientes)
+            
+            conteudo_ingredientes.append(tabela_ingredientes)
         else:
-            # Mensagem caso nao haja ingredientes
-            msg_sem_ingredientes = Paragraph(
+            # Mensagem quando não há ingredientes
+            msg_vazio = Paragraph(
                 '<i>Nenhum ingrediente cadastrado para esta receita.</i>',
                 self.estilos['texto_card']
             )
-            elementos.append(msg_sem_ingredientes)
+            conteudo_ingredientes.append(msg_vazio)
         
+        # Organizar conteúdo em tabela
+        tabela_conteudo_ing = Table(
+            [[item] for item in conteudo_ingredientes],
+            colWidths=[doc.width - self.LARGURA_BARRA_LATERAL - 1*cm],
+            style=[
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]
+        )
+        
+        # Criar card de ingredientes com barra lateral verde
+        card_ingredientes = self._criar_card_com_barra_lateral(
+            conteudo=tabela_conteudo_ing,
+            largura=doc.width,
+            altura_minima=5*cm,
+            cor_barra=self.COR_VERDE_BARRA,
+            texto_barra='INSUMOS'
+        )
+        
+        elementos.append(card_ingredientes)
         elementos.append(Spacer(1, self.ESPACAMENTO_SECAO * 1.5))
 
         # ===================================================================
-        # SECAO 6: PRECIFICACAO (com barra lateral rosa)
+        # SECAO 6: PRECIFICACAO (Card com barra lateral rosa)
         # ===================================================================
         
         precificacao = receita_data.get('precificacao', {})
         
         if precificacao:
-            # Titulo da secao com fundo rosa
-            titulo_precificacao = Paragraph(
-                '<b>PRECIFICAÇÃO</b>',
-                self.estilos['titulo_secao']
-            )
+            conteudo_precificacao = []
             
-            tabela_titulo_prec = Table(
-                [[titulo_precificacao]],
-                colWidths=[doc.width],
-                style=[
-                    ('BACKGROUND', (0, 0), (-1, -1), self.COR_ROSA_IOGAR),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 15),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 15),
-                    ('TOPPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ]
-            )
-            elementos.append(tabela_titulo_prec)
-            elementos.append(Spacer(1, 0.3 * cm))
+            # Título "PRECIFICAÇÃO" em negrito no topo
+            conteudo_precificacao.append(Paragraph(
+                '<b><font size="12">PRECIFICAÇÃO</font></b>',
+                self.estilos['texto_destaque']
+            ))
+            conteudo_precificacao.append(Spacer(1, 0.4*cm))
             
             # Extrair valores
             cmv_total = precificacao.get('cmv', 0)
@@ -1116,73 +1182,120 @@ class PDFService:
             preco_sugerido = precificacao.get('preco_sugerido', 0)
             preco_atual = precificacao.get('preco_venda_atual')
             
-            # Cards de precificacao (2x2) com espaçamento aumentado
+            # Cards de valores (2x2) - estilo ficha de treino
             card_cmv_total = Paragraph(
+                f'<para alignment="center">'
                 f'<b>CMV TOTAL</b><br/><br/>'
-                f'<font size="20" color="#db2777"><b>R$ {cmv_total:.2f}</b></font>',
+                f'<font size="22" color="#be185d"><b>R$ {cmv_total:.2f}</b></font>'
+                f'</para>',
                 self.estilos['texto_card']
             )
             
             card_cmv_unit = Paragraph(
+                f'<para alignment="center">'
                 f'<b>CMV UNITÁRIO</b><br/><br/>'
-                f'<font size="16" color="#475569"><b>R$ {cmv_unitario:.2f}</b></font>',
+                f'<font size="18" color="#6b7280"><b>R$ {cmv_unitario:.2f}</b></font>'
+                f'</para>',
                 self.estilos['texto_card']
             )
             
             card_margem = Paragraph(
+                f'<para alignment="center">'
                 f'<b>MARGEM SUGERIDA</b><br/><br/>'
-                f'<font size="16" color="#16a34a"><b>{margem:.1f}%</b></font>',
+                f'<font size="18" color="#047857"><b>{margem:.1f}%</b></font>'
+                f'</para>',
                 self.estilos['texto_card']
             )
             
             card_preco = Paragraph(
+                f'<para alignment="center">'
                 f'<b>PREÇO SUGERIDO</b><br/><br/>'
-                f'<font size="20" color="#16a34a"><b>R$ {preco_sugerido:.2f}</b></font>',
+                f'<font size="22" color="#047857"><b>R$ {preco_sugerido:.2f}</b></font>'
+                f'</para>',
                 self.estilos['texto_card']
             )
             
-            # Tabela 2x2 de cards de precificacao com mais espaço
-            largura_card_prec = (doc.width - 15) / 2
-            tabela_precificacao = Table(
+            # Tabela 2x2 dos cards de valores
+            largura_disponivel = doc.width - self.LARGURA_BARRA_LATERAL - 2*cm
+            largura_card = (largura_disponivel - 0.5*cm) / 2
+            
+            tabela_valores = Table(
                 [
                     [card_cmv_total, card_cmv_unit],
                     [card_margem, card_preco]
                 ],
-                colWidths=[largura_card_prec, largura_card_prec],
-                rowHeights=[2.5*cm, 2.5*cm],
+                colWidths=[largura_card, largura_card],
+                rowHeights=[3*cm, 3*cm],
                 style=[
-                    ('BACKGROUND', (0, 0), (-1, -1), self.COR_CINZA_CLARO),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
+                    # Fundo cinza muito claro
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fafafa')),
+                    
+                    # Bordas suaves entre células
+                    ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
+                    ('BOX', (0, 0), (-1, -1), 1.5, colors.HexColor('#d1d5db')),
+                    
+                    # Alinhamento
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    
+                    # Padding generoso
                     ('LEFTPADDING', (0, 0), (-1, -1), 20),
                     ('RIGHTPADDING', (0, 0), (-1, -1), 20),
                     ('TOPPADDING', (0, 0), (-1, -1), 20),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
                 ]
             )
-            elementos.append(tabela_precificacao)
             
-            # Preco de venda atual (se houver)
+            conteudo_precificacao.append(tabela_valores)
+            
+            # Preço de venda atual (se houver)
             if preco_atual:
-                elementos.append(Spacer(1, 0.5 * cm))
-                preco_atual_info = Paragraph(
-                    f'<b>Preço de Venda Atual:</b> <font color="#22c55e"><b>R$ {preco_atual:.2f}</b></font>',
+                conteudo_precificacao.append(Spacer(1, 0.6*cm))
+                
+                preco_atual_destaque = Paragraph(
+                    f'<para alignment="center">'
+                    f'<b>Preço de Venda Atual:</b> '
+                    f'<font size="16" color="#047857"><b>R$ {preco_atual:.2f}</b></font>'
+                    f'</para>',
                     self.estilos['texto_destaque']
                 )
+                
                 tabela_preco_atual = Table(
-                    [[preco_atual_info]],
-                    colWidths=[doc.width],
+                    [[preco_atual_destaque]],
+                    colWidths=[largura_disponivel],
                     style=[
                         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f0fdf4')),
-                        ('BOX', (0, 0), (-1, -1), 1, self.COR_VERDE_IOGAR),
-                        ('LEFTPADDING', (0, 0), (-1, -1), 12),
-                        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
-                        ('TOPPADDING', (0, 0), (-1, -1), 8),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                        ('BOX', (0, 0), (-1, -1), 2, self.COR_VERDE_BARRA),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 15),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 15),
+                        ('TOPPADDING', (0, 0), (-1, -1), 12),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
                     ]
                 )
-                elementos.append(tabela_preco_atual)
+                conteudo_precificacao.append(tabela_preco_atual)
+            
+            # Organizar conteúdo em tabela
+            tabela_conteudo_prec = Table(
+                [[item] for item in conteudo_precificacao],
+                colWidths=[doc.width - self.LARGURA_BARRA_LATERAL - 1*cm],
+                style=[
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ]
+            )
+            
+            # Criar card de precificação com barra lateral rosa
+            card_precificacao = self._criar_card_com_barra_lateral(
+                conteudo=tabela_conteudo_prec,
+                largura=doc.width,
+                altura_minima=7*cm,
+                cor_barra=self.COR_ROSA_BARRA,
+                texto_barra='PRECIFICAÇÃO'
+            )
+            
+            elementos.append(card_precificacao)
         
         # ===================================================================
         # SECAO 7: RODAPE
@@ -1204,7 +1317,7 @@ class PDFService:
             [[rodape_texto]],
             colWidths=[doc.width],
             style=[
-                ('BACKGROUND', (0, 0), (-1, -1), self.COR_FUNDO_ESCURO),
+                ('BACKGROUND', (0, 0), (-1, -1), self.COR_FUNDO_GRADIENTE_INICIO),
                 ('LEFTPADDING', (0, 0), (-1, -1), 10),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 10),
                 ('TOPPADDING', (0, 0), (-1, -1), 8),
@@ -1214,10 +1327,15 @@ class PDFService:
         elementos.append(tabela_rodape)
         
         # ===================================================================
-        # GERAR O PDF
+        # GERAR O PDF COM FUNDO CUSTOMIZADO
         # ===================================================================
         
-        doc.build(elementos)
+        # Aplicar fundo com gradiente e marca d'agua em todas as páginas
+        doc.build(
+            elementos,
+            onFirstPage=self._desenhar_fundo_com_marca_dagua,
+            onLaterPages=self._desenhar_fundo_com_marca_dagua
+        )
         
         print(f"PDF gerado com sucesso: {output_path}")
         return output_path
