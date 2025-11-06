@@ -228,6 +228,7 @@ async def registrar_feedback(
                 "base_atualizada": True,
                 "alias_adicionado": True
             },
+            nova_confianca=request.confianca_usuario if request.confianca_usuario else 1.0,
             entrada_criada=request.acao.value == "corrigir",
             mensagem=f"Feedback '{request.acao.value}' registrado com sucesso"
         )

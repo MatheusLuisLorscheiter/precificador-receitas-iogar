@@ -11,6 +11,7 @@ import React, { useState, useEffect } from 'react';
 import { useBlockBodyScroll } from '../App';
 import { Brain, Check, X, Edit, AlertTriangle, Loader2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
+import { showSuccessPopup, showErrorPopup } from './PopupPortal';
 
 
 // ============================================================================
@@ -131,7 +132,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   const carregarCategorias = async () => {
     try {
       console.log('Carregando categorias da taxonomia...');
-      const response = await fetch('http://localhost:8000/api/v1/taxonomias/hierarquia/categorias');
+      const response = await fetch(`${API_BASE_URL}/api/v1/taxonomias/hierarquia/categorias`);
     console.log('Response status:', response.status);
     
     if (response.ok) {
@@ -158,7 +159,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   const carregarSubcategorias = async (categoria: string) => {
   try {
     console.log('Carregando subcategorias para categoria:', categoria);
-    const response = await fetch(`http://localhost:8000/api/v1/taxonomias/hierarquia/subcategorias/${encodeURIComponent(categoria)}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/taxonomias/hierarquia/subcategorias/${encodeURIComponent(categoria)}`);
     console.log('Response status subcategorias:', response.status);
     
     if (response.ok) {
@@ -251,7 +252,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
   try {
     console.log('🔧 [DEBUG] Iniciando busca de taxonomias...');
     // 1. Buscar todas as taxonomias e filtrar localmente
-    const todasTaxonomias = await fetch('http://localhost:8000/api/v1/taxonomias/?limit=1000');
+    const todasTaxonomias = await fetch(`${API_BASE_URL}/api/v1/taxonomias/?limit=1000`);
     
     if (todasTaxonomias.ok) {
       console.log('🔧 [DEBUG] Taxonomias carregadas com sucesso');
@@ -303,7 +304,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
         
         // 2. Associar taxonomia ao insumo
         console.log('🔧 [DEBUG] Iniciando associação taxonomia->insumo...');
-        const associarResponse = await fetch(`http://localhost:8000/api/v1/insumos/${insumoId}/taxonomia?taxonomia_id=${taxonomiaEncontrada.id}`, {
+        const associarResponse = await fetch(`${API_BASE_URL}/api/v1/insumos/${insumoId}/taxonomia?taxonomia_id=${taxonomiaEncontrada.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -326,17 +327,29 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
           // 3. Mostrar popup de sucesso COM DELAY para garantir visibilidade
           setTimeout(() => {
             console.log('🔧 [DEBUG] Mostrando popup de sucesso...');
+            console.log('🔧 [DEBUG] Tipo de showSuccessPopup:', typeof showSuccessPopup);
+            console.log('🔧 [DEBUG] showSuccessPopup é undefined?', showSuccessPopup === undefined);
+            console.log('🔧 [DEBUG] showSuccessPopup é null?', showSuccessPopup === null);
+            
             try {
+              if (typeof showSuccessPopup !== 'function') {
+                console.error('❌ [DEBUG] showSuccessPopup não é uma função!');
+                console.error('❌ [DEBUG] Valor recebido:', showSuccessPopup);
+                alert(`✅ Sucesso!\n\n${nomeInsumo} foi classificado manualmente com sucesso.`);
+                return;
+              }
+              
               showSuccessPopup(
                 'Classificação Realizada!',
                 `${nomeInsumo} foi classificado manualmente com sucesso.`
               );
               console.log('✅ [DEBUG] Popup de sucesso exibido com sucesso');
             } catch (error) {
-              console.log('❌ [DEBUG] Erro no popup, usando alert:', error);
+              console.error('❌ [DEBUG] Erro no popup:', error);
+              console.error('❌ [DEBUG] Stack:', (error as Error).stack);
               alert(`✅ Sucesso!\n\n${nomeInsumo} foi classificado manualmente.`);
             }
-          }, 100); // 100ms delay para o popup principal fechar primeiro
+          }, 100);
           
           // 3. Enviar feedback para sistema de IA (correção do erro 422)
         console.log('🔧 [DEBUG] Iniciando feedback da IA...');
@@ -364,7 +377,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
 
           console.log('🔧 [DEBUG] Payload do feedback:', payload);
 
-          const feedbackResponse = await fetch('http://localhost:8000/api/v1/ia/feedback', {
+          const feedbackResponse = await fetch(`${API_BASE_URL}/api/v1/ia/feedback`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)

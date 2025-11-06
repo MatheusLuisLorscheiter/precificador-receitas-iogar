@@ -20,8 +20,8 @@ class InsumoBase(BaseModel):
     Usado como base para criação e atualização.
     Campo fator removido conforme nova regra de negócio.
     """
-    grupo: str = Field(..., min_length=1, max_length=100, description="Grupo de insumo")
-    subgrupo: str = Field(..., min_length=1, max_length=100, description="Subgrupo do insumo")
+    grupo: Optional[str] = Field(default="", max_length=100, description="Grupo de insumo (legado)")
+    subgrupo: Optional[str] = Field(default="", max_length=100, description="Subgrupo do insumo (legado)")
     codigo: Optional[str] = Field(default=None, description="Código único (gerado automaticamente se não fornecido)")
     nome: str = Field(..., min_length=1, max_length=255, description="Nome do produto")
     quantidade: int = Field(default=1, ge=1, description="Quantidade padrão")

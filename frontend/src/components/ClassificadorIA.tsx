@@ -79,18 +79,41 @@ interface EstatisticasIA {
 
 const InsumosSemClassificacao: React.FC = () => {
   const [insumosSemClassificacao, setInsumosSemClassificacao] = useState<any[]>([]);
+  const [totalInsumosSemClassificacao, setTotalInsumosSemClassificacao] = useState(0);
   const [carregandoInsumos, setCarregandoInsumos] = useState(false);
+
+  // ============================================================================
+  // ESTADOS DE PAGINAÇÃO
+  // ============================================================================
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina] = useState(20);
+
+  // Calcular índices para paginação
+  const indexUltimoInsumo = paginaAtual * itensPorPagina;
+  const indexPrimeiroInsumo = indexUltimoInsumo - itensPorPagina;
+  const insumosPaginados = insumosSemClassificacao.slice(indexPrimeiroInsumo, indexUltimoInsumo);
+  const totalPaginas = Math.ceil(insumosSemClassificacao.length / itensPorPagina);
+
 
   // Função para carregar insumos sem classificação
   const carregarInsumosSemClassificacao = async () => {
     setCarregandoInsumos(true);
     try {
-      // Usar URL absoluta temporariamente para diagnosticar problema de proxy
-      const response = await fetch(`${API_BASE_URL}/api/v1/insumos/sem-classificacao?skip=0&limit=50`);
+      // Carregar TODOS os insumos sem classificação (limite alto)
+      const response = await fetch(`${API_BASE_URL}/api/v1/insumos/sem-classificacao?skip=0&limit=1000`);
       if (response.ok) {
         const insumos = await response.json();
         console.log('✅ Insumos sem classificacao carregados:', insumos.length);
         setInsumosSemClassificacao(insumos);
+        
+        // Buscar total real de insumos sem classificação
+        const countResponse = await fetch(`${API_BASE_URL}/api/v1/insumos/sem-classificacao/count`);
+        if (countResponse.ok) {
+          const countData = await countResponse.json();
+          setTotalInsumosSemClassificacao(countData.total || insumos.length);
+        } else {
+          setTotalInsumosSemClassificacao(insumos.length);
+        }
       } else {
         console.error('❌ Erro na resposta:', response.status, response.statusText);
         const errorText = await response.text();
@@ -168,8 +191,58 @@ const InsumosSemClassificacao: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="text-sm text-gray-600 mb-4">
-        {insumosSemClassificacao.length} insumo(s) aguardando classificação
+      {/* ============================================================================ */}
+      {/* HEADER COM CONTADOR E PAGINAÇÃO */}
+      {/* ============================================================================ */}
+      <div className="flex justify-between items-center mb-4">
+        {/* Contador de insumos (esquerda) */}
+        <div className="text-sm text-gray-600">
+          <span className="font-semibold text-orange-600">{insumosSemClassificacao.length}</span> insumo(s) aguardando classificação
+        </div>
+
+        {/* Controles de paginação (direita) */}
+        {totalPaginas > 1 && (
+          <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+            {/* Botão Anterior */}
+            <button
+              onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
+              disabled={paginaAtual === 1}
+              className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="sr-only">Anterior</span>
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+              </svg>
+            </button>
+
+            {/* Números das páginas */}
+            {[...Array(totalPaginas)].map((_, idx) => (
+              <button
+                key={idx + 1}
+                onClick={() => setPaginaAtual(idx + 1)}
+                className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                  paginaAtual === idx + 1
+                    ? 'z-10 bg-green-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'
+                    : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
+                }`}
+              >
+                {idx + 1}
+              </button>
+            ))}
+
+            {/* Botão Próxima */}
+            <button
+              onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
+              disabled={paginaAtual === totalPaginas}
+              className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="sr-only">Próxima</span>
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </nav>
+        )}
       </div>
       
       <div className="overflow-x-auto">
@@ -194,8 +267,9 @@ const InsumosSemClassificacao: React.FC = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {insumosSemClassificacao.map((insumo) => (
+            {insumosPaginados.map((insumo) => (
               <tr key={insumo.id} className="hover:bg-gray-50">
+
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {insumo.nome}
                 </td>
@@ -222,17 +296,68 @@ const InsumosSemClassificacao: React.FC = () => {
         </table>
       </div>
       
-      <div className="flex justify-between items-center pt-4">
-        <button
-          onClick={carregarInsumosSemClassificacao}
-          className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
-        >
-          🔄 Atualizar Lista
-        </button>
-        <div className="text-sm text-gray-500">
-          Use "Classificar com IA" para sugestões automáticas
-       </div>
+      {/* ============================================================================ */}
+      {/* RODAPÉ COM INFORMAÇÕES E PAGINAÇÃO */}
+      {/* ============================================================================ */}
+      <div className="flex justify-between items-center pt-4 border-t border-gray-200 mt-4">
+        {/* Botão atualizar e informação (esquerda) */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={carregarInsumosSemClassificacao}
+            className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            🔄 Atualizar Lista
+          </button>
+          <div className="text-xs text-gray-500">
+            Mostrando {indexPrimeiroInsumo + 1} a {Math.min(indexUltimoInsumo, insumosSemClassificacao.length)} de {insumosSemClassificacao.length} insumos
+          </div>
+        </div>
 
+        {/* Controles de paginação (direita) */}
+        {totalPaginas > 1 && (
+          <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+            {/* Botão Anterior */}
+            <button
+              onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
+              disabled={paginaAtual === 1}
+              className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="sr-only">Anterior</span>
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+              </svg>
+            </button>
+
+            {/* Números das páginas */}
+            {[...Array(totalPaginas)].map((_, idx) => (
+              <button
+                key={idx + 1}
+                onClick={() => setPaginaAtual(idx + 1)}
+                className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                  paginaAtual === idx + 1
+                    ? 'z-10 bg-green-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'
+                    : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
+                }`}
+              >
+                {idx + 1}
+              </button>
+            ))}
+
+            {/* Botão Próxima */}
+            <button
+              onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
+              disabled={paginaAtual === totalPaginas}
+              className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="sr-only">Próxima</span>
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </nav>
+        )}
+      </div>
+    
         {/* Popup de Classificação Manual */}
         {insumoSelecionado && (
           <PopupClassificacaoIA
@@ -255,7 +380,6 @@ const InsumosSemClassificacao: React.FC = () => {
           />
         )}
       </div>
-    </div>
   );
 };
 

@@ -243,14 +243,37 @@ const calcularCustoPorPorcao = () => {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!receita) return;
     
-    // Simular exportação para PDF/Excel
-    console.log('📄 Exportando relatório da receita:', receita.nome);
-    
-    // Aqui você pode implementar a lógica real de exportação
-    alert(`Relatório da receita "${receita.nome}" será exportado em breve!`);
+    try {
+      const API_URL = 'http://192.168.10.113:8000';
+      
+      const response = await fetch(`${API_URL}/api/v1/receitas/${receita.id}/pdf`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+      }
+
+      // Fazer download do PDF
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receita_${receita.codigo}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log('✅ PDF exportado com sucesso:', receita.nome);
+      
+    } catch (error) {
+      console.error('❌ Erro ao exportar PDF:', error);
+      alert(`Erro ao gerar PDF: ${error.message}`);
+    }
   };
 
   const handlePrint = () => {

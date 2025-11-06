@@ -303,7 +303,15 @@ async def listar_categorias(db: Session = Depends(get_db)):
     Retorna apenas categorias que tenham taxonomias ativas.
     """
     try:
+        # Log para debug
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("Endpoint /hierarquia/categorias chamado")
+        
         categorias = crud_taxonomia.get_categorias_disponiveis(db=db)
+        
+        logger.info(f"Categorias encontradas: {len(categorias)}")
+        logger.info(f"Categorias: {categorias}")
         
         return TaxonomiaHierarquia(
             nivel="categoria",
@@ -312,6 +320,9 @@ async def listar_categorias(db: Session = Depends(get_db)):
         )
         
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao buscar categorias: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Erro interno: {str(e)}"

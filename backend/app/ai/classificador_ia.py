@@ -586,7 +586,7 @@ class ClassificadorIA:
                         novo_alias = TaxonomiaAliasCreate(
                             nome_alternativo=nome_produto,
                             taxonomia_id=taxonomia.id,
-                            tipo="ia",
+                            tipo="sinonimo",
                             origem="ia",
                             confianca=80,
                             ativo=True
@@ -633,7 +633,7 @@ class ClassificadorIA:
                     alias_correto = TaxonomiaAliasCreate(
                         nome_alternativo=nome_produto,
                         taxonomia_id=taxonomia.id,
-                        tipo="ia",
+                        tipo="sinonimo",
                         origem="ia",
                         confianca=70,  # Confiança inicial moderada
                         ativo=True

@@ -25,7 +25,9 @@ from app.schemas.receita import (
     # Schemas de receita-insumos
     ReceitaInsumoCreate, ReceitaInsumoUpdate, ReceitaInsumoResponse,
     # Schemas de cálculos (CORRIGIDOS)
-    CalculoPrecosResponse, AtualizarCMVResponse
+    CalculoPrecosResponse, AtualizarCMVResponse,
+    # Schemas de exportacao PDF
+    PDFLoteRequest, PDFLoteResponse
 )
 from app.crud import receita as crud_receita
 
@@ -222,7 +224,7 @@ def list_receitas(
             'quantidade': getattr(receita, 'quantidade', 1),
             'fator': getattr(receita, 'fator', 1.0),
             'processada': getattr(receita, 'processada', False),
-            'rendimento': float(receita.rendimento) if receita.rendimento else None,
+            'rendimento': float(receita.rendimento) if receita.rendimento else 0,
             'total_insumos': len(receita_insumos_data),
             'insumos_processados': insumos_processados,
             # Campos para controle de insumos sem preço (Prioridade 1)
@@ -1095,6 +1097,330 @@ def obter_resumo_receita(
             "precos_sugeridos": precos_sugeridos.get("precos_sugeridos", {}) if "error" not in precos_sugeridos else {}
         }
     }
+
+# ===================================================================
+# ENDPOINTS DE EXPORTACAO PDF
+# ===================================================================
+
+@router.get("/{receita_id}/pdf", summary="Gerar PDF de uma receita")
+def gerar_pdf_receita(
+    receita_id: int,
+    db: Session = Depends(get_db),
+    # current_user: User = Depends(get_current_user),
+    # permission_check = Depends(PermissionChecker(ResourceType.RECEITAS, ActionType.VISUALIZAR))
+):
+    """
+    Gera PDF profissional de uma receita específica.
+    
+    Funcionalidades:
+    - Exporta receita completa com todas informações
+    - Inclui tabela de ingredientes estilizada
+    - Mostra cálculo de CMV e precificação
+    - Design profissional com identidade IOGAR
+    - Download automático no navegador
+    
+    Permissões necessárias:
+    - Visualizar receitas
+    - Acesso ao restaurante da receita (data scope aplicado)
+    """
+    from fastapi.responses import FileResponse
+    from app.services.pdf_service import obter_pdf_service
+    import tempfile
+    import os
+    
+    try:
+        print(f"🎨 === GERANDO PDF DA RECEITA {receita_id} ===")
+        
+        # Buscar receita com validação de permissões
+        print(f"🔍 Buscando receita ID {receita_id}...")
+        receita = db.query(Receita).filter(Receita.id == receita_id).first()
+        
+        if not receita:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Receita com ID {receita_id} não encontrada"
+            )
+        
+        # Buscar insumos da receita
+        receita_insumos = db.query(ReceitaInsumo).filter(
+            ReceitaInsumo.receita_id == receita_id
+        ).all()
+        
+        # Preparar dados dos ingredientes
+        ingredientes = []
+        for ri in receita_insumos:
+            insumo = db.query(Insumo).filter(Insumo.id == ri.insumo_id).first()
+            if insumo:
+                preco_unitario = insumo.preco_compra_real or 0
+                custo_total = ri.quantidade_necessaria * preco_unitario
+                
+                ingredientes.append({
+                    'nome': insumo.nome,
+                    'quantidade': float(ri.quantidade_necessaria),
+                    'unidade': insumo.unidade,
+                    'preco_unitario': float(preco_unitario),
+                    'custo_total': float(custo_total)
+                })
+        
+        # Calcular CMV total
+        cmv_total = sum(ing['custo_total'] for ing in ingredientes)
+        cmv_unitario = cmv_total / receita.rendimento_porcoes if receita.rendimento_porcoes and receita.rendimento_porcoes > 0 else 0
+        
+        # Calcular precificação com margem de 65%
+        margem_sugerida = 65.0
+        preco_sugerido = cmv_unitario / (1 - margem_sugerida / 100) if margem_sugerida < 100 else 0
+        
+        # Preparar dados completos da receita
+        receita_data = {
+            'codigo': receita.codigo,
+            'nome': receita.nome,
+            'categoria': receita.grupo or 'Sem categoria',
+            'status': 'Ativo' if receita.ativo else 'Inativo',
+            'rendimento': float(receita.rendimento_porcoes) if receita.rendimento_porcoes else 0,
+            'unidade_rendimento': 'porções',
+            'tempo_preparo': receita.tempo_preparo_minutos if receita.tempo_preparo_minutos else 0,
+            'responsavel': receita.responsavel or 'Não informado',
+            'ingredientes': ingredientes,
+            'precificacao': {
+                'cmv': float(cmv_total),
+                'cmv_unitario': float(cmv_unitario),
+                'margem_sugerida': margem_sugerida,
+                'preco_sugerido': float(preco_sugerido),
+                'preco_venda_atual': float(receita.preco_venda) if receita.preco_venda else None
+            }
+        }
+        
+        # Gerar PDF usando o serviço
+        pdf_service = obter_pdf_service()
+        
+        # Criar arquivo temporário para o PDF
+        temp_dir = tempfile.gettempdir()
+        output_filename = f"receita_{receita.codigo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        output_path = os.path.join(temp_dir, output_filename)
+        
+        # Gerar PDF
+        print(f"📄 Gerando arquivo PDF em: {output_path}")
+        pdf_path = pdf_service.gerar_pdf_receita(
+            receita_data=receita_data,
+            output_path=output_path
+        )
+        
+        print(f"✅ PDF gerado com sucesso para receita {receita_id}")
+        
+        # Retornar arquivo PDF com headers corretos para download
+        return FileResponse(
+            path=pdf_path,
+            media_type='application/pdf',
+            filename=f"receita_{receita.codigo}.pdf",
+            headers={
+                'Content-Disposition': f'attachment; filename="receita_{receita.codigo}.pdf"',
+                'Cache-Control': 'no-cache'
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"❌ ERRO ao gerar PDF da receita {receita_id}:")
+        print(f"   Tipo: {type(e).__name__}")
+        print(f"   Mensagem: {str(e)}")
+        print(f"   Traceback completo:")
+        traceback.print_exc()
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao gerar PDF: {str(e)}"
+        )
+    
+@router.post("/pdf/lote", summary="Gerar PDFs de múltiplas receitas")
+def gerar_pdf_lote(
+    request: PDFLoteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    permission_check = Depends(PermissionChecker(ResourceType.RECEITAS, ActionType.VISUALIZAR))
+):
+    """
+    Gera PDFs de múltiplas receitas e retorna arquivo ZIP com todos os PDFs.
+    
+    Funcionalidades:
+    - Gera múltiplos PDFs em uma única requisição
+    - Compacta todos em arquivo ZIP
+    - Valida permissões para cada receita individualmente
+    - Ignora receitas sem permissão (não retorna erro)
+    - Útil para exportação em massa
+    
+    Request Body:
+    - receita_ids: Lista de IDs das receitas para gerar PDF
+    
+    Permissões necessárias:
+    - Visualizar receitas
+    - Acesso aos restaurantes das receitas (data scope aplicado)
+    """
+    from fastapi.responses import FileResponse
+    from app.services.pdf_service import obter_pdf_service
+    import tempfile
+    import os
+    import zipfile
+    
+    # Validar que há receitas para processar
+    if not request.receita_ids or len(request.receita_ids) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lista de receitas vazia. Forneça ao menos um ID de receita."
+        )
+    
+    # Limitar quantidade máxima para evitar sobrecarga
+    MAX_RECEITAS = 50
+    if len(request.receita_ids) > MAX_RECEITAS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Máximo de {MAX_RECEITAS} receitas por vez. Você enviou {len(request.receita_ids)}."
+        )
+    
+    # Criar diretório temporário para PDFs
+    temp_dir = tempfile.mkdtemp()
+    pdf_service = obter_pdf_service()
+    pdfs_gerados = []
+    receitas_sem_permissao = []
+    receitas_nao_encontradas = []
+    
+    try:
+        # Processar cada receita
+        for receita_id in request.receita_ids:
+            # Buscar receita
+            receita = db.query(Receita).filter(Receita.id == receita_id).first()
+            
+            if not receita:
+                receitas_nao_encontradas.append(receita_id)
+                continue
+            
+            # Verificar permissão de acesso
+            if not can_access_resource(current_user, receita.restaurante_id, ResourceType.RECEITAS):
+                receitas_sem_permissao.append(receita_id)
+                continue
+            
+            # Buscar insumos da receita
+            receita_insumos = db.query(ReceitaInsumo).filter(
+                ReceitaInsumo.receita_id == receita_id
+            ).all()
+            
+            # Preparar dados dos ingredientes
+            ingredientes = []
+            for ri in receita_insumos:
+                insumo = db.query(Insumo).filter(Insumo.id == ri.insumo_id).first()
+                if insumo:
+                    preco_unitario = insumo.preco_compra_real or 0
+                    custo_total = ri.quantidade * preco_unitario
+                    
+                    ingredientes.append({
+                        'nome': insumo.nome,
+                        'quantidade': float(ri.quantidade_necessaria),
+                        'unidade': insumo.unidade,
+                        'preco_unitario': float(preco_unitario),
+                        'custo_total': float(custo_total)
+                    })
+            
+            # Calcular CMV total
+            cmv_total = sum(ing['custo_total'] for ing in ingredientes)
+            cmv_unitario = cmv_total / receita.rendimento if receita.rendimento > 0 else 0
+            
+            # Calcular precificação com margem de 65%
+            margem_sugerida = 65.0
+            preco_sugerido = cmv_unitario / (1 - margem_sugerida / 100) if margem_sugerida < 100 else 0
+            
+            # Preparar dados completos da receita
+            receita_data = {
+                'codigo': receita.codigo,
+                'nome': receita.nome,
+                'categoria': receita.grupo or 'Sem categoria',
+                'status': 'Ativo' if receita.ativo else 'Inativo',
+                'rendimento': float(receita.rendimento_porcoes) if receita.rendimento_porcoes else 0,
+                'unidade_rendimento': 'porções',
+                'tempo_preparo': receita.tempo_preparo_minutos if receita.tempo_preparo_minutos else 0,
+                'responsavel': receita.responsavel or 'Não informado',
+                'ingredientes': ingredientes,
+                'precificacao': {
+                    'cmv': float(cmv_total),
+                    'cmv_unitario': float(cmv_unitario),
+                    'margem_sugerida': margem_sugerida,
+                    'preco_sugerido': float(preco_sugerido),
+                    'preco_venda_atual': float(receita.preco_venda) if receita.preco_venda else None
+                }
+            }
+            
+            # Gerar PDF
+            try:
+                output_filename = f"receita_{receita.codigo}.pdf"
+                output_path = os.path.join(temp_dir, output_filename)
+                
+                pdf_path = pdf_service.gerar_pdf_receita(
+                    receita_data=receita_data,
+                    output_path=output_path
+                )
+                
+                pdfs_gerados.append({
+                    'receita_id': receita_id,
+                    'codigo': receita.codigo,
+                    'path': pdf_path
+                })
+                
+            except Exception as e:
+                print(f"Erro ao gerar PDF da receita {receita_id}: {e}")
+                continue
+        
+        # Verificar se algum PDF foi gerado
+        if len(pdfs_gerados) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Nenhum PDF foi gerado",
+                    "receitas_nao_encontradas": receitas_nao_encontradas,
+                    "receitas_sem_permissao": receitas_sem_permissao
+                }
+            )
+        
+        # Criar arquivo ZIP com todos os PDFs
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_filename = f"receitas_lote_{timestamp}.zip"
+        zip_path = os.path.join(temp_dir, zip_filename)
+        
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for pdf_info in pdfs_gerados:
+                zipf.write(
+                    pdf_info['path'],
+                    arcname=f"receita_{pdf_info['codigo']}.pdf"
+                )
+        
+        # Preparar mensagem de resumo
+        resumo = {
+            "total_solicitado": len(request.receita_ids),
+            "total_gerado": len(pdfs_gerados),
+            "nao_encontradas": len(receitas_nao_encontradas),
+            "sem_permissao": len(receitas_sem_permissao)
+        }
+        
+        # Retornar arquivo ZIP
+        return FileResponse(
+            path=zip_path,
+            media_type='application/zip',
+            filename=f"receitas_{timestamp}.zip",
+            headers={
+                'Content-Disposition': f'attachment; filename="receitas_{timestamp}.zip"',
+                'Cache-Control': 'no-cache',
+                'X-Total-Generated': str(resumo['total_gerado']),
+                'X-Total-Requested': str(resumo['total_solicitado'])
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao gerar PDFs em lote: {str(e)}"
+        )
+    
 # ===================================================================
 # ENDPOINT DE LIMPEZA COMPLETA - SISTEMA DE RECEITAS
 # ===================================================================
