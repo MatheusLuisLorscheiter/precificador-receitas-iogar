@@ -1340,6 +1340,195 @@ class PDFService:
         print(f"PDF gerado com sucesso: {output_path}")
         return output_path
 
+# ============================================================================
+    # METODO: GERAR PDF SIMPLIFICADO PARA COZINHA
+    # ============================================================================
+    
+    def gerar_pdf_cozinha(self, receita_data: Dict[str, Any], output_path: str) -> str:
+        """
+        Gera PDF simplificado para uso na cozinha.
+        
+        Versao focada em preparo, sem informacoes financeiras.
+        Layout limpo e facil leitura a distancia.
+        
+        Parametros:
+            receita_data: Dicionario com dados da receita
+            output_path: Caminho completo onde o PDF sera salvo
+            
+        Retorna:
+            str: Caminho do arquivo PDF gerado
+        """
+        print(f"Gerando PDF de COZINHA: {receita_data.get('nome', 'Sem nome')}")
+        
+        # Configuracao do documento
+        doc = SimpleDocTemplate(
+            output_path,
+            pagesize=A4,
+            rightMargin=self.MARGEM,
+            leftMargin=self.MARGEM,
+            topMargin=self.MARGEM,
+            bottomMargin=self.MARGEM,
+            title=f"Ficha Tecnica - {receita_data.get('codigo', 'SEM-CODIGO')}"
+        )
+        
+        elementos = []
+        
+        # Espacamento inicial
+        elementos.append(Spacer(1, 0.5*cm))
+        
+        # Titulo principal - FICHA TECNICA DE COZINHA
+        titulo = Paragraph(
+            '<para alignment="center">'
+            '<font size="24" color="white"><b>FICHA TÉCNICA DE COZINHA</b></font>'
+            '</para>',
+            self.estilos['titulo_principal']
+        )
+        elementos.append(titulo)
+        elementos.append(Spacer(1, 0.5*cm))
+        
+        # Nome da receita - destaque grande
+        nome_receita = receita_data.get('nome', 'Sem nome').upper()
+        nome_paragraph = Paragraph(
+            f'<para alignment="center">'
+            f'<font size="20" color="#22c55e"><b>{nome_receita}</b></font>'
+            f'</para>',
+            self.estilos['subtitulo']
+        )
+        elementos.append(nome_paragraph)
+        elementos.append(Spacer(1, 0.8*cm))
+        
+        # Bloco de informacoes essenciais - compacto
+        codigo = receita_data.get('codigo', 'SEM-CODIGO')
+        rendimento = receita_data.get('rendimento', 0)
+        tempo = receita_data.get('tempo_preparo', 0)
+        responsavel = receita_data.get('responsavel', 'Nao informado')
+        
+        # Criar paragrafos para renderizar HTML corretamente
+        info_data = [
+            [
+                Paragraph('<b>Código:</b>', self.estilos['texto_card']),
+                Paragraph(codigo, self.estilos['texto_card']),
+                Paragraph('<b>Rendimento:</b>', self.estilos['texto_card']),
+                Paragraph(f"{rendimento} porções", self.estilos['texto_card'])
+            ],
+            [
+                Paragraph('<b>Tempo:</b>', self.estilos['texto_card']),
+                Paragraph(f"{tempo} min", self.estilos['texto_card']),
+                Paragraph('<b>Responsável:</b>', self.estilos['texto_card']),
+                Paragraph(responsavel, self.estilos['texto_card'])
+            ]
+        ]
+        
+        info_table = Table(info_data, colWidths=[3*cm, 4*cm, 3*cm, 5*cm])
+        info_table.setStyle(TableStyle([
+            # Estilo geral
+            ('FONT', (0, 0), (-1, -1), 'Helvetica', 11),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1f2937')),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f9fafb')),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb'))
+        ]))
+        elementos.append(info_table)
+        elementos.append(Spacer(1, 1*cm))
+        
+        # Titulo da secao de ingredientes
+        ingredientes_titulo = Paragraph(
+            '<para alignment="center">'
+            '<font size="16" color="#ec4899"><b>INGREDIENTES</b></font>'
+            '</para>',
+            self.estilos['subtitulo']
+        )
+        elementos.append(ingredientes_titulo)
+        elementos.append(Spacer(1, 0.5*cm))
+        
+        # Tabela de ingredientes simplificada - SEM PRECOS
+        ingredientes = receita_data.get('ingredientes', [])
+        
+        if ingredientes:
+            # Cabecalho da tabela
+            table_data = [['Nº', 'INGREDIENTE', 'QUANTIDADE', 'UNIDADE']]
+            
+            # Adicionar ingredientes
+            for idx, ing in enumerate(ingredientes, 1):
+                table_data.append([
+                    str(idx),
+                    ing.get('nome', 'Sem nome'),
+                    f"{ing.get('quantidade', 0):.2f}".replace('.', ','),
+                    ing.get('unidade', 'un')
+                ])
+            
+            # Criar tabela com larguras apropriadas
+            table = Table(table_data, colWidths=[1.5*cm, 9*cm, 3*cm, 2*cm])
+            
+            # Estilo da tabela - limpo e legivel
+            table.setStyle(TableStyle([
+                # Cabecalho
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ec4899')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 12),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('TOPPADDING', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+                
+                # Corpo da tabela
+                ('FONT', (0, 1), (-1, -1), 'Helvetica', 12),
+                ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Numero centralizado
+                ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Nome alinhado esquerda
+                ('ALIGN', (2, 1), (-1, -1), 'CENTER'), # Quantidade e unidade centralizados
+                ('TOPPADDING', (0, 1), (-1, -1), 12),
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 12),
+                
+                # Linhas alternadas para facilitar leitura
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fef2f2')]),
+                
+                # Bordas
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#fecaca')),
+                ('LINEBELOW', (0, 0), (-1, 0), 2, colors.HexColor('#ec4899'))
+            ]))
+            
+            elementos.append(table)
+        else:
+            # Mensagem se nao houver ingredientes
+            msg = Paragraph(
+                '<para alignment="center"><i>Nenhum ingrediente cadastrado</i></para>',
+                self.estilos['texto_card']
+            )
+            elementos.append(msg)
+        
+        elementos.append(Spacer(1, 1*cm))
+        
+        # Rodape
+        elementos.append(Spacer(1, 1*cm))
+        rodape_text = f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')} | Sistema IOGAR Food Cost"
+        
+        # Criar estilo de rodape inline
+        estilo_rodape = ParagraphStyle(
+            'rodape_cozinha',
+            parent=self.estilos['texto_card'],
+            fontSize=9,
+            textColor=colors.HexColor('#9ca3af'),
+            alignment=TA_CENTER
+        )
+        
+        rodape = Paragraph(
+            f'<para alignment="center">{rodape_text}</para>',
+            estilo_rodape
+        )
+        elementos.append(rodape)
+        
+        # Construir PDF com fundo escuro
+        doc.build(
+            elementos,
+            onFirstPage=self._desenhar_fundo_com_marca_dagua,
+            onLaterPages=self._desenhar_fundo_com_marca_dagua
+        )
+        
+        print(f"PDF de COZINHA gerado com sucesso: {output_path}")
+        return output_path
+
 
 # ============================================================================
 # FUNCAO AUXILIAR PARA CRIAR INSTANCIA DO SERVICO

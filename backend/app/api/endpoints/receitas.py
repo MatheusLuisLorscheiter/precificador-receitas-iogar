@@ -9,7 +9,7 @@
 import time
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.api.deps import get_db, get_current_user
@@ -1105,6 +1105,7 @@ def obter_resumo_receita(
 @router.get("/{receita_id}/pdf", summary="Gerar PDF de uma receita")
 def gerar_pdf_receita(
     receita_id: int,
+    tipo: str = Query("completo", regex="^(completo|cozinha)$"),
     db: Session = Depends(get_db),
     # current_user: User = Depends(get_current_user),
     # permission_check = Depends(PermissionChecker(ResourceType.RECEITAS, ActionType.VISUALIZAR))
@@ -1198,12 +1199,19 @@ def gerar_pdf_receita(
         output_filename = f"receita_{receita.codigo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         output_path = os.path.join(temp_dir, output_filename)
         
-        # Gerar PDF
-        print(f"📄 Gerando arquivo PDF em: {output_path}")
-        pdf_path = pdf_service.gerar_pdf_receita(
-            receita_data=receita_data,
-            output_path=output_path
-        )
+        # Gerar PDF conforme tipo selecionado
+        print(f"📄 Gerando PDF tipo '{tipo}' em: {output_path}")
+        
+        if tipo == "cozinha":
+            pdf_path = pdf_service.gerar_pdf_cozinha(
+                receita_data=receita_data,
+                output_path=output_path
+            )
+        else:
+            pdf_path = pdf_service.gerar_pdf_receita(
+                receita_data=receita_data,
+                output_path=output_path
+            )
         
         print(f"✅ PDF gerado com sucesso para receita {receita_id}")
         
