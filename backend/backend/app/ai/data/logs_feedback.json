@@ -1,6 +1,6 @@
 {
   "versao": "2.0.0",
-  "created_at": "2025-11-05T16:58:15.314153",
+  "created_at": "2025-11-06T09:52:11.015398",
   "descricao": "Logs de feedback do sistema de IA integrado",
   "logs": [
     {
@@ -700,6 +700,82 @@
       "taxonomia_correta": {
         "categoria": "Laticínios",
         "subcategoria": "Queijo",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-11-06T09:31:58.374800",
+      "nome_produto": "CREME DE LEITE LT",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Laticínios",
+        "subcategoria": "Leite",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-11-06T09:37:42.685674",
+      "nome_produto": "TOMATE KG",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Verduras",
+        "subcategoria": "Tomate",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-11-06T09:43:31.373142",
+      "nome_produto": "MANTEIGA KG",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Laticínios",
+        "subcategoria": "Leite",
+        "especificacao": null,
+        "variante": null
+      },
+      "resultado": "correcao_aplicada"
+    },
+    {
+      "timestamp": "2025-11-06T09:52:11.015398",
+      "nome_produto": "MANGA KG",
+      "acao": "corrigir",
+      "classificacao_errada": {
+        "categoria": "Sem classificação",
+        "subcategoria": "A definir",
+        "especificacao": null,
+        "variante": null,
+        "nome_completo": "Sem classificação > A definir"
+      },
+      "taxonomia_correta": {
+        "categoria": "Laticínios",
+        "subcategoria": "Leite",
         "especificacao": null,
         "variante": null
       },

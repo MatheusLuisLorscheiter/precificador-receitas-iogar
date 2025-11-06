@@ -327,17 +327,29 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
           // 3. Mostrar popup de sucesso COM DELAY para garantir visibilidade
           setTimeout(() => {
             console.log('🔧 [DEBUG] Mostrando popup de sucesso...');
+            console.log('🔧 [DEBUG] Tipo de showSuccessPopup:', typeof showSuccessPopup);
+            console.log('🔧 [DEBUG] showSuccessPopup é undefined?', showSuccessPopup === undefined);
+            console.log('🔧 [DEBUG] showSuccessPopup é null?', showSuccessPopup === null);
+            
             try {
+              if (typeof showSuccessPopup !== 'function') {
+                console.error('❌ [DEBUG] showSuccessPopup não é uma função!');
+                console.error('❌ [DEBUG] Valor recebido:', showSuccessPopup);
+                alert(`✅ Sucesso!\n\n${nomeInsumo} foi classificado manualmente com sucesso.`);
+                return;
+              }
+              
               showSuccessPopup(
-                '✅ Classificação Realizada!',
-                `O insumo "${nomeInsumo}" foi classificado com sucesso!\n\n📂 Categoria: ${categoriaSelecionada}\n📁 Subcategoria: ${subcategoriaSelecionada}${especificacao ? '\n📄 Especificação: ' + especificacao : ''}${variante ? '\n🏷️ Variante: ' + variante : ''}`
+                'Classificação Realizada!',
+                `${nomeInsumo} foi classificado manualmente com sucesso.`
               );
               console.log('✅ [DEBUG] Popup de sucesso exibido com sucesso');
             } catch (error) {
-              console.log('❌ [DEBUG] Erro no popup, usando alert:', error);
-              alert(`✅ Sucesso!\n\nInsumo: ${nomeInsumo}\nCategoria: ${categoriaSelecionada}\nSubcategoria: ${subcategoriaSelecionada}${especificacao ? '\nEspecificação: ' + especificacao : ''}${variante ? '\nVariante: ' + variante : ''}`);
+              console.error('❌ [DEBUG] Erro no popup:', error);
+              console.error('❌ [DEBUG] Stack:', (error as Error).stack);
+              alert(`✅ Sucesso!\n\n${nomeInsumo} foi classificado manualmente.`);
             }
-          }, 100); // 100ms delay para o popup principal fechar primeiro
+          }, 100);
           
           // 3. Enviar feedback para sistema de IA (correção do erro 422)
         console.log('🔧 [DEBUG] Iniciando feedback da IA...');

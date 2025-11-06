@@ -18,6 +18,18 @@ import { apiService } from './api-service';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PopupPortalContainer, { showSuccessPopup, showErrorPopup } from './components/PopupPortal';
+// ============================================================================
+// REGISTRAR FUNÇÕES DE POPUP NO WINDOW (ACESSO GLOBAL)
+// ============================================================================
+// Permite que componentes acessem via (window as any).showSuccessPopup
+if (typeof window !== 'undefined') {
+  (window as any).showSuccessPopup = showSuccessPopup;
+  (window as any).showErrorPopup = showErrorPopup;
+  console.log('✅ Funções de popup registradas no window:', {
+    showSuccessPopup: typeof (window as any).showSuccessPopup,
+    showErrorPopup: typeof (window as any).showErrorPopup
+  });
+}
 import {
   ShoppingCart, Package, Calculator, TrendingUp, DollarSign,
   Users, ChefHat, Utensils, Plus, Search, Edit, Edit2, Edit3, Trash, Trash2, Save,
