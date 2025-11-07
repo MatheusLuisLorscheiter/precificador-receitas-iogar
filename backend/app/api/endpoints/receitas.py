@@ -1156,6 +1156,7 @@ def gerar_pdf_receita(
                 custo_total = ri.quantidade_necessaria * preco_unitario
                 
                 ingredientes.append({
+                    'codigo': insumo.codigo,
                     'nome': insumo.nome,
                     'quantidade': float(ri.quantidade_necessaria),
                     'unidade': insumo.unidade,
