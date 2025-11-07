@@ -310,8 +310,9 @@ class PDFService:
                 # Barra lateral colorida
                 ('BACKGROUND', (0, 0), (0, 0), cor_barra),
                 
-                # Bordas arredondadas (simular com BOX)
-                ('BOX', (0, 0), (-1, -1), 2, colors.HexColor('#e5e7eb')),
+                # Bordas neon brancas arredondadas
+                ('BOX', (0, 0), (-1, -1), 3, colors.white),
+                ('ROUNDEDCORNERS', [10, 10, 10, 10]),
                 
                 # Sombra (simular com borda mais escura levemente deslocada)
                 # ReportLab não tem sombra nativa, então usamos borda cinza
@@ -1045,7 +1046,7 @@ class PDFService:
         if ingredientes:
             # Criar dados da tabela de ingredientes
             dados_ingredientes = [[
-                Paragraph('<b>Nº</b>', self.estilos['texto_destaque']),
+                Paragraph('<b>CÓDIGO</b>', self.estilos['texto_destaque']),
                 Paragraph('<b>INGREDIENTE</b>', self.estilos['texto_destaque']),
                 Paragraph('<b>FOTO</b>', self.estilos['texto_destaque']),
                 Paragraph('<b>QUANTIDADE</b>', self.estilos['texto_destaque']),
@@ -1056,11 +1057,12 @@ class PDFService:
             # Adicionar cada ingrediente
             for idx, ing in enumerate(ingredientes, 1):
                 nome_ing = ing.get('nome', 'Sem nome')
+                codigo_ing = ing.get('codigo', f'{idx:02d}')
                 qtd = ing.get('quantidade', 0)
                 unidade = ing.get('unidade', '')
                 custo = ing.get('custo_total', 0)
                 
-                # Placeholder mini para foto do insumo
+                # Placeholder para foto do insumo
                 foto_insumo = self._criar_placeholder_foto(
                     largura=1.8*cm,
                     altura=1.3*cm,
@@ -1068,7 +1070,7 @@ class PDFService:
                 )
                 
                 dados_ingredientes.append([
-                    Paragraph(f'<b>{idx:02d}</b>', self.estilos['texto_card']),
+                    Paragraph(f'<b>{codigo_ing}</b>', self.estilos['texto_card']),
                     Paragraph(nome_ing, self.estilos['texto_card']),
                     foto_insumo,
                     Paragraph(f'{qtd:.3f}', self.estilos['texto_card']),
@@ -1076,36 +1078,38 @@ class PDFService:
                     Paragraph(f'R$ {custo:.2f}', self.estilos['texto_card']),
                 ])
             
-            # Largura disponível para a tabela (descontando barra lateral e margens)
+            # Largura disponível para a tabela
             largura_tabela = doc.width - self.LARGURA_BARRA_LATERAL - 2*cm
             
             # Criar tabela de ingredientes
             tabela_ingredientes = Table(
                 dados_ingredientes,
                 colWidths=[
-                    0.8*cm,                           # Nº
-                    largura_tabela * 0.35,           # INGREDIENTE
+                    2*cm,                             # CÓDIGO
+                    largura_tabela * 0.32,           # INGREDIENTE
                     2*cm,                             # FOTO
-                    largura_tabela * 0.20,           # QUANTIDADE
+                    largura_tabela * 0.18,           # QUANTIDADE
                     largura_tabela * 0.15,           # UNIDADE
                     largura_tabela * 0.20,           # CUSTO
                 ],
                 style=[
-                    # Cabeçalho com fundo cinza claro
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), self.COR_TEXTO_ESCURO),
+                    # Cabeçalho rosa
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ec4899')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
                     
                     # Linhas alternadas
                     ('ROWBACKGROUNDS', (0, 1), (-1, -1), 
-                     [colors.white, colors.HexColor('#fafafa')]),
+                     [colors.white, colors.HexColor('#fef2f2')]),
                     
-                    # Bordas suaves
-                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
-                    ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#d1d5db')),
+                    # Bordas neon brancas arredondadas
+                    ('GRID', (0, 0), (-1, -1), 1.5, colors.white),
+                    ('BOX', (0, 0), (-1, -1), 2, colors.white),
+                    ('LINEBELOW', (0, 0), (-1, 0), 2, colors.white),
+                    ('ROUNDEDCORNERS', [10, 10, 10, 10]),
                     
                     # Alinhamento
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # Nº
+                    ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # CÓDIGO
                     ('ALIGN', (2, 0), (2, -1), 'CENTER'),  # FOTO
                     ('ALIGN', (3, 0), (3, -1), 'RIGHT'),   # QUANTIDADE
                     ('ALIGN', (4, 0), (4, -1), 'CENTER'),  # UNIDADE
@@ -1219,7 +1223,7 @@ class PDFService:
             largura_disponivel = doc.width - self.LARGURA_BARRA_LATERAL - 2*cm
             largura_card = (largura_disponivel - 0.5*cm) / 2
             
-            tabela_valores = Table(
+             tabela_valores = Table(
                 [
                     [card_cmv_total, card_cmv_unit],
                     [card_margem, card_preco]
@@ -1230,9 +1234,10 @@ class PDFService:
                     # Fundo cinza muito claro
                     ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fafafa')),
                     
-                    # Bordas suaves entre células
-                    ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e5e7eb')),
-                    ('BOX', (0, 0), (-1, -1), 1.5, colors.HexColor('#d1d5db')),
+                    # Bordas neon brancas arredondadas
+                    ('GRID', (0, 0), (-1, -1), 2, colors.white),
+                    ('BOX', (0, 0), (-1, -1), 3, colors.white),
+                    ('ROUNDEDCORNERS', [10, 10, 10, 10]),
                     
                     # Alinhamento
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -1265,7 +1270,8 @@ class PDFService:
                     colWidths=[largura_disponivel],
                     style=[
                         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f0fdf4')),
-                        ('BOX', (0, 0), (-1, -1), 2, self.COR_VERDE_BARRA),
+                        ('BOX', (0, 0), (-1, -1), 3, colors.white),
+                        ('ROUNDEDCORNERS', [10, 10, 10, 10]),
                         ('LEFTPADDING', (0, 0), (-1, -1), 15),
                         ('RIGHTPADDING', (0, 0), (-1, -1), 15),
                         ('TOPPADDING', (0, 0), (-1, -1), 12),
@@ -1322,6 +1328,8 @@ class PDFService:
                 ('RIGHTPADDING', (0, 0), (-1, -1), 10),
                 ('TOPPADDING', (0, 0), (-1, -1), 8),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('BOX', (0, 0), (-1, -1), 2, colors.white),
+                ('ROUNDEDCORNERS', [10, 10, 10, 10]),
             ]
         )
         elementos.append(tabela_rodape)
@@ -1338,6 +1346,288 @@ class PDFService:
         )
         
         print(f"PDF gerado com sucesso: {output_path}")
+        return output_path
+
+# ============================================================================
+    # METODO: GERAR PDF SIMPLIFICADO PARA COZINHA
+    # ============================================================================
+    
+    def gerar_pdf_cozinha(self, receita_data: Dict[str, Any], output_path: str) -> str:
+        """
+        Gera PDF simplificado para uso na cozinha.
+        
+        Versao focada em preparo, sem informacoes financeiras.
+        Layout limpo e facil leitura a distancia.
+        
+        Parametros:
+            receita_data: Dicionario com dados da receita
+            output_path: Caminho completo onde o PDF sera salvo
+            
+        Retorna:
+            str: Caminho do arquivo PDF gerado
+        """
+        print(f"Gerando PDF de COZINHA: {receita_data.get('nome', 'Sem nome')}")
+        
+        # Configuracao do documento
+        doc = SimpleDocTemplate(
+            output_path,
+            pagesize=A4,
+            rightMargin=self.MARGEM,
+            leftMargin=self.MARGEM,
+            topMargin=self.MARGEM,
+            bottomMargin=self.MARGEM,
+            title=f"Ficha Tecnica - {receita_data.get('codigo', 'SEM-CODIGO')}"
+        )
+        
+        elementos = []
+        
+        # Espacamento inicial reduzido
+        elementos.append(Spacer(1, 0.3*cm))
+        
+        # Titulo principal - FICHA TECNICA DE COZINHA (menor)
+        titulo = Paragraph(
+            '<para alignment="center">'
+            '<font size="18" color="white"><b>FICHA TÉCNICA DE COZINHA</b></font>'
+            '</para>',
+            self.estilos['titulo_principal']
+        )
+        elementos.append(titulo)
+        elementos.append(Spacer(1, 0.3*cm))
+        
+        # Nome da receita - destaque (menor)
+        nome_receita = receita_data.get('nome', 'Sem nome').upper()
+        nome_paragraph = Paragraph(
+            f'<para alignment="center">'
+            f'<font size="16" color="#22c55e"><b>{nome_receita}</b></font>'
+            f'</para>',
+            self.estilos['subtitulo']
+        )
+        elementos.append(nome_paragraph)
+        elementos.append(Spacer(1, 0.4*cm))
+        
+        # LINHA 1: Foto da receita AO LADO das informacoes
+        codigo = receita_data.get('codigo', 'SEM-CODIGO')
+        rendimento = receita_data.get('rendimento', 0)
+        tempo = receita_data.get('tempo_preparo', 0)
+        responsavel = receita_data.get('responsavel', 'Nao informado')
+        
+        # Foto da receita com bordas arredondadas
+        foto_receita_table = Table(
+            [[self._criar_placeholder_foto(
+                largura=7*cm,
+                altura=5*cm,
+                texto="FOTO DA RECEITA"
+            )]],
+            colWidths=[7*cm],
+            style=[
+                ('BOX', (0, 0), (-1, -1), 2, colors.white),
+                ('ROUNDEDCORNERS', [10, 10, 10, 10]),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0)
+            ]
+        )
+        
+        # Tabela de informacoes
+        info_data = [
+            [
+                Paragraph('<b>Código:</b>', self.estilos['texto_card']),
+                Paragraph(codigo, self.estilos['texto_card'])
+            ],
+            [
+                Paragraph('<b>Rendimento:</b>', self.estilos['texto_card']),
+                Paragraph(f"{rendimento} porções", self.estilos['texto_card'])
+            ],
+            [
+                Paragraph('<b>Tempo:</b>', self.estilos['texto_card']),
+                Paragraph(f"{tempo} min", self.estilos['texto_card'])
+            ],
+            [
+                Paragraph('<b>Responsável:</b>', self.estilos['texto_card']),
+                Paragraph(responsavel, self.estilos['texto_card'])
+            ]
+        ]
+        
+        info_table = Table(info_data, colWidths=[3*cm, 6.5*cm])
+        info_table.setStyle(TableStyle([
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1f2937')),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f9fafb')),
+            ('BOX', (0, 0), (-1, -1), 2, colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.white),
+            ('ROUNDEDCORNERS', [10, 10, 10, 10])
+        ]))
+        
+        # Layout: Foto AO LADO da tabela de informacoes
+        layout_topo = Table(
+            [[foto_receita_table, info_table]],
+            colWidths=[7.5*cm, 10*cm],
+            style=[
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0)
+            ]
+        )
+        elementos.append(layout_topo)
+        elementos.append(Spacer(1, 0.5*cm))
+        
+        # LINHA 2: Ingredientes (largura total, abaixo de foto+info)
+        ingredientes_titulo = Paragraph(
+            '<para alignment="center">'
+            '<font size="12" color="#ec4899"><b>INGREDIENTES</b></font>'
+            '</para>',
+            self.estilos['subtitulo']
+        )
+        elementos.append(ingredientes_titulo)
+        elementos.append(Spacer(1, 0.3*cm))
+        
+        # Tabela de ingredientes (largura total)
+        ingredientes = receita_data.get('ingredientes', [])
+        
+        if ingredientes:
+            table_data = [[
+                Paragraph('<b>CÓDIGO</b>', self.estilos['texto_card']),
+                Paragraph('<b>INGREDIENTE</b>', self.estilos['texto_card']),
+                Paragraph('<b>FOTO</b>', self.estilos['texto_card']),
+                Paragraph('<b>QUANTIDADE</b>', self.estilos['texto_card']),
+                Paragraph('<b>UNIDADE</b>', self.estilos['texto_card'])
+            ]]
+            
+            for idx, ing in enumerate(ingredientes, 1):
+                codigo_insumo = ing.get('codigo', f'{idx:02d}')
+                
+                # Foto compacta do ingrediente
+                foto_ing = self._criar_placeholder_foto(
+                    largura=1.5*cm,
+                    altura=1.2*cm,
+                    texto="📷"
+                )
+                
+                table_data.append([
+                    Paragraph(f'<b>{codigo_insumo}</b>', self.estilos['texto_card']),
+                    Paragraph(ing.get('nome', 'Sem nome'), self.estilos['texto_card']),
+                    foto_ing,
+                    Paragraph(f"{ing.get('quantidade', 0):.2f}".replace('.', ','), self.estilos['texto_card']),
+                    Paragraph(ing.get('unidade', 'un'), self.estilos['texto_card'])
+                ])
+            
+            # Tabela mais larga agora (usa toda a largura disponivel)
+            table = Table(table_data, colWidths=[2*cm, 8.5*cm, 2*cm, 2.5*cm, 2.5*cm])
+            
+            table.setStyle(TableStyle([
+                # Cabecalho
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#ec4899')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('TOPPADDING', (0, 0), (-1, 0), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                
+                # Corpo
+                ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+                ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+                ('ALIGN', (2, 1), (2, -1), 'CENTER'),
+                ('ALIGN', (3, 1), (-1, -1), 'CENTER'),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 1), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+                
+                # Linhas alternadas
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#fef2f2')]),
+                
+                # Bordas neon brancas arredondadas
+                ('GRID', (0, 0), (-1, -1), 1.5, colors.white),
+                ('BOX', (0, 0), (-1, -1), 2, colors.white),
+                ('LINEBELOW', (0, 0), (-1, 0), 2, colors.white),
+                ('ROUNDEDCORNERS', [10, 10, 10, 10])
+            ]))
+            
+            elementos.append(table)
+        else:
+            msg = Paragraph(
+                '<para alignment="center"><i>Nenhum ingrediente cadastrado</i></para>',
+                self.estilos['texto_card']
+            )
+            elementos.append(msg)
+        
+        elementos.append(Spacer(1, 0.5*cm))
+        
+        # Secao MODO DE PREPARO na parte inferior
+        descricao = receita_data.get('descricao', '').strip()
+        
+        preparo_titulo = Paragraph(
+            '<para alignment="center">'
+            '<font size="12" color="#22c55e"><b>MODO DE PREPARO</b></font>'
+            '</para>',
+            self.estilos['subtitulo']
+        )
+        elementos.append(preparo_titulo)
+        elementos.append(Spacer(1, 0.3*cm))
+        
+        if descricao:
+            descricao_texto = Paragraph(
+                f'<para align="left"><font size="9">{descricao}</font></para>',
+                self.estilos['texto_card']
+            )
+        else:
+            descricao_texto = Paragraph(
+                '<para align="center">'
+                '<font size="9" color="#9ca3af"><i>(Espaço para anotações do modo de preparo)</i></font>'
+                '</para>',
+                self.estilos['texto_card']
+            )
+        
+        card_preparo = Table(
+            [[descricao_texto]],
+            colWidths=[17*cm],
+            rowHeights=[3.5*cm],
+            style=[
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f9fafb')),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('TOPPADDING', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                ('BOX', (0, 0), (-1, -1), 2, colors.white),
+                ('ROUNDEDCORNERS', [10, 10, 10, 10])
+            ]
+        )
+        elementos.append(card_preparo)
+        elementos.append(Spacer(1, 0.4*cm))
+        
+        # Rodape compacto
+        rodape_text = f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')} | Sistema IOGAR Food Cost"
+        
+        estilo_rodape = ParagraphStyle(
+            'rodape_cozinha',
+            parent=self.estilos['texto_card'],
+            fontSize=8,
+            textColor=colors.HexColor('#9ca3af'),
+            alignment=TA_CENTER
+        )
+        
+        rodape = Paragraph(
+            f'<para alignment="center">{rodape_text}</para>',
+            estilo_rodape
+        )
+        elementos.append(rodape)
+        
+        # Construir PDF com fundo escuro
+        doc.build(
+            elementos,
+            onFirstPage=self._desenhar_fundo_com_marca_dagua,
+            onLaterPages=self._desenhar_fundo_com_marca_dagua
+        )
+        
+        print(f"PDF de COZINHA gerado com sucesso: {output_path}")
         return output_path
 
 

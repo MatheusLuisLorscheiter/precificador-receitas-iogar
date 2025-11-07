@@ -12,6 +12,8 @@ import {
   Download, Share2, Eye, Edit3, Copy,
   ChefHat, Scale, Percent, Calendar, Hash
 } from 'lucide-react';
+// Importar modal de selecao de relatorio
+import ModalSelecaoRelatorio from './ModalSelecaoRelatorio';
 
 // ===================================================================================================
 // INTERFACES E TIPOS
@@ -133,6 +135,9 @@ const calcularCustoPorPorcao = () => {
   // Estados para controle do popup
   const [activeTab, setActiveTab] = useState<'geral' | 'insumos' | 'custos' | 'analise'>('geral');
   const [loading, setLoading] = useState(false);
+
+  // Estado para controlar modal de selecao de relatorio
+  const [showModalRelatorio, setShowModalRelatorio] = useState(false);
 
   // Resetar aba quando o popup abre
   useEffect(() => {
@@ -1051,7 +1056,7 @@ const calcularCustoPorPorcao = () => {
               
               {/* Ações do Header */}
               <button
-                onClick={handleExport}
+                onClick={() => setShowModalRelatorio(true)}
                 className="bg-white bg-opacity-20 hover:bg-opacity-30 p-2 rounded-lg transition-all"
                 title="Exportar Relatório"
               >
@@ -1238,6 +1243,13 @@ const calcularCustoPorPorcao = () => {
         </div>
       </div>
     </div>
+    {/* Modal de Selecao de Relatorio */}
+      <ModalSelecaoRelatorio
+        isVisible={showModalRelatorio}
+        receitaId={receita.id}
+        receitaNome={receita.nome}
+        onClose={() => setShowModalRelatorio(false)}
+      />
   </div>
 );
 };

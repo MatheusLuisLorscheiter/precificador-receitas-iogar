@@ -400,7 +400,7 @@ const ClassificadorIA: React.FC = () => {
   // Funções de API
   const buscarStatus = async () => {
     try {
-      const response = await fetch('/api/v1/ia/status');
+      const response = await fetch(`${API_BASE_URL}/api/v1/ia/status`);
       if (response.ok) {
         const data = await response.json();
         setStatus(data);
