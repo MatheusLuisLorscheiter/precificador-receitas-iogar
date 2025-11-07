@@ -413,10 +413,17 @@ def search_insumos(db: Session, termo_busca: str, limit: int = 20) -> List[Insum
         
     Returns:
         List[Insumo]: Lista de insumos encontrados (com dados de comparação)
+        
+    IMPORTANTE: Busca apenas insumos com restaurante_id válido.
     """
     # Normalizar termo de busca com wildcards para filtro ILIKE
     termo = f"%{termo_busca.strip()}%"
+    
+    # ============================================================================
+    # Filtro base: apenas insumos com restaurante_id válido
+    # ============================================================================
     insumos = db.query(Insumo).filter(
+        Insumo.restaurante_id.isnot(None),
         or_(
             Insumo.nome.ilike(termo),
             Insumo.codigo.ilike(termo),
