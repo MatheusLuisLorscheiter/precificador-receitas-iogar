@@ -12,7 +12,18 @@ import requests
 import sys
 from typing import List, Dict
 
-BASE_URL = "http://localhost:8000"
+import os
+
+# Detecta automaticamente o ambiente ou permite override via variável de ambiente
+BASE_URL = os.getenv("API_URL", "http://localhost:8000")
+
+# Se estiver rodando no Render Shell, use a URL interna do serviço
+if os.getenv("RENDER"):
+    # Quando dentro do Render, pode usar localhost porque o shell roda no mesmo container
+    BASE_URL = "http://localhost:10000"
+    print(f"🌐 Detectado ambiente Render, usando: {BASE_URL}")
+else:
+    print(f"🌐 Usando API: {BASE_URL}")
 
 def gerar_taxonomias_completas() -> List[Dict]:
     """
