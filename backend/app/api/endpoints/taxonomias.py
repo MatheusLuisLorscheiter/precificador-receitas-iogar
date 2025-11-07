@@ -593,3 +593,31 @@ async def buscar_por_hierarquia(
             status_code=500,
             detail=f"Erro interno: {str(e)}"
         )
+    
+# @router.post("/batch", response_model=Dict, summary="Criar múltiplas taxonomias")
+# async def criar_taxonomias_batch(
+#     taxonomias: List[TaxonomiaCreate],
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Cria múltiplas taxonomias de uma vez (batch insert)
+#     Muito mais rápido que criar uma por vez
+#     """
+#     criadas = []
+#     duplicadas = 0
+    
+#     for taxonomia_data in taxonomias:
+#         try:
+#             taxonomia = crud_taxonomia.create_taxonomia(db, taxonomia_data)
+#             criadas.append(taxonomia)
+#         except ValueError:
+#             duplicadas += 1
+    
+#     return {
+#         "success": True,
+#         "data": {
+#             "criadas": [TaxonomiaResponse.from_orm(t).dict() for t in criadas],
+#             "total_criadas": len(criadas),
+#             "duplicadas": duplicadas
+#         }
+#     }
