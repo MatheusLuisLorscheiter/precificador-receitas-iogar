@@ -3831,9 +3831,9 @@ const fetchInsumos = async () => {
           codigo: editingReceita?.codigo || '',
           nome: editingReceita?.nome || '',
           sugestao_valor: editingReceita?.sugestao_valor || '',
-          fator: parseFloat(editingReceita?.fator || 1),
+          //fator: parseFloat(editingReceita?.fator || 1),
           // Unidade padrão para receitas é 'un' (unidade/porção)
-          unidade: editingReceita?.unidade || 'un',
+          unidade: editingReceita?.unidade || '',
           quantidade_porcao: parseInt(editingReceita?.porcoes || editingReceita?.rendimento_porcoes || editingReceita?.quantidade_porcao || 1),
           preco_compra: parseFloat(editingReceita?.preco_compra || 0),
       
@@ -3852,7 +3852,7 @@ const fetchInsumos = async () => {
           // Campos existentes mantidos para compatibilidade
           categoria: editingReceita?.grupo || editingReceita?.categoria || '',
           descricao: editingReceita?.descricao || '',
-          tempo_preparo: editingReceita?.tempo_preparo || editingReceita?.tempo_preparo_minutos || 30
+          tempo_preparo: editingReceita?.tempo_preparo || editingReceita?.tempo_preparo_minutos || 0
         };
       });
 
@@ -3886,8 +3886,8 @@ const fetchInsumos = async () => {
           setFormData({
             nome: editingReceita.nome || '',
             sugestao_valor: editingReceita.sugestao_valor || '',
-            fator: parseFloat(editingReceita.fator || 1),
-            unidade: editingReceita.unidade || 'un',  // ← ATUALIZAR UNIDADE
+            //fator: parseFloat(editingReceita.fator || 1),
+            unidade: editingReceita.unidade || '', 
             quantidade_porcao: parseInt(editingReceita.porcoes || editingReceita.rendimento_porcoes || editingReceita.quantidade_porcao || 1),
             preco_compra: parseFloat(editingReceita.preco_compra || 0),
             eh_processado: editingReceita.eh_processado || false,
@@ -3895,7 +3895,7 @@ const fetchInsumos = async () => {
             restaurante_id: selectedRestaurante?.id || editingReceita.restaurante_id || null,
             categoria: editingReceita.grupo || editingReceita.categoria || '',
             descricao: editingReceita.descricao || '',
-            tempo_preparo: editingReceita.tempo_preparo || editingReceita.tempo_preparo_minutos || 30
+            tempo_preparo: editingReceita.tempo_preparo || editingReceita.tempo_preparo_minutos || 0
           });
         }
       }, [editingReceita, selectedRestaurante]);
@@ -4093,6 +4093,23 @@ const fetchInsumos = async () => {
           alert(`${insumo.nome} já foi adicionado à receita.`);
           return;
         }
+
+        // ============================================================================
+        // CRIAR OBJETO COM DETALHES COMPLETOS DO INSUMO
+        // ============================================================================
+        const novoInsumo = {
+          insumo_id: insumoIdReal,
+          quantidade: 1,
+          unidade_medida: insumo.unidade || 'un',
+          // Campo _detalhes para exibir o nome no select
+          _detalhes: {
+            codigo: insumo.codigo || null,
+            nome: insumo.nome,
+            unidade: insumo.unidade || 'un',
+            preco_compra_real: insumo.preco_compra_real || 0,
+            tipo: insumo.tipo || 'insumo_normal'
+          }
+        };
 
         console.log('✅ Adicionando ao array:', novoInsumo);
         setReceitaInsumos(prev => [...prev, novoInsumo]);
@@ -4359,11 +4376,10 @@ const fetchInsumos = async () => {
           unidade: String(formData.unidade || 'un').trim(),
           quantidade: parseInt(formData.quantidade_porcao) || 1,
           fator: parseFloat(formData.fator) || 1.0,
-          
           // Campos numéricos com valores padrão seguros
           rendimento_porcoes: parseFloat(formData.quantidade_porcao) || parseFloat(formData.porcoes) || 1,
-          tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 30,
-          tempo_preparo: parseInt(formData.tempo_preparo) || 30,
+          tempo_preparo_minutos: parseInt(formData.tempo_preparo) || 0,
+          tempo_preparo: parseInt(formData.tempo_preparo) || 0,
           
           // Status e restaurante
           ativo: true,
@@ -4683,42 +4699,38 @@ const fetchInsumos = async () => {
                       />
                     </div>
 
-                    {/* Tempo de Preparo - NOVO CAMPO */}
+                    {/* Tempo de Preparo - CAMPO OPCIONAL */}
                     <div className="space-y-2">
                       <label className="flex items-center text-sm font-medium text-gray-900">
                         <span>Tempo (min)</span>
-                        <span className="text-red-500 ml-1">*</span>
                       </label>
                       <input
                         type="number"
-                        min="1"
-                        value={formData.tempo_preparo || 30}
-                        onChange={(e) => handleChange('tempo_preparo', parseInt(e.target.value) || 30)}
+                        min="0"
+                        value={formData.tempo_preparo || 0}
+                        onChange={(e) => handleChange('tempo_preparo', parseInt(e.target.value) || 0)}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                        placeholder="30"
+                        placeholder="0"
                       />
                     </div>
 
-                    {/* Campo Responsavel */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Responsável pela Receita
+                    {/* Campo Responsável - ALINHADO COM PADRÃO DOS OUTROS CAMPOS */}
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm font-medium text-gray-900">
+                        <span>Responsável</span>
                         <span className="text-gray-500 text-xs ml-1">(Opcional)</span>
                       </label>
                       <input
                         type="text"
                         value={formData.responsavel || ''}
                         onChange={(e) => setFormData({ ...formData, responsavel: e.target.value })}
-                        placeholder="Nome do cozinheiro ou chef"
+                        placeholder="Nome do cozinheiro/chef"
                         maxLength={200}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Digite o nome do cozinheiro ou pessoa responsável por esta receita
-                      </p>
                     </div>
 
-                    {/* Fator */}
+                    {/* Fator 
                     <div className="space-y-2">
                       <label className="flex items-center text-sm font-medium text-gray-900">
                         <span>Fator</span>
@@ -4748,6 +4760,7 @@ const fetchInsumos = async () => {
                         </p>
                       )}
                     </div>
+                    */}
 
                     {/* Categoria */}
                     <div className="space-y-2">
@@ -4776,9 +4789,9 @@ const fetchInsumos = async () => {
                             handleChange('processada', isChecked);
                             
                             // Se marcar, força fator 1
-                            if (isChecked) {
-                              handleChange('fator', 1.0);
-                            }
+                            // if (isChecked) {
+                            //   handleChange('fator', 1.0);
+                            // }
                           }}
                           className="w-5 h-5 text-green-600 bg-white border-2 border-gray-300 rounded focus:ring-green-500 focus:ring-2 transition-all duration-200"
                         />
