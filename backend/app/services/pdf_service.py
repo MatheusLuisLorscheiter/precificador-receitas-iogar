@@ -265,17 +265,14 @@ class PDFService:
     
     def _criar_card_com_barra_lateral(self, conteudo, largura, altura_minima, cor_barra, texto_barra):
         """
-        Cria um card estilo ficha de treino:
-        - Fundo branco com bordas arredondadas
-        - Barra lateral colorida com texto vertical
-        - Sombra suave
+        Cria um card estilo ficha de treino com header colorido no topo.
         
         Parametros:
             conteudo: Lista de Flowables para o conteudo do card
             largura: Largura total do card
             altura_minima: Altura minima do card
-            cor_barra: Cor da barra lateral (HexColor)
-            texto_barra: Texto a exibir verticalmente na barra
+            cor_barra: Cor do header (HexColor)
+            texto_barra: Texto a exibir no header
             
         Retorna:
             Lista de Flowables representando o card completo
@@ -283,54 +280,48 @@ class PDFService:
         from reportlab.platypus import KeepTogether
         from reportlab.lib.units import mm
         
-        # Largura da area de conteudo (descontando a barra lateral)
-        largura_conteudo = largura - self.LARGURA_BARRA_LATERAL - 0.5*cm
-        
-        # Criar tabela principal do card (barra + conteudo)
-        # Barra lateral
-        texto_vertical = Paragraph(
+        # Criar header colorido com texto centralizado
+        header_texto = Paragraph(
             f'<para alignment="center"><b>{texto_barra.upper()}</b></para>',
             ParagraphStyle(
-                'TextoVertical',
-                fontSize=11,
+                'TextoHeader',
+                fontSize=12,
                 textColor=self.COR_BRANCO,
                 fontName='Helvetica-Bold',
                 alignment=TA_CENTER
             )
         )
         
-        # Tabela com barra lateral + area de conteudo
+        # Tabela com header (topo) + conteudo (corpo)
         card_completo = Table(
-            [[texto_vertical, conteudo]],
-            colWidths=[self.LARGURA_BARRA_LATERAL, largura_conteudo],
+            [[header_texto], [conteudo]],
+            colWidths=[largura],
             style=[
-                # Fundo branco para area de conteudo
-                ('BACKGROUND', (1, 0), (1, 0), self.COR_CARD_FUNDO),
-                
-                # Barra lateral colorida
+                # Header colorido no topo
                 ('BACKGROUND', (0, 0), (0, 0), cor_barra),
+                ('TEXTCOLOR', (0, 0), (0, 0), self.COR_BRANCO),
+                ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                
+                # Corpo branco
+                ('BACKGROUND', (0, 1), (0, 1), self.COR_CARD_FUNDO),
+                ('VALIGN', (0, 1), (0, 1), 'TOP'),
                 
                 # Bordas neon brancas arredondadas
                 ('BOX', (0, 0), (-1, -1), 3, colors.white),
                 ('ROUNDEDCORNERS', [10, 10, 10, 10]),
                 
-                # Sombra (simular com borda mais escura levemente deslocada)
-                # ReportLab não tem sombra nativa, então usamos borda cinza
+                # Padding do header
+                ('LEFTPADDING', (0, 0), (0, 0), 15),
+                ('RIGHTPADDING', (0, 0), (0, 0), 15),
+                ('TOPPADDING', (0, 0), (0, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (0, 0), 10),
                 
-                # Alinhamento vertical
-                ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
-                ('VALIGN', (1, 0), (1, 0), 'TOP'),
-                
-                # Padding
-                ('LEFTPADDING', (0, 0), (0, 0), 0),
-                ('RIGHTPADDING', (0, 0), (0, 0), 0),
-                ('TOPPADDING', (0, 0), (0, 0), 0),
-                ('BOTTOMPADDING', (0, 0), (0, 0), 0),
-                
-                ('LEFTPADDING', (1, 0), (1, 0), 15),
-                ('RIGHTPADDING', (1, 0), (1, 0), 15),
-                ('TOPPADDING', (1, 0), (1, 0), 15),
-                ('BOTTOMPADDING', (1, 0), (1, 0), 15),
+                # Padding do conteudo (mais espaçamento)
+                ('LEFTPADDING', (0, 1), (0, 1), 30),
+                ('RIGHTPADDING', (0, 1), (0, 1), 30),
+                ('TOPPADDING', (0, 1), (0, 1), 25),
+                ('BOTTOMPADDING', (0, 1), (0, 1), 25),
             ]
         )
         
@@ -934,18 +925,18 @@ class PDFService:
         # SECAO 1: CABECALHO - Título principal
         # ===================================================================
         
-        # Como o fundo já tem gradiente escuro, apenas adicionar espaço inicial
-        elementos.append(Spacer(1, 1*cm))
+        # Como o fundo já tem gradiente escuro, apenas adicionar espaço inicial (reduzido)
+        elementos.append(Spacer(1, 0.5*cm))
         
-        # Titulo "RELATÓRIO COMPLETO" centralizado em branco sobre o fundo escuro
+        # Titulo "RELATÓRIO COMPLETO" centralizado em branco sobre o fundo escuro (menor)
         titulo_principal = Paragraph(
             '<para alignment="center">'
-            '<font size="28" color="white"><b>RELATÓRIO COMPLETO</b></font>'
+            '<font size="22" color="white"><b>RELATÓRIO COMPLETO</b></font>'
             '</para>',
             self.estilos['titulo_principal']
         )
         elementos.append(titulo_principal)
-        elementos.append(Spacer(1, 1*cm))
+        elementos.append(Spacer(1, 0.6*cm))
         
         # ===================================================================
         # SECAO 2: NOME DA RECEITA E CODIGO (Card com barra lateral)
@@ -978,13 +969,24 @@ class PDFService:
         ))
         conteudo_nome.append(Spacer(1, 0.5*cm))
         
-        # Espaço para foto da receita
+        # Espaço para foto da receita (centralizada e menor)
         foto_receita = self._criar_placeholder_foto(
-            largura=doc.width - self.LARGURA_BARRA_LATERAL - 2*cm,
-            altura=6*cm,
+            largura=doc.width - 6*cm,
+            altura=4.5*cm,
             texto="FOTO DA RECEITA"
         )
-        conteudo_nome.append(foto_receita)
+        
+        # Tabela para centralizar a foto
+        foto_centralizada = Table(
+            [[foto_receita]],
+            colWidths=[doc.width - 6*cm],
+            style=[
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('LEFTPADDING', (0, 0), (0, 0), 0),
+                ('RIGHTPADDING', (0, 0), (0, 0), 0),
+            ]
+        )
+        conteudo_nome.append(foto_centralizada)
         conteudo_nome.append(Spacer(1, 0.5*cm))
         
         # Informações em lista (sem tags bullet, usando caractere direto)
@@ -1002,7 +1004,7 @@ class PDFService:
         # Criar tabela para organizar o conteúdo interno
         tabela_conteudo_nome = Table(
             [[item] for item in conteudo_nome],
-            colWidths=[doc.width - self.LARGURA_BARRA_LATERAL - 1*cm],
+            colWidths=[doc.width - 3*cm],
             style=[
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 0),
@@ -1021,7 +1023,7 @@ class PDFService:
         )
         
         elementos.append(card_nome)
-        elementos.append(Spacer(1, self.ESPACAMENTO_SECAO))
+        elementos.append(Spacer(1, 0.4*cm))
         
         # ===================================================================
         # QUEBRA DE PÁGINA - Ingredientes sempre em nova página
@@ -1078,8 +1080,8 @@ class PDFService:
                     Paragraph(f'R$ {custo:.2f}', self.estilos['texto_card']),
                 ])
             
-            # Largura disponível para a tabela
-            largura_tabela = doc.width - self.LARGURA_BARRA_LATERAL - 2*cm
+            # Largura disponível para a tabela (descontando margens)
+            largura_tabela = doc.width - 4*cm
             
             # Criar tabela de ingredientes
             tabela_ingredientes = Table(
@@ -1142,7 +1144,7 @@ class PDFService:
         # Organizar conteúdo em tabela
         tabela_conteudo_ing = Table(
             [[item] for item in conteudo_ingredientes],
-            colWidths=[doc.width - self.LARGURA_BARRA_LATERAL - 1*cm],
+            colWidths=[doc.width - 3*cm],
             style=[
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 0),
@@ -1161,7 +1163,7 @@ class PDFService:
         )
         
         elementos.append(card_ingredientes)
-        elementos.append(Spacer(1, self.ESPACAMENTO_SECAO * 1.5))
+        elementos.append(Spacer(1, 0.5*cm))
 
         # ===================================================================
         # SECAO 6: PRECIFICACAO (Card com barra lateral rosa)
@@ -1220,36 +1222,36 @@ class PDFService:
             )
             
             # Tabela 2x2 dos cards de valores
-            largura_disponivel = doc.width - self.LARGURA_BARRA_LATERAL - 2*cm
+            largura_disponivel = doc.width - 6*cm
             largura_card = (largura_disponivel - 0.5*cm) / 2
             
-             tabela_valores = Table(
+            tabela_valores = Table(
                 [
                     [card_cmv_total, card_cmv_unit],
                     [card_margem, card_preco]
                 ],
                 colWidths=[largura_card, largura_card],
-                rowHeights=[3*cm, 3*cm],
-                style=[
-                    # Fundo cinza muito claro
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fafafa')),
-                    
-                    # Bordas neon brancas arredondadas
-                    ('GRID', (0, 0), (-1, -1), 2, colors.white),
-                    ('BOX', (0, 0), (-1, -1), 3, colors.white),
-                    ('ROUNDEDCORNERS', [10, 10, 10, 10]),
-                    
-                    # Alinhamento
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    
-                    # Padding generoso
-                    ('LEFTPADDING', (0, 0), (-1, -1), 20),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 20),
-                    ('TOPPADDING', (0, 0), (-1, -1), 20),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
-                ]
-            )
+                rowHeights=[2.5*cm, 2.5*cm],
+            style=[
+                # Fundo cinza muito claro
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fafafa')),
+                
+                # Bordas neon brancas arredondadas
+                ('GRID', (0, 0), (-1, -1), 2, colors.white),
+                ('BOX', (0, 0), (-1, -1), 3, colors.white),
+                ('ROUNDEDCORNERS', [10, 10, 10, 10]),
+                
+                # Alinhamento
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                
+                # Padding generoso
+                ('LEFTPADDING', (0, 0), (-1, -1), 20),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 20),
+                ('TOPPADDING', (0, 0), (-1, -1), 20),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+            ]
+        )
             
             conteudo_precificacao.append(tabela_valores)
             
@@ -1280,15 +1282,15 @@ class PDFService:
                 )
                 conteudo_precificacao.append(tabela_preco_atual)
             
-            # Organizar conteúdo em tabela
+            # Organizar conteúdo em tabela (centralizado)
             tabela_conteudo_prec = Table(
                 [[item] for item in conteudo_precificacao],
-                colWidths=[doc.width - self.LARGURA_BARRA_LATERAL - 1*cm],
+                colWidths=[doc.width - 4*cm],
                 style=[
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                     ('LEFTPADDING', (0, 0), (-1, -1), 0),
                     ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                    ('TOPPADDING', (0, 0), (-1, -1), 0),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
                 ]
             )
             
@@ -1307,7 +1309,7 @@ class PDFService:
         # SECAO 7: RODAPE
         # ===================================================================
         
-        elementos.append(Spacer(1, 1.5 * cm))
+        elementos.append(Spacer(1, 0.8*cm))
         
         data_geracao = datetime.now().strftime('%d/%m/%Y às %H:%M')
         rodape_texto = Paragraph(
