@@ -16,6 +16,7 @@
  */
 
 import React, { useState, useMemo, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { 
   Search, X, Filter, MoreVertical, Edit3, Copy, Trash2, Eye, 
   ChefHat, TrendingUp, DollarSign, Clock, Users, 
@@ -74,6 +75,46 @@ interface SuperGridReceitasProps {
 }
 
 // ===================================================================================================
+// COMPONENTE AUXILIAR - DROPDOWN COM PORTAL
+// ===================================================================================================
+// Renderiza o dropdown fora da hierarquia do DOM para evitar problemas com overflow
+const DropdownPortal: React.FC<{
+  isOpen: boolean;
+  position: { top?: number; bottom?: number; left: number; right?: number } | null;
+  onClose: () => void;
+  children: React.ReactNode;
+}> = ({ isOpen, position, onClose, children }) => {
+  if (!isOpen || !position) return null;
+
+  return ReactDOM.createPortal(
+    <>
+      {/* Overlay invisível para fechar ao clicar fora */}
+      <div 
+        className="fixed inset-0 z-[9998]" 
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }}
+      />
+      {/* Dropdown */}
+      <div 
+        className="fixed bg-white rounded-lg shadow-xl border border-gray-200 py-1 min-w-[150px] z-[9999]"
+        style={{
+          left: `${position.left}px`,
+          top: position.top ? `${position.top}px` : undefined,
+          bottom: position.bottom ? `${position.bottom}px` : undefined,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </>,
+    document.body
+  );
+};
+
+// ===================================================================================================
 // COMPONENTE PRINCIPAL - SUPER GRID DE RECEITAS
 // ===================================================================================================
 
@@ -91,7 +132,11 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
   console.log('RECEITAS:', receitas);
   
   
-  const [dropdownPosition, setDropdownPosition] = useState<{ top?: number; bottom?: number } | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ 
+    top?: number; 
+    bottom?: number; 
+    left: number;
+  } | null>(null);
   
   // Estados para controle do grid
   const [filtros, setFiltros] = useState<FiltroGrid>({
@@ -276,10 +321,21 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
                   const spaceBelow = window.innerHeight - rect.bottom;
                   const spaceAbove = rect.top;
                   
+                  // Calcular posição absoluta em relação à viewport
+                  const left = rect.right - 150; // 150px é a largura do dropdown
+                  
                   if (spaceBelow < 200 && spaceAbove > spaceBelow) {
-                    setDropdownPosition({ bottom: 40 });
+                    // Abrir para cima
+                    setDropdownPosition({ 
+                      bottom: window.innerHeight - rect.top + 5,
+                      left: left 
+                    });
                   } else {
-                    setDropdownPosition({ top: 40 });
+                    // Abrir para baixo
+                    setDropdownPosition({ 
+                      top: rect.bottom + 5,
+                      left: left 
+                    });
                   }
                 }
               }}
@@ -293,59 +349,57 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
               <MoreVertical className="w-4 h-4 text-gray-400" />
             </button>
             
-            {/* Dropdown de ações */}
-            {showDropdown === receita.id && dropdownPosition && (
-              <div 
-                className="absolute right-0 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[150px]"
-                style={dropdownPosition}
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewReceita?.(receita);
-                    setShowDropdown(null);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  <Eye className="w-4 h-4" />
-                  Visualizar
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEditReceita?.(receita);
-                    setShowDropdown(null);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  Editar
-                </button>
-                <button
+            {/* Dropdown de ações com Portal */}
+            <DropdownPortal
+              isOpen={showDropdown === receita.id}
+              position={dropdownPosition}
+              onClose={() => setShowDropdown(null)}
+            >
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  exportarReceitaPDF(receita.id);
+                  onViewReceita?.(receita);
                   setShowDropdown(null);
                 }}
                 className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
-                <FileText className="w-4 h-4 text-red-500" />
-                Exportar PDF
+                <Eye className="w-4 h-4" />
+                Visualizar
               </button>
-                <hr className="my-1" />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteReceita?.(receita);
-                    setShowDropdown(null);
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Excluir
-                </button>
-              </div>
-            )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditReceita?.(receita);
+                  setShowDropdown(null);
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <Edit3 className="w-4 h-4" />
+                Editar
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDuplicateReceita?.(receita);
+                  setShowDropdown(null);
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <Copy className="w-4 h-4" />
+                Duplicar
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteReceita?.(receita);
+                  setShowDropdown(null);
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir
+              </button>
+            </DropdownPortal>
           </div>
         </div>
         
@@ -519,16 +573,27 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
                 const spaceBelow = window.innerHeight - rect.bottom;
                 const spaceAbove = rect.top;
                 
+                // Calcular posição absoluta em relação à viewport
+                const left = rect.right - 150; // 150px é a largura do dropdown
+                
                 if (spaceBelow < 200 && spaceAbove > spaceBelow) {
-                  setDropdownPosition({ bottom: 40 });
+                  // Abrir para cima
+                  setDropdownPosition({ 
+                    bottom: window.innerHeight - rect.top + 5,
+                    left: left 
+                  });
                 } else {
-                  setDropdownPosition({ top: 40 });
+                  // Abrir para baixo
+                  setDropdownPosition({ 
+                    top: rect.bottom + 5,
+                    left: left 
+                  });
                 }
               }
             }}
             onClick={(e) => {
               e.stopPropagation();
-              setDropdownPosition(null); // Reset position
+              setDropdownPosition(null);
               setShowDropdown(showDropdown === receita.id ? null : receita.id);
             }}
             className="p-1 hover:bg-gray-100 rounded"
@@ -536,59 +601,57 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
             <MoreVertical className="w-4 h-4 text-gray-400" />
           </button>
           
-          {/* Dropdown de ações - mesmo do card */}
-          {showDropdown === receita.id && dropdownPosition && (
-            <div 
-              className="absolute right-0 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[150px]"
-              style={dropdownPosition}
+          {/* Dropdown de ações com Portal */}
+          <DropdownPortal
+            isOpen={showDropdown === receita.id}
+            position={dropdownPosition}
+            onClose={() => setShowDropdown(null)}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewReceita?.(receita);
+                setShowDropdown(null);
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewReceita?.(receita);
-                  setShowDropdown(null);
-                }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <Eye className="w-4 h-4" />
-                Visualizar
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEditReceita?.(receita);
-                  setShowDropdown(null);
-                }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <Edit3 className="w-4 h-4" />
-                Editar
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  exportarReceitaPDF(receita.id);
-                  setShowDropdown(null);
-                }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <FileText className="w-4 h-4 text-red-500" />
-                Exportar PDF
-              </button>
-              <hr className="my-1" />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteReceita?.(receita);
-                  setShowDropdown(null);
-                }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                Excluir
-              </button>
-            </div>
-          )}
+              <Eye className="w-4 h-4" />
+              Visualizar
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditReceita?.(receita);
+                setShowDropdown(null);
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <Edit3 className="w-4 h-4" />
+              Editar
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicateReceita?.(receita);
+                setShowDropdown(null);
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <Copy className="w-4 h-4" />
+              Duplicar
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteReceita?.(receita);
+                setShowDropdown(null);
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir
+            </button>
+          </DropdownPortal>
         </div>
       </td>
     </tr>
