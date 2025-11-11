@@ -13,11 +13,20 @@ import os
 # Adicionar o diretorio backend ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.database import engine, Base
 from sqlalchemy import text
 
+# Importar Base e engine do database
+from app.database import engine, Base
+
 # Importar todos os modelos para garantir que Base conheca todas as tabelas
-from app.models import *  # Importa todos os modelos registrados
+# IMPORTANTE: Importar DEPOIS do Base para evitar circular imports
+import app.models.fornecedor
+import app.models.fornecedor_insumo
+import app.models.insumo
+import app.models.taxonomia
+import app.models.receita
+import app.models.user
+import app.models.permission
 
 def init_database():
     """
