@@ -9,19 +9,36 @@ Autor: Will - Empresa: IOGAR
 */
 
 // ============================================================================
+// IMPORTAR CONFIGURAÇÃO CENTRALIZADA
+// ============================================================================
+import { API_BASE_URL } from './config';
+
+// ============================================================================
 // CONFIGURAÇÃO BASE DA API COM DETECÇÃO AUTOMÁTICA DE PORTA
 // ============================================================================
+// const API_CONFIG = {
+//   // Detecta automaticamente se está em produção ou desenvolvimento
+//   baseURL: (() => {
+//     // Se estiver rodando no Render (producao)
+//     if (window.location.hostname.includes('render.com') || 
+//         window.location.hostname.includes('food-cost-frontend')) {
+//       return 'https://food-cost-backend.onrender.com';
+//     }
+//     // Senao, tenta pegar da variavel de ambiente ou usa localhost
+//     return import.meta.env.VITE_API_URL || 'http://localhost:8000';
+//   })(),
+//   timeout: 10000,
+//   headers: {
+//     'Content-Type': 'application/json',
+//   }
+// };
+
+// ============================================================================
+// CONFIGURAÇÃO BASE DA API - USA CONFIG.TS CENTRALIZADO
+// ============================================================================
 const API_CONFIG = {
-  // Detecta automaticamente se está em produção ou desenvolvimento
-  baseURL: (() => {
-    // Se estiver rodando no Render (producao)
-    if (window.location.hostname.includes('render.com') || 
-        window.location.hostname.includes('food-cost-frontend')) {
-      return 'https://food-cost-backend.onrender.com';
-    }
-    // Senao, tenta pegar da variavel de ambiente ou usa localhost
-    return import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  })(),
+  // Usa detecção automática de ambiente do config.ts
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -34,17 +51,13 @@ class ApiService {
   private isProduction: boolean;
 
   constructor() {
-    // Configuração simplificada - sempre usar localhost:8000 em desenvolvimento
-    this.isProduction = window.location.hostname !== 'localhost' && 
-                        window.location.hostname !== '127.0.0.1';
+    // Usar URL detectada automaticamente pelo config.ts
+    this.baseURL = API_CONFIG.baseURL;
+    this.isProduction = !this.baseURL.includes('localhost');
     
-    if (this.isProduction) {
-      this.baseURL = API_CONFIG.baseURL;
-      console.log('🌐 Modo PRODUÇÃO - Backend:', this.baseURL);
-    } else {
-      this.baseURL = 'http://localhost:8000';
-      console.log('🔧 Modo DESENVOLVIMENTO - Backend:', this.baseURL);
-    }
+    console.log('🌐 API Service inicializado');
+    console.log('  - URL Base:', this.baseURL);
+    console.log('  - Modo:', this.isProduction ? 'PRODUÇÃO' : 'DESENVOLVIMENTO');
   }
 
   // Método para detectar porta disponível (APENAS EM DESENVOLVIMENTO)

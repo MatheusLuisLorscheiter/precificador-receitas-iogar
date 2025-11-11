@@ -26,6 +26,7 @@ import {
 import SkeletonLoader from './SkeletonLoader';
 import EmptyState from './EmptyState';
 import Tooltip from './Tooltip';
+import { API_BASE_URL } from '../config';
 
 // ===================================================================================================
 // INTERFACES E TIPOS
@@ -162,8 +163,11 @@ const SuperGridReceitas: React.FC<SuperGridReceitasProps> = ({
   // Estado para controlar modal de exportacao PDF
   const [showModalExportacaoPDF, setShowModalExportacaoPDF] = useState(false);
   
-  // URL da API (ajustar conforme ambiente)
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  // ===================================================================================================
+  // IMPORTAR CONFIGURACAO CENTRALIZADA DA API
+  // ===================================================================================================
+  // Usar API_BASE_URL do config.ts que detecta automaticamente o ambiente
+  const API_URL = API_BASE_URL
 
   // ===================================================================================================
   // LÓGICA DE FILTRAGEM E ORDENAÇÃO

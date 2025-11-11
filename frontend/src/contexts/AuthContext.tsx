@@ -9,8 +9,14 @@
  * ============================================================================
  */
 
+// ============================================================================
+// IMPORTS
+// ============================================================================
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import LoadingScreen from '../components/LoadingScreen';
+import { API_BASE_URL } from '../config';
+
 
 // ============================================================================
 // TIPOS E INTERFACES

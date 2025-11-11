@@ -87,7 +87,7 @@ const PopupClassificacaoIA: React.FC<PopupClassificacaoIAProps> = ({
 
     setCarregandoClassificacao(true);
     try {
-      const response = await fetch('/api/v1/ia/classificar', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/ia/classificar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -46,9 +46,9 @@ const ModalSelecaoRelatorio: React.FC<ModalSelecaoRelatorioProps> = ({
     setTipoSelecionado(tipo);
     
     try {
-      // Construir URL do endpoint
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const url = `${baseUrl}/api/v1/receitas/${receitaId}/pdf?tipo=${tipo}`;
+      // Construir URL do endpoint usando configuracao centralizada
+      import { API_BASE_URL } from '../config';
+      const url = `${API_BASE_URL}/api/v1/receitas/${receitaId}/pdf?tipo=${tipo}`;
       
       // Fazer requisicao
       const response = await fetch(url, {
