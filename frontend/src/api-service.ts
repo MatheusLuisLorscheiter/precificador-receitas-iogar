@@ -541,7 +541,6 @@ async refreshAccessToken(): Promise<string | null> {
       tempo_preparo: receita.tempo_preparo_minutos || receita.tempo_preparo || 30,
       restaurante_id: receita.restaurante_id || 1,
       processada: receita.processada || false,
-      rendimento: receita.rendimento || null,
       insumos: receita.insumos || []
     };
   
