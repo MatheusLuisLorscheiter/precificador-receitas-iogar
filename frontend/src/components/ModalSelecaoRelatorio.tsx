@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { X, FileText, ChefHat, Download, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 // ===================================================================================================
 // INTERFACES
@@ -47,7 +48,6 @@ const ModalSelecaoRelatorio: React.FC<ModalSelecaoRelatorioProps> = ({
     
     try {
       // Construir URL do endpoint usando configuracao centralizada
-      import { API_BASE_URL } from '../config';
       const url = `${API_BASE_URL}/api/v1/receitas/${receitaId}/pdf?tipo=${tipo}`;
       
       // Fazer requisicao
