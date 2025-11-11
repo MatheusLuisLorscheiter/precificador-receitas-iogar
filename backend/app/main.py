@@ -229,9 +229,10 @@ import os
 # ============================================================================
 # Configuração de CORS com suporte para rede local (mobile)
 if os.getenv("ENVIRONMENT") == "production":
-    # Produção - apenas origens específicas
+    # Produção - origens específicas incluindo staging
     allowed_origins = [
         "https://food-cost-frontend.onrender.com",
+        "https://food-cost-frontend-staging.onrender.com",
     ]
     cors_extra = os.getenv("CORS_ORIGINS", "")
     if cors_extra:
