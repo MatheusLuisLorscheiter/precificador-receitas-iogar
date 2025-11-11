@@ -22,9 +22,12 @@ from app.database import engine, Base
 # IMPORTANTE: Importar DEPOIS do Base para evitar circular imports
 import app.models.fornecedor
 import app.models.fornecedor_insumo
+import app.models.importacao_insumo
 import app.models.insumo
 import app.models.taxonomia
+import app.models.taxonomia_alias
 import app.models.receita
+import app.models.codigo_disponivel
 import app.models.user
 import app.models.permission
 
