@@ -17,11 +17,7 @@ from app.database import engine, Base
 from sqlalchemy import text
 
 # Importar todos os modelos para garantir que Base conheca todas as tabelas
-from app.models.restaurante import Restaurante
-from app.models.usuario import Usuario
-from app.models.fornecedor import Fornecedor
-from app.models.insumo import Insumo, FornecedorInsumo, ImportacaoInsumos
-from app.models.receita import Receita, ReceitaInsumo, ReceitaReceita
+from app.models import *  # Importa todos os modelos registrados
 
 def init_database():
     """
