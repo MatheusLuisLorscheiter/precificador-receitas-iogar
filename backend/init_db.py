@@ -57,9 +57,37 @@ def init_database():
         print("\n3. Criando tabelas do sistema...")
         Base.metadata.create_all(bind=engine, checkfirst=True)
         print("   ✓ Tabelas criadas com sucesso!")
+
+        # Criar usuario administrador
+        print("\n4. Criando usuario administrador...")
+        from sqlalchemy.orm import Session
+        from app.models.user import User, UserRole
+        from app.core.security import get_password_hash
+        
+        with Session(engine) as session:
+            # Verificar se admin ja existe
+            admin = session.query(User).filter(User.username == 'admin').first()
+            
+            if not admin:
+                admin = User(
+                    username='admin',
+                    email='admin@iogar.com',
+                    password_hash=get_password_hash('admin123'),
+                    role=UserRole.ADMIN,
+                    restaurante_id=None,
+                    ativo=True,
+                    primeiro_acesso=False
+                )
+                session.add(admin)
+                session.commit()
+                print("   ✓ Usuario admin criado!")
+                print("   📧 Email: admin@iogar.com")
+                print("   🔑 Senha: admin123")
+            else:
+                print("   ⚠️ Usuario admin ja existe!")
         
         # Listar tabelas criadas
-        print("\n4. Verificando tabelas criadas...")
+        print("\n5. Verificando tabelas criadas...")
         with engine.connect() as conn:
             result = conn.execute(text("""
                 SELECT tablename 
