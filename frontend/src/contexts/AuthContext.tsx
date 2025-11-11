@@ -56,12 +56,8 @@ interface AuthContextData {
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
-// Detectar ambiente e definir URL da API automaticamente
-const isProduction = window.location.hostname !== 'localhost' && 
-                     window.location.hostname !== '127.0.0.1';
-
-const API_BASE_URL = isProduction
-  ? 'https://food-cost-backend.onrender.com'
+// Importar URL da API do config centralizado
+import { API_BASE_URL } from '../config';
   : (import.meta.env.VITE_API_URL || 'http://localhost:8000');
 
 const API_URL = `${API_BASE_URL}/api/v1`;
