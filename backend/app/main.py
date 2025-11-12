@@ -295,6 +295,12 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+# ============================================================================
+# DEBUG: Verificar origens CORS configuradas
+# ============================================================================
+print(f"🌐 CORS - Origens permitidas:")
+for origin in settings.ALLOWED_ORIGINS:
+    print(f"   ✓ {origin}")
 
 # Log das origens permitidas para debug
 print(f"🔒 CORS configurado com origens: {settings.ALLOWED_ORIGINS}")

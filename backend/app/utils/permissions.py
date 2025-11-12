@@ -32,16 +32,19 @@ def _clear_permissions_cache():
     _cache_timestamp = None
 
 
-def _get_user_permissions(db: Session, user: User) -> List[Permission]:
+def _get_user_permissions(db: Session, user: User) -> List[dict]:
     """
     Busca todas as permissões de um usuário (com cache).
+    
+    IMPORTANTE: Retorna dicionários ao invés de objetos Permission
+    para evitar DetachedInstanceError do SQLAlchemy.
     
     Args:
         db: Sessão do banco de dados
         user: Usuário autenticado
     
     Returns:
-        Lista de permissões do usuário
+        Lista de dicionários com dados das permissões
     """
     import time
     global _permissions_cache, _cache_timestamp
@@ -59,14 +62,27 @@ def _get_user_permissions(db: Session, user: User) -> List[Permission]:
     
     # Buscar permissões do banco
     permissions = db.query(Permission).filter(
-        Permission.role == user.role,
+        Permission.role == user.role.value,
         Permission.enabled == True
     ).all()
     
-    # Guardar em cache
-    _permissions_cache[cache_key] = permissions
+    # Converter objetos Permission para dicionários (evita DetachedInstanceError)
+    permissions_data = [
+        {
+            'id': p.id,
+            'role': p.role,
+            'resource': p.resource,
+            'action': p.action,
+            'data_scope': p.data_scope,
+            'enabled': p.enabled
+        }
+        for p in permissions
+    ]
     
-    return permissions
+    # Guardar em cache
+    _permissions_cache[cache_key] = permissions_data
+    
+    return permissions_data
 
 
 # ============================================================================
@@ -107,18 +123,19 @@ def check_user_permission(
     # ========================================================================
     # USUÁRIOS NÃO-ADMIN: Verificar permissões no banco de dados
     # ========================================================================
-    # Buscar permissões do usuário
+    # Buscar permissões do usuário (retorna lista de dicionários)
     permissions = _get_user_permissions(db, user)
     
     # Procurar permissão específica
     for permission in permissions:
-        if permission.resource == resource and permission.action == action:
-            return True, permission.data_scope
+        # Comparar strings ao invés de enums (permission agora é dict)
+        if permission['resource'] == resource.value and permission['action'] == action.value:
+            return True, DataScope(permission['data_scope'])
     
     # Verificar se usuário tem permissão de GERENCIAR (implica todas as outras)
     for permission in permissions:
-        if permission.resource == resource and permission.action == ActionType.GERENCIAR:
-            return True, permission.data_scope
+        if permission['resource'] == resource.value and permission['action'] == ActionType.GERENCIAR.value:
+            return True, DataScope(permission['data_scope'])
     
     return False, None
 
