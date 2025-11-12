@@ -2544,7 +2544,7 @@ const fetchInsumos = async () => {
       // Criar payload sem senha (não alteramos senha nesta função)
       const { password, ...payloadSemSenha } = formUsuario;
 
-      const response = await fetch(`http://localhost:8000/api/v1/users/${editingUsuario.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${editingUsuario.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -2606,7 +2606,7 @@ const fetchInsumos = async () => {
     try {
       setLoading(true);
 
-      const response = await fetch(`http://localhost:8000/api/v1/users/${usuario.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/${usuario.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('foodcost_access_token')}`,
@@ -8498,7 +8498,7 @@ Receitas.displayName = 'Receitas';
         console.log('🗑️ Excluindo insumo:', insumoParaExcluir.id);
 
         const response = await fetch(
-          `http://localhost:8000/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/${insumoParaExcluir.id}`,
+          `${API_BASE_URL}/api/v1/fornecedores/${fornecedorSelecionado.id}/insumos/${insumoParaExcluir.id}`,
           {
             method: 'DELETE',
           }
