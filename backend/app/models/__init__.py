@@ -9,10 +9,9 @@
 # Importar modelos de fornecedores e insumos
 from .fornecedor import Fornecedor
 from .fornecedor_insumo import FornecedorInsumo
+from .importacao_insumo import ImportacaoInsumo
 from .insumo import Insumo
 # from app.models.receita_insumo import ReceitaInsumo
-# Importar modelos de taxonomia
-from .taxonomia import Taxonomia
 # Importar modelos de taxonomia
 from .taxonomia import Taxonomia
 from .taxonomia_alias import TaxonomiaAlias
@@ -36,7 +35,9 @@ __all__ = [
     "Fornecedor",
     "FornecedorInsumo", 
     "Insumo",
+    "ImportacaoInsumo",
     "Taxonomia",
+    "TaxonomiaAlias",
     "Restaurante",
     "Receita",
     "ReceitaInsumo",
@@ -47,4 +48,4 @@ __all__ = [
     "ResourceType",
     "ActionType",
     "DataScope"
-    ]
+]

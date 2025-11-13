@@ -21,10 +21,13 @@ def criar_admin():
         # Criar novo admin
         print("🔨 Criando usuário administrador...")
         
+        # Senha simples para desenvolvimento (bcrypt limita a 72 bytes)
+        senha_admin = 'admin123'
+        
         admin = User(
             username='admin',
             email='admin@iogar.com',
-            password_hash=get_password_hash('admin123'),  # Senha: admin123
+            password_hash=get_password_hash(senha_admin),
             role=UserRole.ADMIN,
             restaurante_id=None,
             ativo=True,
@@ -39,14 +42,16 @@ def criar_admin():
         print(f"   ID: {admin.id}")
         print(f"   Username: {admin.username}")
         print(f"   Email: {admin.email}")
-        print(f"   Senha: admin123")
+        print(f"   Senha: {senha_admin}")
         print(f"   Role: {admin.role}")
         print(f"\n🔐 Faça login com:")
         print(f"   Username: admin")
-        print(f"   Senha: admin123")
+        print(f"   Senha: {senha_admin}")
         
     except Exception as e:
         print(f"\n❌ Erro ao criar admin: {e}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
     finally:
         db.close()
