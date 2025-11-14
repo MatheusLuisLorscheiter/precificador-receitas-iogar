@@ -157,9 +157,6 @@ venv.bak/
 .env.*.local
 *.env
 
-
-
-
 # Manter arquivos de ambiente versionados
 !.env.development
 !.env.qa
@@ -290,6 +287,7 @@ backend/app/ai/models/*.pkl
 *.log
 logs/
 *.log.*
+.tmp.driveupload/
 
 # Scripts de teste com credenciais
 backend/testar_senha.py
