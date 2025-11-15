@@ -32,7 +32,6 @@ Thumbs.db
 node_modules/
 yarn.lock.backup
 pnpm-lock.yaml
-package-lock.json
 npm-debug.log
 
 # Frontend build artefacts
