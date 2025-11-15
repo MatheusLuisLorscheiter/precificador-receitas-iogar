@@ -146,54 +146,25 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		timezone = "America/Sao_Paulo"
 	}
 
-	// Criar tenant
-	tenant := &domain.Tenant{
-		Name:         req.TenantName,
-		Slug:         req.TenantSlug,
-		Subdomain:    req.TenantSubdomain,
-		Timezone:     timezone,
-		BillingEmail: req.BillingEmail,
+	registerInput := service.RegisterInput{
+		TenantName:         req.TenantName,
+		TenantSlug:         req.TenantSlug,
+		TenantSubdomain:    req.TenantSubdomain,
+		TenantBillingEmail: req.BillingEmail,
+		TenantTimezone:     timezone,
+		UserName:           req.UserName,
+		UserEmail:          req.UserEmail,
+		Password:           req.Password,
 	}
 
-	if err := h.tenantService.Create(ctx, tenant); err != nil {
-		h.logger.Error().Err(err).Msg("failed to create tenant")
+	tenant, user, tokens, err := h.authService.Register(ctx, registerInput)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("failed to register tenant")
 		httputil.RespondError(w, http.StatusInternalServerError, "Não foi possível criar o cadastro da empresa.")
 		return
 	}
 
-	// Hash da senha antes de criar o usuário
-	hashedPassword, err := h.authService.HashPassword(req.Password)
-	if err != nil {
-		h.logger.Error().Err(err).Msg("failed to hash password")
-		httputil.RespondError(w, http.StatusInternalServerError, "Não foi possível preparar os dados do usuário para criação.")
-		return
-	}
-
-	// Criar usuário admin
-	user := &domain.User{
-		TenantID: tenant.ID,
-		Name:     req.UserName,
-		Email:    req.UserEmail,
-		Password: hashedPassword,
-		Role:     "admin",
-		Active:   true,
-	}
-
-	if err := h.userService.Create(ctx, user); err != nil {
-		h.logger.Error().Err(err).Msg("failed to create user")
-		httputil.RespondError(w, http.StatusInternalServerError, "Não foi possível criar o usuário administrador.")
-		return
-	}
-
 	h.sendTenantSlugEmail(req.UserName, req.UserEmail, tenant)
-
-	// Gerar tokens
-	tokens, err := h.authService.TokenManager.GenerateTokens(user.ID, user.TenantID, user.Role)
-	if err != nil {
-		h.logger.Error().Err(err).Msg("failed to generate tokens")
-		httputil.RespondError(w, http.StatusInternalServerError, "Não foi possível gerar os tokens de acesso.")
-		return
-	}
 
 	response := LoginResponse{
 		AccessToken:  tokens.AccessToken,
