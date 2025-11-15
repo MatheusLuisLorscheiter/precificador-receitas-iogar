@@ -60,7 +60,6 @@ type PricingSettingsUpdate struct {
 	DefaultMarginPercent *float64 `json:"default_margin_percent"`
 	FixedMonthlyCosts    *float64 `json:"fixed_monthly_costs"`
 	VariableCostPercent  *float64 `json:"variable_cost_percent"`
-	DefaultTaxRate       *float64 `json:"default_tax_rate"`
 	DefaultSalesVolume   *float64 `json:"default_sales_volume"`
 }
 
@@ -182,12 +181,6 @@ func (s *PricingService) UpdateTenantSettings(ctx context.Context, tenantID uuid
 		}
 		updated.VariableCostPercent = *patch.VariableCostPercent
 	}
-	if patch.DefaultTaxRate != nil {
-		if *patch.DefaultTaxRate < 0 {
-			return nil, ValidationError("taxa de imposto não pode ser negativa")
-		}
-		updated.DefaultTaxRate = *patch.DefaultTaxRate
-	}
 	if patch.DefaultSalesVolume != nil {
 		if *patch.DefaultSalesVolume < 0 {
 			return nil, ValidationError("volume de vendas não pode ser negativo")
@@ -214,7 +207,6 @@ func defaultPricingSettings(tenantID uuid.UUID) *domain.PricingSettings {
 		DefaultMarginPercent: pricing.DefaultMarginPercent,
 		FixedMonthlyCosts:    0,
 		VariableCostPercent:  0,
-		DefaultTaxRate:       pricing.DefaultTaxRate,
 		DefaultSalesVolume:   0,
 		CreatedAt:            now,
 		UpdatedAt:            now,
@@ -364,7 +356,6 @@ type suggestionParams struct {
 	VariableCostPercent float64
 	LaborCostPerMinute  float64
 	SalesVolumeMonthly  float64
-	TaxRate             float64
 	CurrentPrice        float64
 }
 
@@ -432,16 +423,47 @@ func (s *PricingService) SuggestPrice(ctx context.Context, input *domain.Pricing
 		fixedCostPerUnit = params.FixedMonthlyCosts / effectiveSalesVolume
 	}
 	variableCostUnit := (unitCost + fixedCostPerUnit) * (params.VariableCostPercent / 100)
-	preMarginCost := unitCost + fixedCostPerUnit + variableCostUnit
-	priceBeforeTax := preMarginCost * (1 + params.MarginPercent/100)
-	taxValue := 0.0
-	if input.IncludeTax && params.TaxRate > 0 {
-		taxValue = priceBeforeTax * (params.TaxRate / 100)
+	totalCostPerUnit := unitCost + fixedCostPerUnit + variableCostUnit
+	
+	// Cálculo do preço sugerido com margem de lucro
+	// Fórmula: Preço = Custo Total × (1 + Margem%)
+	suggestedPrice := totalCostPerUnit * (1 + params.MarginPercent/100)
+	
+	// Ponto de equilíbrio: preço mínimo sem lucro
+	breakEven := totalCostPerUnit
+	
+	// Margem de contribuição: diferença entre preço e custos variáveis
+	// MCU = Preço - (Custo Unitário + Custos Variáveis)
+	contributionMargin := suggestedPrice - (unitCost + variableCostUnit)
+	contributionMarginPct := 0.0
+	if suggestedPrice > 0 {
+		contributionMarginPct = (contributionMargin / suggestedPrice) * 100
 	}
-	suggestedPrice := priceBeforeTax + taxValue
-	breakEven := preMarginCost + taxValue
-	marginValue := priceBeforeTax - preMarginCost
+	
+	// Valor da margem de lucro
+	marginValue := suggestedPrice - totalCostPerUnit
+	
+	// Markup: percentual de acréscimo sobre o custo
+	markup := 0.0
+	if totalCostPerUnit > 0 {
+		markup = ((suggestedPrice - totalCostPerUnit) / totalCostPerUnit) * 100
+	}
+	
+	// Delta vs preço atual
 	deltaVsCurrent := suggestedPrice - params.CurrentPrice
+	deltaPercent := 0.0
+	if params.CurrentPrice > 0 {
+		deltaPercent = (deltaVsCurrent / params.CurrentPrice) * 100
+	}
+	
+	// Flags de alerta
+	lowMargin := params.MarginPercent < pricing.MinimumSafeMargin
+	belowBreakEven := params.CurrentPrice > 0 && params.CurrentPrice < breakEven
+	highFixedCostImpact := false
+	if suggestedPrice > 0 {
+		fixedCostPct := (fixedCostPerUnit / suggestedPrice) * 100
+		highFixedCostImpact = fixedCostPct > pricing.HighFixedCostThreshold
+	}
 
 	components := domain.PricingSuggestionComponents{
 		IngredientCost:     domain.RoundCurrency(ingredientPerUnit),
@@ -453,18 +475,21 @@ func (s *PricingService) SuggestPrice(ctx context.Context, input *domain.Pricing
 	}
 
 	suggestion := &domain.PricingSuggestion{
-		UnitCost:         domain.RoundCurrency(unitCost),
-		FixedCostPerUnit: domain.RoundCurrency(fixedCostPerUnit),
-		VariableCostUnit: domain.RoundCurrency(variableCostUnit),
-		PriceBeforeTax:   domain.RoundCurrency(priceBeforeTax),
-		SuggestedPrice:   domain.RoundCurrency(suggestedPrice),
-		BreakEvenPrice:   domain.RoundCurrency(breakEven),
-		MarginValue:      domain.RoundCurrency(marginValue),
-		MarginPercent:    params.MarginPercent,
-		TaxValue:         domain.RoundCurrency(taxValue),
-		CurrentPrice:     domain.RoundCurrency(params.CurrentPrice),
-		DeltaVsCurrent:   domain.RoundCurrency(deltaVsCurrent),
-		Components:       components,
+		UnitCost:              domain.RoundCurrency(unitCost),
+		FixedCostPerUnit:      domain.RoundCurrency(fixedCostPerUnit),
+		VariableCostUnit:      domain.RoundCurrency(variableCostUnit),
+		TotalCostPerUnit:      domain.RoundCurrency(totalCostPerUnit),
+		SuggestedPrice:        domain.RoundCurrency(suggestedPrice),
+		BreakEvenPrice:        domain.RoundCurrency(breakEven),
+		ContributionMargin:    domain.RoundCurrency(contributionMargin),
+		ContributionMarginPct: domain.RoundCurrency(contributionMarginPct),
+		MarginValue:           domain.RoundCurrency(marginValue),
+		MarginPercent:         params.MarginPercent,
+		Markup:                domain.RoundCurrency(markup),
+		CurrentPrice:          domain.RoundCurrency(params.CurrentPrice),
+		DeltaVsCurrent:        domain.RoundCurrency(deltaVsCurrent),
+		DeltaPercent:          domain.RoundCurrency(deltaPercent),
+		Components:            components,
 		Inputs: domain.PricingSuggestionInputs{
 			MarginPercent:       params.MarginPercent,
 			PackagingCost:       domain.RoundCurrency(params.PackagingCost),
@@ -472,10 +497,12 @@ func (s *PricingService) SuggestPrice(ctx context.Context, input *domain.Pricing
 			VariableCostPercent: params.VariableCostPercent,
 			LaborCostPerMinute:  domain.RoundCurrency(params.LaborCostPerMinute),
 			SalesVolumeMonthly:  params.SalesVolumeMonthly,
-			TaxRate:             params.TaxRate,
 		},
 		Flags: domain.PricingSuggestionFlags{
-			MissingSalesVolume: missingSalesVolume,
+			MissingSalesVolume:  missingSalesVolume,
+			LowMargin:           lowMargin,
+			BelowBreakEven:      belowBreakEven,
+			HighFixedCostImpact: highFixedCostImpact,
 		},
 	}
 
@@ -513,14 +540,12 @@ func (s *PricingService) resolveSuggestionParams(input *domain.PricingSuggestion
 		VariableCostPercent: settings.VariableCostPercent,
 		LaborCostPerMinute:  settings.LaborCostPerMinute,
 		SalesVolumeMonthly:  settings.DefaultSalesVolume,
-		TaxRate:             settings.DefaultTaxRate,
 		CurrentPrice:        0,
 	}
 
 	if product != nil {
 		params.MarginPercent = product.MarginPercent
 		params.PackagingCost = product.PackagingCost
-		params.TaxRate = product.TaxRate
 		if product.SuggestedPrice > 0 {
 			params.CurrentPrice = product.SuggestedPrice
 		}
@@ -567,12 +592,6 @@ func (s *PricingService) resolveSuggestionParams(input *domain.PricingSuggestion
 			return params, ValidationError("preço atual não pode ser negativo")
 		}
 		params.CurrentPrice = *input.CurrentPrice
-	}
-	if input.TaxRate != nil {
-		if *input.TaxRate < 0 {
-			return params, ValidationError("taxa de imposto não pode ser negativa")
-		}
-		params.TaxRate = *input.TaxRate
 	}
 
 	return params, nil

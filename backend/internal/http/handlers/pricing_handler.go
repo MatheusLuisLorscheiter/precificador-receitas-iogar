@@ -91,21 +91,18 @@ func (h *PricingHandler) UpdateSettings(w http.ResponseWriter, r *http.Request) 
 }
 
 // SuggestPriceRequest representa o payload aceito pelo endpoint de simulação.
+// Focado em precificação direta sem campos complexos de impostos.
 type SuggestPriceRequest struct {
-    ProductID          *string  `json:"product_id"`
-    RecipeID           *string  `json:"recipe_id"`
-    MarginPercent      *float64 `json:"margin_percent"`
-    PackagingCost      *float64 `json:"packaging_cost"`
-    FixedMonthlyCosts  *float64 `json:"fixed_monthly_costs"`
-    VariableCostPercent *float64 `json:"variable_cost_percent"`
-    LaborCostPerMinute *float64 `json:"labor_cost_per_minute"`
-    SalesVolumeMonthly *float64 `json:"sales_volume_monthly"`
-    CurrentPrice       *float64 `json:"current_price"`
-    IncludeTax         bool     `json:"include_tax"`
-    TaxRate            *float64 `json:"tax_rate"`
-}
-
-// Suggest calcula o preço sugerido considerando os parâmetros informados.
+	ProductID           *string  `json:"product_id"`
+	RecipeID            *string  `json:"recipe_id"`
+	MarginPercent       *float64 `json:"margin_percent"`        // Margem de lucro desejada (%)
+	PackagingCost       *float64 `json:"packaging_cost"`        // Custo de embalagem (R$)
+	FixedMonthlyCosts   *float64 `json:"fixed_monthly_costs"`   // Custos fixos mensais (R$)
+	VariableCostPercent *float64 `json:"variable_cost_percent"` // Custos variáveis (%)
+	LaborCostPerMinute  *float64 `json:"labor_cost_per_minute"` // Mão de obra (R$/min)
+	SalesVolumeMonthly  *float64 `json:"sales_volume_monthly"`  // Volume mensal (unidades)
+	CurrentPrice        *float64 `json:"current_price"`         // Preço atual praticado (R$)
+}// Suggest calcula o preço sugerido considerando os parâmetros informados.
 func (h *PricingHandler) Suggest(w http.ResponseWriter, r *http.Request) {
     claims := requestctx.GetClaims(r.Context())
     if claims == nil {
@@ -143,9 +140,8 @@ func (h *PricingHandler) Suggest(w http.ResponseWriter, r *http.Request) {
     }
 
     input := &domain.PricingSuggestionInput{
-        TenantID:   claims.TenantID,
-        RecipeID:   recipeID,
-        IncludeTax: req.IncludeTax,
+        TenantID: claims.TenantID,
+        RecipeID: recipeID,
     }
 
     if productID != uuid.Nil {
@@ -159,7 +155,6 @@ func (h *PricingHandler) Suggest(w http.ResponseWriter, r *http.Request) {
     input.LaborCostPerMinute = req.LaborCostPerMinute
     input.SalesVolumeMonthly = req.SalesVolumeMonthly
     input.CurrentPrice = req.CurrentPrice
-    input.TaxRate = req.TaxRate
 
     suggestion, err := h.service.SuggestPrice(r.Context(), input)
     if err != nil {

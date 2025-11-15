@@ -44,7 +44,6 @@ export default function Settings() {
         default_margin_percent: 0,
         fixed_monthly_costs: 0,
         variable_cost_percent: 0,
-        default_tax_rate: 0,
         default_sales_volume: 0,
     });
 
@@ -62,7 +61,6 @@ export default function Settings() {
                 default_margin_percent: pricingSettings.default_margin_percent,
                 fixed_monthly_costs: pricingSettings.fixed_monthly_costs,
                 variable_cost_percent: pricingSettings.variable_cost_percent,
-                default_tax_rate: pricingSettings.default_tax_rate,
                 default_sales_volume: pricingSettings.default_sales_volume,
             });
         }
@@ -301,94 +299,122 @@ export default function Settings() {
                 )}
 
                 <form onSubmit={handlePricingSubmit} className="space-y-6">
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted" htmlFor="labor_cost_per_minute">Mão de obra (R$/min)</label>
-                            <input
-                                id="labor_cost_per_minute"
-                                type="number"
-                                step="0.01"
-                                className="input"
-                                value={pricingForm.labor_cost_per_minute ?? ''}
-                                onChange={(e) => handlePricingChange('labor_cost_per_minute', e.target.value)}
-                                required
-                            />
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="text-sm font-semibold text-foreground mb-3">💰 Custos Básicos</h3>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="labor_cost_per_minute">
+                                        Mão de obra (R$/min)
+                                    </label>
+                                    <input
+                                        id="labor_cost_per_minute"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="input"
+                                        value={pricingForm.labor_cost_per_minute ?? ''}
+                                        onChange={(e) => handlePricingChange('labor_cost_per_minute', e.target.value)}
+                                        placeholder="Ex: 0.65"
+                                        required
+                                    />
+                                    <p className="text-xs text-muted">Custo por minuto de trabalho</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="default_packaging_cost">
+                                        Embalagem padrão (R$)
+                                    </label>
+                                    <input
+                                        id="default_packaging_cost"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="input"
+                                        value={pricingForm.default_packaging_cost ?? ''}
+                                        onChange={(e) => handlePricingChange('default_packaging_cost', e.target.value)}
+                                        placeholder="Ex: 0.35"
+                                        required
+                                    />
+                                    <p className="text-xs text-muted">Custo médio de embalagem</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="default_margin_percent">
+                                        Margem padrão (%)
+                                    </label>
+                                    <input
+                                        id="default_margin_percent"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="100"
+                                        className="input"
+                                        value={pricingForm.default_margin_percent ?? ''}
+                                        onChange={(e) => handlePricingChange('default_margin_percent', e.target.value)}
+                                        placeholder="Ex: 30"
+                                        required
+                                    />
+                                    <p className="text-xs text-muted">Margem de lucro desejada</p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted" htmlFor="default_packaging_cost">Custo padrão de embalagem</label>
-                            <input
-                                id="default_packaging_cost"
-                                type="number"
-                                step="0.01"
-                                className="input"
-                                value={pricingForm.default_packaging_cost ?? ''}
-                                onChange={(e) => handlePricingChange('default_packaging_cost', e.target.value)}
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted" htmlFor="default_margin_percent">Margem padrão (%)</label>
-                            <input
-                                id="default_margin_percent"
-                                type="number"
-                                step="0.1"
-                                className="input"
-                                value={pricingForm.default_margin_percent ?? ''}
-                                onChange={(e) => handlePricingChange('default_margin_percent', e.target.value)}
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted" htmlFor="default_tax_rate">Taxa padrão de imposto (%)</label>
-                            <input
-                                id="default_tax_rate"
-                                type="number"
-                                step="0.1"
-                                className="input"
-                                value={pricingForm.default_tax_rate ?? ''}
-                                onChange={(e) => handlePricingChange('default_tax_rate', e.target.value)}
-                                required
-                            />
+
+                        <div>
+                            <h3 className="text-sm font-semibold text-foreground mb-3">📊 Custos do Negócio</h3>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="fixed_monthly_costs">
+                                        Custos fixos mensais (R$)
+                                    </label>
+                                    <input
+                                        id="fixed_monthly_costs"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="input"
+                                        value={pricingForm.fixed_monthly_costs ?? ''}
+                                        onChange={(e) => handlePricingChange('fixed_monthly_costs', e.target.value)}
+                                        placeholder="Ex: 2500"
+                                    />
+                                    <p className="text-xs text-muted">Aluguel, luz, água, funcionários</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="variable_cost_percent">
+                                        Custos variáveis (%)
+                                    </label>
+                                    <input
+                                        id="variable_cost_percent"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="100"
+                                        className="input"
+                                        value={pricingForm.variable_cost_percent ?? ''}
+                                        onChange={(e) => handlePricingChange('variable_cost_percent', e.target.value)}
+                                        placeholder="Ex: 5"
+                                    />
+                                    <p className="text-xs text-muted">Quanto mais vende, mais gasta</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="default_sales_volume">
+                                        Volume mensal estimado (un)
+                                    </label>
+                                    <input
+                                        id="default_sales_volume"
+                                        type="number"
+                                        step="1"
+                                        min="0"
+                                        className="input"
+                                        value={pricingForm.default_sales_volume ?? ''}
+                                        onChange={(e) => handlePricingChange('default_sales_volume', e.target.value)}
+                                        placeholder="Ex: 1000"
+                                    />
+                                    <p className="text-xs text-muted">Quantas unidades vende por mês</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted" htmlFor="fixed_monthly_costs">Custos fixos mensais</label>
-                            <input
-                                id="fixed_monthly_costs"
-                                type="number"
-                                step="0.01"
-                                className="input"
-                                value={pricingForm.fixed_monthly_costs ?? ''}
-                                onChange={(e) => handlePricingChange('fixed_monthly_costs', e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted" htmlFor="variable_cost_percent">Custos variáveis (%)</label>
-                            <input
-                                id="variable_cost_percent"
-                                type="number"
-                                step="0.1"
-                                className="input"
-                                value={pricingForm.variable_cost_percent ?? ''}
-                                onChange={(e) => handlePricingChange('variable_cost_percent', e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted" htmlFor="default_sales_volume">Volume mensal padrão</label>
-                            <input
-                                id="default_sales_volume"
-                                type="number"
-                                step="1"
-                                className="input"
-                                value={pricingForm.default_sales_volume ?? ''}
-                                onChange={(e) => handlePricingChange('default_sales_volume', e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted border-t border-border pt-6">
                         <div>
                             {lastUpdatedAt && (
                                 <p>Última atualização em <span className="font-semibold text-foreground">{lastUpdatedAt}</span></p>

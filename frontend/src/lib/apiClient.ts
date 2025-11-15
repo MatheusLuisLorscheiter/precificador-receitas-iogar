@@ -76,20 +76,21 @@ export interface Product {
 export interface ProductPricingSummary {
     unit_cost: number;
     margin_value: number;
-    tax_value: number;
     profit_per_unit: number;
     break_even_price: number;
+    contribution_margin?: number;
+    contribution_margin_pct?: number;
+    markup?: number;
 }
 
 export interface PricingSettings {
     tenant_id: string;
-    labor_cost_per_minute: number;
-    default_packaging_cost: number;
-    default_margin_percent: number;
-    fixed_monthly_costs: number;
-    variable_cost_percent: number;
-    default_tax_rate: number;
-    default_sales_volume: number;
+    labor_cost_per_minute: number;       // Custo de mão de obra por minuto (R$/min)
+    default_packaging_cost: number;      // Custo padrão de embalagem (R$)
+    default_margin_percent: number;      // Margem de lucro padrão (%)
+    fixed_monthly_costs: number;         // Custos fixos mensais (R$)
+    variable_cost_percent: number;       // Custos variáveis (%)
+    default_sales_volume: number;        // Volume mensal estimado (unidades)
     created_at: string;
     updated_at: string;
 }
@@ -101,7 +102,6 @@ export type PricingSettingsUpdatePayload = Partial<Pick<
     | 'default_margin_percent'
     | 'fixed_monthly_costs'
     | 'variable_cost_percent'
-    | 'default_tax_rate'
     | 'default_sales_volume'
 >>;
 
@@ -115,31 +115,36 @@ export interface PricingSuggestionComponents {
 }
 
 export interface PricingSuggestionInputs {
-    margin_percent: number;
-    packaging_cost: number;
-    fixed_monthly_costs: number;
-    variable_cost_percent: number;
-    labor_cost_per_minute: number;
-    sales_volume_monthly: number;
-    tax_rate: number;
+    margin_percent: number;        // Margem de lucro aplicada (%)
+    packaging_cost: number;        // Custo de embalagem (R$)
+    fixed_monthly_costs: number;   // Custos fixos mensais (R$)
+    variable_cost_percent: number; // Custos variáveis (%)
+    labor_cost_per_minute: number; // Custo mão de obra (R$/min)
+    sales_volume_monthly: number;  // Volume mensal (unidades)
 }
 
 export interface PricingSuggestionFlags {
-    missing_sales_volume: boolean;
+    missing_sales_volume: boolean;    // Volume de vendas não informado
+    low_margin: boolean;              // Margem de lucro abaixo de 20%
+    below_break_even: boolean;        // Preço atual abaixo do ponto de equilíbrio
+    high_fixed_cost_impact: boolean;  // Custos fixos representam mais de 30% do preço
 }
 
 export interface PricingSuggestion {
-    unit_cost: number;
-    fixed_cost_per_unit: number;
-    variable_cost_unit: number;
-    price_before_tax: number;
-    suggested_price: number;
-    break_even_price: number;
-    margin_value: number;
-    margin_percent: number;
-    tax_value: number;
-    current_price: number;
-    delta_vs_current: number;
+    unit_cost: number;                  // Custo unitário base
+    fixed_cost_per_unit: number;        // Rateio de custos fixos
+    variable_cost_unit: number;         // Custos variáveis unitários
+    total_cost_per_unit: number;        // Custo total unitário
+    suggested_price: number;            // Preço sugerido final
+    break_even_price: number;           // Ponto de equilíbrio
+    contribution_margin: number;        // Margem de contribuição (R$)
+    contribution_margin_pct: number;    // Margem de contribuição (%)
+    margin_value: number;               // Valor da margem de lucro (R$)
+    margin_percent: number;             // Margem de lucro (%)
+    markup: number;                     // Markup aplicado (%)
+    current_price: number;              // Preço atual praticado
+    delta_vs_current: number;           // Diferença vs preço atual (R$)
+    delta_percent: number;              // Diferença vs preço atual (%)
     components: PricingSuggestionComponents;
     inputs: PricingSuggestionInputs;
     flags: PricingSuggestionFlags;
@@ -148,15 +153,13 @@ export interface PricingSuggestion {
 export interface PricingSuggestionPayload {
     product_id?: string;
     recipe_id?: string;
-    margin_percent?: number;
-    packaging_cost?: number;
-    fixed_monthly_costs?: number;
-    variable_cost_percent?: number;
-    labor_cost_per_minute?: number;
-    sales_volume_monthly?: number;
-    current_price?: number;
-    include_tax: boolean;
-    tax_rate?: number;
+    margin_percent?: number;         // Margem de lucro desejada (%)
+    packaging_cost?: number;         // Custo de embalagem (R$)
+    fixed_monthly_costs?: number;    // Custos fixos mensais (R$)
+    variable_cost_percent?: number;  // Custos variáveis (%)
+    labor_cost_per_minute?: number;  // Mão de obra (R$/min)
+    sales_volume_monthly?: number;   // Volume mensal (unidades)
+    current_price?: number;          // Preço atual praticado (R$)
 }
 
 export interface Category {

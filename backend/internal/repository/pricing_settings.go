@@ -20,7 +20,6 @@ func (s *Store) GetPricingSettings(ctx context.Context, tenantID uuid.UUID) (*do
 		       default_margin_percent,
 		       fixed_monthly_costs,
 		       variable_cost_percent,
-		       default_tax_rate,
 		       default_sales_volume,
 		       created_at,
 		       updated_at
@@ -32,7 +31,6 @@ func (s *Store) GetPricingSettings(ctx context.Context, tenantID uuid.UUID) (*do
 		&settings.DefaultMarginPercent,
 		&settings.FixedMonthlyCosts,
 		&settings.VariableCostPercent,
-		&settings.DefaultTaxRate,
 		&settings.DefaultSalesVolume,
 		&settings.CreatedAt,
 		&settings.UpdatedAt,
@@ -60,18 +58,16 @@ func (s *Store) UpsertPricingSettings(ctx context.Context, settings *domain.Pric
 		    default_margin_percent,
 		    fixed_monthly_costs,
 		    variable_cost_percent,
-		    default_tax_rate,
 		    default_sales_volume,
 		    created_at,
 		    updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 		ON CONFLICT (tenant_id) DO UPDATE SET
 		    labor_cost_per_minute = EXCLUDED.labor_cost_per_minute,
 		    default_packaging_cost = EXCLUDED.default_packaging_cost,
 		    default_margin_percent = EXCLUDED.default_margin_percent,
 		    fixed_monthly_costs = EXCLUDED.fixed_monthly_costs,
 		    variable_cost_percent = EXCLUDED.variable_cost_percent,
-		    default_tax_rate = EXCLUDED.default_tax_rate,
 		    default_sales_volume = EXCLUDED.default_sales_volume,
 		    updated_at = EXCLUDED.updated_at
 	`,
@@ -81,7 +77,6 @@ func (s *Store) UpsertPricingSettings(ctx context.Context, settings *domain.Pric
 		settings.DefaultMarginPercent,
 		settings.FixedMonthlyCosts,
 		settings.VariableCostPercent,
-		settings.DefaultTaxRate,
 		settings.DefaultSalesVolume,
 		settings.CreatedAt,
 		settings.UpdatedAt,

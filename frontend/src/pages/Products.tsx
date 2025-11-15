@@ -19,7 +19,6 @@ import {
     Barcode,
     DollarSign,
     TrendingUp,
-    Percent,
     Layers,
     Warehouse,
     UploadCloud,
@@ -51,7 +50,6 @@ type ProductFormState = {
     category_id: string;
     base_price: number;
     suggested_price: number;
-    tax_rate: number;
     margin_percent: number;
     packaging_cost: number;
     stock_quantity: number;
@@ -70,7 +68,6 @@ const INITIAL_FORM_STATE: ProductFormState = {
     category_id: '',
     base_price: 0,
     suggested_price: 0,
-    tax_rate: 0,
     margin_percent: 0,
     packaging_cost: 0,
     stock_quantity: 0,
@@ -83,7 +80,6 @@ const INITIAL_FORM_STATE: ProductFormState = {
 const createInitialFormState = (settings?: PricingSettings | null): ProductFormState => ({
     ...INITIAL_FORM_STATE,
     margin_percent: settings?.default_margin_percent ?? INITIAL_FORM_STATE.margin_percent,
-    tax_rate: settings?.default_tax_rate ?? INITIAL_FORM_STATE.tax_rate,
     packaging_cost: settings?.default_packaging_cost ?? INITIAL_FORM_STATE.packaging_cost,
 });
 
@@ -127,7 +123,6 @@ const STOCK_FILTER_LABELS: Record<ProductFilterState['stock_status'], string> = 
 };
 
 type PricingSimulationFormState = {
-    include_tax: boolean;
     fixed_monthly_costs: number;
     variable_cost_percent: number;
     labor_cost_per_minute: number;
@@ -136,7 +131,6 @@ type PricingSimulationFormState = {
 };
 
 const buildSimulationDefaults = (settings?: PricingSettings | null): PricingSimulationFormState => ({
-    include_tax: true,
     fixed_monthly_costs: settings?.fixed_monthly_costs ?? 0,
     variable_cost_percent: settings?.variable_cost_percent ?? 0,
     labor_cost_per_minute: settings?.labor_cost_per_minute ?? 0,
@@ -203,7 +197,6 @@ export default function Products() {
             setFormData((prev) => ({
                 ...prev,
                 margin_percent: prev.margin_percent || pricingSettings.default_margin_percent,
-                tax_rate: prev.tax_rate || pricingSettings.default_tax_rate,
                 packaging_cost: prev.packaging_cost || pricingSettings.default_packaging_cost,
             }));
         }
@@ -312,10 +305,8 @@ export default function Products() {
             await suggestPrice({
                 recipe_id: formData.recipe_id || undefined,
                 product_id: editingId || undefined,
-                include_tax: simulationParams.include_tax,
                 margin_percent: formData.margin_percent || undefined,
                 packaging_cost: formData.packaging_cost || undefined,
-                tax_rate: formData.tax_rate || undefined,
                 current_price: simulationParams.current_price || undefined,
                 fixed_monthly_costs: simulationParams.fixed_monthly_costs || undefined,
                 variable_cost_percent: simulationParams.variable_cost_percent || undefined,
@@ -334,7 +325,6 @@ export default function Products() {
             base_price: suggestion.unit_cost,
             suggested_price: suggestion.suggested_price,
             margin_percent: suggestion.margin_percent,
-            tax_rate: suggestion.inputs.tax_rate,
         }));
         setSimulationParams((prev) => ({
             ...prev,
@@ -469,7 +459,6 @@ export default function Products() {
                 category_id: fullProduct.category_id || '',
                 base_price: fullProduct.base_price,
                 suggested_price: fullProduct.suggested_price,
-                tax_rate: fullProduct.tax_rate,
                 margin_percent: fullProduct.margin_percent,
                 packaging_cost: fullProduct.packaging_cost || 0,
                 stock_quantity: fullProduct.stock_quantity || 0,
@@ -800,18 +789,6 @@ export default function Products() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label htmlFor="tax_rate" className="text-sm font-medium text-muted">Taxa de imposto (%)*</label>
-                                <input
-                                    type="number"
-                                    id="tax_rate"
-                                    step="0.01"
-                                    className="input"
-                                    value={formData.tax_rate}
-                                    onChange={(e) => setFormData({ ...formData, tax_rate: parseFloat(e.target.value) || 0 })}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
                                 <label htmlFor="packaging_cost" className="text-sm font-medium text-muted">Custo de embalagem</label>
                                 <input
                                     type="number"
@@ -906,18 +883,6 @@ export default function Products() {
                                         onChange={(e) => handleSimulationFieldChange('current_price', e.target.value)}
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-muted">Incluir impostos</label>
-                                    <label className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm font-medium text-foreground">
-                                        <span>Calcular com tributos</span>
-                                        <input
-                                            type="checkbox"
-                                            className="checkbox"
-                                            checked={simulationParams.include_tax}
-                                            onChange={(e) => handleSimulationFieldChange('include_tax', e.target.checked)}
-                                        />
-                                    </label>
-                                </div>
                                 {pricingSettings && (
                                     <div className="rounded-2xl border border-border/40 bg-background/60 p-4 text-sm text-muted">
                                         <div className="flex items-center gap-2 text-foreground">
@@ -926,8 +891,9 @@ export default function Products() {
                                         </div>
                                         <ul className="mt-2 space-y-1">
                                             <li>Margem padrão: <strong>{pricingSettings.default_margin_percent}%</strong></li>
-                                            <li>Imposto padrão: <strong>{pricingSettings.default_tax_rate}%</strong></li>
                                             <li>Embalagem: <strong>{currencyFormatter.format(pricingSettings.default_packaging_cost)}</strong></li>
+                                            <li>Custos fixos: <strong>{currencyFormatter.format(pricingSettings.fixed_monthly_costs)}/mês</strong></li>
+                                            <li>Custos variáveis: <strong>{pricingSettings.variable_cost_percent}%</strong></li>
                                         </ul>
                                     </div>
                                 )}
@@ -965,26 +931,30 @@ export default function Products() {
 
                             {suggestion && (
                                 <div className="space-y-4">
-                                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                                         <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
                                             <p className="text-xs uppercase tracking-[0.3em] text-muted">Custo unitário</p>
                                             <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.unit_cost)}</p>
                                         </div>
                                         <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
-                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Preço antes de impostos</p>
-                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.price_before_tax)}</p>
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Custo total/unidade</p>
+                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.total_cost_per_unit)}</p>
                                         </div>
                                         <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
                                             <p className="text-xs uppercase tracking-[0.3em] text-muted">Preço sugerido</p>
                                             <p className="mt-2 text-2xl font-semibold text-primary">{currencyFormatter.format(suggestion.suggested_price)}</p>
                                         </div>
                                         <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
-                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Impostos</p>
-                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.tax_value)}</p>
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Markup</p>
+                                            <p className="mt-2 text-2xl font-semibold text-foreground">{suggestion.markup.toFixed(2)}%</p>
                                         </div>
                                         <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
-                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Margem (R$)</p>
-                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.margin_value)} ({suggestion.margin_percent}%)</p>
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Margem contribuição</p>
+                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.contribution_margin)}</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">% Contribuição</p>
+                                            <p className="mt-2 text-2xl font-semibold text-foreground">{suggestion.contribution_margin_pct.toFixed(2)}%</p>
                                         </div>
                                         <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
                                             <p className="text-xs uppercase tracking-[0.3em] text-muted">Ponto de equilíbrio</p>
@@ -993,7 +963,7 @@ export default function Products() {
                                         <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
                                             <p className="text-xs uppercase tracking-[0.3em] text-muted">Diferença vs atual</p>
                                             <p className={`mt-2 text-2xl font-semibold ${suggestion.delta_vs_current >= 0 ? 'text-success' : 'text-danger'}`}>
-                                                {currencyFormatter.format(suggestion.delta_vs_current)}
+                                                {currencyFormatter.format(suggestion.delta_vs_current)} ({suggestion.delta_percent.toFixed(2)}%)
                                             </p>
                                         </div>
                                     </div>
@@ -1253,9 +1223,6 @@ export default function Products() {
                                 <p className="flex items-center gap-2 text-foreground">
                                     <TrendingUp size={14} /> Margem: {product.margin_percent}%
                                 </p>
-                                <p className="flex items-center gap-2 text-foreground">
-                                    <Percent size={14} /> Impostos: {product.tax_rate}%
-                                </p>
                                 {product.packaging_cost > 0 && (
                                     <p className="flex items-center gap-2 text-foreground">
                                         <Package size={14} /> Embalagem: R$ {product.packaging_cost.toFixed(2)}
@@ -1285,17 +1252,19 @@ export default function Products() {
                                             <p className="text-lg font-semibold text-foreground">{currencyFormatter.format(product.pricing_summary.unit_cost)}</p>
                                         </div>
                                         <div>
-                                            <p className="text-muted">Valor da margem</p>
+                                            <p className="text-muted">Margem líquida</p>
                                             <p className="text-lg font-semibold text-foreground">{currencyFormatter.format(product.pricing_summary.margin_value)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-muted">Impostos</p>
-                                            <p className="text-lg font-semibold text-foreground">{currencyFormatter.format(product.pricing_summary.tax_value)}</p>
                                         </div>
                                         <div>
                                             <p className="text-muted">Ponto de equilíbrio</p>
                                             <p className="text-lg font-semibold text-foreground">{currencyFormatter.format(product.pricing_summary.break_even_price)}</p>
                                         </div>
+                                        {product.pricing_summary.contribution_margin && (
+                                            <div>
+                                                <p className="text-muted">Margem contribuição</p>
+                                                <p className="text-lg font-semibold text-foreground">{currencyFormatter.format(product.pricing_summary.contribution_margin)} ({product.pricing_summary.contribution_margin_pct?.toFixed(1)}%)</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
