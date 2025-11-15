@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -49,6 +50,13 @@ func run() error {
 	// Configurar logger
 	log := logger.New(cfg.App.Env)
 	log.Info().Msgf("Iniciando %s em modo %s", cfg.App.Name, cfg.App.Env)
+
+	allowedOrigins := buildAllowedOrigins(cfg)
+	if len(allowedOrigins) == 0 {
+		log.Warn().Msg("nenhuma origem configurada para CORS; somente requisições same-origin serão aceitas")
+	} else {
+		log.Info().Strs("cors_allowed_origins", allowedOrigins).Msg("CORS configurado")
+	}
 
 	ctx := context.Background()
 
@@ -165,6 +173,7 @@ func run() error {
 		CategoryHandler:    categoryHandler,
 		MeasurementHandler: measurementHandler,
 		RateLimiter:        rateLimiter,
+		AllowedOrigins:     allowedOrigins,
 	})
 
 	// Configurar servidor HTTP
@@ -212,4 +221,40 @@ func run() error {
 	}
 
 	return nil
+}
+
+func buildAllowedOrigins(cfg *config.Config) []string {
+	seen := make(map[string]struct{})
+	origins := make([]string, 0, 4)
+
+	add := func(origin string) {
+		trimmed := strings.TrimSpace(origin)
+		trimmed = strings.TrimRight(trimmed, "/")
+		if trimmed == "" {
+			return
+		}
+		if _, exists := seen[trimmed]; exists {
+			return
+		}
+		seen[trimmed] = struct{}{}
+		origins = append(origins, trimmed)
+	}
+
+	for _, origin := range strings.Split(cfg.App.FrontendURL, ",") {
+		add(origin)
+	}
+	add(cfg.App.ExternalURL)
+
+	defaultDevOrigins := []string{
+		"http://localhost:3000",
+		"http://localhost:5173",
+		"https://localhost:3000",
+		"https://localhost:5173",
+		"http://127.0.0.1:5173",
+	}
+	for _, origin := range defaultDevOrigins {
+		add(origin)
+	}
+
+	return origins
 }

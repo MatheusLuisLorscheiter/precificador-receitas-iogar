@@ -23,6 +23,7 @@ type Router struct {
 	categoryHandler    *handlers.CategoryHandler
 	measurementHandler *handlers.MeasurementHandler
 	rateLimiter        *middleware.RateLimiter
+	allowedOrigins     []string
 }
 
 // Config contém as dependências necessárias para criar o router.
@@ -37,6 +38,7 @@ type Config struct {
 	CategoryHandler    *handlers.CategoryHandler
 	MeasurementHandler *handlers.MeasurementHandler
 	RateLimiter        *middleware.RateLimiter
+	AllowedOrigins     []string
 }
 
 // New cria um novo router configurado.
@@ -53,6 +55,7 @@ func New(cfg *Config) *Router {
 		categoryHandler:    cfg.CategoryHandler,
 		measurementHandler: cfg.MeasurementHandler,
 		rateLimiter:        cfg.RateLimiter,
+		allowedOrigins:     cfg.AllowedOrigins,
 	}
 
 	r.setupRoutes()
@@ -158,8 +161,10 @@ func (r *Router) Handler() http.Handler {
 	// Aplicar middlewares globais (ordem inversa da execução)
 	handler = middleware.RecoverPanic(r.logger)(handler)
 	handler = middleware.SecurityHeaders()(handler)
-	handler = middleware.CORS()(handler)
-	handler = r.rateLimiter.Middleware()(handler)
+	if r.rateLimiter != nil {
+		handler = r.rateLimiter.Middleware()(handler)
+	}
+	handler = middleware.CORS(r.allowedOrigins)(handler)
 	handler = middleware.Logger(*r.logger)(handler)
 
 	return handler
