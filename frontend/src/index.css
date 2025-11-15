@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        color-scheme: light;
+        --color-background: 255 255 255;
+        --color-foreground: 10 10 11;
+        --color-muted: 113 113 122;
+        --color-card: 248 248 248;
+        --color-surface: 241 241 241;
+        --color-border: 229 229 234;
+        --color-input: 235 235 240;
+        --color-primary: 234 88 12;
+        --color-primary-foreground: 255 255 255;
+        --color-secondary: 24 24 27;
+        --color-accent: 14 165 233;
+        --color-success: 34 197 94;
+        --color-warning: 251 146 60;
+        --color-danger: 248 113 113;
+    }
+
+    .dark {
+        color-scheme: dark;
+        --color-background: 0 0 0;
+        --color-foreground: 244 244 245;
+        --color-muted: 161 161 170;
+        --color-card: 13 13 13;
+        --color-surface: 20 20 20;
+        --color-border: 38 38 43;
+        --color-input: 32 32 35;
+        --color-primary: 234 88 12;
+        --color-primary-foreground: 255 255 255;
+        --color-secondary: 244 244 245;
+        --color-accent: 56 189 248;
+        --color-success: 16 185 129;
+        --color-warning: 251 191 36;
+        --color-danger: 248 113 113;
+    }
+
+    * {
+        @apply box-border;
+        border-color: rgb(var(--color-border));
+    }
+
+    body {
+        @apply bg-background text-foreground font-sans antialiased transition-colors duration-300 ease-smooth;
+    }
+
+    #root {
+        @apply min-h-screen bg-background text-foreground;
+    }
+
+    ::selection {
+        background-color: rgba(234, 88, 12, 0.35);
+        color: #ffffff;
+    }
+
+    .container {
+        @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-10;
+    }
+}
+
+@layer components {
+
+    .input,
+    .textarea,
+    .select {
+        @apply w-full rounded-2xl border bg-surface/80 px-4 py-2.5 text-base text-foreground placeholder:text-muted outline-none transition-all duration-200 focus:border-primary focus:bg-card/80 focus:ring-2 focus:ring-primary/30;
+        border-color: rgb(var(--color-border));
+    }
+
+    .textarea {
+        @apply resize-y min-h-[120px];
+    }
+
+    .select {
+        @apply cursor-pointer;
+    }
+
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 font-medium tracking-tight transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+    }
+
+    .btn-primary {
+        @apply bg-primary text-primary-foreground shadow-soft hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-primary;
+    }
+
+    .btn-secondary {
+        @apply border bg-foreground/90 text-background hover:-translate-y-0.5 hover:bg-foreground;
+        border-color: rgb(var(--color-border));
+    }
+
+    .btn-outline {
+        @apply border bg-transparent text-foreground hover:bg-foreground/5;
+        border-color: rgb(var(--color-border));
+    }
+
+    .btn-success {
+        @apply bg-success text-white hover:-translate-y-0.5 hover:brightness-[1.05];
+    }
+
+    .btn-warning {
+        @apply bg-warning text-white hover:-translate-y-0.5 hover:brightness-[1.05];
+    }
+
+    .btn-danger {
+        @apply bg-danger text-white hover:-translate-y-0.5 hover:brightness-[1.05];
+    }
+
+    .card {
+        @apply rounded-3xl border bg-card/90 p-6 shadow-soft transition-all duration-300;
+        border-color: rgb(var(--color-border));
+    }
+
+    .card-hover {
+        @apply hover:-translate-y-0.5 hover:shadow-xl;
+    }
+
+    .glass-card {
+        @apply rounded-3xl border border-white/20 bg-white/70 p-6 shadow-soft backdrop-blur-2xl dark:border-white/10 dark:bg-black/40;
+    }
+
+    .badge {
+        @apply inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted;
+        border-color: rgb(var(--color-border) / 0.7);
+    }
+
+    .section-title {
+        @apply text-2xl font-semibold tracking-tight text-foreground;
+    }
+
+    .spinner {
+        @apply h-12 w-12 animate-spin rounded-full border-[3px] border-t-primary;
+        border-color: rgb(var(--color-border));
+        border-top-color: rgb(var(--color-primary));
+    }
+}
+
+@layer utilities {
+    .text-gradient {
+        @apply bg-gradient-to-r from-primary via-primary/80 to-accent bg-clip-text text-transparent;
+    }
+
+    .gradient-primary {
+        @apply bg-gradient-to-br from-primary via-primary/80 to-accent;
+    }
+
+    .glass {
+        @apply bg-white/60 backdrop-blur-xl shadow-soft dark:bg-black/50;
+    }
+
+    .grid-auto-fit {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .light-surface {
+        @apply bg-surface/80;
+    }
+}

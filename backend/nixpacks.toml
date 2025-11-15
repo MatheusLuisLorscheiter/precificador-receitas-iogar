@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ['go_1_22']
+
+[phases.install]
+cmds = ['go mod download']
+
+[phases.build]
+cmds = [
+  'cd cmd/server && go build -o ../../bin/server',
+  'cd cmd/migrate && go build -o ../../bin/migrate'
+]
+
+[start]
+cmd = './bin/migrate && ./bin/server'
