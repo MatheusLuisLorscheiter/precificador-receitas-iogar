@@ -1,0 +1,63 @@
+# General
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+*.orig
+*.pid
+*.seed
+*.bak
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+.env.*
+
+# IDE settings
+.vscode/
+.idea/
+*.iml
+
+# Node
+node_modules/
+yarn.lock.backup
+pnpm-lock.yaml
+package-lock.json
+npm-debug.log
+
+# Frontend build artefacts
+frontend/dist/
+frontend/build/
+frontend/coverage/
+frontend/.vite/
+
+# Backend build artefacts
+backend/bin/
+backend/tmp/
+backend/coverage/
+backend/.cache/
+
+# Go
+backend/vendor/
+
+# Redis dump
+*.rdb
+
+# MinIO
+minio-data/
+
+# PostgreSQL
+pgdata/
+
+# Logs
+logs/
