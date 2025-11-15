@@ -34,6 +34,7 @@ import {
 import ConfirmDialog from '../components/ConfirmDialog';
 import { MeasurementUnitSelect } from '../components/MeasurementUnitSelect';
 import { DEFAULT_PRODUCT_UNIT } from '../lib/measurement';
+import { useAuthStore } from '../store/authStore';
 
 type ProductFormState = {
     name: string;
@@ -113,6 +114,7 @@ const STOCK_FILTER_LABELS: Record<ProductFilterState['stock_status'], string> = 
 };
 
 export default function Products() {
+    const { hasHydrated, isAuthenticated } = useAuthStore();
     const [products, setProducts] = useState<Product[]>([]);
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -135,8 +137,12 @@ export default function Products() {
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
-        loadData();
-    }, []);
+        if (hasHydrated && isAuthenticated) {
+            loadData();
+        } else if (hasHydrated && !isAuthenticated) {
+            setLoading(false);
+        }
+    }, [hasHydrated, isAuthenticated]);
 
     const buildFilterParams = (state: ProductFilterState): Partial<ProductListFilters> => {
         const params: Partial<ProductListFilters> = {};

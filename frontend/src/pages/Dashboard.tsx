@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ingredientsAPI, recipesAPI, productsAPI, Recipe } from '../lib/apiClient';
 import { Link } from 'react-router-dom';
 import { Package, BookOpen, ShoppingBag, DollarSign, Plus, Zap, Settings } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 interface DashboardStats {
     totalIngredients: number;
@@ -11,6 +12,7 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
+    const { hasHydrated, isAuthenticated } = useAuthStore();
     const [stats, setStats] = useState<DashboardStats>({
         totalIngredients: 0,
         totalRecipes: 0,
@@ -22,8 +24,13 @@ export default function Dashboard() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        loadDashboardData();
-    }, []);
+        // Só carregar dados após hidratação do store e se autenticado
+        if (hasHydrated && isAuthenticated) {
+            loadDashboardData();
+        } else if (hasHydrated && !isAuthenticated) {
+            setLoading(false);
+        }
+    }, [hasHydrated, isAuthenticated]);
 
     const loadDashboardData = async () => {
         try {

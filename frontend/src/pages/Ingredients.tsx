@@ -4,6 +4,7 @@ import { Plus, X, Edit2, Trash2, Package, Filter, Search, RefreshCcw, CheckSquar
 import ConfirmDialog from '../components/ConfirmDialog';
 import { MeasurementUnitSelect } from '../components/MeasurementUnitSelect';
 import { DEFAULT_PRODUCT_UNIT } from '../lib/measurement';
+import { useAuthStore } from '../store/authStore';
 
 const STOCK_STATUS_LABELS = {
     all: 'Todos',
@@ -21,6 +22,7 @@ const createDefaultFilters = () => ({
 });
 
 export default function Ingredients() {
+    const { hasHydrated, isAuthenticated } = useAuthStore();
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -43,9 +45,13 @@ export default function Ingredients() {
     const [bulkLoading, setBulkLoading] = useState(false);
 
     useEffect(() => {
-        loadIngredients(appliedFilters);
+        if (hasHydrated && isAuthenticated) {
+            loadIngredients(appliedFilters);
+        } else if (hasHydrated && !isAuthenticated) {
+            setLoading(false);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [hasHydrated, isAuthenticated]);
 
     const buildFilterParams = (state: ReturnType<typeof createDefaultFilters>) => {
         const params: Partial<IngredientListFilters> = {};

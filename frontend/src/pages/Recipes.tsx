@@ -27,6 +27,7 @@ import {
 import ConfirmDialog from '../components/ConfirmDialog';
 import { MeasurementUnitSelect } from '../components/MeasurementUnitSelect';
 import { DEFAULT_PRODUCT_UNIT } from '../lib/measurement';
+import { useAuthStore } from '../store/authStore';
 
 interface RecipeFormItem {
     ingredient_id: string;
@@ -51,6 +52,7 @@ const createDefaultFilters = () => ({
 });
 
 export default function Recipes() {
+    const { hasHydrated, isAuthenticated } = useAuthStore();
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -76,9 +78,13 @@ export default function Recipes() {
     });
 
     useEffect(() => {
-        loadData(appliedFilters);
+        if (hasHydrated && isAuthenticated) {
+            loadData(appliedFilters);
+        } else if (hasHydrated && !isAuthenticated) {
+            setLoading(false);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [hasHydrated, isAuthenticated]);
 
     const buildFilterParams = (state: ReturnType<typeof createDefaultFilters>) => {
         const params: Partial<RecipeListFilters> = {};
