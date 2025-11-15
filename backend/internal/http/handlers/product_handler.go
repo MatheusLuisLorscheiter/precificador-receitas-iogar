@@ -72,6 +72,8 @@ type CreateProductRequest struct {
 	SKU             string     `json:"sku"`
 	Barcode         string     `json:"barcode"`
 	RecipeID        uuid.UUID  `json:"recipe_id"`
+	BasePrice       float64    `json:"base_price"`
+	SuggestedPrice  float64    `json:"suggested_price"`
 	MarginPercent   float64    `json:"margin_percent"`
 	PackagingCost   float64    `json:"packaging_cost"`
 	CategoryID      *uuid.UUID `json:"category_id"`
@@ -89,6 +91,8 @@ type UpdateProductRequest struct {
 	SKU             *string    `json:"sku,omitempty"`
 	Barcode         *string    `json:"barcode,omitempty"`
 	RecipeID        *uuid.UUID `json:"recipe_id,omitempty"`
+	BasePrice       *float64   `json:"base_price,omitempty"`
+	SuggestedPrice  *float64   `json:"suggested_price,omitempty"`
 	MarginPercent   *float64   `json:"margin_percent,omitempty"`
 	PackagingCost   *float64   `json:"packaging_cost,omitempty"`
 	CategoryID      *uuid.UUID `json:"category_id,omitempty"`
@@ -159,6 +163,8 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 		SKU:             req.SKU,
 		Barcode:         req.Barcode,
 		RecipeID:        req.RecipeID,
+		BasePrice:       req.BasePrice,
+		SuggestedPrice:  req.SuggestedPrice,
 		MarginPercent:   req.MarginPercent,
 		PackagingCost:   req.PackagingCost,
 		CategoryID:      categoryID,
@@ -344,6 +350,12 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.RecipeID != nil {
 		product.RecipeID = *req.RecipeID
+	}
+	if req.BasePrice != nil {
+		product.BasePrice = *req.BasePrice
+	}
+	if req.SuggestedPrice != nil {
+		product.SuggestedPrice = *req.SuggestedPrice
 	}
 	if req.MarginPercent != nil {
 		product.MarginPercent = *req.MarginPercent
