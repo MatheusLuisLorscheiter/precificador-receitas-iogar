@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -24,29 +23,11 @@ func NewTenantService(repo *repository.Store, log zerolog.Logger) *TenantService
 
 func (s *TenantService) Create(ctx context.Context, tenant *domain.Tenant) error {
 	tenant.Name = strings.TrimSpace(tenant.Name)
-	
-	// Gerar slug automaticamente a partir do nome se não fornecido
-	if tenant.Slug == "" {
-		tenant.Slug = repository.Slugify(tenant.Name)
-	} else {
-		tenant.Slug = repository.Slugify(tenant.Slug)
+
+	if err := ensureTenantSlug(ctx, s.repo, tenant, ""); err != nil {
+		return err
 	}
-	
-	// Garantir que o slug seja único adicionando sufixo se necessário
-	originalSlug := tenant.Slug
-	for i := 1; ; i++ {
-		// Verificar se o slug já existe
-		_, err := s.repo.GetTenantBySlug(ctx, tenant.Slug)
-		if err == repository.ErrNotFound {
-			// Slug disponível
-			break
-		} else if err != nil {
-			return fmt.Errorf("erro ao verificar slug: %w", err)
-		}
-		// Slug já existe, tentar com sufixo
-		tenant.Slug = fmt.Sprintf("%s-%d", originalSlug, i)
-	}
-	
+
 	tenant.Subdomain = strings.ToLower(strings.TrimSpace(tenant.Subdomain))
 	tenant.BillingEmail = strings.ToLower(strings.TrimSpace(tenant.BillingEmail))
 	if tenant.Timezone == "" {
