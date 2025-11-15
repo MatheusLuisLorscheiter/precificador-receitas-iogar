@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
     recipesAPI,
     ingredientsAPI,
@@ -29,6 +29,11 @@ import { MeasurementUnitSelect } from '../components/MeasurementUnitSelect';
 import { DEFAULT_PRODUCT_UNIT } from '../lib/measurement';
 import { useAuthStore } from '../store/authStore';
 import { useToast } from '../components/ToastProvider';
+
+const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+});
 
 interface RecipeFormItem {
     ingredient_id: string;
@@ -78,6 +83,13 @@ export default function Recipes() {
         items: [],
     });
     const formCardRef = useRef<HTMLDivElement | null>(null);
+    const ingredientLookup = useMemo(() => {
+        const map = new Map<string, Ingredient>();
+        ingredients.forEach((ingredient) => {
+            map.set(ingredient.id, ingredient);
+        });
+        return map;
+    }, [ingredients]);
 
     useEffect(() => {
         if (hasHydrated && isAuthenticated) {
@@ -217,7 +229,7 @@ export default function Recipes() {
                     ingredient_id: item.ingredient_id,
                     quantity: item.quantity,
                     unit: item.unit || DEFAULT_PRODUCT_UNIT,
-                    waste_factor: item.waste_factor,
+                    waste_factor: 0,
                 })),
             });
             setEditingId(recipe.id);
@@ -248,26 +260,42 @@ export default function Recipes() {
     };
 
     const addItem = () => {
-        setFormData({
-            ...formData,
+        setFormData(prev => ({
+            ...prev,
             items: [
-                ...formData.items,
-                { ingredient_id: '', quantity: 0, unit: DEFAULT_PRODUCT_UNIT, waste_factor: 0 },
+                ...prev.items,
+                { ingredient_id: '', quantity: 0, unit: '', waste_factor: 0 },
             ],
-        });
+        }));
     };
 
     const removeItem = (index: number) => {
-        setFormData({
-            ...formData,
-            items: formData.items.filter((_, i) => i !== index),
-        });
+        setFormData(prev => ({
+            ...prev,
+            items: prev.items.filter((_, i) => i !== index),
+        }));
     };
 
     const updateItem = (index: number, field: keyof RecipeFormItem, value: any) => {
-        const newItems = [...formData.items];
-        newItems[index] = { ...newItems[index], [field]: value };
-        setFormData({ ...formData, items: newItems });
+        setFormData(prev => {
+            const newItems = [...prev.items];
+            newItems[index] = { ...newItems[index], [field]: value };
+            return { ...prev, items: newItems };
+        });
+    };
+
+    const handleIngredientChange = (index: number, ingredientId: string) => {
+        setFormData(prev => {
+            const ingredient = ingredientLookup.get(ingredientId);
+            const newItems = [...prev.items];
+            newItems[index] = {
+                ...newItems[index],
+                ingredient_id: ingredientId,
+                unit: ingredient?.unit || '',
+                waste_factor: 0,
+            };
+            return { ...prev, items: newItems };
+        });
     };
 
     const resetForm = () => {
@@ -484,56 +512,62 @@ export default function Recipes() {
                                         Nenhum ingrediente adicionado. Clique em “Adicionar ingrediente”.
                                     </div>
                                 )}
-                                {formData.items.map((item, index) => (
-                                    <div
-                                        key={index}
-                                        className="grid gap-3 rounded-2xl border border-border/70 bg-surface/70 p-3 md:[grid-template-columns:2fr_1fr_1fr_1fr_auto]"
-                                    >
-                                        <select
-                                            value={item.ingredient_id}
-                                            onChange={(e) => updateItem(index, 'ingredient_id', e.target.value)}
-                                            required
-                                            className="select"
+                                {formData.items.map((item, index) => {
+                                    const selectedIngredient = ingredientLookup.get(item.ingredient_id || '');
+                                    const costValue = selectedIngredient
+                                        ? item.quantity * (selectedIngredient.cost_per_unit || 0)
+                                        : 0;
+                                    const costDisplay = selectedIngredient
+                                        ? currencyFormatter.format(costValue)
+                                        : '—';
+
+                                    return (
+                                        <div
+                                            key={index}
+                                            className="grid gap-3 rounded-2xl border border-border/70 bg-surface/70 p-3 md:[grid-template-columns:2fr_1fr_1fr_1fr_auto]"
                                         >
-                                            <option value="">Selecione...</option>
-                                            {ingredients.map((ing) => (
-                                                <option key={ing.id} value={ing.id}>
-                                                    {ing.name} ({ing.unit})
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="Qtd"
-                                            className="input"
-                                            value={item.quantity}
-                                            onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
-                                            required
-                                        />
-                                        <MeasurementUnitSelect
-                                            value={item.unit}
-                                            onValueChange={(value) => updateItem(index, 'unit', value || DEFAULT_PRODUCT_UNIT)}
-                                            placeholder="Selecione"
-                                            required
-                                        />
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="Desperdício %"
-                                            className="input"
-                                            value={item.waste_factor}
-                                            onChange={(e) => updateItem(index, 'waste_factor', parseFloat(e.target.value) || 0)}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="btn btn-danger px-3"
-                                            onClick={() => removeItem(index)}
-                                        >
-                                            <X size={16} />
-                                        </button>
-                                    </div>
-                                ))}
+                                            <select
+                                                value={item.ingredient_id}
+                                                onChange={(e) => handleIngredientChange(index, e.target.value)}
+                                                required
+                                                className="select"
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {ingredients.map((ing) => (
+                                                    <option key={ing.id} value={ing.id}>
+                                                        {ing.name} ({ing.unit})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="Qtd"
+                                                className="input"
+                                                value={item.quantity}
+                                                onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                                                required
+                                            />
+                                            <input
+                                                type="text"
+                                                className="input"
+                                                value={item.unit || ''}
+                                                placeholder="Unidade"
+                                                disabled
+                                            />
+                                            <div className="rounded-2xl border border-border/70 px-4 py-2 text-sm font-semibold text-primary">
+                                                {costDisplay}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="btn btn-danger px-3"
+                                                onClick={() => removeItem(index)}
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
