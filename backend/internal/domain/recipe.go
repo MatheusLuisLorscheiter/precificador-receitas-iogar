@@ -32,9 +32,13 @@ type RecipeItem struct {
 
 // RecipeSummary consolida o custo da receita.
 type RecipeSummary struct {
-	IngredientCost float64 `json:"ingredient_cost"`
-	LaborCost      float64 `json:"labor_cost"`
-	PackagingCost  float64 `json:"packaging_cost"`
-	TotalCost      float64 `json:"total_cost"`
-	CostPerUnit    float64 `json:"cost_per_unit"`
+	YieldQuantity        float64 `json:"yield_quantity"`
+	IngredientCost       float64 `json:"ingredient_cost"`
+	IngredientCostPerUnit float64 `json:"ingredient_cost_per_unit"`
+	LaborCost            float64 `json:"labor_cost"`
+	LaborCostPerUnit     float64 `json:"labor_cost_per_unit"`
+	PackagingCost        float64 `json:"packaging_cost"`
+	PackagingCostPerUnit float64 `json:"packaging_cost_per_unit"`
+	TotalCost            float64 `json:"total_cost"`
+	CostPerUnit          float64 `json:"cost_per_unit"`
 }

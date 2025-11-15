@@ -229,7 +229,7 @@ export default function Recipes() {
                     ingredient_id: item.ingredient_id,
                     quantity: item.quantity,
                     unit: item.unit || DEFAULT_PRODUCT_UNIT,
-                    waste_factor: 0,
+                    waste_factor: typeof item.waste_factor === 'number' ? item.waste_factor : 0,
                 })),
             });
             setEditingId(recipe.id);
@@ -292,7 +292,7 @@ export default function Recipes() {
                 ...newItems[index],
                 ingredient_id: ingredientId,
                 unit: ingredient?.unit || '',
-                waste_factor: 0,
+                waste_factor: typeof newItems[index]?.waste_factor === 'number' ? newItems[index].waste_factor : 0,
             };
             return { ...prev, items: newItems };
         });
@@ -514,8 +514,9 @@ export default function Recipes() {
                                 )}
                                 {formData.items.map((item, index) => {
                                     const selectedIngredient = ingredientLookup.get(item.ingredient_id || '');
+                                    const wasteMultiplier = 1 + (item.waste_factor || 0);
                                     const costValue = selectedIngredient
-                                        ? item.quantity * (selectedIngredient.cost_per_unit || 0)
+                                        ? item.quantity * wasteMultiplier * (selectedIngredient.cost_per_unit || 0)
                                         : 0;
                                     const costDisplay = selectedIngredient
                                         ? currencyFormatter.format(costValue)
@@ -614,11 +615,44 @@ export default function Recipes() {
                     </div>
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {recipes.map((recipe) => (
-                        <div
-                            key={recipe.id}
-                            className={`relative card flex flex-col gap-4 ${selectedIds.includes(recipe.id) ? 'ring-2 ring-accent/40' : ''}`}
-                        >
+                    {recipes.map((recipe) => {
+                        const summary = recipe.cost_summary;
+                        const unitLabel = recipe.yield_unit || 'unidade';
+                        const yieldDivisor = summary?.yield_quantity && summary.yield_quantity > 0
+                            ? summary.yield_quantity
+                            : recipe.yield_quantity || 1;
+                        const unitValue = (value: number | undefined, total: number) => {
+                            if (typeof value === 'number' && Number.isFinite(value)) {
+                                return value;
+                            }
+                            const divisor = yieldDivisor > 0 ? yieldDivisor : 1;
+                            return total / divisor;
+                        };
+                        const breakdown = summary
+                            ? [
+                                  {
+                                      label: 'Insumos',
+                                      total: summary.ingredient_cost,
+                                      unit: unitValue(summary.ingredient_cost_per_unit, summary.ingredient_cost),
+                                  },
+                                  {
+                                      label: 'Mão de obra',
+                                      total: summary.labor_cost,
+                                      unit: unitValue(summary.labor_cost_per_unit, summary.labor_cost),
+                                  },
+                                  {
+                                      label: 'Embalagem',
+                                      total: summary.packaging_cost,
+                                      unit: unitValue(summary.packaging_cost_per_unit, summary.packaging_cost),
+                                  },
+                              ]
+                            : [];
+
+                        return (
+                            <div
+                                key={recipe.id}
+                                className={`relative card flex flex-col gap-4 ${selectedIds.includes(recipe.id) ? 'ring-2 ring-accent/40' : ''}`}
+                            >
                             <label className="absolute right-4 top-4 flex items-center gap-2 text-xs text-muted">
                                 <input
                                     type="checkbox"
@@ -650,11 +684,28 @@ export default function Recipes() {
                                         Tempo: {recipe.production_time} min
                                     </p>
                                 )}
-                                {recipe.cost_summary && (
-                                    <p className="flex items-center gap-2 font-semibold text-primary">
-                                        <DollarSign size={16} />
-                                        Custo: R$ {recipe.cost_summary.total_cost.toFixed(2)}
-                                    </p>
+                                {summary && (
+                                    <div className="rounded-2xl border border-border/60 bg-surface/70 p-3">
+                                        <div className="flex items-center justify-between text-sm font-semibold text-primary">
+                                            <span className="flex items-center gap-2">
+                                                <DollarSign size={16} />
+                                                Custo total
+                                            </span>
+                                            <span>{currencyFormatter.format(summary.total_cost)}</span>
+                                        </div>
+                                        <p className="mt-1 text-xs text-muted">
+                                            Unitário ({unitLabel}): <span className="font-semibold text-foreground">{currencyFormatter.format(summary.cost_per_unit)}</span>
+                                        </p>
+                                        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+                                            {breakdown.map((item) => (
+                                                <div key={item.label} className="rounded-xl border border-border/60 bg-background/60 p-2">
+                                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">{item.label}</p>
+                                                    <p className="text-sm font-semibold text-foreground">{currencyFormatter.format(item.total)}</p>
+                                                    <p className="text-[11px] text-muted">{currencyFormatter.format(item.unit)} / {unitLabel}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                             <div className="flex gap-3">
@@ -674,7 +725,8 @@ export default function Recipes() {
                                 </button>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 

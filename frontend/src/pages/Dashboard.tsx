@@ -11,6 +11,11 @@ interface DashboardStats {
     totalInventoryValue: number;
 }
 
+const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+});
+
 export default function Dashboard() {
     const { hasHydrated, isAuthenticated } = useAuthStore();
     const [stats, setStats] = useState<DashboardStats>({
@@ -106,7 +111,7 @@ export default function Dashboard() {
         },
         {
             label: 'Valor Estimado do Estoque',
-            value: `R$ ${stats.totalInventoryValue.toFixed(2)}`,
+            value: currencyFormatter.format(stats.totalInventoryValue),
             href: '/ingredients',
             icon: DollarSign,
             accent: 'text-accent',
@@ -201,28 +206,34 @@ export default function Dashboard() {
                         </div>
                     </div>
                     <div className="space-y-3">
-                        {recentRecipes.map((recipe) => (
-                            <Link
-                                key={recipe.id}
-                                to="/recipes"
-                                className="group flex items-center justify-between rounded-2xl border border-border/60 bg-surface/70 px-4 py-3 no-underline transition hover:border-primary/40 hover:bg-card/80"
-                            >
-                                <div>
-                                    <p className="text-base font-semibold text-foreground">{recipe.name}</p>
-                                    <p className="text-sm text-muted">
-                                        Rendimento: {recipe.yield_quantity} {recipe.yield_unit}
-                                    </p>
-                                </div>
-                                {recipe.cost_summary && (
-                                    <div className="text-right">
-                                        <p className="text-base font-semibold text-primary">
-                                            R$ {recipe.cost_summary.total_cost.toFixed(2)}
+                        {recentRecipes.map((recipe) => {
+                            const summary = recipe.cost_summary;
+                            const unitLabel = recipe.yield_unit || 'un.';
+                            return (
+                                <Link
+                                    key={recipe.id}
+                                    to="/recipes"
+                                    className="group flex items-center justify-between rounded-2xl border border-border/60 bg-surface/70 px-4 py-3 no-underline transition hover:border-primary/40 hover:bg-card/80"
+                                >
+                                    <div>
+                                        <p className="text-base font-semibold text-foreground">{recipe.name}</p>
+                                        <p className="text-sm text-muted">
+                                            Rendimento: {recipe.yield_quantity} {recipe.yield_unit}
                                         </p>
-                                        <p className="text-xs text-muted">Custo total</p>
                                     </div>
-                                )}
-                            </Link>
-                        ))}
+                                    {summary && (
+                                        <div className="text-right text-sm">
+                                            <p className="font-semibold text-primary">
+                                                {currencyFormatter.format(summary.total_cost)}
+                                            </p>
+                                            <p className="text-xs text-muted">
+                                                {currencyFormatter.format(summary.cost_per_unit)} / {unitLabel}
+                                            </p>
+                                        </div>
+                                    )}
+                                </Link>
+                            );
+                        })}
                     </div>
                 </div>
             )}

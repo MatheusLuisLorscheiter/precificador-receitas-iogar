@@ -240,20 +240,30 @@ func buildRecipeSummary(snapshot *recipeCostSnapshot, settings *domain.PricingSe
 		return &domain.RecipeSummary{}
 	}
 	yield := snapshot.YieldQuantity
-	if yield <= 0 {
-		yield = 1
+	effectiveYield := yield
+	if effectiveYield <= 0 {
+		effectiveYield = 1
 	}
-	ingredientPerUnit := snapshot.IngredientCost / yield
-	laborPerUnit := (float64(snapshot.ProductionTime) * settings.LaborCostPerMinute) / yield
+
+	ingredientTotal := snapshot.IngredientCost
+	ingredientPerUnit := ingredientTotal / effectiveYield
+	laborTotal := float64(snapshot.ProductionTime) * settings.LaborCostPerMinute
+	laborPerUnit := laborTotal / effectiveYield
 	packagingPerUnit := settings.DefaultPackagingCost
-	totalPerUnit := ingredientPerUnit + laborPerUnit + packagingPerUnit
+	packagingTotal := packagingPerUnit * effectiveYield
+	totalCost := ingredientTotal + laborTotal + packagingTotal
+	totalPerUnit := totalCost / effectiveYield
 
 	return &domain.RecipeSummary{
-		IngredientCost: domain.RoundCurrency(ingredientPerUnit),
-		LaborCost:      domain.RoundCurrency(laborPerUnit),
-		PackagingCost:  domain.RoundCurrency(packagingPerUnit),
-		TotalCost:      domain.RoundCurrency(totalPerUnit),
-		CostPerUnit:    domain.RoundCurrency(totalPerUnit),
+		YieldQuantity:        yield,
+		IngredientCost:       domain.RoundCurrency(ingredientTotal),
+		IngredientCostPerUnit: domain.RoundCurrency(ingredientPerUnit),
+		LaborCost:            domain.RoundCurrency(laborTotal),
+		LaborCostPerUnit:     domain.RoundCurrency(laborPerUnit),
+		PackagingCost:        domain.RoundCurrency(packagingTotal),
+		PackagingCostPerUnit: domain.RoundCurrency(packagingPerUnit),
+		TotalCost:            domain.RoundCurrency(totalCost),
+		CostPerUnit:          domain.RoundCurrency(totalPerUnit),
 	}
 }
 
@@ -329,15 +339,29 @@ func (s *PricingService) CalculateProductPrice(ctx context.Context, tenantID uui
 		return nil, err
 	}
 
-	baseCost := summary.CostPerUnit - summary.PackagingCost
-	if baseCost < 0 {
-		baseCost = 0
+	ingredientPerUnit := summary.IngredientCostPerUnit
+	laborPerUnit := summary.LaborCostPerUnit
+	packagingPerUnit := product.PackagingCost
+	if packagingPerUnit <= 0 {
+		packagingPerUnit = summary.PackagingCostPerUnit
 	}
-	cost := baseCost + product.PackagingCost
-	marginMultiplier := 1 + (product.MarginPercent / 100)
-	totalPrice := cost * marginMultiplier
+	directUnitCost := ingredientPerUnit + laborPerUnit + packagingPerUnit
 
-	product.BasePrice = domain.RoundCurrency(cost)
+	salesVolume := settings.DefaultSalesVolume
+	if salesVolume <= 0 {
+		salesVolume = 1
+	}
+	fixedCostPerUnit := 0.0
+	if settings.FixedMonthlyCosts > 0 {
+		fixedCostPerUnit = settings.FixedMonthlyCosts / salesVolume
+	}
+	variableCostUnit := (directUnitCost + fixedCostPerUnit) * (settings.VariableCostPercent / 100)
+	totalCostPerUnit := directUnitCost + fixedCostPerUnit + variableCostUnit
+
+	marginMultiplier := 1 + (product.MarginPercent / 100)
+	totalPrice := totalCostPerUnit * marginMultiplier
+
+	product.BasePrice = domain.RoundCurrency(totalCostPerUnit)
 	product.SuggestedPrice = domain.RoundCurrency(totalPrice)
 	product.PricingSummary = product.DerivePricingSummary()
 	return product, nil

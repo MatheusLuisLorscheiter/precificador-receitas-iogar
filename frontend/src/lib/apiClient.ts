@@ -40,9 +40,13 @@ export interface RecipeItem {
 }
 
 export interface RecipeSummary {
+    yield_quantity: number;
     ingredient_cost: number;
+    ingredient_cost_per_unit: number;
     labor_cost: number;
+    labor_cost_per_unit: number;
     packaging_cost: number;
+    packaging_cost_per_unit: number;
     total_cost: number;
     cost_per_unit: number;
 }
