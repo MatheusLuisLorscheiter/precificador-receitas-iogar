@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ingredientsAPI, Ingredient, IngredientListFilters } from '../lib/apiClient';
 import { Plus, X, Edit2, Trash2, Package, Filter, Search, RefreshCcw, CheckSquare, Loader2 } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { MeasurementUnitSelect } from '../components/MeasurementUnitSelect';
 import { DEFAULT_PRODUCT_UNIT } from '../lib/measurement';
 import { useAuthStore } from '../store/authStore';
+import { useToast } from '../components/ToastProvider';
 
 const STOCK_STATUS_LABELS = {
     all: 'Todos',
@@ -23,9 +24,9 @@ const createDefaultFilters = () => ({
 
 export default function Ingredients() {
     const { hasHydrated, isAuthenticated } = useAuthStore();
+    const { pushToast } = useToast();
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -43,6 +44,7 @@ export default function Ingredients() {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
     const [bulkLoading, setBulkLoading] = useState(false);
+    const formCardRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (hasHydrated && isAuthenticated) {
@@ -74,7 +76,8 @@ export default function Ingredients() {
             setIngredients(response.data || []);
             setSelectedIds([]);
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao carregar ingredientes');
+            const message = err?.response?.data?.error || 'Erro ao carregar ingredientes';
+            pushToast({ variant: 'error', title: 'Ingredientes', description: message });
         } finally {
             setLoading(false);
         }
@@ -107,6 +110,12 @@ export default function Ingredients() {
         }
     };
 
+    useEffect(() => {
+        if (showForm && formCardRef.current) {
+            formCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [showForm, editingId]);
+
     const openBulkDeleteDialog = () => {
         if (!selectedIds.length) return;
         setBulkDialogOpen(true);
@@ -115,14 +124,19 @@ export default function Ingredients() {
     const confirmBulkDelete = async () => {
         if (!selectedIds.length) return;
         setBulkLoading(true);
-        setError('');
         try {
             await ingredientsAPI.bulkDelete(selectedIds);
             setBulkDialogOpen(false);
             setSelectedIds([]);
             loadIngredients(appliedFilters);
+            pushToast({
+                variant: 'success',
+                title: 'Ingredientes',
+                description: 'Ingredientes selecionados excluídos com sucesso.',
+            });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao excluir ingredientes selecionados');
+            const message = err?.response?.data?.error || 'Erro ao excluir ingredientes selecionados';
+            pushToast({ variant: 'error', title: 'Ingredientes', description: message });
         } finally {
             setBulkLoading(false);
         }
@@ -130,9 +144,9 @@ export default function Ingredients() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
 
         try {
+            const wasEditing = Boolean(editingId);
             if (editingId) {
                 await ingredientsAPI.update(editingId, formData);
             } else {
@@ -140,8 +154,14 @@ export default function Ingredients() {
             }
             resetForm();
             loadIngredients(appliedFilters);
+            pushToast({
+                variant: 'success',
+                title: 'Ingredientes',
+                description: wasEditing ? 'Ingrediente atualizado com sucesso.' : 'Ingrediente criado com sucesso.',
+            });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao salvar ingrediente');
+            const message = err?.response?.data?.error || 'Erro ao salvar ingrediente';
+            pushToast({ variant: 'error', title: 'Ingredientes', description: message });
         }
     };
 
@@ -170,8 +190,10 @@ export default function Ingredients() {
             await ingredientsAPI.delete(ingredientToDelete);
             loadIngredients(appliedFilters);
             setIngredientToDelete(null);
+            pushToast({ variant: 'success', title: 'Ingredientes', description: 'Ingrediente excluído com sucesso.' });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao excluir ingrediente');
+            const message = err?.response?.data?.error || 'Erro ao excluir ingrediente';
+            pushToast({ variant: 'error', title: 'Ingredientes', description: message });
         }
     };
 
@@ -230,12 +252,6 @@ export default function Ingredients() {
                     )}
                 </button>
             </div>
-
-            {error && (
-                <div className="rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
-                    {error}
-                </div>
-            )}
 
             <form onSubmit={handleApplyFilters} className="card space-y-4">
                 <div className="flex items-center gap-3 text-muted">
@@ -307,7 +323,7 @@ export default function Ingredients() {
             </form>
 
             {showForm && (
-                <div className="card space-y-6">
+                <div ref={formCardRef} className="card space-y-6">
                     <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted">
                             {editingId ? 'Atualização' : 'Cadastro'}

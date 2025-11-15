@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     recipesAPI,
     ingredientsAPI,
@@ -28,6 +28,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { MeasurementUnitSelect } from '../components/MeasurementUnitSelect';
 import { DEFAULT_PRODUCT_UNIT } from '../lib/measurement';
 import { useAuthStore } from '../store/authStore';
+import { useToast } from '../components/ToastProvider';
 
 interface RecipeFormItem {
     ingredient_id: string;
@@ -53,11 +54,11 @@ const createDefaultFilters = () => ({
 
 export default function Recipes() {
     const { hasHydrated, isAuthenticated } = useAuthStore();
+    const { pushToast } = useToast();
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -76,6 +77,7 @@ export default function Recipes() {
         notes: '',
         items: [],
     });
+    const formCardRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (hasHydrated && isAuthenticated) {
@@ -110,7 +112,8 @@ export default function Recipes() {
             setCategories(categoriesRes.data || []);
             setSelectedIds([]);
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao carregar dados');
+            const message = err?.response?.data?.error || 'Erro ao carregar dados';
+            pushToast({ variant: 'error', title: 'Receitas', description: message });
         } finally {
             setLoading(false);
         }
@@ -144,6 +147,12 @@ export default function Recipes() {
         }
     };
 
+    useEffect(() => {
+        if (showForm && formCardRef.current) {
+            formCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [showForm, editingId]);
+
     const openBulkDialog = () => {
         if (!selectedIds.length) return;
         setBulkDialogOpen(true);
@@ -152,14 +161,19 @@ export default function Recipes() {
     const confirmBulkDelete = async () => {
         if (!selectedIds.length) return;
         setBulkLoading(true);
-        setError('');
         try {
             await recipesAPI.bulkDelete(selectedIds);
             setBulkDialogOpen(false);
             setSelectedIds([]);
             loadData(appliedFilters);
+            pushToast({
+                variant: 'success',
+                title: 'Receitas',
+                description: 'Receitas selecionadas excluídas com sucesso.',
+            });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao excluir receitas selecionadas');
+            const message = err?.response?.data?.error || 'Erro ao excluir receitas selecionadas';
+            pushToast({ variant: 'error', title: 'Receitas', description: message });
         } finally {
             setBulkLoading(false);
         }
@@ -167,9 +181,9 @@ export default function Recipes() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
 
         try {
+            const wasEditing = Boolean(editingId);
             if (editingId) {
                 await recipesAPI.update(editingId, formData as any);
             } else {
@@ -177,8 +191,14 @@ export default function Recipes() {
             }
             resetForm();
             loadData(appliedFilters);
+            pushToast({
+                variant: 'success',
+                title: 'Receitas',
+                description: wasEditing ? 'Receita atualizada com sucesso.' : 'Receita criada com sucesso.',
+            });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao salvar receita');
+            const message = err?.response?.data?.error || 'Erro ao salvar receita';
+            pushToast({ variant: 'error', title: 'Receitas', description: message });
         }
     };
 
@@ -203,7 +223,8 @@ export default function Recipes() {
             setEditingId(recipe.id);
             setShowForm(true);
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao carregar receita');
+            const message = err?.response?.data?.error || 'Erro ao carregar receita';
+            pushToast({ variant: 'error', title: 'Receitas', description: message });
         }
     };
 
@@ -219,8 +240,10 @@ export default function Recipes() {
             await recipesAPI.delete(recipeToDelete);
             loadData(appliedFilters);
             setRecipeToDelete(null);
+            pushToast({ variant: 'success', title: 'Receitas', description: 'Receita excluída com sucesso.' });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao excluir receita');
+            const message = err?.response?.data?.error || 'Erro ao excluir receita';
+            pushToast({ variant: 'error', title: 'Receitas', description: message });
         }
     };
 
@@ -301,12 +324,6 @@ export default function Recipes() {
                 </button>
             </div>
 
-            {error && (
-                <div className="rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
-                    {error}
-                </div>
-            )}
-
             <form onSubmit={handleApplyFilters} className="card space-y-4">
                 <div className="flex items-center gap-3 text-muted">
                     <span className="rounded-full bg-accent/10 p-2 text-accent">
@@ -371,7 +388,7 @@ export default function Recipes() {
             </form>
 
             {showForm && (
-                <div className="card space-y-6">
+                <div ref={formCardRef} className="card space-y-6">
                     <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted">
                             {editingId ? 'Atualização' : 'Cadastro'}

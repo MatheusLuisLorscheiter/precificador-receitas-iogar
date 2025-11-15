@@ -40,6 +40,7 @@ import { MeasurementUnitSelect } from '../components/MeasurementUnitSelect';
 import { DEFAULT_PRODUCT_UNIT } from '../lib/measurement';
 import { useAuthStore } from '../store/authStore';
 import { usePricingStore } from '../store/pricingStore';
+import { useToast } from '../components/ToastProvider';
 
 type ProductFormState = {
     name: string;
@@ -155,12 +156,12 @@ export default function Products() {
         suggesting: state.suggesting,
         clearSuggestion: state.clearSuggestion,
     }));
+    const { pushToast } = useToast();
     const [products, setProducts] = useState<Product[]>([]);
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState('');
     const [pricingConfigError, setPricingConfigError] = useState('');
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -178,6 +179,7 @@ export default function Products() {
     const [simulationParams, setSimulationParams] = useState<PricingSimulationFormState>(() => buildSimulationDefaults());
     const [suggestionError, setSuggestionError] = useState('');
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const formCardRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (hasHydrated && isAuthenticated) {
@@ -189,6 +191,12 @@ export default function Products() {
             setLoading(false);
         }
     }, [hasHydrated, isAuthenticated, loadPricingSettings]);
+
+    useEffect(() => {
+        if (showForm && formCardRef.current) {
+            formCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [showForm, editingId]);
 
     useEffect(() => {
         if (!pricingSettings) return;
@@ -259,7 +267,8 @@ export default function Products() {
             setCategories(categoriesRes.data || []);
             setSelectedIds([]);
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao carregar dados');
+            const message = err?.response?.data?.error || 'Erro ao carregar dados';
+            pushToast({ variant: 'error', title: 'Produtos', description: message });
         } finally {
             if (silent) {
                 setRefreshing(false);
@@ -359,14 +368,19 @@ export default function Products() {
     const confirmBulkDelete = async () => {
         if (!selectedIds.length) return;
         setBulkLoading(true);
-        setError('');
         try {
             await productsAPI.bulkDelete(selectedIds);
             setBulkDialogOpen(false);
             setSelectedIds([]);
             await loadData({ silent: true });
+            pushToast({
+                variant: 'success',
+                title: 'Produtos',
+                description: 'Produtos selecionados excluídos com sucesso.',
+            });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao excluir produtos selecionados');
+            const message = err?.response?.data?.error || 'Erro ao excluir produtos selecionados';
+            pushToast({ variant: 'error', title: 'Produtos', description: message });
         } finally {
             setBulkLoading(false);
         }
@@ -416,7 +430,6 @@ export default function Products() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
         setSaving(true);
 
         try {
@@ -437,10 +450,16 @@ export default function Products() {
                 await productsAPI.uploadImage(productId, imageFile);
             }
 
+            pushToast({
+                variant: 'success',
+                title: 'Produtos',
+                description: editingId ? 'Produto atualizado com sucesso.' : 'Produto criado com sucesso.',
+            });
             resetForm();
             await loadData({ silent: true });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao salvar produto');
+            const message = err?.response?.data?.error || 'Erro ao salvar produto';
+            pushToast({ variant: 'error', title: 'Produtos', description: message });
         } finally {
             setSaving(false);
         }
@@ -480,7 +499,8 @@ export default function Products() {
             }));
             clearSuggestionState();
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao carregar produto');
+            const message = err?.response?.data?.error || 'Erro ao carregar produto';
+            pushToast({ variant: 'error', title: 'Produtos', description: message });
         }
     };
 
@@ -496,8 +516,10 @@ export default function Products() {
             await productsAPI.delete(productToDelete);
             await loadData({ silent: true });
             setProductToDelete(null);
+            pushToast({ variant: 'success', title: 'Produtos', description: 'Produto excluído com sucesso.' });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Erro ao excluir produto');
+            const message = err?.response?.data?.error || 'Erro ao excluir produto';
+            pushToast({ variant: 'error', title: 'Produtos', description: message });
         }
     };
 
@@ -549,12 +571,6 @@ export default function Products() {
                     )}
                 </button>
             </div>
-
-            {error && (
-                <div className="rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
-                    {error}
-                </div>
-            )}
 
             <form onSubmit={handleApplyFilters} className="card space-y-4">
                 <div className="flex items-center gap-3 text-muted">
@@ -664,7 +680,7 @@ export default function Products() {
             </form>
 
             {showForm && (
-                <div className="card space-y-6">
+                <div ref={formCardRef} className="card space-y-6">
                     <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted">
                             {editingId ? 'Atualização' : 'Cadastro'}
