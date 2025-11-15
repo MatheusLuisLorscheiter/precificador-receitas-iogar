@@ -1,16 +1,12 @@
 :3000 {
-	# Proxy para o backend - todas as requisições que começam com /api
-	reverse_proxy /api/* https://precificador-backend.dmb6un.easypanel.host {
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-	}
+	# Proxy para o backend
+	reverse_proxy /api/* https://precificador-backend.dmb6un.easypanel.host
 
-	# Servir arquivos estáticos do build
+	# Servir arquivos estáticos
 	root * /app/dist
 	encode gzip
 	file_server
-	
-	# SPA fallback - redireciona todas as rotas não encontradas para index.html
+
+	# SPA fallback
 	try_files {path} /index.html
 }
