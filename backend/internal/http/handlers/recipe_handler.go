@@ -79,12 +79,13 @@ type CreateRecipeItemRequest struct {
 
 // UpdateRecipeRequest representa a requisição de atualização de receita.
 type UpdateRecipeRequest struct {
-	Name           *string  `json:"name,omitempty"`
-	Description    *string  `json:"description,omitempty"`
-	YieldQuantity  *float64 `json:"yield_quantity,omitempty"`
-	YieldUnit      *string  `json:"yield_unit,omitempty"`
-	ProductionTime *int     `json:"production_time,omitempty"`
-	Notes          *string  `json:"notes,omitempty"`
+	Name           *string                    `json:"name,omitempty"`
+	Description    *string                    `json:"description,omitempty"`
+	YieldQuantity  *float64                   `json:"yield_quantity,omitempty"`
+	YieldUnit      *string                    `json:"yield_unit,omitempty"`
+	ProductionTime *int                       `json:"production_time,omitempty"`
+	Notes          *string                    `json:"notes,omitempty"`
+	Items          *[]CreateRecipeItemRequest `json:"items"`
 }
 
 // Create cria uma nova receita.
@@ -363,6 +364,30 @@ func (h *RecipeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Notes != nil {
 		recipe.Notes = *req.Notes
+	}
+	if req.Items != nil {
+		items := make([]domain.RecipeItem, 0, len(*req.Items))
+		for idx, item := range *req.Items {
+			if item.Quantity <= 0 {
+				field := fmt.Sprintf("items[%d].quantity", idx)
+				httputil.RespondError(
+					w,
+					http.StatusBadRequest,
+					recipeItemQuantityPositiveMessage,
+					httputil.WithErrorCode("RECEITA_ITEM_QUANTIDADE_POSITIVA"),
+					httputil.WithFieldError(field, recipeItemQuantityPositiveMessage),
+				)
+				return
+			}
+			items = append(items, domain.RecipeItem{
+				TenantID:     claims.TenantID,
+				IngredientID: item.IngredientID,
+				Quantity:     item.Quantity,
+				Unit:         item.Unit,
+				WasteFactor:  item.WasteFactor,
+			})
+		}
+		recipe.Items = items
 	}
 
 	if err := h.service.Update(ctx, recipe); err != nil {
