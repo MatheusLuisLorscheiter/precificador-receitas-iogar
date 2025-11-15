@@ -147,6 +147,7 @@ func run() error {
 		services.Users,
 		services.Tenants,
 		services.Passwords,
+		mailClient,
 		cfg,
 		logPtr,
 	)

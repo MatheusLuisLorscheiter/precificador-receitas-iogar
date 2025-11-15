@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/rs/zerolog"
 
@@ -10,13 +13,14 @@ import (
 	"github.com/MatheusLuisLorscheiter/precificador-receitas-iogar/backend/internal/domain"
 	"github.com/MatheusLuisLorscheiter/precificador-receitas-iogar/backend/internal/http/httputil"
 	"github.com/MatheusLuisLorscheiter/precificador-receitas-iogar/backend/internal/http/requestctx"
+	"github.com/MatheusLuisLorscheiter/precificador-receitas-iogar/backend/internal/mailer"
 	"github.com/MatheusLuisLorscheiter/precificador-receitas-iogar/backend/internal/service"
 )
 
 const (
 	passwordResetMessage = "Se o e-mail existir, enviaremos instruções para redefinir a senha."
-	invalidBodyMessage  = "Não foi possível interpretar os dados enviados."
-	unauthorizedMessage = "Autenticação necessária."
+	invalidBodyMessage   = "Não foi possível interpretar os dados enviados."
+	unauthorizedMessage  = "Autenticação necessária."
 )
 
 // AuthHandler gerencia endpoints de autenticação.
@@ -25,6 +29,7 @@ type AuthHandler struct {
 	userService          *service.UserService
 	tenantService        *service.TenantService
 	passwordResetService *service.PasswordResetService
+	mailer               *mailer.SMTPClient
 	config               *config.Config
 	logger               *zerolog.Logger
 }
@@ -35,6 +40,7 @@ func NewAuthHandler(
 	userService *service.UserService,
 	tenantService *service.TenantService,
 	passwordResetService *service.PasswordResetService,
+	mailerClient *mailer.SMTPClient,
 	cfg *config.Config,
 	logger *zerolog.Logger,
 ) *AuthHandler {
@@ -43,6 +49,7 @@ func NewAuthHandler(
 		userService:          userService,
 		tenantService:        tenantService,
 		passwordResetService: passwordResetService,
+		mailer:               mailerClient,
 		config:               cfg,
 		logger:               logger,
 	}
@@ -177,6 +184,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		httputil.RespondError(w, http.StatusInternalServerError, "Não foi possível criar o usuário administrador.")
 		return
 	}
+
+	h.sendTenantSlugEmail(req.UserName, req.UserEmail, tenant)
 
 	// Gerar tokens
 	tokens, err := h.authService.TokenManager.GenerateTokens(user.ID, user.TenantID, user.Role)
@@ -369,8 +378,8 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest,
 			"Slug da empresa, token e nova senha são obrigatórios.",
 			httputil.WithFieldErrors(map[string]string{
-				"tenant_slug": "Informe a empresa correta.",
-				"token":       "Informe o token recebido no e-mail.",
+				"tenant_slug":  "Informe a empresa correta.",
+				"token":        "Informe o token recebido no e-mail.",
 				"new_password": "Defina a nova senha.",
 			}),
 		)
@@ -477,4 +486,42 @@ func (h *AuthHandler) GetTenantsByEmail(w http.ResponseWriter, r *http.Request) 
 	}
 
 	httputil.RespondJSON(w, http.StatusOK, response)
+}
+
+func (h *AuthHandler) sendTenantSlugEmail(userName, userEmail string, tenant *domain.Tenant) {
+	if tenant == nil || tenant.Slug == "" {
+		return
+	}
+
+	if h.mailer == nil {
+		h.logger.Warn().Msg("mailer not configured; skipping tenant slug email")
+		return
+	}
+
+	loginBase := strings.TrimRight(h.config.App.FrontendURL, "/")
+	loginURL := ""
+	if loginBase != "" {
+		loginURL = fmt.Sprintf("%s/login?tenant=%s", loginBase, url.QueryEscape(tenant.Slug))
+	}
+
+	subject := fmt.Sprintf("Bem-vindo ao %s", h.config.App.Name)
+	bodyBuilder := &strings.Builder{}
+	bodyBuilder.WriteString(fmt.Sprintf("Olá %s,\n\n", strings.TrimSpace(userName)))
+	bodyBuilder.WriteString(fmt.Sprintf("Seu ambiente %s foi criado com sucesso!\n", tenant.Name))
+	bodyBuilder.WriteString(fmt.Sprintf("Este é o slug da sua empresa: %s\n", tenant.Slug))
+	bodyBuilder.WriteString("Ele será solicitado na tela de login para entrar no sistema.\n\n")
+	if loginURL != "" {
+		bodyBuilder.WriteString(fmt.Sprintf("Acesse: %s\n\n", loginURL))
+	} else {
+		bodyBuilder.WriteString("Use o slug acima quando acessar a tela de login do sistema.\n\n")
+	}
+	bodyBuilder.WriteString("Se não foi você quem solicitou o cadastro, ignore este e-mail.\n\n")
+	bodyBuilder.WriteString(fmt.Sprintf("Abraços,\nEquipe %s", h.config.App.Name))
+
+	if err := h.mailer.Send(userEmail, subject, bodyBuilder.String()); err != nil {
+		h.logger.Error().Err(err).
+			Str("email", userEmail).
+			Str("tenant_id", tenant.ID.String()).
+			Msg("failed to send tenant slug email")
+	}
 }
