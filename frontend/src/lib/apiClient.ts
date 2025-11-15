@@ -57,7 +57,6 @@ export interface Product {
     recipe_id?: string;
     base_price: number;
     suggested_price: number;
-    tax_rate: number;
     margin_percent: number;
     packaging_cost: number;
     image_object_key: string;
@@ -76,11 +75,11 @@ export interface Product {
 export interface ProductPricingSummary {
     unit_cost: number;
     margin_value: number;
-    profit_per_unit: number;
     break_even_price: number;
-    contribution_margin?: number;
-    contribution_margin_pct?: number;
-    markup?: number;
+    contribution_margin: number;
+    contribution_margin_pct: number;
+    markup: number;
+    margin_percent: number;
 }
 
 export interface PricingSettings {

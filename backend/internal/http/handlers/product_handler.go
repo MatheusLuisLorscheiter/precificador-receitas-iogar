@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -110,8 +109,17 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateProductRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httputil.RespondError(w, http.StatusBadRequest, invalidRequestBodyMessage, httputil.WithErrorCode("PRODUTO_CORPO_INVALIDO"))
+	if err := httputil.DecodeJSON(w, r, &req); err != nil {
+		if h.logger != nil {
+			h.logger.Warn().Err(err).Str("tenant_id", claims.TenantID.String()).Msg("invalid product creation payload")
+		}
+		httputil.RespondError(
+			w,
+			http.StatusBadRequest,
+			invalidRequestBodyMessage,
+			httputil.WithErrorCode("PRODUTO_CORPO_INVALIDO"),
+			httputil.WithFieldError("body", err.Error()),
+		)
 		return
 	}
 
@@ -295,8 +303,20 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateProductRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httputil.RespondError(w, http.StatusBadRequest, invalidRequestBodyMessage, httputil.WithErrorCode("PRODUTO_CORPO_INVALIDO"))
+	if err := httputil.DecodeJSON(w, r, &req); err != nil {
+		if h.logger != nil {
+			h.logger.Warn().Err(err).
+				Str("tenant_id", claims.TenantID.String()).
+				Str("product_id", id.String()).
+				Msg("invalid product update payload")
+		}
+		httputil.RespondError(
+			w,
+			http.StatusBadRequest,
+			invalidRequestBodyMessage,
+			httputil.WithErrorCode("PRODUTO_CORPO_INVALIDO"),
+			httputil.WithFieldError("body", err.Error()),
+		)
 		return
 	}
 
@@ -413,8 +433,17 @@ func (h *ProductHandler) BulkDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req bulkDeleteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httputil.RespondError(w, http.StatusBadRequest, invalidRequestBodyMessage, httputil.WithErrorCode("PRODUTO_CORPO_INVALIDO"))
+	if err := httputil.DecodeJSON(w, r, &req); err != nil {
+		if h.logger != nil {
+			h.logger.Warn().Err(err).Str("tenant_id", claims.TenantID.String()).Msg("invalid product bulk delete payload")
+		}
+		httputil.RespondError(
+			w,
+			http.StatusBadRequest,
+			invalidRequestBodyMessage,
+			httputil.WithErrorCode("PRODUTO_CORPO_INVALIDO"),
+			httputil.WithFieldError("body", err.Error()),
+		)
 		return
 	}
 	if len(req.IDs) == 0 {
