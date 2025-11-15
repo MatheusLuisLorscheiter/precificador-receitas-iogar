@@ -1,7 +1,24 @@
 :3000 {
 	# Proxy para o backend - todas as requisições que começam com /api
 	reverse_proxy /api/* https://precificador-backend.dmb6un.easypanel.host {
+		# Preservar headers originais
 		header_up Host {upstream_hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		
+		# Timeout mais longo para evitar problemas
+		transport http {
+			dial_timeout 30s
+			response_header_timeout 30s
+		}
+	}
+
+	# Headers CORS (caso necessário)
+	header {
+		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type, Authorization"
 	}
 
 	# Servir arquivos estáticos do build
