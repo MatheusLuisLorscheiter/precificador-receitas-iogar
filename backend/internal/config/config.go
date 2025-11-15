@@ -15,6 +15,7 @@ type Config struct {
 		Host        string `env:"SERVER_HOST" envDefault:"0.0.0.0"`
 		Port        int    `env:"SERVER_PORT" envDefault:"8080"`
 		ExternalURL string `env:"SERVER_EXTERNAL_URL,notEmpty"`
+		FrontendURL string `env:"FRONTEND_URL,notEmpty"`
 	}
 
 	Database struct {

@@ -54,7 +54,7 @@ func (s *PasswordResetService) IssueToken(ctx context.Context, tenant *domain.Te
 		return "", err
 	}
 
-	resetURL := fmt.Sprintf("%s/reset-password?token=%s&tenant=%s", appConfig.App.ExternalURL, token, tenant.Slug)
+	resetURL := fmt.Sprintf("%s/reset-password?token=%s&tenant=%s", appConfig.App.FrontendURL, token, tenant.Slug)
 
 	body := fmt.Sprintf("Olá %s,\n\nRecebemos uma solicitação para redefinir a sua senha. Utilize o link abaixo até %s.\n\n%s\n\nSe você não solicitou, ignore este e-mail.\n\nPrecificador Receitas", user.Name, expiresAt.Format(time.RFC1123), resetURL)
 
