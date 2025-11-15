@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { authAPI } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
@@ -13,6 +13,7 @@ interface TenantOption {
 
 export default function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { setAuth, tenantSlug: savedSlug } = useAuthStore();
     const { theme, toggleTheme } = useThemeStore();
     const [tenantSlug, setTenantSlug] = useState('');
@@ -30,12 +31,20 @@ export default function Login() {
     const [slugError, setSlugError] = useState('');
     const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
 
-    // Auto-preencher com último slug usado
+    // Auto-preencher slug com query param (?tenant=) ou último usado
     useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const slugFromUrl = params.get('tenant') ?? params.get('slug');
+
+        if (slugFromUrl) {
+            setTenantSlug(slugFromUrl);
+            return;
+        }
+
         if (savedSlug) {
             setTenantSlug(savedSlug);
         }
-    }, [savedSlug]);
+    }, [location.search, savedSlug]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

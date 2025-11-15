@@ -486,7 +486,7 @@ func (h *AuthHandler) sendTenantSlugEmail(userName, userEmail string, tenant *do
 	} else {
 		bodyBuilder.WriteString("Use o slug acima quando acessar a tela de login do sistema.\n\n")
 	}
-	bodyBuilder.WriteString("Se não foi você quem solicitou o cadastro, ignore este e-mail.\n\n")
+	bodyBuilder.WriteString("Se não foi você quem solicitou o cadastro, alguém deve ter usado seu e-mail na criação desta conta. Se for o caso, por favor ignore este e-mail ou entre em contato conosco.\n\n")
 	bodyBuilder.WriteString(fmt.Sprintf("Abraços,\nEquipe %s", h.config.App.Name))
 
 	if err := h.mailer.Send(userEmail, subject, bodyBuilder.String()); err != nil {

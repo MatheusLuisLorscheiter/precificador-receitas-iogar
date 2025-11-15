@@ -206,7 +206,7 @@ func (s *Store) DeleteUser(ctx context.Context, tenantID, userID uuid.UUID) erro
 // FindTenantsByUserEmail retorna todos os tenants onde o usuário possui conta.
 func (s *Store) FindTenantsByUserEmail(ctx context.Context, email string) ([]domain.Tenant, error) {
 	query := `
-		SELECT DISTINCT t.id, t.name, t.slug, t.subdomain, t.timezone, t.billing_email, t.created_at, t.updated_at
+		SELECT DISTINCT t.id, t.name, t.slug, COALESCE(t.subdomain, '') AS subdomain, t.timezone, t.billing_email, t.created_at, t.updated_at
 		FROM tenants t
 		INNER JOIN users u ON u.tenant_id = t.id
 		WHERE LOWER(u.email) = LOWER($1)
