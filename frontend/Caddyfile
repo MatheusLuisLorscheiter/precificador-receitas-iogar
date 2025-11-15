@@ -1,0 +1,14 @@
+:3000 {
+	# Proxy para o backend - todas as requisições que começam com /api
+	reverse_proxy /api/* https://precificador-backend.dmb6un.easypanel.host {
+		header_up Host {upstream_hostport}
+	}
+
+	# Servir arquivos estáticos do build
+	root * /app/dist
+	encode gzip
+	file_server
+	
+	# SPA fallback - redireciona todas as rotas não encontradas para index.html
+	try_files {path} /index.html
+}

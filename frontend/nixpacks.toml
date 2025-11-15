@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ['nodejs_20']
+nixPkgs = ['nodejs_20', 'caddy']
 
 [phases.install]
 cmds = [
@@ -12,4 +12,4 @@ cmds = [
 ]
 
 [start]
-cmd = 'npx serve -s dist -l 3000'
+cmd = 'caddy run --config Caddyfile --adapter caddyfile'
