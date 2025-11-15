@@ -81,7 +81,21 @@ func TenantIsolation(logger *zerolog.Logger) func(http.Handler) http.Handler {
 func CORS() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			origin := r.Header.Get("Origin")
+			
+			// Lista de origens permitidas (adicione mais conforme necessário)
+			allowedOrigins := map[string]bool{
+				"https://precificador-frontend.dmb6un.easypanel.host": true,
+				"http://localhost:3000": true,
+				"http://localhost:5173": true,
+			}
+			
+			// Se a origem está na lista, permitir
+			if allowedOrigins[origin] {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+			
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			w.Header().Set("Access-Control-Max-Age", "86400")
