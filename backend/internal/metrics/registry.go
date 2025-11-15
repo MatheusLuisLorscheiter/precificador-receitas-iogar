@@ -6,9 +6,10 @@ import (
 
 // Registry mantém métricas customizadas utilizadas no serviço.
 type Registry struct {
-	HTTPRequests *prometheus.CounterVec
-	HTTPLatency  *prometheus.HistogramVec
-	PricingCache *prometheus.CounterVec
+	HTTPRequests       *prometheus.CounterVec
+	HTTPLatency        *prometheus.HistogramVec
+	PricingCache       *prometheus.CounterVec
+	PricingSuggestions *prometheus.CounterVec
 }
 
 // NewRegistry registra e retorna as métricas padrão do backend.
@@ -27,9 +28,18 @@ func NewRegistry() *Registry {
 			Name: "pricing_cache_events_total",
 			Help: "Contabiliza hits/misses do cache de precificação",
 		}, []string{"event"}),
+		PricingSuggestions: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "pricing_suggestions_total",
+			Help: "Total de simulações de preço sugerido",
+		}, []string{"source", "has_sales_volume"}),
 	}
 
-	prometheus.MustRegister(reg.HTTPRequests, reg.HTTPLatency, reg.PricingCache)
+	prometheus.MustRegister(
+		reg.HTTPRequests,
+		reg.HTTPLatency,
+		reg.PricingCache,
+		reg.PricingSuggestions,
+	)
 
 	return reg
 }

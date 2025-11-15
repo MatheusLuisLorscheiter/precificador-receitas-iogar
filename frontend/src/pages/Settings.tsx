@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import api from '../lib/api';
-import { Settings as SettingsIcon, User, Lock, Save } from 'lucide-react';
+import { Settings as SettingsIcon, User, Lock, Save, Sparkles } from 'lucide-react';
+import { usePricingStore } from '../store/pricingStore';
+import { PricingSettingsUpdatePayload } from '../lib/apiClient';
 
 export default function Settings() {
     const { user, setUser } = useAuthStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [pricingError, setPricingError] = useState('');
+    const [pricingSuccess, setPricingSuccess] = useState('');
 
     const [profileData, setProfileData] = useState({
         name: user?.name || '',
@@ -19,6 +23,55 @@ export default function Settings() {
         new_password: '',
         confirm_password: '',
     });
+
+    const {
+        settings: pricingSettings,
+        loadSettings,
+        saveSettings,
+        loadingSettings,
+        savingSettings,
+    } = usePricingStore((state) => ({
+        settings: state.settings,
+        loadSettings: state.loadSettings,
+        saveSettings: state.saveSettings,
+        loadingSettings: state.loadingSettings,
+        savingSettings: state.savingSettings,
+    }));
+
+    const [pricingForm, setPricingForm] = useState<PricingSettingsUpdatePayload>({
+        labor_cost_per_minute: 0,
+        default_packaging_cost: 0,
+        default_margin_percent: 0,
+        fixed_monthly_costs: 0,
+        variable_cost_percent: 0,
+        default_tax_rate: 0,
+        default_sales_volume: 0,
+    });
+
+    useEffect(() => {
+        loadSettings().catch(() => {
+            setPricingError('Não foi possível carregar as configurações de precificação.');
+        });
+    }, [loadSettings]);
+
+    useEffect(() => {
+        if (pricingSettings) {
+            setPricingForm({
+                labor_cost_per_minute: pricingSettings.labor_cost_per_minute,
+                default_packaging_cost: pricingSettings.default_packaging_cost,
+                default_margin_percent: pricingSettings.default_margin_percent,
+                fixed_monthly_costs: pricingSettings.fixed_monthly_costs,
+                variable_cost_percent: pricingSettings.variable_cost_percent,
+                default_tax_rate: pricingSettings.default_tax_rate,
+                default_sales_volume: pricingSettings.default_sales_volume,
+            });
+        }
+    }, [pricingSettings]);
+
+    const lastUpdatedAt = useMemo(() => {
+        if (!pricingSettings?.updated_at) return '';
+        return new Date(pricingSettings.updated_at).toLocaleString('pt-BR');
+    }, [pricingSettings?.updated_at]);
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,6 +118,27 @@ export default function Settings() {
             setError(err.response?.data?.error || 'Erro ao alterar senha');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handlePricingChange = (field: keyof PricingSettingsUpdatePayload, value: string) => {
+        const parsed = value === '' ? undefined : Number(value);
+        setPricingForm((prev) => ({
+            ...prev,
+            [field]: Number.isNaN(parsed) ? 0 : parsed,
+        }));
+    };
+
+    const handlePricingSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPricingError('');
+        setPricingSuccess('');
+
+        try {
+            await saveSettings(pricingForm);
+            setPricingSuccess('Configurações de precificação atualizadas com sucesso!');
+        } catch (err: any) {
+            setPricingError(err.response?.data?.error || 'Erro ao atualizar configurações de precificação');
         }
     };
 
@@ -201,6 +275,136 @@ export default function Settings() {
                         </button>
                     </form>
                 </div>
+            </div>
+
+            <div className="card space-y-6">
+                <div className="flex items-center gap-3">
+                    <span className="rounded-2xl bg-warning/10 p-2 text-warning">
+                        <Sparkles size={22} />
+                    </span>
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted">Precificação direta</p>
+                        <h2 className="text-xl font-semibold text-foreground">Parâmetros padrão</h2>
+                        <p className="text-sm text-muted">Defina custos base e métricas utilizadas nas simulações automáticas.</p>
+                    </div>
+                </div>
+
+                {pricingError && (
+                    <div className="rounded-2xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+                        {pricingError}
+                    </div>
+                )}
+                {pricingSuccess && (
+                    <div className="rounded-2xl border border-success/30 bg-success/5 px-4 py-3 text-sm text-success">
+                        {pricingSuccess}
+                    </div>
+                )}
+
+                <form onSubmit={handlePricingSubmit} className="space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted" htmlFor="labor_cost_per_minute">Mão de obra (R$/min)</label>
+                            <input
+                                id="labor_cost_per_minute"
+                                type="number"
+                                step="0.01"
+                                className="input"
+                                value={pricingForm.labor_cost_per_minute ?? ''}
+                                onChange={(e) => handlePricingChange('labor_cost_per_minute', e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted" htmlFor="default_packaging_cost">Custo padrão de embalagem</label>
+                            <input
+                                id="default_packaging_cost"
+                                type="number"
+                                step="0.01"
+                                className="input"
+                                value={pricingForm.default_packaging_cost ?? ''}
+                                onChange={(e) => handlePricingChange('default_packaging_cost', e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted" htmlFor="default_margin_percent">Margem padrão (%)</label>
+                            <input
+                                id="default_margin_percent"
+                                type="number"
+                                step="0.1"
+                                className="input"
+                                value={pricingForm.default_margin_percent ?? ''}
+                                onChange={(e) => handlePricingChange('default_margin_percent', e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted" htmlFor="default_tax_rate">Taxa padrão de imposto (%)</label>
+                            <input
+                                id="default_tax_rate"
+                                type="number"
+                                step="0.1"
+                                className="input"
+                                value={pricingForm.default_tax_rate ?? ''}
+                                onChange={(e) => handlePricingChange('default_tax_rate', e.target.value)}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted" htmlFor="fixed_monthly_costs">Custos fixos mensais</label>
+                            <input
+                                id="fixed_monthly_costs"
+                                type="number"
+                                step="0.01"
+                                className="input"
+                                value={pricingForm.fixed_monthly_costs ?? ''}
+                                onChange={(e) => handlePricingChange('fixed_monthly_costs', e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted" htmlFor="variable_cost_percent">Custos variáveis (%)</label>
+                            <input
+                                id="variable_cost_percent"
+                                type="number"
+                                step="0.1"
+                                className="input"
+                                value={pricingForm.variable_cost_percent ?? ''}
+                                onChange={(e) => handlePricingChange('variable_cost_percent', e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted" htmlFor="default_sales_volume">Volume mensal padrão</label>
+                            <input
+                                id="default_sales_volume"
+                                type="number"
+                                step="1"
+                                className="input"
+                                value={pricingForm.default_sales_volume ?? ''}
+                                onChange={(e) => handlePricingChange('default_sales_volume', e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+                        <div>
+                            {lastUpdatedAt && (
+                                <p>Última atualização em <span className="font-semibold text-foreground">{lastUpdatedAt}</span></p>
+                            )}
+                            {!lastUpdatedAt && loadingSettings && <p>Carregando configurações...</p>}
+                        </div>
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={savingSettings || loadingSettings}
+                        >
+                            <Save size={18} />
+                            {savingSettings ? 'Salvando...' : 'Salvar parâmetros'}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );

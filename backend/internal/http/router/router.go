@@ -22,6 +22,7 @@ type Router struct {
 	pushHandler        *handlers.PushSubscriptionHandler
 	categoryHandler    *handlers.CategoryHandler
 	measurementHandler *handlers.MeasurementHandler
+	pricingHandler     *handlers.PricingHandler
 	rateLimiter        *middleware.RateLimiter
 	allowedOrigins     []string
 }
@@ -37,6 +38,7 @@ type Config struct {
 	PushHandler        *handlers.PushSubscriptionHandler
 	CategoryHandler    *handlers.CategoryHandler
 	MeasurementHandler *handlers.MeasurementHandler
+	PricingHandler     *handlers.PricingHandler
 	RateLimiter        *middleware.RateLimiter
 	AllowedOrigins     []string
 }
@@ -54,6 +56,7 @@ func New(cfg *Config) *Router {
 		pushHandler:        cfg.PushHandler,
 		categoryHandler:    cfg.CategoryHandler,
 		measurementHandler: cfg.MeasurementHandler,
+		pricingHandler:     cfg.PricingHandler,
 		rateLimiter:        cfg.RateLimiter,
 		allowedOrigins:     cfg.AllowedOrigins,
 	}
@@ -131,6 +134,11 @@ func (r *Router) setupRoutes() {
 
 	// Measurement units
 	authMux.HandleFunc("GET /api/v1/measurement-units", r.measurementHandler.List)
+
+	// Pricing
+	authMux.HandleFunc("GET /api/v1/pricing/settings", r.pricingHandler.GetSettings)
+	authMux.HandleFunc("PUT /api/v1/pricing/settings", r.pricingHandler.UpdateSettings)
+	authMux.HandleFunc("POST /api/v1/pricing/suggest", r.pricingHandler.Suggest)
 
 	// Aplicar middlewares na ordem correta
 	authHandler := middleware.Auth(r.logger, r.tokenManager)(

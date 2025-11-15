@@ -7,6 +7,7 @@ import {
     Recipe,
     Category,
     ProductListFilters,
+    PricingSettings,
 } from '../lib/apiClient';
 import {
     Plus,
@@ -30,11 +31,16 @@ import {
     RefreshCcw,
     CheckSquare,
     Loader2,
+    Calculator,
+    Sparkles,
+    Info,
+    CheckCircle2,
 } from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { MeasurementUnitSelect } from '../components/MeasurementUnitSelect';
 import { DEFAULT_PRODUCT_UNIT } from '../lib/measurement';
 import { useAuthStore } from '../store/authStore';
+import { usePricingStore } from '../store/pricingStore';
 
 type ProductFormState = {
     name: string;
@@ -73,6 +79,13 @@ const INITIAL_FORM_STATE: ProductFormState = {
     storage_location: '',
     active: true,
 };
+
+const createInitialFormState = (settings?: PricingSettings | null): ProductFormState => ({
+    ...INITIAL_FORM_STATE,
+    margin_percent: settings?.default_margin_percent ?? INITIAL_FORM_STATE.margin_percent,
+    tax_rate: settings?.default_tax_rate ?? INITIAL_FORM_STATE.tax_rate,
+    packaging_cost: settings?.default_packaging_cost ?? INITIAL_FORM_STATE.packaging_cost,
+});
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -113,19 +126,53 @@ const STOCK_FILTER_LABELS: Record<ProductFilterState['stock_status'], string> = 
     ok: 'Estoque saudável',
 };
 
+type PricingSimulationFormState = {
+    include_tax: boolean;
+    fixed_monthly_costs: number;
+    variable_cost_percent: number;
+    labor_cost_per_minute: number;
+    sales_volume_monthly: number;
+    current_price: number;
+};
+
+const buildSimulationDefaults = (settings?: PricingSettings | null): PricingSimulationFormState => ({
+    include_tax: true,
+    fixed_monthly_costs: settings?.fixed_monthly_costs ?? 0,
+    variable_cost_percent: settings?.variable_cost_percent ?? 0,
+    labor_cost_per_minute: settings?.labor_cost_per_minute ?? 0,
+    sales_volume_monthly: settings?.default_sales_volume ?? 0,
+    current_price: 0,
+});
+
 export default function Products() {
     const { hasHydrated, isAuthenticated } = useAuthStore();
+    const {
+        settings: pricingSettings,
+        loadSettings: loadPricingSettings,
+        suggestPrice,
+        suggestion,
+        suggesting,
+        clearSuggestion,
+    } = usePricingStore((state) => ({
+        settings: state.settings,
+        loadSettings: state.loadSettings,
+        suggestPrice: state.suggestPrice,
+        suggestion: state.suggestion,
+        suggesting: state.suggesting,
+        clearSuggestion: state.clearSuggestion,
+    }));
     const [products, setProducts] = useState<Product[]>([]);
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState('');
+    const [pricingConfigError, setPricingConfigError] = useState('');
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<string | null>(null);
-    const [formData, setFormData] = useState<ProductFormState>(INITIAL_FORM_STATE);
+    const [formData, setFormData] = useState<ProductFormState>(() => createInitialFormState());
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -134,15 +181,50 @@ export default function Products() {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
     const [bulkLoading, setBulkLoading] = useState(false);
+    const [simulationParams, setSimulationParams] = useState<PricingSimulationFormState>(() => buildSimulationDefaults());
+    const [suggestionError, setSuggestionError] = useState('');
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         if (hasHydrated && isAuthenticated) {
             loadData();
+            loadPricingSettings().catch(() => {
+                setPricingConfigError('Não foi possível carregar os parâmetros de precificação.');
+            });
         } else if (hasHydrated && !isAuthenticated) {
             setLoading(false);
         }
-    }, [hasHydrated, isAuthenticated]);
+    }, [hasHydrated, isAuthenticated, loadPricingSettings]);
+
+    useEffect(() => {
+        if (!pricingSettings) return;
+
+        if (!editingId) {
+            setFormData((prev) => ({
+                ...prev,
+                margin_percent: prev.margin_percent || pricingSettings.default_margin_percent,
+                tax_rate: prev.tax_rate || pricingSettings.default_tax_rate,
+                packaging_cost: prev.packaging_cost || pricingSettings.default_packaging_cost,
+            }));
+        }
+
+        setSimulationParams((prev) => ({
+            ...prev,
+            fixed_monthly_costs: prev.fixed_monthly_costs || pricingSettings.fixed_monthly_costs,
+            variable_cost_percent: prev.variable_cost_percent || pricingSettings.variable_cost_percent,
+            labor_cost_per_minute: prev.labor_cost_per_minute || pricingSettings.labor_cost_per_minute,
+            sales_volume_monthly: prev.sales_volume_monthly || pricingSettings.default_sales_volume,
+        }));
+    }, [pricingSettings, editingId]);
+
+    useEffect(() => {
+        const nextPrice = formData.suggested_price || 0;
+        setSimulationParams((prev) =>
+            Math.abs(prev.current_price - nextPrice) < 0.01
+                ? prev
+                : { ...prev, current_price: nextPrice }
+        );
+    }, [formData.suggested_price]);
 
     const buildFilterParams = (state: ProductFilterState): Partial<ProductListFilters> => {
         const params: Partial<ProductListFilters> = {};
@@ -206,6 +288,63 @@ export default function Products() {
         setFilters(next);
         setAppliedFilters(next);
         loadData({ filtersOverride: next });
+    };
+
+    const handleSimulationFieldChange = (field: keyof PricingSimulationFormState, value: string | boolean) => {
+        setSuggestionError('');
+        setSimulationParams((prev) => ({
+            ...prev,
+            [field]: typeof value === 'boolean'
+                ? value
+                : value === ''
+                    ? 0
+                    : Number(value) || 0,
+        }));
+    };
+
+    const handleSuggestPrice = async () => {
+        if (!formData.recipe_id && !editingId) {
+            setSuggestionError('Selecione uma receita vinculada ao produto para simular o preço.');
+            return;
+        }
+        setSuggestionError('');
+        try {
+            await suggestPrice({
+                recipe_id: formData.recipe_id || undefined,
+                product_id: editingId || undefined,
+                include_tax: simulationParams.include_tax,
+                margin_percent: formData.margin_percent || undefined,
+                packaging_cost: formData.packaging_cost || undefined,
+                tax_rate: formData.tax_rate || undefined,
+                current_price: simulationParams.current_price || undefined,
+                fixed_monthly_costs: simulationParams.fixed_monthly_costs || undefined,
+                variable_cost_percent: simulationParams.variable_cost_percent || undefined,
+                labor_cost_per_minute: simulationParams.labor_cost_per_minute || undefined,
+                sales_volume_monthly: simulationParams.sales_volume_monthly || undefined,
+            });
+        } catch (err: any) {
+            setSuggestionError(err.response?.data?.error || 'Não foi possível gerar a simulação agora.');
+        }
+    };
+
+    const applySuggestionToForm = () => {
+        if (!suggestion) return;
+        setFormData((prev) => ({
+            ...prev,
+            base_price: suggestion.unit_cost,
+            suggested_price: suggestion.suggested_price,
+            margin_percent: suggestion.margin_percent,
+            tax_rate: suggestion.inputs.tax_rate,
+        }));
+        setSimulationParams((prev) => ({
+            ...prev,
+            current_price: suggestion.suggested_price,
+        }));
+    };
+
+    const clearSuggestionState = () => {
+        clearSuggestion();
+        setSuggestionError('');
     };
 
     const toggleProductSelection = (id: string) => {
@@ -346,6 +485,11 @@ export default function Products() {
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
+            setSimulationParams((prev) => ({
+                ...prev,
+                current_price: fullProduct.suggested_price || 0,
+            }));
+            clearSuggestionState();
         } catch (err: any) {
             setError(err.response?.data?.error || 'Erro ao carregar produto');
         }
@@ -369,10 +513,12 @@ export default function Products() {
     };
 
     const resetForm = () => {
-        setFormData(INITIAL_FORM_STATE);
+        setFormData(createInitialFormState(pricingSettings));
         setEditingId(null);
         setShowForm(false);
         clearImageSelection();
+        clearSuggestionState();
+        setSimulationParams(buildSimulationDefaults(pricingSettings));
     };
 
     if (loading) {
@@ -676,6 +822,220 @@ export default function Products() {
                                     onChange={(e) => setFormData({ ...formData, packaging_cost: parseFloat(e.target.value) || 0 })}
                                 />
                             </div>
+                        </div>
+
+                        <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/5 p-4">
+                            <div className="flex items-start gap-3">
+                                <span className="rounded-2xl bg-warning/10 p-2 text-warning">
+                                    <Calculator size={22} />
+                                </span>
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted">Simulador</p>
+                                    <h3 className="text-lg font-semibold text-foreground">Preço sugerido em tempo real</h3>
+                                    <p className="text-sm text-muted">Use os parâmetros padrão do tenant e ajuste conforme necessário para ver custos, impostos e margem antes de salvar.</p>
+                                </div>
+                            </div>
+
+                            {pricingConfigError && (
+                                <div className="rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+                                    {pricingConfigError}
+                                </div>
+                            )}
+
+                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="fixed_monthly_costs">Custos fixos rateados (R$)</label>
+                                    <input
+                                        id="fixed_monthly_costs"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="input"
+                                        value={simulationParams.fixed_monthly_costs}
+                                        onChange={(e) => handleSimulationFieldChange('fixed_monthly_costs', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="variable_cost_percent">Custos variáveis (%)</label>
+                                    <input
+                                        id="variable_cost_percent"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        className="input"
+                                        value={simulationParams.variable_cost_percent}
+                                        onChange={(e) => handleSimulationFieldChange('variable_cost_percent', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="labor_cost_per_minute">Mão de obra (R$/min)</label>
+                                    <input
+                                        id="labor_cost_per_minute"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="input"
+                                        value={simulationParams.labor_cost_per_minute}
+                                        onChange={(e) => handleSimulationFieldChange('labor_cost_per_minute', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="sales_volume_monthly">Volume mensal (un)</label>
+                                    <input
+                                        id="sales_volume_monthly"
+                                        type="number"
+                                        step="1"
+                                        min="0"
+                                        className="input"
+                                        value={simulationParams.sales_volume_monthly}
+                                        onChange={(e) => handleSimulationFieldChange('sales_volume_monthly', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted" htmlFor="current_price">Preço atual praticado</label>
+                                    <input
+                                        id="current_price"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="input"
+                                        value={simulationParams.current_price}
+                                        onChange={(e) => handleSimulationFieldChange('current_price', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted">Incluir impostos</label>
+                                    <label className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm font-medium text-foreground">
+                                        <span>Calcular com tributos</span>
+                                        <input
+                                            type="checkbox"
+                                            className="checkbox"
+                                            checked={simulationParams.include_tax}
+                                            onChange={(e) => handleSimulationFieldChange('include_tax', e.target.checked)}
+                                        />
+                                    </label>
+                                </div>
+                                {pricingSettings && (
+                                    <div className="rounded-2xl border border-border/40 bg-background/60 p-4 text-sm text-muted">
+                                        <div className="flex items-center gap-2 text-foreground">
+                                            <Info size={16} />
+                                            <span>Referências atuais</span>
+                                        </div>
+                                        <ul className="mt-2 space-y-1">
+                                            <li>Margem padrão: <strong>{pricingSettings.default_margin_percent}%</strong></li>
+                                            <li>Imposto padrão: <strong>{pricingSettings.default_tax_rate}%</strong></li>
+                                            <li>Embalagem: <strong>{currencyFormatter.format(pricingSettings.default_packaging_cost)}</strong></li>
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-3">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={handleSuggestPrice}
+                                    disabled={suggesting}
+                                >
+                                    <Sparkles size={18} />
+                                    {suggesting ? 'Calculando...' : 'Calcular preço sugerido'}
+                                </button>
+                                {suggestion && (
+                                    <>
+                                        <button type="button" className="btn btn-outline" onClick={applySuggestionToForm}>
+                                            <CheckCircle2 size={18} />
+                                            Aplicar no formulário
+                                        </button>
+                                        <button type="button" className="btn btn-ghost" onClick={clearSuggestionState}>
+                                            <X size={18} />
+                                            Limpar simulação
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+
+                            {suggestionError && (
+                                <div className="rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+                                    {suggestionError}
+                                </div>
+                            )}
+
+                            {suggestion && (
+                                <div className="space-y-4">
+                                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                        <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Custo unitário</p>
+                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.unit_cost)}</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Preço antes de impostos</p>
+                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.price_before_tax)}</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Preço sugerido</p>
+                                            <p className="mt-2 text-2xl font-semibold text-primary">{currencyFormatter.format(suggestion.suggested_price)}</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Impostos</p>
+                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.tax_value)}</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Margem (R$)</p>
+                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.margin_value)} ({suggestion.margin_percent}%)</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Ponto de equilíbrio</p>
+                                            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFormatter.format(suggestion.break_even_price)}</p>
+                                        </div>
+                                        <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+                                            <p className="text-xs uppercase tracking-[0.3em] text-muted">Diferença vs atual</p>
+                                            <p className={`mt-2 text-2xl font-semibold ${suggestion.delta_vs_current >= 0 ? 'text-success' : 'text-danger'}`}>
+                                                {currencyFormatter.format(suggestion.delta_vs_current)}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-border/40 bg-background/80 p-4">
+                                        <p className="text-xs uppercase tracking-[0.3em] text-muted">Componentes do cálculo</p>
+                                        <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
+                                            <div>
+                                                <dt className="text-muted">Ingredientes</dt>
+                                                <dd className="text-foreground font-semibold">{currencyFormatter.format(suggestion.components.ingredient_cost)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-muted">Mão de obra</dt>
+                                                <dd className="text-foreground font-semibold">{currencyFormatter.format(suggestion.components.labor_cost)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-muted">Embalagem</dt>
+                                                <dd className="text-foreground font-semibold">{currencyFormatter.format(suggestion.components.packaging_cost)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-muted">Custos fixos por unidade</dt>
+                                                <dd className="text-foreground font-semibold">{currencyFormatter.format(suggestion.components.fixed_cost_per_unit)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-muted">Custos variáveis</dt>
+                                                <dd className="text-foreground font-semibold">{currencyFormatter.format(suggestion.components.variable_cost_unit)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-muted">Volume considerado</dt>
+                                                <dd className="text-foreground font-semibold">{numberFormatter.format(suggestion.components.sales_volume_monthly)} un</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+
+                                    {suggestion.flags.missing_sales_volume && (
+                                        <div className="flex items-center gap-2 rounded-2xl bg-warning/10 px-4 py-3 text-sm text-warning">
+                                            <AlertCircle size={16} />
+                                            Sem volume mensal informado: os custos fixos foram rateados por 1 unidade.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

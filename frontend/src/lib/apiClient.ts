@@ -81,6 +81,84 @@ export interface ProductPricingSummary {
     break_even_price: number;
 }
 
+export interface PricingSettings {
+    tenant_id: string;
+    labor_cost_per_minute: number;
+    default_packaging_cost: number;
+    default_margin_percent: number;
+    fixed_monthly_costs: number;
+    variable_cost_percent: number;
+    default_tax_rate: number;
+    default_sales_volume: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export type PricingSettingsUpdatePayload = Partial<Pick<
+    PricingSettings,
+    | 'labor_cost_per_minute'
+    | 'default_packaging_cost'
+    | 'default_margin_percent'
+    | 'fixed_monthly_costs'
+    | 'variable_cost_percent'
+    | 'default_tax_rate'
+    | 'default_sales_volume'
+>>;
+
+export interface PricingSuggestionComponents {
+    ingredient_cost: number;
+    labor_cost: number;
+    packaging_cost: number;
+    fixed_cost_per_unit: number;
+    variable_cost_unit: number;
+    sales_volume_monthly: number;
+}
+
+export interface PricingSuggestionInputs {
+    margin_percent: number;
+    packaging_cost: number;
+    fixed_monthly_costs: number;
+    variable_cost_percent: number;
+    labor_cost_per_minute: number;
+    sales_volume_monthly: number;
+    tax_rate: number;
+}
+
+export interface PricingSuggestionFlags {
+    missing_sales_volume: boolean;
+}
+
+export interface PricingSuggestion {
+    unit_cost: number;
+    fixed_cost_per_unit: number;
+    variable_cost_unit: number;
+    price_before_tax: number;
+    suggested_price: number;
+    break_even_price: number;
+    margin_value: number;
+    margin_percent: number;
+    tax_value: number;
+    current_price: number;
+    delta_vs_current: number;
+    components: PricingSuggestionComponents;
+    inputs: PricingSuggestionInputs;
+    flags: PricingSuggestionFlags;
+}
+
+export interface PricingSuggestionPayload {
+    product_id?: string;
+    recipe_id?: string;
+    margin_percent?: number;
+    packaging_cost?: number;
+    fixed_monthly_costs?: number;
+    variable_cost_percent?: number;
+    labor_cost_per_minute?: number;
+    sales_volume_monthly?: number;
+    current_price?: number;
+    include_tax: boolean;
+    tax_rate?: number;
+}
+
 export interface Category {
     id: string;
     tenant_id: string;
@@ -194,6 +272,13 @@ export const productsAPI = {
         });
     },
     bulkDelete: (ids: string[]) => api.post('/products/bulk-delete', { ids }),
+};
+
+// Pricing API
+export const pricingAPI = {
+    getSettings: () => api.get<PricingSettings>('/pricing/settings'),
+    updateSettings: (payload: PricingSettingsUpdatePayload) => api.put<PricingSettings>('/pricing/settings', payload),
+    suggestPrice: (payload: PricingSuggestionPayload) => api.post<PricingSuggestion>('/pricing/suggest', payload),
 };
 
 // Categories API

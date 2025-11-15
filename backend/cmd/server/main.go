@@ -158,6 +158,7 @@ func run() error {
 	pushHandler := handlers.NewPushSubscriptionHandler(services.PushSubs, logPtr)
 	categoryHandler := handlers.NewCategoryHandler(services.Categories, logPtr)
 	measurementHandler := handlers.NewMeasurementHandler(services.Measurements, logPtr)
+	pricingHandler := handlers.NewPricingHandler(services.Pricing, logPtr)
 
 	// Configurar rate limiter HTTP
 	rateLimiter := middleware.NewRateLimiter(cfg.RateLimit.Requests, 20, logPtr)
@@ -173,6 +174,7 @@ func run() error {
 		PushHandler:        pushHandler,
 		CategoryHandler:    categoryHandler,
 		MeasurementHandler: measurementHandler,
+		PricingHandler:     pricingHandler,
 		RateLimiter:        rateLimiter,
 		AllowedOrigins:     allowedOrigins,
 	})
