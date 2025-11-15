@@ -214,9 +214,6 @@ func (s *ProductService) normalizeProduct(ctx context.Context, product *domain.P
 	if product.MarginPercent < 0 {
 		return ValidationError("margem não pode ser negativa")
 	}
-	if product.TaxRate < 0 {
-		return ValidationError("imposto não pode ser negativo")
-	}
 	if product.PackagingCost < 0 {
 		return ValidationError("custo de embalagem não pode ser negativo")
 	}

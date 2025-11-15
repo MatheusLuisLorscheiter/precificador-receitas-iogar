@@ -335,8 +335,7 @@ func (s *PricingService) CalculateProductPrice(ctx context.Context, tenantID uui
 	}
 	cost := baseCost + product.PackagingCost
 	marginMultiplier := 1 + (product.MarginPercent / 100)
-	priceBeforeTax := cost * marginMultiplier
-	totalPrice := priceBeforeTax * (1 + product.TaxRate/100)
+	totalPrice := cost * marginMultiplier
 
 	product.BasePrice = domain.RoundCurrency(cost)
 	product.SuggestedPrice = domain.RoundCurrency(totalPrice)
@@ -424,14 +423,14 @@ func (s *PricingService) SuggestPrice(ctx context.Context, input *domain.Pricing
 	}
 	variableCostUnit := (unitCost + fixedCostPerUnit) * (params.VariableCostPercent / 100)
 	totalCostPerUnit := unitCost + fixedCostPerUnit + variableCostUnit
-	
+
 	// Cálculo do preço sugerido com margem de lucro
 	// Fórmula: Preço = Custo Total × (1 + Margem%)
 	suggestedPrice := totalCostPerUnit * (1 + params.MarginPercent/100)
-	
+
 	// Ponto de equilíbrio: preço mínimo sem lucro
 	breakEven := totalCostPerUnit
-	
+
 	// Margem de contribuição: diferença entre preço e custos variáveis
 	// MCU = Preço - (Custo Unitário + Custos Variáveis)
 	contributionMargin := suggestedPrice - (unitCost + variableCostUnit)
@@ -439,23 +438,23 @@ func (s *PricingService) SuggestPrice(ctx context.Context, input *domain.Pricing
 	if suggestedPrice > 0 {
 		contributionMarginPct = (contributionMargin / suggestedPrice) * 100
 	}
-	
+
 	// Valor da margem de lucro
 	marginValue := suggestedPrice - totalCostPerUnit
-	
+
 	// Markup: percentual de acréscimo sobre o custo
 	markup := 0.0
 	if totalCostPerUnit > 0 {
 		markup = ((suggestedPrice - totalCostPerUnit) / totalCostPerUnit) * 100
 	}
-	
+
 	// Delta vs preço atual
 	deltaVsCurrent := suggestedPrice - params.CurrentPrice
 	deltaPercent := 0.0
 	if params.CurrentPrice > 0 {
 		deltaPercent = (deltaVsCurrent / params.CurrentPrice) * 100
 	}
-	
+
 	// Flags de alerta
 	lowMargin := params.MarginPercent < pricing.MinimumSafeMargin
 	belowBreakEven := params.CurrentPrice > 0 && params.CurrentPrice < breakEven

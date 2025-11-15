@@ -21,15 +21,15 @@ func (s *Store) CreateProduct(ctx context.Context, product *domain.Product) erro
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO products (
 			id, tenant_id, name, description, sku, barcode, recipe_id,
-			base_price, suggested_price, tax_rate, margin_percent, packaging_cost,
+			base_price, suggested_price, margin_percent, packaging_cost,
 			image_object_key, category_id, stock_quantity, stock_unit, reorder_point,
 			storage_location, active, created_at, updated_at
 		)
 		VALUES (
 			$1, $2, $3, $4, $5, $6, $7,
-			$8, $9, $10, $11, $12,
-			$13, $14, $15, $16, $17,
-			$18, $19, $20, $21
+			$8, $9, $10, $11,
+			$12, $13, $14, $15, $16,
+			$17, $18, $19, $20
 		)
 	`,
 		product.ID,
@@ -41,7 +41,6 @@ func (s *Store) CreateProduct(ctx context.Context, product *domain.Product) erro
 		product.RecipeID,
 		product.BasePrice,
 		product.SuggestedPrice,
-		product.TaxRate,
 		product.MarginPercent,
 		product.PackagingCost,
 		strings.TrimSpace(product.ImageObjectKey),
@@ -70,17 +69,16 @@ func (s *Store) UpdateProduct(ctx context.Context, product *domain.Product) erro
 		    recipe_id = $7,
 		    base_price = $8,
 		    suggested_price = $9,
-		    tax_rate = $10,
-		    margin_percent = $11,
-		    packaging_cost = $12,
-		    image_object_key = $13,
-		    category_id = $14,
-		    stock_quantity = $15,
-		    stock_unit = $16,
-		    reorder_point = $17,
-		    storage_location = $18,
-		    active = $19,
-		    updated_at = $20
+		    margin_percent = $10,
+		    packaging_cost = $11,
+		    image_object_key = $12,
+		    category_id = $13,
+		    stock_quantity = $14,
+		    stock_unit = $15,
+		    reorder_point = $16,
+		    storage_location = $17,
+		    active = $18,
+		    updated_at = $19
 		WHERE tenant_id = $1 AND id = $2
 	`,
 		product.TenantID,
@@ -92,7 +90,6 @@ func (s *Store) UpdateProduct(ctx context.Context, product *domain.Product) erro
 		product.RecipeID,
 		product.BasePrice,
 		product.SuggestedPrice,
-		product.TaxRate,
 		product.MarginPercent,
 		product.PackagingCost,
 		strings.TrimSpace(product.ImageObjectKey),
@@ -119,7 +116,7 @@ func (s *Store) UpdateProduct(ctx context.Context, product *domain.Product) erro
 func (s *Store) GetProduct(ctx context.Context, tenantID, productID uuid.UUID) (*domain.Product, error) {
 	var product domain.Product
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, tenant_id, name, description, sku, barcode, recipe_id, base_price, suggested_price, tax_rate, margin_percent, packaging_cost,
+		SELECT id, tenant_id, name, description, sku, barcode, recipe_id, base_price, suggested_price, margin_percent, packaging_cost,
 		       image_object_key, category_id, stock_quantity, stock_unit, reorder_point, storage_location, active, created_at, updated_at
 		FROM products
 		WHERE tenant_id = $1 AND id = $2
@@ -133,7 +130,6 @@ func (s *Store) GetProduct(ctx context.Context, tenantID, productID uuid.UUID) (
 		&product.RecipeID,
 		&product.BasePrice,
 		&product.SuggestedPrice,
-		&product.TaxRate,
 		&product.MarginPercent,
 		&product.PackagingCost,
 		&product.ImageObjectKey,
@@ -162,7 +158,7 @@ func (s *Store) ListProducts(ctx context.Context, tenantID uuid.UUID, filter *Pr
 
 	queryBuilder := strings.Builder{}
 	queryBuilder.WriteString(`
-		SELECT id, tenant_id, name, description, sku, barcode, recipe_id, base_price, suggested_price, tax_rate, margin_percent, packaging_cost,
+		SELECT id, tenant_id, name, description, sku, barcode, recipe_id, base_price, suggested_price, margin_percent, packaging_cost,
 		       image_object_key, category_id, stock_quantity, stock_unit, reorder_point, storage_location, active, created_at, updated_at
 		FROM products
 		WHERE tenant_id = $1
@@ -225,7 +221,6 @@ func (s *Store) ListProducts(ctx context.Context, tenantID uuid.UUID, filter *Pr
 			&product.RecipeID,
 			&product.BasePrice,
 			&product.SuggestedPrice,
-			&product.TaxRate,
 			&product.MarginPercent,
 			&product.PackagingCost,
 			&product.ImageObjectKey,

@@ -13,7 +13,6 @@ type Product struct {
 	RecipeID        uuid.UUID              `json:"recipe_id"`
 	BasePrice       float64                `json:"base_price"`
 	SuggestedPrice  float64                `json:"suggested_price"`
-	TaxRate         float64                `json:"tax_rate"`
 	MarginPercent   float64                `json:"margin_percent"`
 	PackagingCost   float64                `json:"packaging_cost"`
 	ImageObjectKey  string                 `json:"image_object_key"`
@@ -30,11 +29,13 @@ type Product struct {
 
 // ProductPricingSummary expõe dados derivados utilizados pela camada de apresentação.
 type ProductPricingSummary struct {
-	UnitCost       float64 `json:"unit_cost"`
-	MarginValue    float64 `json:"margin_value"`
-	TaxValue       float64 `json:"tax_value"`
-	ProfitPerUnit  float64 `json:"profit_per_unit"`
-	BreakEvenPrice float64 `json:"break_even_price"`
+	UnitCost              float64 `json:"unit_cost"`
+	MarginValue           float64 `json:"margin_value"`
+	BreakEvenPrice        float64 `json:"break_even_price"`
+	ContributionMargin    float64 `json:"contribution_margin"`
+	ContributionMarginPct float64 `json:"contribution_margin_pct"`
+	Markup                float64 `json:"markup"`
+	MarginPercent         float64 `json:"margin_percent"`
 }
 
 // DerivePricingSummary calcula métricas derivadas usando os campos atuais do produto.
@@ -48,31 +49,35 @@ func (p *Product) DerivePricingSummary() *ProductPricingSummary {
 		unitCost = 0
 	}
 
-	priceBeforeTax := p.SuggestedPrice
-	if p.TaxRate > 0 {
-		denominator := 1 + (p.TaxRate / 100)
-		if denominator != 0 {
-			priceBeforeTax = p.SuggestedPrice / denominator
-		}
+	sellingPrice := p.SuggestedPrice
+	if sellingPrice < 0 {
+		sellingPrice = 0
 	}
 
-	marginValue := priceBeforeTax - unitCost
+	marginValue := sellingPrice - unitCost
 	if marginValue < 0 {
 		marginValue = 0
 	}
 
-	taxValue := p.SuggestedPrice - priceBeforeTax
-	if taxValue < 0 {
-		taxValue = 0
+	breakEven := unitCost
+	contributionMargin := marginValue
+	var contributionMarginPct float64
+	if sellingPrice > 0 {
+		contributionMarginPct = (contributionMargin / sellingPrice) * 100
 	}
 
-	breakEven := unitCost + taxValue
+	var markup float64
+	if unitCost > 0 {
+		markup = ((sellingPrice - unitCost) / unitCost) * 100
+	}
 
 	return &ProductPricingSummary{
-		UnitCost:       RoundCurrency(unitCost),
-		MarginValue:    RoundCurrency(marginValue),
-		TaxValue:       RoundCurrency(taxValue),
-		ProfitPerUnit:  RoundCurrency(marginValue),
-		BreakEvenPrice: RoundCurrency(breakEven),
+		UnitCost:              RoundCurrency(unitCost),
+		MarginValue:           RoundCurrency(marginValue),
+		BreakEvenPrice:        RoundCurrency(breakEven),
+		ContributionMargin:    RoundCurrency(contributionMargin),
+		ContributionMarginPct: RoundCurrency(contributionMarginPct),
+		Markup:                RoundCurrency(markup),
+		MarginPercent:         RoundCurrency(p.MarginPercent),
 	}
 }
