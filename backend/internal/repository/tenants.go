@@ -29,7 +29,7 @@ func insertTenant(ctx context.Context, exec commandExecutor, tenant *domain.Tena
 
 	query := `
 		INSERT INTO tenants (id, name, slug, subdomain, billing_email, timezone, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $6, $7, $8)
 	`
 
 	_, err := exec.Exec(ctx, query,
@@ -49,7 +49,7 @@ func insertTenant(ctx context.Context, exec commandExecutor, tenant *domain.Tena
 // GetTenantByID retorna um tenant pelo identificador.
 func (s *Store) GetTenantByID(ctx context.Context, id uuid.UUID) (*domain.Tenant, error) {
 	query := `
-		SELECT id, name, slug, subdomain, billing_email, timezone, created_at, updated_at
+		SELECT id, name, slug, COALESCE(subdomain, '') AS subdomain, billing_email, timezone, created_at, updated_at
 		FROM tenants
 		WHERE id = $1
 	`
@@ -76,7 +76,7 @@ func (s *Store) GetTenantByID(ctx context.Context, id uuid.UUID) (*domain.Tenant
 // GetTenantBySlug retorna um tenant a partir do slug único.
 func (s *Store) GetTenantBySlug(ctx context.Context, slug string) (*domain.Tenant, error) {
 	query := `
-		SELECT id, name, slug, subdomain, billing_email, timezone, created_at, updated_at
+		SELECT id, name, slug, COALESCE(subdomain, '') AS subdomain, billing_email, timezone, created_at, updated_at
 		FROM tenants
 		WHERE slug = $1
 	`
@@ -108,7 +108,7 @@ func (s *Store) UpdateTenant(ctx context.Context, tenant *domain.Tenant) error {
 		UPDATE tenants
 		SET name = $2,
 		    slug = $3,
-		    subdomain = $4,
+		    subdomain = NULLIF($4, ''),
 		    billing_email = $5,
 		    timezone = $6,
 		    updated_at = $7
