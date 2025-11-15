@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// Se VITE_API_URL estiver vazio, usa URL relativa (Caddy fará o proxy)
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 const api = axios.create({
-    baseURL: `${API_URL}/api/v1`,
+    baseURL: API_URL ? `${API_URL}/api/v1` : '/api/v1',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -39,7 +40,8 @@ api.interceptors.response.use(
                     return Promise.reject(error);
                 }
 
-                const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
+                const refreshURL = API_URL ? `${API_URL}/api/v1/auth/refresh` : '/api/v1/auth/refresh';
+                const response = await axios.post(refreshURL, {
                     refresh_token: refreshToken,
                 });
 
