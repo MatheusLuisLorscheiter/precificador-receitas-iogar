@@ -14,12 +14,13 @@ import (
 
 // IngredientService gerencia os casos de uso relacionados a ingredientes.
 type IngredientService struct {
-	repo *repository.Store
-	log  zerolog.Logger
+	repo    *repository.Store
+	pricing *PricingService
+	log     zerolog.Logger
 }
 
-func NewIngredientService(repo *repository.Store, log zerolog.Logger) *IngredientService {
-	return &IngredientService{repo: repo, log: log}
+func NewIngredientService(repo *repository.Store, pricing *PricingService, log zerolog.Logger) *IngredientService {
+	return &IngredientService{repo: repo, pricing: pricing, log: log}
 }
 
 func (s *IngredientService) Create(ctx context.Context, ingredient *domain.Ingredient) error {
@@ -40,9 +41,14 @@ func (s *IngredientService) Update(ctx context.Context, ingredient *domain.Ingre
 	if err := s.normalize(ctx, ingredient); err != nil {
 		return err
 	}
+	recipeIDs, err := s.repo.ListRecipeIDsByIngredient(ctx, ingredient.TenantID, ingredient.ID)
+	if err != nil {
+		return err
+	}
 	if err := s.repo.UpdateIngredient(ctx, ingredient); err != nil {
 		return err
 	}
+	s.invalidateRecipes(ctx, ingredient.TenantID, recipeIDs)
 	s.log.Info().Str("ingredient_id", ingredient.ID.String()).Msg("ingrediente atualizado")
 	return nil
 }
@@ -64,14 +70,30 @@ func (s *IngredientService) List(ctx context.Context, tenantID uuid.UUID, opts *
 }
 
 func (s *IngredientService) Delete(ctx context.Context, tenantID, ingredientID uuid.UUID) error {
-	return s.repo.DeleteIngredient(ctx, tenantID, ingredientID)
+	recipeIDs, err := s.repo.ListRecipeIDsByIngredient(ctx, tenantID, ingredientID)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.DeleteIngredient(ctx, tenantID, ingredientID); err != nil {
+		return err
+	}
+	s.invalidateRecipes(ctx, tenantID, recipeIDs)
+	return nil
 }
 
 func (s *IngredientService) BulkDelete(ctx context.Context, tenantID uuid.UUID, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return s.repo.DeleteIngredients(ctx, tenantID, ids)
+	recipeIDs, err := s.repo.ListRecipeIDsByIngredients(ctx, tenantID, ids)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.DeleteIngredients(ctx, tenantID, ids); err != nil {
+		return err
+	}
+	s.invalidateRecipes(ctx, tenantID, recipeIDs)
+	return nil
 }
 
 func (s *IngredientService) GetByID(ctx context.Context, tenantID, ingredientID uuid.UUID) (*domain.Ingredient, error) {
@@ -127,4 +149,21 @@ func (s *IngredientService) normalize(ctx context.Context, ingredient *domain.In
 	}
 
 	return nil
+}
+
+func (s *IngredientService) invalidateRecipes(ctx context.Context, tenantID uuid.UUID, recipeIDs []uuid.UUID) {
+	if s.pricing == nil || len(recipeIDs) == 0 {
+		return
+	}
+	seen := make(map[uuid.UUID]struct{}, len(recipeIDs))
+	for _, recipeID := range recipeIDs {
+		if recipeID == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[recipeID]; ok {
+			continue
+		}
+		seen[recipeID] = struct{}{}
+		s.pricing.InvalidateRecipeCache(ctx, tenantID, recipeID)
+	}
 }

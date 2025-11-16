@@ -9,6 +9,9 @@ export interface Ingredient {
     supplier: string;
     lead_time_days: number;
     min_stock_level: number;
+    current_stock: number;
+    storage_location?: string;
+    category_id?: string | null;
     notes: string;
     created_at: string;
     updated_at: string;

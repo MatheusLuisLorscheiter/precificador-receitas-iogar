@@ -56,6 +56,7 @@ func (s *ProductService) Create(ctx context.Context, product *domain.Product) er
 		return err
 	}
 
+	s.invalidateRecipeCache(ctx, product.TenantID, product.RecipeID)
 	s.log.Info().Str("product_id", product.ID.String()).Msg("produto criado")
 	return nil
 }
@@ -66,6 +67,10 @@ func (s *ProductService) Update(ctx context.Context, product *domain.Product) er
 	}
 	if s.pricing == nil {
 		return errors.New("serviço de precificação não configurado")
+	}
+	oldRecipeID, err := s.getProductRecipeID(ctx, product.TenantID, product.ID)
+	if err != nil {
+		return err
 	}
 
 	if err := s.normalizeProduct(ctx, product); err != nil {
@@ -81,6 +86,7 @@ func (s *ProductService) Update(ctx context.Context, product *domain.Product) er
 		return err
 	}
 
+	s.invalidateRecipeCache(ctx, product.TenantID, oldRecipeID, product.RecipeID)
 	s.log.Info().Str("product_id", product.ID.String()).Msg("produto atualizado")
 	return nil
 }
@@ -116,14 +122,34 @@ func (s *ProductService) List(ctx context.Context, tenantID uuid.UUID, opts *Pro
 }
 
 func (s *ProductService) Delete(ctx context.Context, tenantID, productID uuid.UUID) error {
-	return s.repo.DeleteProduct(ctx, tenantID, productID)
+	recipeID, err := s.getProductRecipeID(ctx, tenantID, productID)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.DeleteProduct(ctx, tenantID, productID); err != nil {
+		return err
+	}
+	s.invalidateRecipeCache(ctx, tenantID, recipeID)
+	return nil
 }
 
 func (s *ProductService) BulkDelete(ctx context.Context, tenantID uuid.UUID, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return s.repo.DeleteProducts(ctx, tenantID, ids)
+	recipeMap, err := s.repo.ListProductRecipeIDs(ctx, tenantID, ids)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.DeleteProducts(ctx, tenantID, ids); err != nil {
+		return err
+	}
+	var affected []uuid.UUID
+	for _, recipeID := range recipeMap {
+		affected = append(affected, recipeID)
+	}
+	s.invalidateRecipeCache(ctx, tenantID, affected...)
+	return nil
 }
 
 func (s *ProductService) GetByID(ctx context.Context, tenantID, productID uuid.UUID) (*domain.Product, error) {
@@ -193,6 +219,38 @@ func sanitizeExtension(ext string) string {
 		cleaned = "." + cleaned
 	}
 	return cleaned
+}
+
+func (s *ProductService) getProductRecipeID(ctx context.Context, tenantID, productID uuid.UUID) (uuid.UUID, error) {
+	if productID == uuid.Nil {
+		return uuid.Nil, ValidationError("produto inválido")
+	}
+	mapping, err := s.repo.ListProductRecipeIDs(ctx, tenantID, []uuid.UUID{productID})
+	if err != nil {
+		return uuid.Nil, err
+	}
+	recipeID, ok := mapping[productID]
+	if !ok {
+		return uuid.Nil, repository.ErrNotFound
+	}
+	return recipeID, nil
+}
+
+func (s *ProductService) invalidateRecipeCache(ctx context.Context, tenantID uuid.UUID, recipeIDs ...uuid.UUID) {
+	if s.pricing == nil {
+		return
+	}
+	seen := make(map[uuid.UUID]struct{}, len(recipeIDs))
+	for _, id := range recipeIDs {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		s.pricing.InvalidateRecipeCache(ctx, tenantID, id)
+	}
 }
 
 func (s *ProductService) normalizeProduct(ctx context.Context, product *domain.Product) error {

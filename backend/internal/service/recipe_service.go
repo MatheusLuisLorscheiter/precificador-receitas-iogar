@@ -30,6 +30,7 @@ func (s *RecipeService) Create(ctx context.Context, recipe *domain.Recipe) error
 	if err := s.repo.CreateRecipe(ctx, recipe); err != nil {
 		return err
 	}
+	s.invalidateRecipeCache(ctx, recipe.TenantID, recipe.ID)
 	s.log.Info().Str("recipe_id", recipe.ID.String()).Msg("receita criada")
 	return nil
 }
@@ -44,6 +45,7 @@ func (s *RecipeService) Update(ctx context.Context, recipe *domain.Recipe) error
 	if err := s.repo.UpdateRecipe(ctx, recipe); err != nil {
 		return err
 	}
+	s.invalidateRecipeCache(ctx, recipe.TenantID, recipe.ID)
 	s.log.Info().Str("recipe_id", recipe.ID.String()).Msg("receita atualizada")
 	return nil
 }
@@ -84,14 +86,22 @@ func (s *RecipeService) List(ctx context.Context, tenantID uuid.UUID, opts *Reci
 }
 
 func (s *RecipeService) Delete(ctx context.Context, tenantID, recipeID uuid.UUID) error {
-	return s.repo.DeleteRecipe(ctx, tenantID, recipeID)
+	if err := s.repo.DeleteRecipe(ctx, tenantID, recipeID); err != nil {
+		return err
+	}
+	s.invalidateRecipeCache(ctx, tenantID, recipeID)
+	return nil
 }
 
 func (s *RecipeService) BulkDelete(ctx context.Context, tenantID uuid.UUID, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return s.repo.DeleteRecipes(ctx, tenantID, ids)
+	if err := s.repo.DeleteRecipes(ctx, tenantID, ids); err != nil {
+		return err
+	}
+	s.invalidateRecipeCache(ctx, tenantID, ids...)
+	return nil
 }
 
 func (s *RecipeService) GetByID(ctx context.Context, tenantID, recipeID uuid.UUID) (*domain.Recipe, error) {
@@ -108,11 +118,19 @@ func (s *RecipeService) AddItem(ctx context.Context, tenantID, recipeID uuid.UUI
 	}
 	normalized := recipe.Items[0]
 	normalized.RecipeID = recipeID
-	return s.repo.AddRecipeItem(ctx, &normalized)
+	if err := s.repo.AddRecipeItem(ctx, &normalized); err != nil {
+		return err
+	}
+	s.invalidateRecipeCache(ctx, tenantID, recipeID)
+	return nil
 }
 
 func (s *RecipeService) RemoveItem(ctx context.Context, tenantID, recipeID, itemID uuid.UUID) error {
-	return s.repo.RemoveRecipeItem(ctx, tenantID, itemID)
+	if err := s.repo.RemoveRecipeItem(ctx, tenantID, itemID); err != nil {
+		return err
+	}
+	s.invalidateRecipeCache(ctx, tenantID, recipeID)
+	return nil
 }
 
 func (s *RecipeService) normalize(ctx context.Context, recipe *domain.Recipe) error {
@@ -184,4 +202,21 @@ func (s *RecipeService) normalizeItems(ctx context.Context, recipe *domain.Recip
 		}
 	}
 	return nil
+}
+
+func (s *RecipeService) invalidateRecipeCache(ctx context.Context, tenantID uuid.UUID, recipeIDs ...uuid.UUID) {
+	if s.pricing == nil {
+		return
+	}
+	seen := make(map[uuid.UUID]struct{}, len(recipeIDs))
+	for _, id := range recipeIDs {
+		if id == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		s.pricing.InvalidateRecipeCache(ctx, tenantID, id)
+	}
 }

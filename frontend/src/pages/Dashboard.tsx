@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ingredientsAPI, recipesAPI, productsAPI, Recipe } from '../lib/apiClient';
+import { ingredientsAPI, recipesAPI, productsAPI, Recipe, Ingredient, Product } from '../lib/apiClient';
 import { Link } from 'react-router-dom';
-import { Package, BookOpen, ShoppingBag, DollarSign, Plus, Zap, Settings } from 'lucide-react';
+import { Package, BookOpen, ShoppingBag, DollarSign, Plus, Zap, Settings, AlertTriangle, TrendingDown } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 interface DashboardStats {
@@ -9,6 +9,8 @@ interface DashboardStats {
     totalRecipes: number;
     totalProducts: number;
     totalInventoryValue: number;
+    lowStockIngredients: number;
+    lowMarginProducts: number;
 }
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
@@ -23,8 +25,12 @@ export default function Dashboard() {
         totalRecipes: 0,
         totalProducts: 0,
         totalInventoryValue: 0,
+        lowStockIngredients: 0,
+        lowMarginProducts: 0,
     });
     const [recentRecipes, setRecentRecipes] = useState<Recipe[]>([]);
+    const [lowStockIngredientsList, setLowStockIngredientsList] = useState<Ingredient[]>([]);
+    const [lowMarginProductsList, setLowMarginProductsList] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -51,19 +57,35 @@ export default function Dashboard() {
 
             // Calcular valor total do inventário
             const inventoryValue = ingredients.reduce(
-                (sum, ing) => sum + (ing.cost_per_unit * (ing.min_stock_level || 0)),
+                (sum, ing) => sum + ing.cost_per_unit * (ing.current_stock || 0),
                 0
             );
+
+            const criticalIngredients = ingredients
+                .filter((ing) => ing.min_stock_level > 0 && (ing.current_stock || 0) <= ing.min_stock_level)
+                .sort((a, b) => (a.current_stock - a.min_stock_level) - (b.current_stock - b.min_stock_level));
+
+            const marginAlerts = products
+                .filter((product) => product.pricing_summary && product.pricing_summary.margin_percent < 20)
+                .sort((a, b) => (a.pricing_summary!.margin_percent - b.pricing_summary!.margin_percent));
 
             setStats({
                 totalIngredients: ingredients.length,
                 totalRecipes: recipes.length,
                 totalProducts: products.length,
                 totalInventoryValue: inventoryValue,
+                lowStockIngredients: criticalIngredients.length,
+                lowMarginProducts: marginAlerts.length,
             });
 
-            // Pegar as 5 receitas mais recentes
-            setRecentRecipes(recipes.slice(0, 5));
+            // Pegar listas derivadas para seções do dashboard
+            setRecentRecipes(
+                [...recipes]
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .slice(0, 5)
+            );
+            setLowStockIngredientsList(criticalIngredients.slice(0, 5));
+            setLowMarginProductsList(marginAlerts.slice(0, 5));
         } catch (err: any) {
             setError(err.response?.data?.error || 'Erro ao carregar dados do dashboard');
         } finally {
@@ -116,6 +138,22 @@ export default function Dashboard() {
             icon: DollarSign,
             accent: 'text-accent',
             helper: 'Baseado no estoque mínimo',
+        },
+        {
+            label: 'Ingredientes com estoque crítico',
+            value: stats.lowStockIngredients,
+            href: '/ingredients',
+            icon: AlertTriangle,
+            accent: stats.lowStockIngredients > 0 ? 'text-danger' : 'text-success',
+            helper: stats.lowStockIngredients > 0 ? 'Reponha o quanto antes' : 'Todos acima do mínimo',
+        },
+        {
+            label: 'Produtos com margem < 20%',
+            value: stats.lowMarginProducts,
+            href: '/products',
+            icon: TrendingDown,
+            accent: stats.lowMarginProducts > 0 ? 'text-warning' : 'text-success',
+            helper: stats.lowMarginProducts > 0 ? 'Revise precificação' : 'Margens saudáveis',
         },
     ];
 
@@ -191,6 +229,85 @@ export default function Dashboard() {
                             </Link>
                         );
                     })}
+                </div>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+                <div className="card">
+                    <div className="mb-4 flex items-center gap-3">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-danger/10 text-danger">
+                            <AlertTriangle size={20} strokeWidth={2} />
+                        </span>
+                        <div>
+                            <h2 className="text-xl font-semibold text-foreground">Estoque crítico</h2>
+                            <p className="text-sm text-muted">Ingredientes abaixo do nível mínimo</p>
+                        </div>
+                    </div>
+                    {lowStockIngredientsList.length > 0 ? (
+                        <div className="space-y-3">
+                            {lowStockIngredientsList.map((ingredient) => (
+                                <Link
+                                    key={ingredient.id}
+                                    to="/ingredients"
+                                    className="group flex items-center justify-between rounded-2xl border border-border/60 bg-surface/70 px-4 py-3 no-underline transition hover:border-danger/40 hover:bg-card/80"
+                                >
+                                    <div>
+                                        <p className="text-base font-semibold text-foreground">{ingredient.name}</p>
+                                        <p className="text-sm text-muted">
+                                            Atual: {ingredient.current_stock ?? 0} {ingredient.unit} • Mínimo: {ingredient.min_stock_level}{' '}
+                                            {ingredient.unit}
+                                        </p>
+                                    </div>
+                                    <p className="text-sm font-semibold text-danger">
+                                        {currencyFormatter.format(ingredient.cost_per_unit * (ingredient.min_stock_level - (ingredient.current_stock || 0)))}
+                                    </p>
+                                </Link>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm font-medium text-muted">Todos os ingredientes estão acima do estoque mínimo.</p>
+                    )}
+                </div>
+
+                <div className="card">
+                    <div className="mb-4 flex items-center gap-3">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-warning/10 text-warning">
+                            <TrendingDown size={20} strokeWidth={2} />
+                        </span>
+                        <div>
+                            <h2 className="text-xl font-semibold text-foreground">Margem em alerta</h2>
+                            <p className="text-sm text-muted">Produtos com margem de lucro abaixo de 20%</p>
+                        </div>
+                    </div>
+                    {lowMarginProductsList.length > 0 ? (
+                        <div className="space-y-3">
+                            {lowMarginProductsList.map((product) => {
+                                const marginPercent = product.pricing_summary?.margin_percent ?? 0;
+                                return (
+                                    <Link
+                                        key={product.id}
+                                        to="/products"
+                                        className="group flex items-center justify-between rounded-2xl border border-border/60 bg-surface/70 px-4 py-3 no-underline transition hover:border-warning/40 hover:bg-card/80"
+                                    >
+                                        <div>
+                                            <p className="text-base font-semibold text-foreground">{product.name}</p>
+                                            <p className="text-sm text-muted">
+                                                Margem atual:{' '}
+                                                <span className="font-semibold text-warning">
+                                                    {marginPercent.toFixed(1)}%
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <p className="text-xs text-muted">
+                                            Custo unitário {currencyFormatter.format(product.pricing_summary?.unit_cost || 0)}
+                                        </p>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-sm font-medium text-muted">Nenhum produto com margem crítica no momento.</p>
+                    )}
                 </div>
             </div>
 

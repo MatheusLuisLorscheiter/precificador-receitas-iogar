@@ -51,7 +51,7 @@ func NewServices(deps Dependencies) *Services {
 		Tenants:      NewTenantService(deps.Store, log),
 		Users:        NewUserService(deps.Store, log),
 		Auth:         NewAuthService(deps.Store, deps.TokenManager, deps.Config.JWT.PasswordPepper, deps.RateLimiter, log),
-		Ingredients:  NewIngredientService(deps.Store, log),
+		Ingredients:  NewIngredientService(deps.Store, pricing, log),
 		Recipes:      NewRecipeService(deps.Store, pricing, log),
 		Products:     NewProductService(deps.Store, deps.Storage, pricing, log),
 		Pricing:      pricing,

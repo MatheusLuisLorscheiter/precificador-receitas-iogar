@@ -279,6 +279,38 @@ func (s *Store) DeleteProducts(ctx context.Context, tenantID uuid.UUID, ids []uu
 	return nil
 }
 
+// ListProductRecipeIDs retorna o mapeamento produto -> receita, usado para invalidação de cache.
+func (s *Store) ListProductRecipeIDs(ctx context.Context, tenantID uuid.UUID, productIDs []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	if len(productIDs) == 0 {
+		return nil, nil
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, recipe_id
+		FROM products
+		WHERE tenant_id = $1 AND id = ANY($2)
+	`, tenantID, productIDs)
+	if err != nil {
+		return nil, translateError(err)
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID]uuid.UUID, len(productIDs))
+	for rows.Next() {
+		var productID uuid.UUID
+		var recipeID uuid.UUID
+		if err := rows.Scan(&productID, &recipeID); err != nil {
+			return nil, translateError(err)
+		}
+		result[productID] = recipeID
+	}
+	if err := rows.Err(); err != nil {
+		return nil, translateError(err)
+	}
+
+	return result, nil
+}
+
 func (s *Store) SetProductImage(ctx context.Context, tenantID, productID uuid.UUID, objectKey string) error {
 	commandTag, err := s.pool.Exec(ctx, `
 		UPDATE products

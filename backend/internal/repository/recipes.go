@@ -305,3 +305,42 @@ func (s *Store) RemoveRecipeItem(ctx context.Context, tenantID, itemID uuid.UUID
 	}
 	return nil
 }
+
+// ListRecipeIDsByIngredient retorna os IDs de receitas que utilizam o ingrediente informado.
+func (s *Store) ListRecipeIDsByIngredient(ctx context.Context, tenantID, ingredientID uuid.UUID) ([]uuid.UUID, error) {
+	if ingredientID == uuid.Nil {
+		return nil, nil
+	}
+	return s.ListRecipeIDsByIngredients(ctx, tenantID, []uuid.UUID{ingredientID})
+}
+
+// ListRecipeIDsByIngredients retorna os IDs de receitas que utilizam qualquer ingrediente informado.
+func (s *Store) ListRecipeIDsByIngredients(ctx context.Context, tenantID uuid.UUID, ingredientIDs []uuid.UUID) ([]uuid.UUID, error) {
+	if len(ingredientIDs) == 0 {
+		return nil, nil
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT DISTINCT recipe_id
+		FROM recipe_items
+		WHERE tenant_id = $1 AND ingredient_id = ANY($2)
+	`, tenantID, ingredientIDs)
+	if err != nil {
+		return nil, translateError(err)
+	}
+	defer rows.Close()
+
+	var recipeIDs []uuid.UUID
+	for rows.Next() {
+		var recipeID uuid.UUID
+		if err := rows.Scan(&recipeID); err != nil {
+			return nil, translateError(err)
+		}
+		recipeIDs = append(recipeIDs, recipeID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, translateError(err)
+	}
+
+	return recipeIDs, nil
+}
